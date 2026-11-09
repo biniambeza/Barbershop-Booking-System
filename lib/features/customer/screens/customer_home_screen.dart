@@ -476,9 +476,22 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                       ),
                       const Spacer(),
-                      Text(
-                        '${barbers.length} Barbers • ${services.length} Services',
-                        style: const TextStyle(fontSize: 12, color: AppTheme.primaryGold, fontWeight: FontWeight.w600),
+                      Row(
+                        children: [
+                          const Icon(Icons.people_outline, size: 14, color: AppTheme.primaryGold),
+                          const SizedBox(width: 3),
+                          Text(
+                            '${barbers.length}',
+                            style: const TextStyle(fontSize: 12, color: AppTheme.primaryGold, fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.content_cut, size: 13, color: AppTheme.primaryGold),
+                          const SizedBox(width: 3),
+                          Text(
+                            '${services.length}',
+                            style: const TextStyle(fontSize: 12, color: AppTheme.primaryGold, fontWeight: FontWeight.w600),
+                          ),
+                        ],
                       ),
                     ],
                   ),

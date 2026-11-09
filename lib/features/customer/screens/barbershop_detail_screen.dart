@@ -300,9 +300,16 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                Text(
-                                  '★ ${barber.rating}',
-                                  style: const TextStyle(fontSize: 11, color: AppTheme.primaryGold),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.star, size: 12, color: AppTheme.primaryGold),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      '${barber.rating}',
+                                      style: const TextStyle(fontSize: 11, color: AppTheme.primaryGold, fontWeight: FontWeight.w600),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
