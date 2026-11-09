@@ -1,0 +1,70 @@
+class Barbershop {
+  final String id;
+  final String ownerId;
+  final String name;
+  final String description;
+  final String address;
+  final String city;
+  final String phone;
+  final String imageUrl;
+  final double rating;
+  final int reviewCount;
+  final int openingHour; // e.g. 9 for 09:00
+  final int closingHour; // e.g. 20 for 20:00
+  final List<int> workingDays; // 1 = Mon ... 7 = Sun
+  final bool isVerified;
+
+  Barbershop({
+    required this.id,
+    required this.ownerId,
+    required this.name,
+    required this.description,
+    required this.address,
+    required this.city,
+    required this.phone,
+    required this.imageUrl,
+    this.rating = 4.8,
+    this.reviewCount = 0,
+    this.openingHour = 9,
+    this.closingHour = 20,
+    this.workingDays = const [1, 2, 3, 4, 5, 6, 7],
+    this.isVerified = false,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'ownerId': ownerId,
+      'name': name,
+      'description': description,
+      'address': address,
+      'city': city,
+      'phone': phone,
+      'imageUrl': imageUrl,
+      'rating': rating,
+      'reviewCount': reviewCount,
+      'openingHour': openingHour,
+      'closingHour': closingHour,
+      'workingDays': workingDays,
+      'isVerified': isVerified,
+    };
+  }
+
+  factory Barbershop.fromMap(Map<String, dynamic> map, String id) {
+    return Barbershop(
+      id: id,
+      ownerId: map['ownerId'] ?? '',
+      name: map['name'] ?? '',
+      description: map['description'] ?? '',
+      address: map['address'] ?? '',
+      city: map['city'] ?? '',
+      phone: map['phone'] ?? '',
+      imageUrl: map['imageUrl'] ?? 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800',
+      rating: (map['rating'] as num?)?.toDouble() ?? 4.8,
+      reviewCount: (map['reviewCount'] as num?)?.toInt() ?? 0,
+      openingHour: (map['openingHour'] as num?)?.toInt() ?? 9,
+      closingHour: (map['closingHour'] as num?)?.toInt() ?? 20,
+      workingDays: List<int>.from(map['workingDays'] ?? [1, 2, 3, 4, 5, 6, 7]),
+      isVerified: map['isVerified'] ?? false,
+    );
+  }
+}
