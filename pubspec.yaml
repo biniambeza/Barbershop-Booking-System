@@ -43,6 +43,8 @@ dependencies:
   table_calendar: ^3.3.0
   google_fonts: ^8.2.1
   uuid: ^4.6.0
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
 
 dev_dependencies:
   flutter_test:

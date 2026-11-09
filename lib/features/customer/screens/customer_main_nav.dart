@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import 'customer_home_screen.dart';
+import 'nearby_map_screen.dart';
 import 'customer_bookings_screen.dart';
 
 class CustomerMainNav extends StatefulWidget {
@@ -13,17 +14,22 @@ class CustomerMainNav extends StatefulWidget {
 class _CustomerMainNavState extends State<CustomerMainNav> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    CustomerHomeScreen(),
-    CustomerBookingsScreen(),
-  ];
+  void _navigateToMap() {
+    setState(() => _currentIndex = 1);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final screens = [
+      CustomerHomeScreen(onOpenMap: _navigateToMap),
+      const NearbyMapScreen(),
+      const CustomerBookingsScreen(),
+    ];
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
-        children: _screens,
+        children: screens,
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
@@ -35,6 +41,11 @@ class _CustomerMainNavState extends State<CustomerMainNav> {
             icon: Icon(Icons.storefront_outlined),
             selectedIcon: Icon(Icons.storefront, color: Colors.black),
             label: 'Barbershops',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.map_outlined),
+            selectedIcon: Icon(Icons.map, color: Colors.black),
+            label: 'Nearby Map',
           ),
           NavigationDestination(
             icon: Icon(Icons.calendar_month_outlined),

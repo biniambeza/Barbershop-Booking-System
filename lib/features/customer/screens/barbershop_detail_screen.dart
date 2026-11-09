@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../models/service_model.dart';
 import '../../../models/barber_model.dart';
 import '../../../services/app_repository.dart';
 import 'booking_flow_screen.dart';
+import 'nearby_map_screen.dart';
 
 class BarbershopDetailScreen extends StatefulWidget {
   final Barbershop shop;
@@ -126,6 +129,124 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Location & Map Section
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppTheme.darkCard,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.location_on, color: AppTheme.primaryGold, size: 18),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Location & Directions',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Text(
+                              widget.shop.formattedDistanceFrom(const LatLng(40.7484, -73.9857)),
+                              style: const TextStyle(
+                                color: AppTheme.primaryGold,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        // Mini Map Preview
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: SizedBox(
+                            height: 150,
+                            width: double.infinity,
+                            child: Stack(
+                              children: [
+                                FlutterMap(
+                                  options: MapOptions(
+                                    initialCenter: widget.shop.coordinates,
+                                    initialZoom: 14.5,
+                                    interactionOptions: const InteractionOptions(
+                                      flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag,
+                                    ),
+                                  ),
+                                  children: [
+                                    TileLayer(
+                                      urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                                      subdomains: const ['a', 'b', 'c', 'd'],
+                                      userAgentPackageName: 'com.barbershop.barbershop_booking',
+                                    ),
+                                    MarkerLayer(
+                                      markers: [
+                                        Marker(
+                                          point: widget.shop.coordinates,
+                                          width: 44,
+                                          height: 44,
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.primaryGold,
+                                              shape: BoxShape.circle,
+                                              border: Border.all(color: Colors.white, width: 2),
+                                              boxShadow: const [
+                                                BoxShadow(color: Colors.black54, blurRadius: 6),
+                                              ],
+                                            ),
+                                            child: const Icon(Icons.content_cut, color: Colors.black, size: 22),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                Positioned(
+                                  bottom: 8,
+                                  right: 8,
+                                  child: ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.black.withValues(alpha: 0.85),
+                                      foregroundColor: AppTheme.primaryGold,
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                      minimumSize: Size.zero,
+                                      side: const BorderSide(color: AppTheme.primaryGold, width: 1),
+                                    ),
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => NearbyMapScreen(
+                                            initialSelectedShopId: widget.shop.id,
+                                            showBackButton: true,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.fullscreen, size: 16),
+                                    label: const Text('Open Full Map', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const Divider(height: 32, color: AppTheme.accentSlate),
 

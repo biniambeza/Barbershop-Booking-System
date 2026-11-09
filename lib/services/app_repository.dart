@@ -68,6 +68,8 @@ class AppRepository extends ChangeNotifier {
       openingHour: 9,
       closingHour: 20,
       isVerified: true,
+      latitude: 40.7527,
+      longitude: -73.9772,
     ));
 
     // Demo Shop 2
@@ -78,7 +80,7 @@ class AppRepository extends ChangeNotifier {
       name: 'Classic Blade Barbers',
       description: 'Vintage styled barbershop dedicated to classic trims, razor fades, and timeless gentlemen styling.',
       address: '784 Broadway St',
-      city: 'Brooklyn, NY',
+      city: 'New York, NY',
       phone: '+1 718-555-4321',
       imageUrl: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800',
       rating: 4.8,
@@ -86,6 +88,68 @@ class AppRepository extends ChangeNotifier {
       openingHour: 10,
       closingHour: 19,
       isVerified: true,
+      latitude: 40.7295,
+      longitude: -73.9935,
+    ));
+
+    // Demo Shop 3
+    const shop3Id = 'shop_3';
+    _mockShops.add(Barbershop(
+      id: shop3Id,
+      ownerId: 'owner_3',
+      name: 'Empire Barber & Shave Parlor',
+      description: 'Luxury grooming experiences located steps from Empire State with master straight razor artists.',
+      address: '350 5th Avenue, Suite 12',
+      city: 'New York, NY',
+      phone: '+1 212-555-1212',
+      imageUrl: 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=800',
+      rating: 5.0,
+      reviewCount: 210,
+      openingHour: 8,
+      closingHour: 21,
+      isVerified: true,
+      latitude: 40.7484,
+      longitude: -73.9857,
+    ));
+
+    // Demo Shop 4
+    const shop4Id = 'shop_4';
+    _mockShops.add(Barbershop(
+      id: shop4Id,
+      ownerId: 'owner_4',
+      name: 'DUMBO Steel & Scissor Co.',
+      description: 'Urban industrial barbershop specializing in modern textured crops, fades, and artisanal beard care.',
+      address: '55 Water Street',
+      city: 'Brooklyn, NY',
+      phone: '+1 718-555-9800',
+      imageUrl: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=800',
+      rating: 4.8,
+      reviewCount: 115,
+      openingHour: 10,
+      closingHour: 20,
+      isVerified: true,
+      latitude: 40.7033,
+      longitude: -73.9890,
+    ));
+
+    // Demo Shop 5
+    const shop5Id = 'shop_5';
+    _mockShops.add(Barbershop(
+      id: shop5Id,
+      ownerId: 'owner_5',
+      name: 'Upper West Gentleman Club',
+      description: 'Refined sanctuary for classic cuts, whiskey bar hospitality, and tailored executive hairstyles.',
+      address: '2150 Broadway',
+      city: 'New York, NY',
+      phone: '+1 212-555-7733',
+      imageUrl: 'https://images.unsplash.com/photo-1512690459411-b9245aed614b?w=800',
+      rating: 4.9,
+      reviewCount: 168,
+      openingHour: 9,
+      closingHour: 19,
+      isVerified: true,
+      latitude: 40.7812,
+      longitude: -73.9818,
     ));
 
     // Services for Shop 1
@@ -116,6 +180,86 @@ class AppRepository extends ChangeNotifier {
       ),
     ]);
 
+    // Services for Shop 2
+    _mockServices.addAll([
+      BarbershopService(
+        id: 'srv_2_1',
+        shopId: shop2Id,
+        name: 'Traditional Scissor Cut',
+        description: 'Classic shears styling, taper neck cleanup, and hot lather shave around the ears.',
+        price: 40.0,
+        durationMinutes: 40,
+      ),
+      BarbershopService(
+        id: 'srv_2_2',
+        shopId: shop2Id,
+        name: 'Straight Razor Hot Shave',
+        description: 'Pre-shave eucalyptus oils, hot towels, badger brush foam, and soothing aftershave balm.',
+        price: 35.0,
+        durationMinutes: 35,
+      ),
+    ]);
+
+    // Services for Shop 3
+    _mockServices.addAll([
+      BarbershopService(
+        id: 'srv_3_1',
+        shopId: shop3Id,
+        name: 'Executive Cut & Beard Detail',
+        description: 'Top-tier master cut with custom beard fade, razor crisp lines, and hair wash.',
+        price: 60.0,
+        durationMinutes: 50,
+      ),
+      BarbershopService(
+        id: 'srv_3_2',
+        shopId: shop3Id,
+        name: 'Royal Hot Towel Shave',
+        description: 'Double warm aromatic towels with ultra-close straight blade glide and cold stone finish.',
+        price: 45.0,
+        durationMinutes: 40,
+      ),
+    ]);
+
+    // Services for Shop 4
+    _mockServices.addAll([
+      BarbershopService(
+        id: 'srv_4_1',
+        shopId: shop4Id,
+        name: 'Textured Crop & Low Fade',
+        description: 'Modern textured crop with powder styling and clean temple tapers.',
+        price: 42.0,
+        durationMinutes: 45,
+      ),
+      BarbershopService(
+        id: 'srv_4_2',
+        shopId: shop4Id,
+        name: 'Beard Trim & Hydration Mask',
+        description: 'Deep conditioning beard treatment, shaping, and razor edge.',
+        price: 28.0,
+        durationMinutes: 25,
+      ),
+    ]);
+
+    // Services for Shop 5
+    _mockServices.addAll([
+      BarbershopService(
+        id: 'srv_5_1',
+        shopId: shop5Id,
+        name: 'Gentleman Classic Trim',
+        description: 'Precision scissor comb, neck razor finish, and complimentary single malt refreshment.',
+        price: 55.0,
+        durationMinutes: 45,
+      ),
+      BarbershopService(
+        id: 'srv_5_2',
+        shopId: shop5Id,
+        name: 'Father & Son VIP Package',
+        description: 'Two deluxe cuts side by side with custom styling advice and refreshments.',
+        price: 85.0,
+        durationMinutes: 60,
+      ),
+    ]);
+
     // Barbers for Shop 1
     _mockBarbers.addAll([
       Barber(
@@ -135,6 +279,58 @@ class AppRepository extends ChangeNotifier {
         rating: 4.8,
         reviewCount: 54,
         avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
+      ),
+    ]);
+
+    // Barbers for Shop 2
+    _mockBarbers.addAll([
+      Barber(
+        id: 'barber_2_1',
+        shopId: shop2Id,
+        name: 'Leo Thorne',
+        title: 'Heritage Barber',
+        rating: 4.8,
+        reviewCount: 62,
+        avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
+      ),
+    ]);
+
+    // Barbers for Shop 3
+    _mockBarbers.addAll([
+      Barber(
+        id: 'barber_3_1',
+        shopId: shop3Id,
+        name: 'Julian Hayes',
+        title: 'Creative Director / Master Barber',
+        rating: 5.0,
+        reviewCount: 140,
+        avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400',
+      ),
+    ]);
+
+    // Barbers for Shop 4
+    _mockBarbers.addAll([
+      Barber(
+        id: 'barber_4_1',
+        shopId: shop4Id,
+        name: 'Samir Brooks',
+        title: 'Fade & Design Specialist',
+        rating: 4.9,
+        reviewCount: 78,
+        avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400',
+      ),
+    ]);
+
+    // Barbers for Shop 5
+    _mockBarbers.addAll([
+      Barber(
+        id: 'barber_5_1',
+        shopId: shop5Id,
+        name: 'Arthur Sterling',
+        title: 'Senior Barbering Craftsman',
+        rating: 4.9,
+        reviewCount: 92,
+        avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400',
       ),
     ]);
 
@@ -280,6 +476,8 @@ class AppRepository extends ChangeNotifier {
     required String name,
     required String address,
     required String description,
+    double? latitude,
+    double? longitude,
   }) async {
     final finalShopId = shopId ?? _uuid.v4();
     final newShop = Barbershop(
@@ -291,6 +489,8 @@ class AppRepository extends ChangeNotifier {
       city: 'Downtown',
       phone: '+1 555-0100',
       imageUrl: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800',
+      latitude: latitude ?? 40.7484,
+      longitude: longitude ?? -73.9857,
     );
 
     if (_useFirebase && _firestore != null) {

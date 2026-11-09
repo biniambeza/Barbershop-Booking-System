@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../models/user_model.dart';
 import '../../../services/app_repository.dart';
 import 'barbershop_detail_screen.dart';
+import 'nearby_map_screen.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
-  const CustomerHomeScreen({super.key});
+  final VoidCallback? onOpenMap;
+
+  const CustomerHomeScreen({super.key, this.onOpenMap});
 
   @override
   State<CustomerHomeScreen> createState() => _CustomerHomeScreenState();
@@ -16,6 +20,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   String _searchQuery = '';
   String _selectedCategory = 'All';
 
+  static const LatLng _userLocation = LatLng(40.7484, -73.9857);
+
   final List<String> _categories = [
     'All',
     'Fades & Tapers',
@@ -23,6 +29,19 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     'Hot Shave',
     'Kids & VIP'
   ];
+
+  void _openMap() {
+    if (widget.onOpenMap != null) {
+      widget.onOpenMap!();
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const NearbyMapScreen(showBackButton: true),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,15 +68,22 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     fontSize: 18,
                   ),
             ),
-            Row(
-              children: [
-                const Icon(Icons.location_on, size: 14, color: AppTheme.primaryGold),
-                const SizedBox(width: 4),
-                Text(
-                  'New York, NY',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
-                ),
-              ],
+            GestureDetector(
+              onTap: _openMap,
+              child: Row(
+                children: [
+                  const Icon(Icons.location_on, size: 14, color: AppTheme.primaryGold),
+                  const SizedBox(width: 4),
+                  Text(
+                    'New York, NY (Tap for Map)',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontSize: 12,
+                          color: AppTheme.primaryGold,
+                          decoration: TextDecoration.underline,
+                        ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -155,6 +181,66 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     ),
                   ),
 
+                  // Interactive Map Banner Callout
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppTheme.darkCard,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.35)),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black45,
+                          blurRadius: 8,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryGold.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.map, color: AppTheme.primaryGold, size: 26),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Nearby Barbershops Map',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                '${allShops.length} shops found near your location',
+                                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                              ),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            minimumSize: Size.zero,
+                          ),
+                          onPressed: _openMap,
+                          icon: const Icon(Icons.near_me, size: 14),
+                          label: const Text('View Map', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ),
+
                   const SizedBox(height: 20),
                   // Categories chips
                   SingleChildScrollView(
@@ -178,9 +264,19 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   ),
 
                   const SizedBox(height: 20),
-                  Text(
-                    'Featured Barbershops (${filteredShops.length})',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Featured Barbershops (${filteredShops.length})',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      TextButton.icon(
+                        onPressed: _openMap,
+                        icon: const Icon(Icons.map_outlined, size: 16, color: AppTheme.primaryGold),
+                        label: const Text('Map View', style: TextStyle(color: AppTheme.primaryGold, fontSize: 13)),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -216,6 +312,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   Widget _buildShopCard(BuildContext context, Barbershop shop) {
     final services = AppRepository.instance.getServicesForShop(shop.id);
     final barbers = AppRepository.instance.getBarbersForShop(shop.id);
+    final distanceStr = shop.formattedDistanceFrom(_userLocation);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -276,6 +373,29 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     ),
                   ),
                 ),
+                Positioned(
+                  bottom: 12,
+                  left: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.85),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.near_me, size: 12, color: AppTheme.primaryGold),
+                        const SizedBox(width: 4),
+                        Text(
+                          distanceStr,
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 if (shop.isVerified)
                   Positioned(
                     top: 12,
@@ -305,9 +425,31 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    shop.name,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          shop.name,
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.map, color: AppTheme.primaryGold, size: 20),
+                        tooltip: 'View on Map',
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => NearbyMapScreen(
+                                initialSelectedShopId: shop.id,
+                                showBackButton: true,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 6),
                   Row(

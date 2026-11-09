@@ -1,3 +1,5 @@
+import 'package:latlong2/latlong.dart';
+
 class Barbershop {
   final String id;
   final String ownerId;
@@ -13,6 +15,8 @@ class Barbershop {
   final int closingHour; // e.g. 20 for 20:00
   final List<int> workingDays; // 1 = Mon ... 7 = Sun
   final bool isVerified;
+  final double latitude;
+  final double longitude;
 
   Barbershop({
     required this.id,
@@ -29,7 +33,33 @@ class Barbershop {
     this.closingHour = 20,
     this.workingDays = const [1, 2, 3, 4, 5, 6, 7],
     this.isVerified = false,
+    this.latitude = 40.7527,
+    this.longitude = -73.9772,
   });
+
+  LatLng get coordinates => LatLng(latitude, longitude);
+
+  double distanceInKmFrom(LatLng userLocation) {
+    const distance = Distance();
+    return distance.as(LengthUnit.Kilometer, userLocation, coordinates);
+  }
+
+  String formattedDistanceFrom(LatLng userLocation) {
+    const distance = Distance();
+    final km = distance.as(LengthUnit.Kilometer, userLocation, coordinates);
+    if (km < 1.0) {
+      final meters = distance.as(LengthUnit.Meter, userLocation, coordinates).round();
+      return '${meters}m away';
+    }
+    return '${km.toStringAsFixed(1)} km away';
+  }
+
+  bool isOpenNow({DateTime? now}) {
+    final current = now ?? DateTime.now();
+    if (!workingDays.contains(current.weekday)) return false;
+    final hour = current.hour;
+    return hour >= openingHour && hour < closingHour;
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -46,6 +76,8 @@ class Barbershop {
       'closingHour': closingHour,
       'workingDays': workingDays,
       'isVerified': isVerified,
+      'latitude': latitude,
+      'longitude': longitude,
     };
   }
 
@@ -65,6 +97,8 @@ class Barbershop {
       closingHour: (map['closingHour'] as num?)?.toInt() ?? 20,
       workingDays: List<int>.from(map['workingDays'] ?? [1, 2, 3, 4, 5, 6, 7]),
       isVerified: map['isVerified'] ?? false,
+      latitude: (map['latitude'] as num?)?.toDouble() ?? 40.7527,
+      longitude: (map['longitude'] as num?)?.toDouble() ?? -73.9772,
     );
   }
 }
