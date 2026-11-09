@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart' hide Path;
 import '../../../core/theme/app_theme.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../models/user_model.dart';
@@ -19,6 +20,7 @@ class CustomerHomeScreen extends StatefulWidget {
 class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   String _searchQuery = '';
   String _selectedCategory = 'All';
+  bool _isMapView = false;
 
   static const LatLng _userLocation = LatLng(40.7484, -73.9857);
 
@@ -30,16 +32,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     'Kids & VIP'
   ];
 
-  void _openMap() {
+  void _openFullMap() {
     if (widget.onOpenMap != null) {
       widget.onOpenMap!();
     } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const NearbyMapScreen(showBackButton: true),
-        ),
-      );
+      setState(() => _isMapView = true);
     }
   }
 
@@ -68,26 +65,33 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     fontSize: 18,
                   ),
             ),
-            GestureDetector(
-              onTap: _openMap,
-              child: Row(
-                children: [
-                  const Icon(Icons.location_on, size: 14, color: AppTheme.primaryGold),
-                  const SizedBox(width: 4),
-                  Text(
-                    'New York, NY (Tap for Map)',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontSize: 12,
-                          color: AppTheme.primaryGold,
-                          decoration: TextDecoration.underline,
-                        ),
-                  ),
-                ],
-              ),
+            Row(
+              children: [
+                const Icon(Icons.location_on, size: 14, color: AppTheme.primaryGold),
+                const SizedBox(width: 4),
+                Text(
+                  'New York, NY',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                      ),
+                ),
+              ],
             ),
           ],
         ),
         actions: [
+          // Toggle List / Map View Button
+          IconButton(
+            icon: Icon(
+              _isMapView ? Icons.view_list : Icons.map,
+              color: AppTheme.primaryGold,
+            ),
+            tooltip: _isMapView ? 'Show List' : 'Show Map',
+            onPressed: () {
+              setState(() => _isMapView = !_isMapView);
+            },
+          ),
           // Switch to Owner Dashboard preview button
           TextButton.icon(
             onPressed: () {
@@ -102,210 +106,312 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           ),
         ],
       ),
-      body: CustomScrollView(
-        slivers: [
-          // Search & Promotional Banner
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    onChanged: (val) => setState(() => _searchQuery = val),
-                    decoration: InputDecoration(
-                      hintText: 'Search barbershops, cities, stylists...',
-                      prefixIcon: const Icon(Icons.search),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () => setState(() => _searchQuery = ''),
-                            )
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Promo Hero Card
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppTheme.primaryGold.withValues(alpha: 0.9),
-                          const Color(0xFF996515),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.primaryGold.withValues(alpha: 0.2),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
+      body: _isMapView
+          ? const NearbyMapScreen(showBackButton: false)
+          : CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.4),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Text(
-                            'PREMIUM GROOMING',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Book Top Barbers\nIn Your City Instantly',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.black,
-                            height: 1.2,
+                        // Search bar
+                        TextField(
+                          onChanged: (val) => setState(() => _searchQuery = val),
+                          decoration: InputDecoration(
+                            hintText: 'Search barbershops, cities, stylists...',
+                            prefixIcon: const Icon(Icons.search),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.close),
+                                    onPressed: () => setState(() => _searchQuery = ''),
+                                  )
+                                : null,
                           ),
                         ),
-                        const SizedBox(height: 10),
-                        const Text(
-                          'Zero waiting lines. Choose your master barber & exact time slot.',
-                          style: TextStyle(fontSize: 13, color: Colors.black87),
-                        ),
-                      ],
-                    ),
-                  ),
+                        const SizedBox(height: 16),
 
-                  // Interactive Map Banner Callout
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppTheme.darkCard,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.35)),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Colors.black45,
-                          blurRadius: 8,
-                          offset: Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
+                        // View Switcher Bar
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: AppTheme.primaryGold.withValues(alpha: 0.15),
-                            shape: BoxShape.circle,
+                            color: AppTheme.darkCard,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white12),
                           ),
-                          child: const Icon(Icons.map, color: AppTheme.primaryGold, size: 26),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Row(
                             children: [
-                              const Text(
-                                'Nearby Barbershops Map',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.textPrimary,
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () => setState(() => _isMapView = false),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: !_isMapView ? AppTheme.primaryGold : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.view_list,
+                                          size: 16,
+                                          color: !_isMapView ? Colors.black : AppTheme.textSecondary,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'List View',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: !_isMapView ? Colors.black : AppTheme.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
-                              const SizedBox(height: 3),
-                              Text(
-                                '${allShops.length} shops found near your location',
-                                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () => setState(() => _isMapView = true),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: _isMapView ? AppTheme.primaryGold : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.map,
+                                          size: 16,
+                                          color: _isMapView ? Colors.black : AppTheme.textSecondary,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'Map View',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: _isMapView ? Colors.black : AppTheme.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            minimumSize: Size.zero,
+
+                        // 3. Live Interactive Map Widget Embedded directly on Home Page
+                        const SizedBox(height: 16),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: AppTheme.darkCard,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.4)),
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black54, blurRadius: 8, offset: Offset(0, 3)),
+                            ],
                           ),
-                          onPressed: _openMap,
-                          icon: const Icon(Icons.near_me, size: 14),
-                          label: const Text('View Map', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Row(
+                                      children: [
+                                        Icon(Icons.location_on, color: AppTheme.primaryGold, size: 18),
+                                        SizedBox(width: 6),
+                                        Text(
+                                          'Nearby Barbershops Map',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppTheme.textPrimary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        minimumSize: Size.zero,
+                                      ),
+                                      onPressed: _openFullMap,
+                                      icon: const Icon(Icons.fullscreen, size: 16),
+                                      label: const Text('Full Screen', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              ClipRRect(
+                                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+                                child: SizedBox(
+                                  height: 220,
+                                  width: double.infinity,
+                                  child: FlutterMap(
+                                    options: const MapOptions(
+                                      initialCenter: _userLocation,
+                                      initialZoom: 13.0,
+                                      minZoom: 5.0,
+                                      maxZoom: 18.0,
+                                      interactionOptions: InteractionOptions(
+                                        flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag,
+                                      ),
+                                    ),
+                                    children: [
+                                      TileLayer(
+                                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                        userAgentPackageName: 'com.barbershop.barbershop_booking',
+                                      ),
+                                      MarkerLayer(
+                                        markers: [
+                                          // User location pin
+                                          const Marker(
+                                            point: _userLocation,
+                                            width: 36,
+                                            height: 36,
+                                            child: DecoratedBox(
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.primaryGold,
+                                                shape: BoxShape.circle,
+                                                boxShadow: [BoxShadow(color: Colors.black87, blurRadius: 4)],
+                                              ),
+                                              child: Center(
+                                                child: Icon(Icons.person, color: Colors.black, size: 20),
+                                              ),
+                                            ),
+                                          ),
+                                          // Barbershop markers
+                                          ...filteredShops.map((shop) {
+                                            return Marker(
+                                              point: shop.coordinates,
+                                              width: 85,
+                                              height: 38,
+                                              child: GestureDetector(
+                                                onTap: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (_) => BarbershopDetailScreen(shop: shop),
+                                                    ),
+                                                  );
+                                                },
+                                                child: Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                                  decoration: BoxDecoration(
+                                                    color: AppTheme.darkCard,
+                                                    borderRadius: BorderRadius.circular(16),
+                                                    border: Border.all(color: AppTheme.primaryGold, width: 1.5),
+                                                    boxShadow: const [
+                                                      BoxShadow(color: Colors.black54, blurRadius: 4),
+                                                    ],
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      const Icon(Icons.content_cut, size: 11, color: AppTheme.primaryGold),
+                                                      const SizedBox(width: 3),
+                                                      Flexible(
+                                                        child: Text(
+                                                          shop.name,
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow.ellipsis,
+                                                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          }),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+                        // Categories chips
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: _categories.map((cat) {
+                              final isSelected = _selectedCategory == cat;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: ChoiceChip(
+                                  label: Text(cat),
+                                  selected: isSelected,
+                                  selectedColor: AppTheme.primaryGold,
+                                  onSelected: (val) {
+                                    if (val) setState(() => _selectedCategory = cat);
+                                  },
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Featured Barbershops (${filteredShops.length})',
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            TextButton.icon(
+                              onPressed: () => setState(() => _isMapView = true),
+                              icon: const Icon(Icons.map, size: 16, color: AppTheme.primaryGold),
+                              label: const Text('Full Map', style: TextStyle(color: AppTheme.primaryGold, fontSize: 13)),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
+                ),
 
-                  const SizedBox(height: 20),
-                  // Categories chips
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: _categories.map((cat) {
-                        final isSelected = _selectedCategory == cat;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: ChoiceChip(
-                            label: Text(cat),
-                            selected: isSelected,
-                            selectedColor: AppTheme.primaryGold,
-                            onSelected: (val) {
-                              if (val) setState(() => _selectedCategory = cat);
-                            },
-                          ),
-                        );
-                      }).toList(),
+                // Barbershops List
+                if (filteredShops.isEmpty)
+                  const SliverFillRemaining(
+                    child: Center(
+                      child: Text('No barbershops found matching your search.', style: TextStyle(color: AppTheme.textSecondary)),
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final shop = filteredShops[index];
+                          return _buildShopCard(context, shop);
+                        },
+                        childCount: filteredShops.length,
+                      ),
                     ),
                   ),
-
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Featured Barbershops (${filteredShops.length})',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      TextButton.icon(
-                        onPressed: _openMap,
-                        icon: const Icon(Icons.map_outlined, size: 16, color: AppTheme.primaryGold),
-                        label: const Text('Map View', style: TextStyle(color: AppTheme.primaryGold, fontSize: 13)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                const SliverToBoxAdapter(child: SizedBox(height: 24)),
+              ],
             ),
-          ),
-
-          // Barbershops List
-          if (filteredShops.isEmpty)
-            const SliverFillRemaining(
-              child: Center(
-                child: Text('No barbershops found matching your search.', style: TextStyle(color: AppTheme.textSecondary)),
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final shop = filteredShops[index];
-                    return _buildShopCard(context, shop);
-                  },
-                  childCount: filteredShops.length,
-                ),
-              ),
-            ),
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
-        ],
-      ),
     );
   }
 
@@ -386,7 +492,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.near_me, size: 12, color: AppTheme.primaryGold),
+                        const Icon(Icons.navigation, size: 11, color: AppTheme.primaryGold),
                         const SizedBox(width: 4),
                         Text(
                           distanceStr,

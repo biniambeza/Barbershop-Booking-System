@@ -31,7 +31,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
 
   String _searchQuery = '';
   MapFilterRadius _activeFilter = MapFilterRadius.all;
-  MapTileStyle _tileStyle = MapTileStyle.darkLuxury;
+  MapTileStyle _tileStyle = MapTileStyle.standard;
 
   Barbershop? _selectedShop;
 
@@ -123,7 +123,7 @@ class _NearbyMapScreenState extends State<NearbyMapScreen> {
               // Tile Layer
               if (_tileStyle == MapTileStyle.darkLuxury)
                 TileLayer(
-                  urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                  urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
                   subdomains: const ['a', 'b', 'c', 'd'],
                   userAgentPackageName: 'com.barbershop.barbershop_booking',
                 )
