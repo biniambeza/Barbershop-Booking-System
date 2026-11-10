@@ -105,6 +105,7 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                       CircleAvatar(
                         radius: 26,
                         backgroundImage: barber.avatarUrl != null ? NetworkImage(barber.avatarUrl!) : null,
+                        onBackgroundImageError: barber.avatarUrl != null ? (error, stackTrace) {} : null,
                         backgroundColor: AppTheme.primaryGold,
                         child: barber.avatarUrl == null
                             ? Text(barber.name.substring(0, 1), style: const TextStyle(color: Colors.black, fontSize: 18))

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'core/theme/app_theme.dart';
@@ -9,11 +10,19 @@ import 'features/shop_owner/screens/owner_dashboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  try {
-    await Firebase.initializeApp();
-  } catch (e) {
-    debugPrint('Firebase initialization notice: $e (App running with full repository fallback)');
+
+  // Guard Firebase initialization:
+  // On Flutter Web (and platforms without DefaultFirebaseOptions configured),
+  // calling Firebase.initializeApp() without FirebaseOptions can hang indefinitely
+  // or throw uncaught JS errors, preventing runApp() from executing and causing a blank screen.
+  if (!kIsWeb) {
+    try {
+      await Firebase.initializeApp().timeout(const Duration(seconds: 2));
+    } catch (e) {
+      debugPrint('Firebase initialization notice: $e (App running with full repository fallback)');
+    }
   }
+
   runApp(const BarbershopApp());
 }
 

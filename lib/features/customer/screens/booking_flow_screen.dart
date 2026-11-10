@@ -245,6 +245,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                           CircleAvatar(
                             radius: 18,
                             backgroundImage: barber.avatarUrl != null ? NetworkImage(barber.avatarUrl!) : null,
+                            onBackgroundImageError: barber.avatarUrl != null ? (error, stackTrace) {} : null,
                             backgroundColor: AppTheme.primaryGold,
                             child: barber.avatarUrl == null ? Text(barber.name.substring(0, 1), style: const TextStyle(color: Colors.black)) : null,
                           ),
