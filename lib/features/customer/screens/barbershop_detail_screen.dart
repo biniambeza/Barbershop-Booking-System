@@ -50,7 +50,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                   Image.network(
                     widget.shop.imageUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Container(color: AppTheme.darkSurface),
+                    errorBuilder: (context, error, stackTrace) => Container(color: AppTheme.darkSurface),
                   ),
                   Container(
                     decoration: BoxDecoration(

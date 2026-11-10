@@ -196,7 +196,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                       width: 50,
                       height: 50,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Container(width: 50, height: 50, color: AppTheme.darkSurface),
+                      errorBuilder: (context, error, stackTrace) => Container(width: 50, height: 50, color: AppTheme.darkSurface),
                     ),
                   ),
                   const SizedBox(width: 12),
