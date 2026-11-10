@@ -405,6 +405,8 @@ class AppRepository extends ChangeNotifier {
     required UserRole role,
     String? shopName,
     String? shopAddress,
+    double? latitude,
+    double? longitude,
   }) async {
     final auth = _auth;
     String newUid = _uuid.v4();
@@ -444,6 +446,8 @@ class AppRepository extends ChangeNotifier {
         name: shopName,
         address: shopAddress ?? '123 Downtown St',
         description: 'New barbershop ready to serve clients.',
+        latitude: latitude,
+        longitude: longitude,
       );
     }
 
@@ -500,6 +504,57 @@ class AppRepository extends ChangeNotifier {
     _mockShops.add(newShop);
     notifyListeners();
     return finalShopId;
+  }
+
+  Future<void> updateShopLocation({
+    required String shopId,
+    required String address,
+    required double latitude,
+    required double longitude,
+  }) async {
+    final index = _mockShops.indexWhere((s) => s.id == shopId);
+    if (index != -1) {
+      final old = _mockShops[index];
+      final updated = Barbershop(
+        id: old.id,
+        ownerId: old.ownerId,
+        name: old.name,
+        description: old.description,
+        address: address,
+        city: old.city,
+        phone: old.phone,
+        imageUrl: old.imageUrl,
+        rating: old.rating,
+        reviewCount: old.reviewCount,
+        openingHour: old.openingHour,
+        closingHour: old.closingHour,
+        workingDays: old.workingDays,
+        isVerified: old.isVerified,
+        latitude: latitude,
+        longitude: longitude,
+      );
+      _mockShops[index] = updated;
+
+      if (_useFirebase && _firestore != null) {
+        await _firestore!.collection('barbershops').doc(shopId).update({
+          'address': address,
+          'latitude': latitude,
+          'longitude': longitude,
+        });
+      }
+      notifyListeners();
+    }
+  }
+
+  List<BarberWithShop> getAllBarbersWithShops() {
+    final list = <BarberWithShop>[];
+    for (final shop in _mockShops) {
+      final shopBarbers = _mockBarbers.where((b) => b.shopId == shop.id);
+      for (final b in shopBarbers) {
+        list.add(BarberWithShop(barber: b, shop: shop));
+      }
+    }
+    return list;
   }
 
   // --- Services ---
@@ -640,3 +695,14 @@ class AppRepository extends ChangeNotifier {
     }
   }
 }
+
+class BarberWithShop {
+  final Barber barber;
+  final Barbershop shop;
+
+  BarberWithShop({
+    required this.barber,
+    required this.shop,
+  });
+}
+

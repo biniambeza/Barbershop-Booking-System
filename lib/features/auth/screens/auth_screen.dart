@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/user_model.dart';
 import '../../../services/app_repository.dart';
+import '../../common/screens/location_picker_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -19,7 +20,9 @@ class _AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController(text: 'barber@example.com');
   final _passwordController = TextEditingController(text: 'password123');
   final _shopNameController = TextEditingController(text: 'Crown & Razor Lounge');
-  final _shopAddressController = TextEditingController(text: '5th Ave & 42nd St');
+  final _shopAddressController = TextEditingController(text: '350 5th Ave, New York, NY');
+  double _shopLatitude = 40.7484;
+  double _shopLongitude = -73.9857;
 
   bool _isLoading = false;
 
@@ -46,6 +49,8 @@ class _AuthScreenState extends State<AuthScreen> {
           role: _selectedRole,
           shopName: _selectedRole == UserRole.barbershopOwner ? _shopNameController.text.trim() : null,
           shopAddress: _selectedRole == UserRole.barbershopOwner ? _shopAddressController.text.trim() : null,
+          latitude: _selectedRole == UserRole.barbershopOwner ? _shopLatitude : null,
+          longitude: _selectedRole == UserRole.barbershopOwner ? _shopLongitude : null,
         );
       } else {
         await AppRepository.instance.signIn(
@@ -250,6 +255,79 @@ class _AuthScreenState extends State<AuthScreen> {
                         prefixIcon: Icon(Icons.location_on_outlined),
                       ),
                       validator: (v) => v == null || v.isEmpty ? 'Enter shop address' : null,
+                    ),
+                    const SizedBox(height: 10),
+                    // Pick location on map card
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.darkCard,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Icons.map, color: AppTheme.primaryGold, size: 16),
+                                  SizedBox(width: 6),
+                                  Text(
+                                    'Pin Shop on Map',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary),
+                                  ),
+                                ],
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryGold.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '${_shopLatitude.toStringAsFixed(3)}, ${_shopLongitude.toStringAsFixed(3)}',
+                                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: AppTheme.primaryGold),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 36,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              onPressed: () async {
+                                final result = await Navigator.push<LocationPickerResult>(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => LocationPickerScreen(
+                                      initialLatitude: _shopLatitude,
+                                      initialLongitude: _shopLongitude,
+                                      initialAddress: _shopAddressController.text,
+                                    ),
+                                  ),
+                                );
+                                if (result != null) {
+                                  setState(() {
+                                    _shopLatitude = result.latitude;
+                                    _shopLongitude = result.longitude;
+                                    _shopAddressController.text = result.address;
+                                  });
+                                }
+                              },
+                              icon: const Icon(Icons.pin_drop, size: 15),
+                              label: const Text('Pick Location on Map', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 12),
                   ],

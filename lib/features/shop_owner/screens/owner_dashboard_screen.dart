@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../models/booking_model.dart';
 import '../../../models/user_model.dart';
 import '../../../services/app_repository.dart';
+import '../../common/screens/location_picker_screen.dart';
 import 'manage_services_screen.dart';
 import 'manage_barbers_screen.dart';
 
@@ -115,9 +116,78 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
 
-            // Performance Metrics Cards
+            // Shop Map Location Card
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppTheme.darkCard,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryGold.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.location_on, color: AppTheme.primaryGold, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          shop.address,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Pinned at: ${shop.latitude.toStringAsFixed(4)}, ${shop.longitude.toStringAsFixed(4)}',
+                          style: const TextStyle(fontSize: 11, color: AppTheme.primaryGold),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      minimumSize: Size.zero,
+                    ),
+                    onPressed: () async {
+                      final result = await Navigator.push<LocationPickerResult>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => LocationPickerScreen(
+                            initialLatitude: shop.latitude,
+                            initialLongitude: shop.longitude,
+                            initialAddress: shop.address,
+                          ),
+                        ),
+                      );
+                      if (result != null) {
+                        await AppRepository.instance.updateShopLocation(
+                          shopId: shop.id,
+                          address: result.address,
+                          latitude: result.latitude,
+                          longitude: result.longitude,
+                        );
+                        setState(() {});
+                      }
+                    },
+                    icon: const Icon(Icons.pin_drop, size: 14),
+                    label: const Text('Update Map Pin', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
             Row(
               children: [
                 _buildMetricCard(
