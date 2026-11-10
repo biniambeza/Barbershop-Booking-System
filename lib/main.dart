@@ -7,6 +7,7 @@ import 'services/app_repository.dart';
 import 'features/auth/screens/auth_screen.dart';
 import 'features/customer/screens/customer_main_nav.dart';
 import 'features/shop_owner/screens/owner_dashboard_screen.dart';
+import 'features/admin/screens/admin_dashboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,6 +54,10 @@ class RootGate extends StatelessWidget {
         final user = repo.currentUser;
         if (user == null) {
           return const AuthScreen();
+        }
+
+        if (user.role == UserRole.admin) {
+          return const AdminDashboardScreen();
         }
 
         if (user.role == UserRole.barbershopOwner) {

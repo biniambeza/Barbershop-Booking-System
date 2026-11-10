@@ -81,6 +81,44 @@ class Barbershop {
     };
   }
 
+  Barbershop copyWith({
+    String? id,
+    String? ownerId,
+    String? name,
+    String? description,
+    String? address,
+    String? city,
+    String? phone,
+    String? imageUrl,
+    double? rating,
+    int? reviewCount,
+    int? openingHour,
+    int? closingHour,
+    List<int>? workingDays,
+    bool? isVerified,
+    double? latitude,
+    double? longitude,
+  }) {
+    return Barbershop(
+      id: id ?? this.id,
+      ownerId: ownerId ?? this.ownerId,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      address: address ?? this.address,
+      city: city ?? this.city,
+      phone: phone ?? this.phone,
+      imageUrl: imageUrl ?? this.imageUrl,
+      rating: rating ?? this.rating,
+      reviewCount: reviewCount ?? this.reviewCount,
+      openingHour: openingHour ?? this.openingHour,
+      closingHour: closingHour ?? this.closingHour,
+      workingDays: workingDays ?? this.workingDays,
+      isVerified: isVerified ?? this.isVerified,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+    );
+  }
+
   factory Barbershop.fromMap(Map<String, dynamic> map, String id) {
     return Barbershop(
       id: id,

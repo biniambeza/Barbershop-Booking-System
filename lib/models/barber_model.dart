@@ -31,6 +31,28 @@ class Barber {
     };
   }
 
+  Barber copyWith({
+    String? id,
+    String? shopId,
+    String? name,
+    String? title,
+    String? avatarUrl,
+    double? rating,
+    int? reviewCount,
+    bool? isAvailable,
+  }) {
+    return Barber(
+      id: id ?? this.id,
+      shopId: shopId ?? this.shopId,
+      name: name ?? this.name,
+      title: title ?? this.title,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      rating: rating ?? this.rating,
+      reviewCount: reviewCount ?? this.reviewCount,
+      isAvailable: isAvailable ?? this.isAvailable,
+    );
+  }
+
   factory Barber.fromMap(Map<String, dynamic> map, String id) {
     return Barber(
       id: id,

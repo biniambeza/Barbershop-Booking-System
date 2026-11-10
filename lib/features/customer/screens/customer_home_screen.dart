@@ -3,10 +3,12 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart' hide Path;
 import '../../../core/theme/app_theme.dart';
 import '../../../models/barbershop_model.dart';
+import '../../../models/service_model.dart';
 import '../../../models/user_model.dart';
 import '../../../services/app_repository.dart';
 import 'barbershop_detail_screen.dart';
 import 'nearby_map_screen.dart';
+import 'booking_flow_screen.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
   final VoidCallback? onOpenMap;
@@ -21,6 +23,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   String _searchQuery = '';
   String _selectedCategory = 'All';
   bool _isMapView = false;
+  bool _browseBarbersMode = false;
 
   static const LatLng _userLocation = LatLng(40.7484, -73.9857);
 
@@ -44,12 +47,25 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   Widget build(BuildContext context) {
     final repo = AppRepository.instance;
     final allShops = repo.getShops();
+    final allBarbersWithShops = repo.getAllBarbersWithShops();
 
     final filteredShops = allShops.where((s) {
       final matchesSearch = s.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           s.city.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           s.address.toLowerCase().contains(_searchQuery.toLowerCase());
       return matchesSearch;
+    }).toList();
+
+    final filteredBarbers = allBarbersWithShops.where((item) {
+      if (_searchQuery.isNotEmpty) {
+        final q = _searchQuery.toLowerCase();
+        final match = item.barber.name.toLowerCase().contains(q) ||
+            item.barber.title.toLowerCase().contains(q) ||
+            item.shop.name.toLowerCase().contains(q) ||
+            item.shop.city.toLowerCase().contains(q);
+        if (!match) return false;
+      }
+      return true;
     }).toList();
 
     return Scaffold(
@@ -92,13 +108,40 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               setState(() => _isMapView = !_isMapView);
             },
           ),
-          // Switch to Owner Dashboard preview button
-          TextButton.icon(
-            onPressed: () {
-              repo.switchRole(UserRole.barbershopOwner);
+          // Persona Switcher
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.swap_horiz, color: AppTheme.primaryGold),
+            tooltip: 'Switch Persona',
+            color: AppTheme.darkCard,
+            onSelected: (val) {
+              if (val == 'admin') {
+                repo.switchRole(UserRole.admin);
+              } else if (val == 'owner') {
+                repo.switchRole(UserRole.barbershopOwner);
+              }
             },
-            icon: const Icon(Icons.storefront, size: 18, color: AppTheme.primaryGold),
-            label: const Text('Owner View', style: TextStyle(color: AppTheme.primaryGold, fontSize: 13)),
+            itemBuilder: (ctx) => const [
+              PopupMenuItem(
+                value: 'admin',
+                child: Row(
+                  children: [
+                    Icon(Icons.admin_panel_settings, color: AppTheme.primaryGold, size: 18),
+                    SizedBox(width: 8),
+                    Text('👑 Admin Portal', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'owner',
+                child: Row(
+                  children: [
+                    Icon(Icons.storefront, color: AppTheme.primaryGold, size: 18),
+                    SizedBox(width: 8),
+                    Text('💈 Barbershop Owner', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ],
           ),
           IconButton(
             icon: const Icon(Icons.logout_rounded),
@@ -370,17 +413,98 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         ),
 
                         const SizedBox(height: 20),
+                        // Browse Mode Selector (Barbershops vs Favorite Barbers)
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.darkCard,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white12),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () => setState(() => _browseBarbersMode = false),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 9),
+                                    decoration: BoxDecoration(
+                                      color: !_browseBarbersMode ? AppTheme.primaryGold : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.storefront,
+                                          size: 16,
+                                          color: !_browseBarbersMode ? Colors.black : AppTheme.textSecondary,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'Barbershops (${filteredShops.length})',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: !_browseBarbersMode ? Colors.black : AppTheme.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () => setState(() => _browseBarbersMode = true),
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 9),
+                                    decoration: BoxDecoration(
+                                      color: _browseBarbersMode ? AppTheme.primaryGold : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.content_cut,
+                                          size: 16,
+                                          color: _browseBarbersMode ? Colors.black : AppTheme.textSecondary,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'Favorite Barbers (${filteredBarbers.length})',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: _browseBarbersMode ? Colors.black : AppTheme.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Featured Barbershops (${filteredShops.length})',
+                              !_browseBarbersMode
+                                  ? 'Featured Barbershops (${filteredShops.length})'
+                                  : 'Top Barbers & Stylists (${filteredBarbers.length})',
                               style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             TextButton.icon(
                               onPressed: () => setState(() => _isMapView = true),
                               icon: const Icon(Icons.map, size: 16, color: AppTheme.primaryGold),
-                              label: const Text('Full Map', style: TextStyle(color: AppTheme.primaryGold, fontSize: 13)),
+                              label: const Text('View on Map', style: TextStyle(color: AppTheme.primaryGold, fontSize: 13)),
                             ),
                           ],
                         ),
@@ -389,29 +513,168 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   ),
                 ),
 
-                // Barbershops List
-                if (filteredShops.isEmpty)
-                  const SliverFillRemaining(
-                    child: Center(
-                      child: Text('No barbershops found matching your search.', style: TextStyle(color: AppTheme.textSecondary)),
-                    ),
-                  )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final shop = filteredShops[index];
-                          return _buildShopCard(context, shop);
-                        },
-                        childCount: filteredShops.length,
+                // Content List: Barbershops or Barbers
+                if (!_browseBarbersMode) ...[
+                  if (filteredShops.isEmpty)
+                    const SliverFillRemaining(
+                      child: Center(
+                        child: Text('No barbershops found matching your search.', style: TextStyle(color: AppTheme.textSecondary)),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final shop = filteredShops[index];
+                            return _buildShopCard(context, shop);
+                          },
+                          childCount: filteredShops.length,
+                        ),
                       ),
                     ),
-                  ),
+                ] else ...[
+                  if (filteredBarbers.isEmpty)
+                    const SliverFillRemaining(
+                      child: Center(
+                        child: Text('No barbers found matching your search.', style: TextStyle(color: AppTheme.textSecondary)),
+                      ),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            final item = filteredBarbers[index];
+                            return _buildBarberCard(context, item);
+                          },
+                          childCount: filteredBarbers.length,
+                        ),
+                      ),
+                    ),
+                ],
                 const SliverToBoxAdapter(child: SizedBox(height: 24)),
               ],
             ),
+    );
+  }
+
+  Widget _buildBarberCard(BuildContext context, BarberWithShop item) {
+    final barber = item.barber;
+    final shop = item.shop;
+    final distanceStr = shop.formattedDistanceFrom(_userLocation);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.darkCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 30,
+            backgroundImage: barber.avatarUrl != null ? NetworkImage(barber.avatarUrl!) : null,
+            onBackgroundImageError: barber.avatarUrl != null ? (err, stack) {} : null,
+            backgroundColor: AppTheme.primaryGold,
+            child: barber.avatarUrl == null
+                ? Text(barber.name.substring(0, 1), style: const TextStyle(fontSize: 20, color: Colors.black))
+                : null,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        barber.name,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, size: 14, color: AppTheme.primaryGold),
+                        const SizedBox(width: 3),
+                        Text(
+                          '${barber.rating}',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryGold),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  barber.title,
+                  style: const TextStyle(color: AppTheme.primaryGold, fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(Icons.storefront, size: 13, color: AppTheme.textSecondary),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        '${shop.name} • $distanceStr',
+                        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 36,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: () {
+                      final services = AppRepository.instance.getServicesForShop(shop.id);
+                      final service = services.isNotEmpty
+                          ? services.first
+                          : BarbershopService(
+                              id: 'srv_gen',
+                              shopId: shop.id,
+                              name: 'Signature Haircut',
+                              description: 'Standard precision cut',
+                              price: 40.0,
+                            );
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => BookingFlowScreen(
+                            shop: shop,
+                            initialBarber: barber,
+                            initialService: service,
+                          ),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.calendar_month, size: 14),
+                    label: Text('Book with ${barber.name.split(" ").first}'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 

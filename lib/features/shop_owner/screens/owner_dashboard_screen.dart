@@ -7,6 +7,7 @@ import '../../../services/app_repository.dart';
 import '../../common/screens/location_picker_screen.dart';
 import 'manage_services_screen.dart';
 import 'manage_barbers_screen.dart';
+import 'customize_shop_screen.dart';
 
 class OwnerDashboardScreen extends StatefulWidget {
   const OwnerDashboardScreen({super.key});
@@ -57,13 +58,39 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
           ],
         ),
         actions: [
-          // Switch to Customer View
-          TextButton.icon(
-            onPressed: () {
-              repo.switchRole(UserRole.customer);
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.swap_horiz, color: AppTheme.primaryGold),
+            tooltip: 'Switch Persona',
+            color: AppTheme.darkCard,
+            onSelected: (val) {
+              if (val == 'admin') {
+                repo.switchRole(UserRole.admin);
+              } else if (val == 'customer') {
+                repo.switchRole(UserRole.customer);
+              }
             },
-            icon: const Icon(Icons.person, size: 18, color: AppTheme.primaryGold),
-            label: const Text('Client View', style: TextStyle(color: AppTheme.primaryGold, fontSize: 13)),
+            itemBuilder: (ctx) => const [
+              PopupMenuItem(
+                value: 'admin',
+                child: Row(
+                  children: [
+                    Icon(Icons.admin_panel_settings, color: AppTheme.primaryGold, size: 18),
+                    SizedBox(width: 8),
+                    Text('👑 Admin Portal', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'customer',
+                child: Row(
+                  children: [
+                    Icon(Icons.person, color: AppTheme.primaryGold, size: 18),
+                    SizedBox(width: 8),
+                    Text('✂️ Customer View', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+            ],
           ),
           IconButton(
             icon: const Icon(Icons.logout_rounded),
@@ -76,6 +103,66 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Customize Barbershop Banner
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.primaryGold.withValues(alpha: 0.2),
+                    AppTheme.darkCard,
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.4)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryGold.withValues(alpha: 0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.dashboard_customize, color: AppTheme.primaryGold, size: 28),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Your Customizable Barbershop App',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.textPrimary),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Branding, cover photo, open hours & map location',
+                          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => CustomizeShopScreen(shop: shop)),
+                      ).then((_) => setState(() {}));
+                    },
+                    icon: const Icon(Icons.tune, size: 16),
+                    label: const Text('Customize'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+
             // Quick Navigation shortcuts
             Row(
               children: [
@@ -111,7 +198,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                       side: BorderSide(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
                     ),
                     icon: const Icon(Icons.people_outline, size: 18),
-                    label: Text('Barbers (${barbers.length})', style: const TextStyle(fontSize: 13)),
+                    label: Text('Manage Barbers (${barbers.length})', style: const TextStyle(fontSize: 13)),
                   ),
                 ),
               ],

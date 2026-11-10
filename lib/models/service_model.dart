@@ -25,6 +25,24 @@ class BarbershopService {
     };
   }
 
+  BarbershopService copyWith({
+    String? id,
+    String? shopId,
+    String? name,
+    String? description,
+    double? price,
+    int? durationMinutes,
+  }) {
+    return BarbershopService(
+      id: id ?? this.id,
+      shopId: shopId ?? this.shopId,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      price: price ?? this.price,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
+    );
+  }
+
   factory BarbershopService.fromMap(Map<String, dynamic> map, String id) {
     return BarbershopService(
       id: id,

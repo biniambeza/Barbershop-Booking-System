@@ -350,13 +350,80 @@ class _AuthScreenState extends State<AuthScreen> {
                           ),
                   ),
 
-                  const SizedBox(height: 20),
-                  TextButton(
-                    onPressed: () {
-                      // Quick demo login bypass
-                      AppRepository.instance.switchRole(UserRole.customer);
-                    },
-                    child: const Text('Or explore demo as Guest Client', style: TextStyle(color: AppTheme.primaryGold)),
+                  const SizedBox(height: 24),
+                  const Row(
+                    children: [
+                      Expanded(child: Divider(color: Colors.white12)),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 10),
+                        child: Text('ONE-TAP ROLE DEMO ACCESS', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary, letterSpacing: 1, fontWeight: FontWeight.bold)),
+                      ),
+                      Expanded(child: Divider(color: Colors.white12)),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                            side: BorderSide(color: Colors.purpleAccent.withValues(alpha: 0.5)),
+                          ),
+                          onPressed: () {
+                            AppRepository.instance.switchRole(UserRole.admin);
+                          },
+                          child: const Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.admin_panel_settings, size: 20, color: Colors.purpleAccent),
+                              SizedBox(height: 4),
+                              Text('Admin', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                            side: BorderSide(color: AppTheme.primaryGold.withValues(alpha: 0.5)),
+                          ),
+                          onPressed: () {
+                            AppRepository.instance.switchRole(UserRole.barbershopOwner);
+                          },
+                          child: const Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.storefront, size: 20, color: AppTheme.primaryGold),
+                              SizedBox(height: 4),
+                              Text('Shop Owner', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                            side: BorderSide(color: Colors.lightBlueAccent.withValues(alpha: 0.5)),
+                          ),
+                          onPressed: () {
+                            AppRepository.instance.switchRole(UserRole.customer);
+                          },
+                          child: const Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.person, size: 20, color: Colors.lightBlueAccent),
+                              SizedBox(height: 4),
+                              Text('Customer', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

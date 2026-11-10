@@ -36,21 +36,84 @@ class AppRepository extends ChangeNotifier {
   AppUser? _currentUser;
   AppUser? get currentUser => _currentUser;
 
+  final List<AppUser> _mockUsers = [];
   final List<Barbershop> _mockShops = [];
   final List<BarbershopService> _mockServices = [];
   final List<Barber> _mockBarbers = [];
   final List<Booking> _mockBookings = [];
 
   void _initDemoData() {
-    // Demo User
-    _currentUser = AppUser(
+    // 1. Demo Platform Admin
+    final adminUser = AppUser(
+      uid: 'user_admin_1',
+      email: 'admin@crownblade.com',
+      name: 'System Platform Admin',
+      phone: '+1 212-555-0001',
+      role: UserRole.admin,
+      createdAt: DateTime.now().subtract(const Duration(days: 90)),
+    );
+    _mockUsers.add(adminUser);
+
+    // 2. Demo Customer
+    final custUser = AppUser(
       uid: 'user_cust_1',
       email: 'alex@example.com',
       name: 'Alex Johnson',
       phone: '+1 555-0199',
       role: UserRole.customer,
-      createdAt: DateTime.now(),
+      createdAt: DateTime.now().subtract(const Duration(days: 30)),
     );
+    _mockUsers.add(custUser);
+    _currentUser = custUser;
+
+    // 3. Demo Barbershop Owners
+    _mockUsers.addAll([
+      AppUser(
+        uid: 'owner_1',
+        email: 'marcus@royalcuts.com',
+        name: 'Marcus Vance',
+        phone: '+1 212-555-8901',
+        role: UserRole.barbershopOwner,
+        shopId: 'shop_1',
+        createdAt: DateTime.now().subtract(const Duration(days: 60)),
+      ),
+      AppUser(
+        uid: 'owner_2',
+        email: 'leo@classicblade.com',
+        name: 'Leo Thorne',
+        phone: '+1 718-555-4321',
+        role: UserRole.barbershopOwner,
+        shopId: 'shop_2',
+        createdAt: DateTime.now().subtract(const Duration(days: 50)),
+      ),
+      AppUser(
+        uid: 'owner_3',
+        email: 'julian@empirebarber.com',
+        name: 'Julian Hayes',
+        phone: '+1 212-555-1212',
+        role: UserRole.barbershopOwner,
+        shopId: 'shop_3',
+        createdAt: DateTime.now().subtract(const Duration(days: 40)),
+      ),
+      AppUser(
+        uid: 'owner_4',
+        email: 'samir@dumbosteel.com',
+        name: 'Samir Brooks',
+        phone: '+1 718-555-9800',
+        role: UserRole.barbershopOwner,
+        shopId: 'shop_4',
+        createdAt: DateTime.now().subtract(const Duration(days: 35)),
+      ),
+      AppUser(
+        uid: 'owner_5',
+        email: 'arthur@upperwest.com',
+        name: 'Arthur Sterling',
+        phone: '+1 212-555-7733',
+        role: UserRole.barbershopOwner,
+        shopId: 'shop_5',
+        createdAt: DateTime.now().subtract(const Duration(days: 20)),
+      ),
+    ]);
 
     // Demo Shop 1
     const shop1Id = 'shop_1';
@@ -355,46 +418,84 @@ class AppRepository extends ChangeNotifier {
   }
 
   // --- Auth & User Management ---
-  void switchRole(UserRole role) {
-    if (_currentUser == null) return;
-    String? shopId = role == UserRole.barbershopOwner ? 'shop_1' : null;
-    _currentUser = AppUser(
-      uid: _currentUser!.uid,
-      email: _currentUser!.email,
-      name: role == UserRole.barbershopOwner ? 'Marcus (Owner)' : 'Alex Johnson',
-      phone: _currentUser!.phone,
-      role: role,
-      shopId: shopId,
-      createdAt: _currentUser!.createdAt,
-    );
+  List<AppUser> getAllUsers() {
+    return List.unmodifiable(_mockUsers);
+  }
+
+  void switchRole(UserRole role, {String? targetShopId}) {
+    if (role == UserRole.admin) {
+      _currentUser = _mockUsers.firstWhere(
+        (u) => u.role == UserRole.admin,
+        orElse: () => AppUser(
+          uid: 'user_admin_1',
+          email: 'admin@crownblade.com',
+          name: 'Platform Admin',
+          role: UserRole.admin,
+          createdAt: DateTime.now(),
+        ),
+      );
+    } else if (role == UserRole.barbershopOwner) {
+      final effectiveShopId = targetShopId ?? 'shop_1';
+      final matchingOwner = _mockUsers.firstWhere(
+        (u) => u.role == UserRole.barbershopOwner && (targetShopId == null || u.shopId == targetShopId),
+        orElse: () => _mockUsers.firstWhere(
+          (u) => u.role == UserRole.barbershopOwner,
+          orElse: () => AppUser(
+            uid: 'owner_1',
+            email: 'marcus@royalcuts.com',
+            name: 'Marcus Vance (Owner)',
+            role: UserRole.barbershopOwner,
+            shopId: effectiveShopId,
+            createdAt: DateTime.now(),
+          ),
+        ),
+      );
+      _currentUser = matchingOwner;
+    } else {
+      _currentUser = _mockUsers.firstWhere(
+        (u) => u.role == UserRole.customer,
+        orElse: () => AppUser(
+          uid: 'user_cust_1',
+          email: 'alex@example.com',
+          name: 'Alex Johnson',
+          role: UserRole.customer,
+          createdAt: DateTime.now(),
+        ),
+      );
+    }
     notifyListeners();
   }
 
   Future<void> signIn({required String email, required String password}) async {
-    final auth = _auth;
-    if (auth != null) {
-      try {
-        final credential = await auth.signInWithEmailAndPassword(email: email, password: password);
-        final doc = await _firestore?.collection('users').doc(credential.user!.uid).get();
-        if (doc != null && doc.exists) {
-          _currentUser = AppUser.fromMap(doc.data()!, doc.id);
-          _useFirebase = true;
-          notifyListeners();
-          return;
-        }
-      } catch (e) {
-        debugPrint('Firebase login fallback: $e');
-      }
+    final cleanEmail = email.trim().toLowerCase();
+
+    // 1. Check existing mock users first
+    final existingUser = _mockUsers.where((u) => u.email.toLowerCase() == cleanEmail).firstOrNull;
+    if (existingUser != null) {
+      _currentUser = existingUser;
+      notifyListeners();
+      return;
     }
 
-    // Fallback Mock Sign In
-    _currentUser = AppUser(
+    // 2. Quick role matching by keywords
+    if (cleanEmail.contains('admin')) {
+      switchRole(UserRole.admin);
+      return;
+    } else if (cleanEmail.contains('owner') || cleanEmail.contains('barber')) {
+      switchRole(UserRole.barbershopOwner);
+      return;
+    }
+
+    // 3. Fallback Mock Sign In (new customer)
+    final newUser = AppUser(
       uid: _uuid.v4(),
       email: email,
       name: email.split('@').first,
       role: UserRole.customer,
       createdAt: DateTime.now(),
     );
+    _mockUsers.add(newUser);
+    _currentUser = newUser;
     notifyListeners();
   }
 
@@ -439,13 +540,15 @@ class AppRepository extends ChangeNotifier {
       await _firestore!.collection('users').doc(newUid).set(user.toMap());
     }
 
+    _mockUsers.add(user);
+
     if (role == UserRole.barbershopOwner && shopName != null && createdShopId != null) {
       await createShop(
         shopId: createdShopId,
         ownerId: newUid,
         name: shopName,
         address: shopAddress ?? '123 Downtown St',
-        description: 'New barbershop ready to serve clients.',
+        description: 'New barbershop registered in Crown & Blade.',
         latitude: latitude,
         longitude: longitude,
       );
@@ -458,6 +561,129 @@ class AppRepository extends ChangeNotifier {
   void signOut() {
     _auth?.signOut();
     _currentUser = null;
+    notifyListeners();
+  }
+
+  // --- Platform Admin: Barbershop Registration & Management ---
+  Future<String> registerBarbershopByAdmin({
+    required String shopName,
+    required String ownerName,
+    required String ownerEmail,
+    required String ownerPhone,
+    required String address,
+    required String city,
+    required double latitude,
+    required double longitude,
+    required String description,
+    required String imageUrl,
+    required int openingHour,
+    required int closingHour,
+    required List<int> workingDays,
+    required bool isVerified,
+  }) async {
+    final shopId = _uuid.v4();
+    final ownerUid = _uuid.v4();
+
+    // 1. Create and register the Barbershop Owner user
+    final ownerUser = AppUser(
+      uid: ownerUid,
+      email: ownerEmail,
+      name: ownerName,
+      phone: ownerPhone,
+      role: UserRole.barbershopOwner,
+      shopId: shopId,
+      createdAt: DateTime.now(),
+    );
+    _mockUsers.add(ownerUser);
+
+    // 2. Create the Barbershop
+    final shop = Barbershop(
+      id: shopId,
+      ownerId: ownerUid,
+      name: shopName,
+      description: description,
+      address: address,
+      city: city,
+      phone: ownerPhone,
+      imageUrl: imageUrl.isNotEmpty ? imageUrl : 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800',
+      rating: 5.0,
+      reviewCount: 1,
+      openingHour: openingHour,
+      closingHour: closingHour,
+      workingDays: workingDays,
+      isVerified: isVerified,
+      latitude: latitude,
+      longitude: longitude,
+    );
+    _mockShops.insert(0, shop);
+
+    // 3. Add default starter services so the shop is instantly bookable
+    await addService(
+      shopId: shopId,
+      name: 'Signature Haircut & Style',
+      description: 'Precision cut, neck razor cleanup, and bespoke styling with artisan product.',
+      price: 45.0,
+      durationMinutes: 40,
+    );
+    await addService(
+      shopId: shopId,
+      name: 'Beard Sculpt & Hot Towel',
+      description: 'Full beard shaping, warm aromatic towels, and straight razor line-up.',
+      price: 30.0,
+      durationMinutes: 30,
+    );
+
+    // 4. Add the lead barber (the registered owner or stylist)
+    await addBarber(
+      shopId: shopId,
+      name: ownerName,
+      title: 'Master Barber / Lead Stylist',
+      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
+    );
+
+    if (_useFirebase && _firestore != null) {
+      await _firestore!.collection('users').doc(ownerUid).set(ownerUser.toMap());
+      await _firestore!.collection('barbershops').doc(shopId).set(shop.toMap());
+    }
+
+    notifyListeners();
+    return shopId;
+  }
+
+  Future<void> updateShop(Barbershop updatedShop) async {
+    final index = _mockShops.indexWhere((s) => s.id == updatedShop.id);
+    if (index != -1) {
+      _mockShops[index] = updatedShop;
+      if (_useFirebase && _firestore != null) {
+        await _firestore!.collection('barbershops').doc(updatedShop.id).update(updatedShop.toMap());
+      }
+      notifyListeners();
+    }
+  }
+
+  Future<void> toggleShopVerification(String shopId) async {
+    final index = _mockShops.indexWhere((s) => s.id == shopId);
+    if (index != -1) {
+      final old = _mockShops[index];
+      final updated = old.copyWith(isVerified: !old.isVerified);
+      _mockShops[index] = updated;
+      if (_useFirebase && _firestore != null) {
+        await _firestore!.collection('barbershops').doc(shopId).update({'isVerified': updated.isVerified});
+      }
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteShop(String shopId) async {
+    _mockShops.removeWhere((s) => s.id == shopId);
+    _mockBarbers.removeWhere((b) => b.shopId == shopId);
+    _mockServices.removeWhere((s) => s.shopId == shopId);
+    _mockBookings.removeWhere((b) => b.shopId == shopId);
+    _mockUsers.removeWhere((u) => u.shopId == shopId);
+
+    if (_useFirebase && _firestore != null) {
+      await _firestore!.collection('barbershops').doc(shopId).delete();
+    }
     notifyListeners();
   }
 
@@ -587,9 +813,29 @@ class AppRepository extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> updateService(BarbershopService service) async {
+    final index = _mockServices.indexWhere((s) => s.id == service.id);
+    if (index != -1) {
+      _mockServices[index] = service;
+      if (_useFirebase && _firestore != null) {
+        await _firestore!.collection('barbershops').doc(service.shopId).collection('services').doc(service.id).update(service.toMap());
+      }
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteService(String serviceId) async {
+    _mockServices.removeWhere((s) => s.id == serviceId);
+    notifyListeners();
+  }
+
   // --- Barbers ---
   List<Barber> getBarbersForShop(String shopId) {
     return _mockBarbers.where((b) => b.shopId == shopId).toList();
+  }
+
+  List<Barber> getAllBarbers() {
+    return List.unmodifiable(_mockBarbers);
   }
 
   Future<void> addBarber({
@@ -612,6 +858,22 @@ class AppRepository extends ChangeNotifier {
     }
 
     _mockBarbers.add(barber);
+    notifyListeners();
+  }
+
+  Future<void> updateBarber(Barber barber) async {
+    final index = _mockBarbers.indexWhere((b) => b.id == barber.id);
+    if (index != -1) {
+      _mockBarbers[index] = barber;
+      if (_useFirebase && _firestore != null) {
+        await _firestore!.collection('barbershops').doc(barber.shopId).collection('barbers').doc(barber.id).update(barber.toMap());
+      }
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteBarber(String barberId) async {
+    _mockBarbers.removeWhere((b) => b.id == barberId);
     notifyListeners();
   }
 

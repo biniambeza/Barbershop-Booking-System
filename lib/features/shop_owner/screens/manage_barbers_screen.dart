@@ -12,47 +12,119 @@ class ManageBarbersScreen extends StatefulWidget {
 }
 
 class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
+  final List<String> _avatarPresets = [
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
+    'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400',
+    'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400',
+    'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400',
+  ];
+
   void _showAddBarberDialog() {
     final nameCtrl = TextEditingController();
     final titleCtrl = TextEditingController(text: 'Stylist & Fade Specialist');
+    String selectedAvatar = _avatarPresets[0];
 
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: AppTheme.darkCard,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Add Barber to Shop', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(labelText: 'Barber Full Name', prefixIcon: Icon(Icons.person)),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: titleCtrl,
+                  decoration: const InputDecoration(labelText: 'Specialization (e.g. Master Barber)', prefixIcon: Icon(Icons.badge)),
+                ),
+                const SizedBox(height: 16),
+                const Text('Select Avatar Portrait:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _avatarPresets.map((avatarUrl) {
+                      final isSelected = selectedAvatar == avatarUrl;
+                      return GestureDetector(
+                        onTap: () => setDialogState(() => selectedAvatar = avatarUrl),
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 8),
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected ? AppTheme.primaryGold : Colors.transparent,
+                              width: 2.5,
+                            ),
+                          ),
+                          child: CircleAvatar(
+                            radius: 20,
+                            backgroundImage: NetworkImage(avatarUrl),
+                            onBackgroundImageError: (err, stack) {},
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (nameCtrl.text.trim().isEmpty) return;
+                AppRepository.instance.addBarber(
+                  shopId: widget.shopId,
+                  name: nameCtrl.text.trim(),
+                  title: titleCtrl.text.trim(),
+                  avatarUrl: selectedAvatar,
+                );
+                Navigator.of(ctx).pop();
+                setState(() {});
+              },
+              child: const Text('Add Barber'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteBarber(String barberId, String name) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.darkCard,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Add Barber / Stylist', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(labelText: 'Barber Name'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: titleCtrl,
-              decoration: const InputDecoration(labelText: 'Title / Specialization'),
-            ),
-          ],
-        ),
+        title: const Text('Remove Barber?'),
+        content: Text('Are you sure you want to remove "$name" from this barbershop?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
           ),
           ElevatedButton(
-            onPressed: () {
-              if (nameCtrl.text.trim().isEmpty) return;
-              AppRepository.instance.addBarber(
-                shopId: widget.shopId,
-                name: nameCtrl.text.trim(),
-                title: titleCtrl.text.trim(),
-              );
-              Navigator.of(ctx).pop();
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await AppRepository.instance.deleteBarber(barberId);
               setState(() {});
             },
-            child: const Text('Add Barber'),
+            child: const Text('Remove', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -138,6 +210,11 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                             ),
                           ],
                         ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                        tooltip: 'Remove Barber',
+                        onPressed: () => _confirmDeleteBarber(barber.id, barber.name),
                       ),
                     ],
                   ),
