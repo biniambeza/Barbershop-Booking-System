@@ -4,7 +4,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../../models/booking_model.dart';
 import '../../../models/user_model.dart';
 import '../../../services/app_repository.dart';
-import '../../common/screens/location_picker_screen.dart';
 import 'manage_services_screen.dart';
 import 'manage_barbers_screen.dart';
 import 'customize_shop_screen.dart';
@@ -65,6 +64,8 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
             onSelected: (val) {
               if (val == 'admin') {
                 repo.switchRole(UserRole.admin);
+              } else if (val == 'barber') {
+                repo.switchRole(UserRole.barber);
               } else if (val == 'customer') {
                 repo.switchRole(UserRole.customer);
               }
@@ -74,9 +75,19 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 value: 'admin',
                 child: Row(
                   children: [
-                    Icon(Icons.admin_panel_settings, color: AppTheme.primaryGold, size: 18),
+                    Icon(Icons.admin_panel_settings, color: Colors.purpleAccent, size: 18),
                     SizedBox(width: 8),
-                    Text('👑 Admin Portal', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text('Admin Portal', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'barber',
+                child: Row(
+                  children: [
+                    Icon(Icons.content_cut, color: Colors.tealAccent, size: 18),
+                    SizedBox(width: 8),
+                    Text('Staff Barber Workspace', style: TextStyle(fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
@@ -84,9 +95,9 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 value: 'customer',
                 child: Row(
                   children: [
-                    Icon(Icons.person, color: AppTheme.primaryGold, size: 18),
+                    Icon(Icons.person, color: Colors.lightBlueAccent, size: 18),
                     SizedBox(width: 8),
-                    Text('✂️ Customer View', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text('Customer View', style: TextStyle(fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
@@ -211,7 +222,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               decoration: BoxDecoration(
                 color: AppTheme.darkCard,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
+                border: Border.all(color: Colors.white12),
               ),
               child: Row(
                 children: [
@@ -229,15 +240,15 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          shop.address,
+                          shop.name,
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Pinned at: ${shop.latitude.toStringAsFixed(4)}, ${shop.longitude.toStringAsFixed(4)}',
-                          style: const TextStyle(fontSize: 11, color: AppTheme.primaryGold),
+                          shop.fullAddress,
+                          style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                         ),
                       ],
                     ),
@@ -248,28 +259,16 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                       minimumSize: Size.zero,
                     ),
                     onPressed: () async {
-                      final result = await Navigator.push<LocationPickerResult>(
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => LocationPickerScreen(
-                            initialLatitude: shop.latitude,
-                            initialLongitude: shop.longitude,
-                            initialAddress: shop.address,
-                          ),
+                          builder: (_) => CustomizeShopScreen(shop: shop),
                         ),
                       );
-                      if (result != null) {
-                        await AppRepository.instance.updateShopLocation(
-                          shopId: shop.id,
-                          address: result.address,
-                          latitude: result.latitude,
-                          longitude: result.longitude,
-                        );
-                        setState(() {});
-                      }
+                      setState(() {});
                     },
-                    icon: const Icon(Icons.pin_drop, size: 14),
-                    label: const Text('Update Map Pin', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    icon: const Icon(Icons.edit, size: 14),
+                    label: const Text('Edit Info', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -392,6 +391,9 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     switch (booking.status) {
       case BookingStatus.confirmed:
         statusColor = Colors.green;
+        break;
+      case BookingStatus.inProgress:
+        statusColor = Colors.orangeAccent;
         break;
       case BookingStatus.pending:
         statusColor = Colors.orange;

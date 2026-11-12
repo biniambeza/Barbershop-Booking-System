@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../services/app_repository.dart';
-import '../../common/screens/location_picker_screen.dart';
 import '../../customer/screens/barbershop_detail_screen.dart';
 
 class CustomizeShopScreen extends StatefulWidget {
@@ -24,8 +23,6 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
   late TextEditingController _cityCtrl;
   late TextEditingController _imageCtrl;
 
-  late double _latitude;
-  late double _longitude;
   late int _openingHour;
   late int _closingHour;
   late List<int> _workingDays;
@@ -61,8 +58,6 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
     _cityCtrl = TextEditingController(text: s.city);
     _imageCtrl = TextEditingController(text: s.imageUrl);
 
-    _latitude = s.latitude;
-    _longitude = s.longitude;
     _openingHour = s.openingHour;
     _closingHour = s.closingHour;
     _workingDays = List<int>.from(s.workingDays);
@@ -79,33 +74,6 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
     super.dispose();
   }
 
-  Future<void> _updateMapLocation() async {
-    final result = await Navigator.push<LocationPickerResult>(
-      context,
-      MaterialPageRoute(
-        builder: (_) => LocationPickerScreen(
-          initialLatitude: _latitude,
-          initialLongitude: _longitude,
-          initialAddress: _addressCtrl.text,
-        ),
-      ),
-    );
-
-    if (result != null) {
-      setState(() {
-        _latitude = result.latitude;
-        _longitude = result.longitude;
-        _addressCtrl.text = result.address;
-        if (result.address.contains(',')) {
-          final parts = result.address.split(',');
-          if (parts.length > 1) {
-            _cityCtrl.text = parts.sublist(1).join(',').trim();
-          }
-        }
-      });
-    }
-  }
-
   Future<void> _saveChanges() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
@@ -117,8 +85,6 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
       address: _addressCtrl.text.trim(),
       city: _cityCtrl.text.trim(),
       imageUrl: _imageCtrl.text.trim(),
-      latitude: _latitude,
-      longitude: _longitude,
       openingHour: _openingHour,
       closingHour: _closingHour,
       workingDays: _workingDays,
@@ -143,43 +109,48 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
       address: _addressCtrl.text.trim(),
       city: _cityCtrl.text.trim(),
       imageUrl: _imageCtrl.text.trim(),
-      latitude: _latitude,
-      longitude: _longitude,
       openingHour: _openingHour,
       closingHour: _closingHour,
     );
 
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => BarbershopDetailScreen(shop: previewShop)),
+      MaterialPageRoute(
+        builder: (_) => BarbershopDetailScreen(shop: previewShop),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    const daysMap = {
-      1: 'Mon',
-      2: 'Tue',
-      3: 'Wed',
-      4: 'Thu',
-      5: 'Fri',
-      6: 'Sat',
-      7: 'Sun',
-    };
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Customize Barbershop App'),
+        title: const Text('Customize My Barbershop'),
         actions: [
           TextButton.icon(
             onPressed: _previewShopAsCustomer,
-            icon: const Icon(Icons.remove_red_eye, size: 16, color: AppTheme.primaryGold),
-            label: const Text('Live Preview', style: TextStyle(color: AppTheme.primaryGold, fontSize: 13, fontWeight: FontWeight.bold)),
+            icon: const Icon(Icons.remove_red_eye_outlined, size: 16, color: AppTheme.primaryGold),
+            label: const Text('Preview', style: TextStyle(color: AppTheme.primaryGold, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: SizedBox(
+            height: 50,
+            child: ElevatedButton.icon(
+              onPressed: _isSaving ? null : _saveChanges,
+              icon: _isSaving
+                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                  : const Icon(Icons.check),
+              label: Text(_isSaving ? 'Saving Updates...' : 'Publish Shop Customizations', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            ),
+          ),
+        ),
+      ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: Column(
@@ -187,20 +158,30 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
             children: [
               // Header Card
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryGold.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(14),
+                  color: AppTheme.darkCard,
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.dashboard_customize, color: AppTheme.primaryGold, size: 26),
-                    SizedBox(width: 12),
+                    const CircleAvatar(
+                      backgroundColor: AppTheme.primaryGold,
+                      radius: 20,
+                      child: Icon(Icons.brush, color: Colors.black, size: 20),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
-                      child: Text(
-                        'Customize your shop branding, cover imagery, map location, and business schedule in real time.',
-                        style: TextStyle(fontSize: 13, color: AppTheme.textPrimary),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Barbershop Brand Profile',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 2),
+                          const Text('Changes made here instantly appear in the customer booking experience.',
+                              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                        ],
                       ),
                     ),
                   ],
@@ -208,29 +189,29 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Section 1: Branding
-              _buildSectionTitle('Shop Branding & Profile', Icons.palette_outlined),
+              // Section 1: Identity & Visuals
+              _buildSectionTitle('Barbershop Branding & Info', Icons.storefront),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _nameCtrl,
-                decoration: const InputDecoration(labelText: 'Barbershop Name', prefixIcon: Icon(Icons.store)),
+                decoration: const InputDecoration(labelText: 'Barbershop Name *', prefixIcon: Icon(Icons.business)),
                 validator: (val) => val == null || val.trim().isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 14),
               TextFormField(
                 controller: _descCtrl,
-                maxLines: 2,
-                decoration: const InputDecoration(labelText: 'About / Description', prefixIcon: Icon(Icons.description_outlined)),
+                maxLines: 3,
+                decoration: const InputDecoration(labelText: 'Brand Bio & Story', prefixIcon: Icon(Icons.notes)),
               ),
               const SizedBox(height: 14),
               TextFormField(
                 controller: _phoneCtrl,
-                decoration: const InputDecoration(labelText: 'Business Phone', prefixIcon: Icon(Icons.phone)),
+                decoration: const InputDecoration(labelText: 'Business Phone Number', prefixIcon: Icon(Icons.phone)),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 14),
 
-              // Aesthetic Presets
-              const Text('Cover Photo Aesthetic Preset:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              // Theme Presets
+              const Text('Quick Theme Aesthetic Presets:', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -258,50 +239,28 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
               ),
               const SizedBox(height: 28),
 
-              // Section 2: Interactive Location & Map
-              _buildSectionTitle('Location & Pinned Map Coordinates', Icons.map_outlined),
+              // Section 2: Physical Location (No Map!)
+              _buildSectionTitle('Physical Location & Address', Icons.location_on_outlined),
               const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: AppTheme.darkCard,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
+                  border: Border.all(color: Colors.white12),
                 ),
                 child: Column(
                   children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on, color: AppTheme.primaryGold, size: 24),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(_addressCtrl.text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                              const SizedBox(height: 2),
-                              Text('Pin: ${_latitude.toStringAsFixed(4)}, ${_longitude.toStringAsFixed(4)}',
-                                  style: const TextStyle(fontSize: 12, color: AppTheme.primaryGold)),
-                            ],
-                          ),
-                        ),
-                        ElevatedButton.icon(
-                          onPressed: _updateMapLocation,
-                          icon: const Icon(Icons.pin_drop, size: 14),
-                          label: const Text('Update Map Pin'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
                     TextFormField(
                       controller: _addressCtrl,
                       decoration: const InputDecoration(labelText: 'Street Address', prefixIcon: Icon(Icons.location_on_outlined)),
                       validator: (val) => val == null || val.trim().isEmpty ? 'Required' : null,
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     TextFormField(
                       controller: _cityCtrl,
-                      decoration: const InputDecoration(labelText: 'City, State', prefixIcon: Icon(Icons.location_city)),
+                      decoration: const InputDecoration(labelText: 'City & State', prefixIcon: Icon(Icons.location_city)),
+                      validator: (val) => val == null || val.trim().isEmpty ? 'Required' : null,
                     ),
                   ],
                 ),
@@ -343,52 +302,21 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-
-              const Text('Open Working Days:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              const Text('Open Working Days:', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: daysMap.entries.map((entry) {
-                  final dayIndex = entry.key;
-                  final dayLabel = entry.value;
-                  final isSelected = _workingDays.contains(dayIndex);
-                  return FilterChip(
-                    label: Text(dayLabel),
-                    selected: isSelected,
-                    selectedColor: AppTheme.primaryGold,
-                    onSelected: (selected) {
-                      setState(() {
-                        if (selected) {
-                          _workingDays.add(dayIndex);
-                          _workingDays.sort();
-                        } else {
-                          if (_workingDays.length > 1) {
-                            _workingDays.remove(dayIndex);
-                          }
-                        }
-                      });
-                    },
-                  );
-                }).toList(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildDayToggle(1, 'Mon'),
+                  _buildDayToggle(2, 'Tue'),
+                  _buildDayToggle(3, 'Wed'),
+                  _buildDayToggle(4, 'Thu'),
+                  _buildDayToggle(5, 'Fri'),
+                  _buildDayToggle(6, 'Sat'),
+                  _buildDayToggle(7, 'Sun'),
+                ],
               ),
-              const SizedBox(height: 32),
-
-              // Save button
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton.icon(
-                  onPressed: _isSaving ? null : _saveChanges,
-                  icon: _isSaving
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                      : const Icon(Icons.check, size: 22),
-                  label: Text(
-                    _isSaving ? 'Saving...' : 'Save & Publish Customization',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 60),
             ],
           ),
         ),
@@ -401,8 +329,46 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
       children: [
         Icon(icon, color: AppTheme.primaryGold, size: 20),
         const SizedBox(width: 8),
-        Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.primaryGold)),
+        Text(
+          title,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+        ),
       ],
+    );
+  }
+
+  Widget _buildDayToggle(int dayNumber, String label) {
+    final isSelected = _workingDays.contains(dayNumber);
+    return InkWell(
+      onTap: () {
+        setState(() {
+          if (isSelected) {
+            if (_workingDays.length > 1) _workingDays.remove(dayNumber);
+          } else {
+            _workingDays.add(dayNumber);
+            _workingDays.sort();
+          }
+        });
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: 44,
+        height: 40,
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primaryGold : AppTheme.darkCard,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: isSelected ? AppTheme.primaryGold : Colors.white12),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.black : AppTheme.textSecondary,
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+        ),
+      ),
     );
   }
 }

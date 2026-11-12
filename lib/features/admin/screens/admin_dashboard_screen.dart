@@ -61,7 +61,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   backgroundColor: AppTheme.primaryGold,
                   child: Icon(Icons.admin_panel_settings, color: Colors.black),
                 ),
-                title: const Text('👑 Platform Administrator', style: TextStyle(fontWeight: FontWeight.bold)),
+                title: const Text('Platform Administrator', style: TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: const Text('Register barbershops, manage users & platform config'),
                 trailing: const Icon(Icons.check, color: AppTheme.primaryGold),
                 onTap: () {
@@ -75,7 +75,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   backgroundColor: AppTheme.darkSurface,
                   child: Icon(Icons.storefront, color: AppTheme.primaryGold),
                 ),
-                title: const Text('💈 Barbershop Owner App', style: TextStyle(fontWeight: FontWeight.bold)),
+                title: const Text('Barbershop Owner App', style: TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text('Manage team barbers, services & appointments (${shops.first.name})'),
                 onTap: () {
                   Navigator.pop(ctx);
@@ -85,10 +85,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               const Divider(color: Colors.white12),
               ListTile(
                 leading: const CircleAvatar(
-                  backgroundColor: AppTheme.darkSurface,
-                  child: Icon(Icons.person, color: AppTheme.primaryGold),
+                  backgroundColor: Colors.tealAccent,
+                  child: Icon(Icons.content_cut, color: Colors.black),
                 ),
-                title: const Text('✂️ Customer View', style: TextStyle(fontWeight: FontWeight.bold)),
+                title: const Text('Staff Barber Workspace', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('Marcus Vance: Manage appointment queue & earnings'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  repo.switchRole(UserRole.barber);
+                },
+              ),
+              const Divider(color: Colors.white12),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: AppTheme.darkSurface,
+                  child: Icon(Icons.person, color: Colors.lightBlueAccent),
+                ),
+                title: const Text('Customer View', style: TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: const Text('Search barbershops, pick favorite barbers & book appointments'),
                 onTap: () {
                   Navigator.pop(ctx);
@@ -494,10 +507,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         final u = allUsers[index];
         final roleLabel = u.role == UserRole.admin
             ? 'Administrator'
-            : (u.role == UserRole.barbershopOwner ? 'Barbershop Owner' : 'Customer');
+            : (u.role == UserRole.barbershopOwner
+                ? 'Shop Owner'
+                : (u.role == UserRole.barber ? 'Staff Barber' : 'Customer'));
         final roleColor = u.role == UserRole.admin
             ? Colors.purpleAccent
-            : (u.role == UserRole.barbershopOwner ? AppTheme.primaryGold : Colors.lightBlueAccent);
+            : (u.role == UserRole.barbershopOwner
+                ? AppTheme.primaryGold
+                : (u.role == UserRole.barber ? Colors.tealAccent : Colors.lightBlueAccent));
 
         return Container(
           margin: const EdgeInsets.only(bottom: 10),

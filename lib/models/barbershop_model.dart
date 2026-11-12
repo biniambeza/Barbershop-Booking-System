@@ -1,5 +1,3 @@
-import 'package:latlong2/latlong.dart';
-
 class Barbershop {
   final String id;
   final String ownerId;
@@ -37,22 +35,7 @@ class Barbershop {
     this.longitude = -73.9772,
   });
 
-  LatLng get coordinates => LatLng(latitude, longitude);
-
-  double distanceInKmFrom(LatLng userLocation) {
-    const distance = Distance();
-    return distance.as(LengthUnit.Kilometer, userLocation, coordinates);
-  }
-
-  String formattedDistanceFrom(LatLng userLocation) {
-    const distance = Distance();
-    final km = distance.as(LengthUnit.Kilometer, userLocation, coordinates);
-    if (km < 1.0) {
-      final meters = distance.as(LengthUnit.Meter, userLocation, coordinates).round();
-      return '${meters}m away';
-    }
-    return '${km.toStringAsFixed(1)} km away';
-  }
+  String get fullAddress => '$address, $city';
 
   bool isOpenNow({DateTime? now}) {
     final current = now ?? DateTime.now();

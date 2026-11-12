@@ -42,8 +42,11 @@ class AppRepository extends ChangeNotifier {
   final List<Barber> _mockBarbers = [];
   final List<Booking> _mockBookings = [];
 
+  final Set<String> _favoriteShopIds = {'shop_1'};
+  final Set<String> _favoriteBarberIds = {'barber_1'};
+
   void _initDemoData() {
-    // 1. Demo Platform Admin
+    // 1. Platform Superadmin
     final adminUser = AppUser(
       uid: 'user_admin_1',
       email: 'admin@crownblade.com',
@@ -54,7 +57,42 @@ class AppRepository extends ChangeNotifier {
     );
     _mockUsers.add(adminUser);
 
-    // 2. Demo Customer
+    // 2. Barbershop Owner (The Gentleman's Quarter)
+    final ownerUser1 = AppUser(
+      uid: 'owner_1',
+      email: 'marcus@royalcuts.com',
+      name: 'Marcus Vance (Owner)',
+      phone: '+1 212-555-8901',
+      role: UserRole.barbershopOwner,
+      shopId: 'shop_1',
+      createdAt: DateTime.now().subtract(const Duration(days: 60)),
+    );
+    _mockUsers.add(ownerUser1);
+
+    // 3. Dedicated Staff Barbers (Belong to Shop 1)
+    final barberUser1 = AppUser(
+      uid: 'barber_user_1',
+      email: 'marcus.barber@gentlemansquarter.com',
+      name: 'Marcus Vance',
+      phone: '+1 212-555-8901',
+      role: UserRole.barber,
+      shopId: 'shop_1',
+      barberId: 'barber_1',
+      createdAt: DateTime.now().subtract(const Duration(days: 60)),
+    );
+    final barberUser2 = AppUser(
+      uid: 'barber_user_2',
+      email: 'david.barber@gentlemansquarter.com',
+      name: 'David Rossi',
+      phone: '+1 212-555-3344',
+      role: UserRole.barber,
+      shopId: 'shop_1',
+      barberId: 'barber_2',
+      createdAt: DateTime.now().subtract(const Duration(days: 45)),
+    );
+    _mockUsers.addAll([barberUser1, barberUser2]);
+
+    // 4. Customer
     final custUser = AppUser(
       uid: 'user_cust_1',
       email: 'alex@example.com',
@@ -66,17 +104,8 @@ class AppRepository extends ChangeNotifier {
     _mockUsers.add(custUser);
     _currentUser = custUser;
 
-    // 3. Demo Barbershop Owners
+    // Additional Owners for multi-tenant network
     _mockUsers.addAll([
-      AppUser(
-        uid: 'owner_1',
-        email: 'marcus@royalcuts.com',
-        name: 'Marcus Vance',
-        phone: '+1 212-555-8901',
-        role: UserRole.barbershopOwner,
-        shopId: 'shop_1',
-        createdAt: DateTime.now().subtract(const Duration(days: 60)),
-      ),
       AppUser(
         uid: 'owner_2',
         email: 'leo@classicblade.com',
@@ -106,7 +135,7 @@ class AppRepository extends ChangeNotifier {
       ),
       AppUser(
         uid: 'owner_5',
-        email: 'arthur@upperwest.com',
+        email: 'arthur@upperwestclub.com',
         name: 'Arthur Sterling',
         phone: '+1 212-555-7733',
         role: UserRole.barbershopOwner,
@@ -120,9 +149,9 @@ class AppRepository extends ChangeNotifier {
     _mockShops.add(Barbershop(
       id: shop1Id,
       ownerId: 'owner_1',
-      name: 'The Royal Fade & Grooming Lounge',
-      description: 'Handcrafted precision cuts, beard sculpting, and hot towel facial treatments in a premium atmosphere.',
-      address: '422 Lexington Ave, Suite 101',
+      name: "The Gentleman's Quarter",
+      description: 'Award-winning master fades, hot towel straight-razor shaves, and executive beard grooming in Midtown.',
+      address: '422 Lexington Ave, Floor 3',
       city: 'New York, NY',
       phone: '+1 212-555-8901',
       imageUrl: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800',
@@ -131,8 +160,6 @@ class AppRepository extends ChangeNotifier {
       openingHour: 9,
       closingHour: 20,
       isVerified: true,
-      latitude: 40.7527,
-      longitude: -73.9772,
     ));
 
     // Demo Shop 2
@@ -140,19 +167,17 @@ class AppRepository extends ChangeNotifier {
     _mockShops.add(Barbershop(
       id: shop2Id,
       ownerId: 'owner_2',
-      name: 'Classic Blade Barbers',
-      description: 'Vintage styled barbershop dedicated to classic trims, razor fades, and timeless gentlemen styling.',
+      name: 'Classic Blade Barber Studio',
+      description: 'Traditional heritage barbering with cold towel finish and handcrafted pomades in the Village.',
       address: '784 Broadway St',
       city: 'New York, NY',
       phone: '+1 718-555-4321',
       imageUrl: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800',
-      rating: 4.8,
+      rating: 4.7,
       reviewCount: 98,
       openingHour: 10,
       closingHour: 19,
       isVerified: true,
-      latitude: 40.7295,
-      longitude: -73.9935,
     ));
 
     // Demo Shop 3
@@ -171,8 +196,6 @@ class AppRepository extends ChangeNotifier {
       openingHour: 8,
       closingHour: 21,
       isVerified: true,
-      latitude: 40.7484,
-      longitude: -73.9857,
     ));
 
     // Demo Shop 4
@@ -191,8 +214,6 @@ class AppRepository extends ChangeNotifier {
       openingHour: 10,
       closingHour: 20,
       isVerified: true,
-      latitude: 40.7033,
-      longitude: -73.9890,
     ));
 
     // Demo Shop 5
@@ -211,8 +232,6 @@ class AppRepository extends ChangeNotifier {
       openingHour: 9,
       closingHour: 19,
       isVerified: true,
-      latitude: 40.7812,
-      longitude: -73.9818,
     ));
 
     // Services for Shop 1
@@ -333,6 +352,9 @@ class AppRepository extends ChangeNotifier {
         rating: 4.9,
         reviewCount: 88,
         avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
+        email: 'marcus.barber@gentlemansquarter.com',
+        phone: '+1 212-555-8901',
+        specialties: ['Skin Fade', 'Beard Sculpting', 'Hot Razor Shave'],
       ),
       Barber(
         id: 'barber_2',
@@ -342,6 +364,9 @@ class AppRepository extends ChangeNotifier {
         rating: 4.8,
         reviewCount: 54,
         avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
+        email: 'david.barber@gentlemansquarter.com',
+        phone: '+1 212-555-3344',
+        specialties: ['Scissor Cut', 'Hot Towel Shave', 'Kids Cuts'],
       ),
     ]);
 
@@ -355,6 +380,9 @@ class AppRepository extends ChangeNotifier {
         rating: 4.8,
         reviewCount: 62,
         avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
+        email: 'leo@classicblade.com',
+        phone: '+1 718-555-4321',
+        specialties: ['Traditional Shears', 'Beard Trim'],
       ),
     ]);
 
@@ -368,6 +396,9 @@ class AppRepository extends ChangeNotifier {
         rating: 5.0,
         reviewCount: 140,
         avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400',
+        email: 'julian@empirebarber.com',
+        phone: '+1 212-555-1212',
+        specialties: ['Executive Cut', 'Straight Razor', 'Hair Design'],
       ),
     ]);
 
@@ -381,6 +412,9 @@ class AppRepository extends ChangeNotifier {
         rating: 4.9,
         reviewCount: 78,
         avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400',
+        email: 'samir@dumbosteel.com',
+        phone: '+1 718-555-9800',
+        specialties: ['Textured Crop', 'Low Taper Fade'],
       ),
     ]);
 
@@ -394,27 +428,100 @@ class AppRepository extends ChangeNotifier {
         rating: 4.9,
         reviewCount: 92,
         avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400',
+        email: 'arthur@upperwestclub.com',
+        phone: '+1 212-555-7733',
+        specialties: ['Executive Styling', 'Aromatic Shave'],
       ),
     ]);
 
     // Demo Bookings
-    _mockBookings.add(Booking(
-      id: 'book_1',
-      shopId: shop1Id,
-      shopName: 'The Royal Fade & Grooming Lounge',
-      barberId: 'barber_1',
-      barberName: 'Marcus Vance',
-      customerId: 'user_cust_1',
-      customerName: 'Alex Johnson',
-      customerPhone: '+1 555-0199',
-      serviceId: 'srv_1',
-      serviceName: 'Signature Skin Fade & Style',
-      price: 45.0,
-      date: DateTime.now().add(const Duration(days: 1)),
-      timeSlot: '11:00 AM',
-      status: BookingStatus.confirmed,
-      createdAt: DateTime.now().subtract(const Duration(hours: 3)),
-    ));
+    _mockBookings.addAll([
+      Booking(
+        id: 'book_1',
+        shopId: shop1Id,
+        shopName: "The Gentleman's Quarter",
+        barberId: 'barber_1',
+        barberName: 'Marcus Vance',
+        customerId: 'user_cust_1',
+        customerName: 'Alex Johnson',
+        customerPhone: '+1 555-0199',
+        serviceId: 'srv_1',
+        serviceName: 'Signature Skin Fade & Style',
+        price: 45.0,
+        date: DateTime.now().add(const Duration(days: 1)),
+        timeSlot: '11:00 AM',
+        status: BookingStatus.confirmed,
+        createdAt: DateTime.now().subtract(const Duration(hours: 3)),
+      ),
+      Booking(
+        id: 'book_2',
+        shopId: shop1Id,
+        shopName: "The Gentleman's Quarter",
+        barberId: 'barber_1',
+        barberName: 'Marcus Vance',
+        customerId: 'user_cust_2',
+        customerName: 'Michael Chang',
+        customerPhone: '+1 212-555-7890',
+        serviceId: 'srv_2',
+        serviceName: 'Beard Sculpt & Razor Edge',
+        price: 30.0,
+        date: DateTime.now(),
+        timeSlot: '02:30 PM',
+        status: BookingStatus.confirmed,
+        createdAt: DateTime.now().subtract(const Duration(days: 1)),
+      ),
+      Booking(
+        id: 'book_3',
+        shopId: shop1Id,
+        shopName: "The Gentleman's Quarter",
+        barberId: 'barber_1',
+        barberName: 'Marcus Vance',
+        customerId: 'user_cust_3',
+        customerName: 'Robert Martinez',
+        customerPhone: '+1 917-555-4422',
+        serviceId: 'srv_3',
+        serviceName: 'The Full Gentlemen Experience',
+        price: 75.0,
+        date: DateTime.now().subtract(const Duration(days: 2)),
+        timeSlot: '10:00 AM',
+        status: BookingStatus.completed,
+        createdAt: DateTime.now().subtract(const Duration(days: 3)),
+      ),
+      Booking(
+        id: 'book_4',
+        shopId: shop1Id,
+        shopName: "The Gentleman's Quarter",
+        barberId: 'barber_2',
+        barberName: 'David Rossi',
+        customerId: 'user_cust_4',
+        customerName: 'Ethan Wright',
+        customerPhone: '+1 646-555-8811',
+        serviceId: 'srv_1',
+        serviceName: 'Signature Skin Fade & Style',
+        price: 45.0,
+        date: DateTime.now(),
+        timeSlot: '04:00 PM',
+        status: BookingStatus.confirmed,
+        createdAt: DateTime.now().subtract(const Duration(days: 1)),
+      ),
+      Booking(
+        id: 'book_5',
+        shopId: shop2Id,
+        shopName: 'Classic Blade Barber Studio',
+        barberId: 'barber_2_1',
+        barberName: 'Leo Thorne',
+        customerId: 'user_cust_1',
+        customerName: 'Alex Johnson',
+        customerPhone: '+1 555-0199',
+        serviceId: 'srv_2_1',
+        serviceName: 'Traditional Scissor Cut',
+        price: 40.0,
+        date: DateTime.now().subtract(const Duration(days: 7)),
+        timeSlot: '01:00 PM',
+        status: BookingStatus.completed,
+        createdAt: DateTime.now().subtract(const Duration(days: 8)),
+      ),
+    ]);
   }
 
   // --- Auth & User Management ---
@@ -422,14 +529,14 @@ class AppRepository extends ChangeNotifier {
     return List.unmodifiable(_mockUsers);
   }
 
-  void switchRole(UserRole role, {String? targetShopId}) {
+  void switchRole(UserRole role, {String? targetShopId, String? targetBarberId}) {
     if (role == UserRole.admin) {
       _currentUser = _mockUsers.firstWhere(
         (u) => u.role == UserRole.admin,
         orElse: () => AppUser(
           uid: 'user_admin_1',
           email: 'admin@crownblade.com',
-          name: 'Platform Admin',
+          name: 'System Platform Admin',
           role: UserRole.admin,
           createdAt: DateTime.now(),
         ),
@@ -451,6 +558,25 @@ class AppRepository extends ChangeNotifier {
         ),
       );
       _currentUser = matchingOwner;
+    } else if (role == UserRole.barber) {
+      final effectiveBarberId = targetBarberId ?? 'barber_1';
+      final matchingBarber = _mockUsers.firstWhere(
+        (u) => u.role == UserRole.barber && (targetBarberId == null || u.barberId == targetBarberId),
+        orElse: () => _mockUsers.firstWhere(
+          (u) => u.role == UserRole.barber,
+          orElse: () => AppUser(
+            uid: 'barber_user_1',
+            email: 'marcus.barber@gentlemansquarter.com',
+            name: 'Marcus Vance',
+            phone: '+1 212-555-8901',
+            role: UserRole.barber,
+            shopId: 'shop_1',
+            barberId: effectiveBarberId,
+            createdAt: DateTime.now(),
+          ),
+        ),
+      );
+      _currentUser = matchingBarber;
     } else {
       _currentUser = _mockUsers.firstWhere(
         (u) => u.role == UserRole.customer,
@@ -477,11 +603,14 @@ class AppRepository extends ChangeNotifier {
       return;
     }
 
-    // 2. Quick role matching by keywords
+    // 2. Role matching by email convention
     if (cleanEmail.contains('admin')) {
       switchRole(UserRole.admin);
       return;
-    } else if (cleanEmail.contains('owner') || cleanEmail.contains('barber')) {
+    } else if (cleanEmail.contains('barber')) {
+      switchRole(UserRole.barber);
+      return;
+    } else if (cleanEmail.contains('owner')) {
       switchRole(UserRole.barbershopOwner);
       return;
     }
@@ -506,8 +635,9 @@ class AppRepository extends ChangeNotifier {
     required UserRole role,
     String? shopName,
     String? shopAddress,
-    double? latitude,
-    double? longitude,
+    String? shopCity,
+    String? assignedShopId,
+    String? barberTitle,
   }) async {
     final auth = _auth;
     String newUid = _uuid.v4();
@@ -518,13 +648,18 @@ class AppRepository extends ChangeNotifier {
         newUid = credential.user!.uid;
         _useFirebase = true;
       } catch (e) {
-        debugPrint('Firebase signup fallback: $e');
+        debugPrint('Firebase signup notice: $e (running with local store)');
       }
     }
 
     String? createdShopId;
+    String? createdBarberId;
+
     if (role == UserRole.barbershopOwner && shopName != null) {
       createdShopId = _uuid.v4();
+    } else if (role == UserRole.barber) {
+      createdShopId = assignedShopId ?? (_mockShops.isNotEmpty ? _mockShops.first.id : null);
+      createdBarberId = _uuid.v4();
     }
 
     final user = AppUser(
@@ -533,6 +668,7 @@ class AppRepository extends ChangeNotifier {
       name: name,
       role: role,
       shopId: createdShopId,
+      barberId: createdBarberId,
       createdAt: DateTime.now(),
     );
 
@@ -548,10 +684,19 @@ class AppRepository extends ChangeNotifier {
         ownerId: newUid,
         name: shopName,
         address: shopAddress ?? '123 Downtown St',
-        description: 'New barbershop registered in Crown & Blade.',
-        latitude: latitude,
-        longitude: longitude,
+        city: shopCity ?? 'New York, NY',
+        description: 'New barbershop registered in Crown & Blade SaaS network.',
       );
+    } else if (role == UserRole.barber && createdBarberId != null && createdShopId != null) {
+      final newBarber = Barber(
+        id: createdBarberId,
+        shopId: createdShopId,
+        name: name,
+        title: barberTitle ?? 'Professional Barber',
+        email: email,
+        isAvailable: true,
+      );
+      _mockBarbers.add(newBarber);
     }
 
     _currentUser = user;
@@ -564,7 +709,7 @@ class AppRepository extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- Platform Admin: Barbershop Registration & Management ---
+  // --- Platform Admin: SaaS Barbershop Registration & Metrics ---
   Future<String> registerBarbershopByAdmin({
     required String shopName,
     required String ownerName,
@@ -572,8 +717,6 @@ class AppRepository extends ChangeNotifier {
     required String ownerPhone,
     required String address,
     required String city,
-    required double latitude,
-    required double longitude,
     required String description,
     required String imageUrl,
     required int openingHour,
@@ -583,6 +726,7 @@ class AppRepository extends ChangeNotifier {
   }) async {
     final shopId = _uuid.v4();
     final ownerUid = _uuid.v4();
+    final leadBarberId = _uuid.v4();
 
     // 1. Create and register the Barbershop Owner user
     final ownerUser = AppUser(
@@ -612,12 +756,10 @@ class AppRepository extends ChangeNotifier {
       closingHour: closingHour,
       workingDays: workingDays,
       isVerified: isVerified,
-      latitude: latitude,
-      longitude: longitude,
     );
     _mockShops.insert(0, shop);
 
-    // 3. Add default starter services so the shop is instantly bookable
+    // 3. Add default starter services
     await addService(
       shopId: shopId,
       name: 'Signature Haircut & Style',
@@ -633,13 +775,30 @@ class AppRepository extends ChangeNotifier {
       durationMinutes: 30,
     );
 
-    // 4. Add the lead barber (the registered owner or stylist)
-    await addBarber(
+    // 4. Add the lead barber & create dedicated barber login account
+    final leadBarber = Barber(
+      id: leadBarberId,
       shopId: shopId,
       name: ownerName,
       title: 'Master Barber / Lead Stylist',
+      email: ownerEmail,
+      phone: ownerPhone,
       avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
+      specialties: ['Skin Fade', 'Beard Sculpting', 'Hot Shave'],
     );
+    _mockBarbers.add(leadBarber);
+
+    final barberUser = AppUser(
+      uid: _uuid.v4(),
+      email: 'barber.$ownerEmail',
+      name: ownerName,
+      phone: ownerPhone,
+      role: UserRole.barber,
+      shopId: shopId,
+      barberId: leadBarberId,
+      createdAt: DateTime.now(),
+    );
+    _mockUsers.add(barberUser);
 
     if (_useFirebase && _firestore != null) {
       await _firestore!.collection('users').doc(ownerUid).set(ownerUser.toMap());
@@ -705,9 +864,8 @@ class AppRepository extends ChangeNotifier {
     required String ownerId,
     required String name,
     required String address,
+    required String city,
     required String description,
-    double? latitude,
-    double? longitude,
   }) async {
     final finalShopId = shopId ?? _uuid.v4();
     final newShop = Barbershop(
@@ -716,11 +874,10 @@ class AppRepository extends ChangeNotifier {
       name: name,
       description: description,
       address: address,
-      city: 'Downtown',
+      city: city,
       phone: '+1 555-0100',
       imageUrl: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800',
-      latitude: latitude ?? 40.7484,
-      longitude: longitude ?? -73.9857,
+      isVerified: true,
     );
 
     if (_useFirebase && _firestore != null) {
@@ -730,46 +887,6 @@ class AppRepository extends ChangeNotifier {
     _mockShops.add(newShop);
     notifyListeners();
     return finalShopId;
-  }
-
-  Future<void> updateShopLocation({
-    required String shopId,
-    required String address,
-    required double latitude,
-    required double longitude,
-  }) async {
-    final index = _mockShops.indexWhere((s) => s.id == shopId);
-    if (index != -1) {
-      final old = _mockShops[index];
-      final updated = Barbershop(
-        id: old.id,
-        ownerId: old.ownerId,
-        name: old.name,
-        description: old.description,
-        address: address,
-        city: old.city,
-        phone: old.phone,
-        imageUrl: old.imageUrl,
-        rating: old.rating,
-        reviewCount: old.reviewCount,
-        openingHour: old.openingHour,
-        closingHour: old.closingHour,
-        workingDays: old.workingDays,
-        isVerified: old.isVerified,
-        latitude: latitude,
-        longitude: longitude,
-      );
-      _mockShops[index] = updated;
-
-      if (_useFirebase && _firestore != null) {
-        await _firestore!.collection('barbershops').doc(shopId).update({
-          'address': address,
-          'latitude': latitude,
-          'longitude': longitude,
-        });
-      }
-      notifyListeners();
-    }
   }
 
   List<BarberWithShop> getAllBarbersWithShops() {
@@ -829,7 +946,7 @@ class AppRepository extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- Barbers ---
+  // --- Barbers & Staff ---
   List<Barber> getBarbersForShop(String shopId) {
     return _mockBarbers.where((b) => b.shopId == shopId).toList();
   }
@@ -838,10 +955,34 @@ class AppRepository extends ChangeNotifier {
     return List.unmodifiable(_mockBarbers);
   }
 
+  Barber? getBarberById(String barberId) {
+    try {
+      return _mockBarbers.firstWhere((b) => b.id == barberId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Barber? getBarberForCurrentUser() {
+    if (_currentUser == null) return null;
+    if (_currentUser!.barberId != null) {
+      return getBarberById(_currentUser!.barberId!);
+    }
+    // Fallback: match by email or name in barbers
+    try {
+      return _mockBarbers.firstWhere((b) => b.email == _currentUser!.email || b.name == _currentUser!.name);
+    } catch (_) {
+      return _mockBarbers.isNotEmpty ? _mockBarbers.first : null;
+    }
+  }
+
   Future<void> addBarber({
     required String shopId,
     required String name,
     required String title,
+    String? email,
+    String? phone,
+    List<String>? specialties,
     String? avatarUrl,
   }) async {
     final id = _uuid.v4();
@@ -850,6 +991,9 @@ class AppRepository extends ChangeNotifier {
       shopId: shopId,
       name: name,
       title: title,
+      email: email,
+      phone: phone,
+      specialties: specialties ?? const ['Skin Fade', 'Beard Trim'],
       avatarUrl: avatarUrl ?? 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
     );
 
@@ -858,6 +1002,20 @@ class AppRepository extends ChangeNotifier {
     }
 
     _mockBarbers.add(barber);
+
+    // Also provision a dedicated Barber login account in SaaS platform
+    final barberAccount = AppUser(
+      uid: _uuid.v4(),
+      email: email ?? 'barber.${name.toLowerCase().replaceAll(' ', '')}@crownblade.com',
+      name: name,
+      phone: phone,
+      role: UserRole.barber,
+      shopId: shopId,
+      barberId: id,
+      createdAt: DateTime.now(),
+    );
+    _mockUsers.add(barberAccount);
+
     notifyListeners();
   }
 
@@ -872,12 +1030,25 @@ class AppRepository extends ChangeNotifier {
     }
   }
 
+  Future<void> updateBarberAvailability(String barberId, bool isAvailable) async {
+    final index = _mockBarbers.indexWhere((b) => b.id == barberId);
+    if (index != -1) {
+      _mockBarbers[index] = _mockBarbers[index].copyWith(isAvailable: isAvailable);
+      notifyListeners();
+    }
+  }
+
   Future<void> deleteBarber(String barberId) async {
     _mockBarbers.removeWhere((b) => b.id == barberId);
+    _mockUsers.removeWhere((u) => u.barberId == barberId);
     notifyListeners();
   }
 
   // --- Bookings ---
+  List<Booking> getAllBookings() {
+    return List.unmodifiable(_mockBookings);
+  }
+
   List<Booking> getCustomerBookings(String customerId) {
     return _mockBookings.where((b) => b.customerId == customerId).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
@@ -885,6 +1056,11 @@ class AppRepository extends ChangeNotifier {
 
   List<Booking> getShopBookings(String shopId) {
     return _mockBookings.where((b) => b.shopId == shopId).toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  List<Booking> getBookingsForBarber(String barberId) {
+    return _mockBookings.where((b) => b.barberId == barberId).toList()
       ..sort((a, b) => b.date.compareTo(a.date));
   }
 
@@ -930,24 +1106,7 @@ class AppRepository extends ChangeNotifier {
   void updateBookingStatus(String bookingId, BookingStatus newStatus) {
     final index = _mockBookings.indexWhere((b) => b.id == bookingId);
     if (index != -1) {
-      final old = _mockBookings[index];
-      _mockBookings[index] = Booking(
-        id: old.id,
-        shopId: old.shopId,
-        shopName: old.shopName,
-        barberId: old.barberId,
-        barberName: old.barberName,
-        customerId: old.customerId,
-        customerName: old.customerName,
-        customerPhone: old.customerPhone,
-        serviceId: old.serviceId,
-        serviceName: old.serviceName,
-        price: old.price,
-        date: old.date,
-        timeSlot: old.timeSlot,
-        status: newStatus,
-        createdAt: old.createdAt,
-      );
+      _mockBookings[index] = _mockBookings[index].copyWith(status: newStatus);
 
       if (_useFirebase && _firestore != null) {
         _firestore!.collection('bookings').doc(bookingId).update({'status': newStatus.name});
@@ -955,6 +1114,50 @@ class AppRepository extends ChangeNotifier {
 
       notifyListeners();
     }
+  }
+
+  // --- Financial & SaaS Performance Metrics ---
+  double getPlatformTotalRevenue() {
+    return _mockBookings
+        .where((b) => b.status == BookingStatus.completed || b.status == BookingStatus.confirmed)
+        .fold(0.0, (total, b) => total + b.price);
+  }
+
+  double getShopRevenue(String shopId) {
+    return _mockBookings
+        .where((b) => b.shopId == shopId && (b.status == BookingStatus.completed || b.status == BookingStatus.confirmed))
+        .fold(0.0, (total, b) => total + b.price);
+  }
+
+  double getBarberTotalEarnings(String barberId) {
+    return _mockBookings
+        .where((b) => b.barberId == barberId && (b.status == BookingStatus.completed || b.status == BookingStatus.confirmed))
+        .fold(0.0, (total, b) => total + b.price);
+  }
+
+  int getBarberCompletedCutsCount(String barberId) {
+    return _mockBookings.where((b) => b.barberId == barberId && b.status == BookingStatus.completed).length;
+  }
+
+  // --- Favorites Management ---
+  bool isShopFavorite(String shopId) => _favoriteShopIds.contains(shopId);
+  void toggleFavoriteShop(String shopId) {
+    if (_favoriteShopIds.contains(shopId)) {
+      _favoriteShopIds.remove(shopId);
+    } else {
+      _favoriteShopIds.add(shopId);
+    }
+    notifyListeners();
+  }
+
+  bool isBarberFavorite(String barberId) => _favoriteBarberIds.contains(barberId);
+  void toggleFavoriteBarber(String barberId) {
+    if (_favoriteBarberIds.contains(barberId)) {
+      _favoriteBarberIds.remove(barberId);
+    } else {
+      _favoriteBarberIds.add(barberId);
+    }
+    notifyListeners();
   }
 }
 
@@ -967,4 +1170,3 @@ class BarberWithShop {
     required this.shop,
   });
 }
-

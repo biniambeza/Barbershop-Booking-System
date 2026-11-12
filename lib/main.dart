@@ -8,6 +8,7 @@ import 'features/auth/screens/auth_screen.dart';
 import 'features/customer/screens/customer_main_nav.dart';
 import 'features/shop_owner/screens/owner_dashboard_screen.dart';
 import 'features/admin/screens/admin_dashboard_screen.dart';
+import 'features/barber/screens/barber_dashboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -62,6 +63,10 @@ class RootGate extends StatelessWidget {
 
         if (user.role == UserRole.barbershopOwner) {
           return const OwnerDashboardScreen();
+        }
+
+        if (user.role == UserRole.barber) {
+          return const BarberDashboardScreen();
         }
 
         return const CustomerMainNav();

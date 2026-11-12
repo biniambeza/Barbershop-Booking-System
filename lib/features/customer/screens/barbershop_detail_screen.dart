@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../models/service_model.dart';
 import '../../../models/barber_model.dart';
 import '../../../services/app_repository.dart';
 import 'booking_flow_screen.dart';
-import 'nearby_map_screen.dart';
 
 class BarbershopDetailScreen extends StatefulWidget {
   final Barbershop shop;
@@ -27,21 +24,31 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
     final repo = AppRepository.instance;
     final services = repo.getServicesForShop(widget.shop.id);
     final barbers = repo.getBarbersForShop(widget.shop.id);
+    final isFav = repo.isShopFavorite(widget.shop.id);
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
           // Hero Cover App Bar
           SliverAppBar(
-            expandedHeight: 240,
+            expandedHeight: 220,
             pinned: true,
+            actions: [
+              IconButton(
+                icon: Icon(
+                  isFav ? Icons.favorite : Icons.favorite_border,
+                  color: isFav ? Colors.redAccent : Colors.white,
+                ),
+                onPressed: () => repo.toggleFavoriteShop(widget.shop.id),
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
                 widget.shop.name,
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  shadows: [Shadow(color: Colors.black, blurRadius: 10)],
+                  shadows: [Shadow(color: Colors.black, blurRadius: 6)],
                 ),
               ),
               background: Stack(
@@ -66,75 +73,52 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
             ),
           ),
 
-          // Shop Info Section
+          // Content
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Verification badge & Rating
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryGold,
-                          borderRadius: BorderRadius.circular(16),
+                      if (widget.shop.isVerified)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade800,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.verified, size: 12, color: Colors.white),
+                              SizedBox(width: 4),
+                              Text('VERIFIED PARTNER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
+                            ],
+                          ),
                         ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.star, size: 14, color: Colors.black),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${widget.shop.rating} (${widget.shop.reviewCount} reviews)',
-                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 12),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.darkCard,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.schedule, size: 14, color: AppTheme.primaryGold),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Open Today: ${widget.shop.openingHour}:00 AM - ${widget.shop.closingHour - 12}:00 PM',
-                              style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary),
-                            ),
-                          ],
-                        ),
+                      const Spacer(),
+                      const Icon(Icons.star, color: AppTheme.primaryGold, size: 18),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${widget.shop.rating.toStringAsFixed(1)} (${widget.shop.reviewCount} reviews)',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
+
+                  // Description
                   Text(
                     widget.shop.description,
                     style: const TextStyle(color: AppTheme.textSecondary, height: 1.4, fontSize: 14),
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on, size: 16, color: AppTheme.primaryGold),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          '${widget.shop.address}, ${widget.shop.city}',
-                          style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
-                        ),
-                      ),
-                    ],
-                  ),
                   const SizedBox(height: 16),
 
-                  // Location & Map Section
+                  // Location & Contact Card (No Map needed!)
                   Container(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: AppTheme.darkCard,
                       borderRadius: BorderRadius.circular(16),
@@ -143,107 +127,58 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        const Row(
                           children: [
-                            const Row(
-                              children: [
-                                Icon(Icons.location_on, color: AppTheme.primaryGold, size: 18),
-                                SizedBox(width: 6),
-                                Text(
-                                  'Location & Directions',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.textPrimary,
-                                  ),
-                                ),
-                              ],
-                            ),
+                            Icon(Icons.location_on, color: AppTheme.primaryGold, size: 18),
+                            SizedBox(width: 6),
                             Text(
-                              widget.shop.formattedDistanceFrom(const LatLng(40.7484, -73.9857)),
-                              style: const TextStyle(
-                                color: AppTheme.primaryGold,
-                                fontSize: 12,
+                              'Location & Hours',
+                              style: TextStyle(
+                                fontSize: 15,
                                 fontWeight: FontWeight.bold,
+                                color: AppTheme.textPrimary,
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 10),
-                        // Mini Map Preview
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: SizedBox(
-                            height: 150,
-                            width: double.infinity,
-                            child: Stack(
-                              children: [
-                                FlutterMap(
-                                  options: MapOptions(
-                                    initialCenter: widget.shop.coordinates,
-                                    initialZoom: 14.5,
-                                    interactionOptions: const InteractionOptions(
-                                      flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag,
-                                    ),
-                                  ),
-                                  children: [
-                                    TileLayer(
-                                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                      userAgentPackageName: 'com.barbershop.barbershop_booking',
-                                    ),
-                                    MarkerLayer(
-                                      markers: [
-                                        Marker(
-                                          point: widget.shop.coordinates,
-                                          width: 44,
-                                          height: 44,
-                                          child: Container(
-                                            decoration: BoxDecoration(
-                                              color: AppTheme.primaryGold,
-                                              shape: BoxShape.circle,
-                                              border: Border.all(color: Colors.white, width: 2),
-                                              boxShadow: const [
-                                                BoxShadow(color: Colors.black54, blurRadius: 6),
-                                              ],
-                                            ),
-                                            child: const Icon(Icons.content_cut, color: Colors.black, size: 22),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                                Positioned(
-                                  bottom: 8,
-                                  right: 8,
-                                  child: ElevatedButton.icon(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.black.withValues(alpha: 0.85),
-                                      foregroundColor: AppTheme.primaryGold,
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                      minimumSize: Size.zero,
-                                      side: const BorderSide(color: AppTheme.primaryGold, width: 1),
-                                    ),
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => NearbyMapScreen(
-                                            initialSelectedShopId: widget.shop.id,
-                                            showBackButton: true,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    icon: const Icon(Icons.fullscreen, size: 16),
-                                    label: const Text('Open Full Map', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                  ),
-                                ),
-                              ],
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.storefront, size: 15, color: AppTheme.textSecondary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                widget.shop.fullAddress,
+                                style: const TextStyle(fontSize: 13.5, color: Colors.white, fontWeight: FontWeight.w600),
+                              ),
                             ),
-                          ),
+                          ],
                         ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.schedule, size: 15, color: AppTheme.textSecondary),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${widget.shop.openingHour}:00 AM - ${widget.shop.closingHour - 12}:00 PM (Mon - Sun)',
+                              style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                            ),
+                          ],
+                        ),
+                        if (widget.shop.phone.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const Icon(Icons.phone, size: 15, color: AppTheme.textSecondary),
+                              const SizedBox(width: 8),
+                              Text(
+                                widget.shop.phone,
+                                style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),

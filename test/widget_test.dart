@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:latlong2/latlong.dart' hide Path;
 import 'package:barbershop_booking/main.dart';
 import 'package:barbershop_booking/models/barbershop_model.dart';
 import 'package:barbershop_booking/services/app_repository.dart';
@@ -10,7 +9,7 @@ void main() {
     expect(find.byType(BarbershopApp), findsOneWidget);
   });
 
-  test('Barbershop coordinates and distance calculation', () {
+  test('Barbershop location and address formatting', () {
     final shop = Barbershop(
       id: 'test_shop',
       ownerId: 'owner_1',
@@ -20,29 +19,24 @@ void main() {
       city: 'New York, NY',
       phone: '555-1234',
       imageUrl: 'https://example.com/shop.jpg',
-      latitude: 40.7527,
-      longitude: -73.9772,
     );
 
-    const userLoc = LatLng(40.7484, -73.9857);
-    final distanceKm = shop.distanceInKmFrom(userLoc);
-    expect(distanceKm, greaterThan(0));
-    expect(distanceKm, lessThan(5.0));
-
-    final formatted = shop.formattedDistanceFrom(userLoc);
-    expect(formatted.contains('away'), isTrue);
+    expect(shop.fullAddress, '100 Main St, New York, NY');
+    expect(shop.isOpenNow(), isA<bool>());
   });
 
-  test('AppRepository contains demo shops with coordinates', () {
+  test('AppRepository contains demo shops and multi-tenant SaaS data', () {
     final repo = AppRepository.instance;
     final shops = repo.getShops();
     expect(shops.length, greaterThanOrEqualTo(5));
 
     for (final shop in shops) {
-      expect(shop.latitude, isNotNull);
-      expect(shop.longitude, isNotNull);
-      expect(shop.coordinates.latitude, equals(shop.latitude));
-      expect(shop.coordinates.longitude, equals(shop.longitude));
+      expect(shop.name.isNotEmpty, true);
+      expect(shop.address.isNotEmpty, true);
+      expect(shop.city.isNotEmpty, true);
     }
+
+    final barbers = repo.getAllBarbers();
+    expect(barbers.isNotEmpty, true);
   });
 }

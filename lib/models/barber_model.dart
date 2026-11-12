@@ -7,6 +7,9 @@ class Barber {
   final double rating;
   final int reviewCount;
   final bool isAvailable;
+  final String? email;
+  final String? phone;
+  final List<String> specialties;
 
   Barber({
     required this.id,
@@ -17,6 +20,9 @@ class Barber {
     this.rating = 5.0,
     this.reviewCount = 0,
     this.isAvailable = true,
+    this.email,
+    this.phone,
+    this.specialties = const ['Skin Fade', 'Beard Trim', 'Scissor Cut'],
   });
 
   Map<String, dynamic> toMap() {
@@ -28,6 +34,9 @@ class Barber {
       'rating': rating,
       'reviewCount': reviewCount,
       'isAvailable': isAvailable,
+      'email': email,
+      'phone': phone,
+      'specialties': specialties,
     };
   }
 
@@ -40,6 +49,9 @@ class Barber {
     double? rating,
     int? reviewCount,
     bool? isAvailable,
+    String? email,
+    String? phone,
+    List<String>? specialties,
   }) {
     return Barber(
       id: id ?? this.id,
@@ -50,6 +62,9 @@ class Barber {
       rating: rating ?? this.rating,
       reviewCount: reviewCount ?? this.reviewCount,
       isAvailable: isAvailable ?? this.isAvailable,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      specialties: specialties ?? this.specialties,
     );
   }
 
@@ -63,6 +78,10 @@ class Barber {
       rating: (map['rating'] as num?)?.toDouble() ?? 5.0,
       reviewCount: (map['reviewCount'] as num?)?.toInt() ?? 0,
       isAvailable: map['isAvailable'] ?? true,
+      email: map['email'],
+      phone: map['phone'],
+      specialties: (map['specialties'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
+          const ['Skin Fade', 'Beard Trim'],
     );
   }
 }

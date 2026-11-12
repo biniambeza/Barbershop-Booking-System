@@ -47,6 +47,9 @@ class CustomerBookingsScreen extends StatelessWidget {
       case BookingStatus.confirmed:
         statusColor = Colors.green;
         break;
+      case BookingStatus.inProgress:
+        statusColor = Colors.orangeAccent;
+        break;
       case BookingStatus.pending:
         statusColor = Colors.orange;
         break;

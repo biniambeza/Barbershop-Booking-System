@@ -1,6 +1,7 @@
 enum BookingStatus {
   pending,
   confirmed,
+  inProgress,
   completed,
   cancelled;
 
@@ -8,12 +9,29 @@ enum BookingStatus {
     switch (status) {
       case 'confirmed':
         return BookingStatus.confirmed;
+      case 'inProgress':
+        return BookingStatus.inProgress;
       case 'completed':
         return BookingStatus.completed;
       case 'cancelled':
         return BookingStatus.cancelled;
       default:
         return BookingStatus.pending;
+    }
+  }
+
+  String get displayName {
+    switch (this) {
+      case BookingStatus.pending:
+        return 'Pending';
+      case BookingStatus.confirmed:
+        return 'Confirmed';
+      case BookingStatus.inProgress:
+        return 'In Progress';
+      case BookingStatus.completed:
+        return 'Completed';
+      case BookingStatus.cancelled:
+        return 'Cancelled';
     }
   }
 }
@@ -52,6 +70,42 @@ class Booking {
     this.status = BookingStatus.confirmed,
     required this.createdAt,
   });
+
+  Booking copyWith({
+    String? id,
+    String? shopId,
+    String? shopName,
+    String? barberId,
+    String? barberName,
+    String? customerId,
+    String? customerName,
+    String? customerPhone,
+    String? serviceId,
+    String? serviceName,
+    double? price,
+    DateTime? date,
+    String? timeSlot,
+    BookingStatus? status,
+    DateTime? createdAt,
+  }) {
+    return Booking(
+      id: id ?? this.id,
+      shopId: shopId ?? this.shopId,
+      shopName: shopName ?? this.shopName,
+      barberId: barberId ?? this.barberId,
+      barberName: barberName ?? this.barberName,
+      customerId: customerId ?? this.customerId,
+      customerName: customerName ?? this.customerName,
+      customerPhone: customerPhone ?? this.customerPhone,
+      serviceId: serviceId ?? this.serviceId,
+      serviceName: serviceName ?? this.serviceName,
+      price: price ?? this.price,
+      date: date ?? this.date,
+      timeSlot: timeSlot ?? this.timeSlot,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
 
   Map<String, dynamic> toMap() {
     return {

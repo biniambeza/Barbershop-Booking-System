@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/user_model.dart';
 import '../../../services/app_repository.dart';
-import '../../common/screens/location_picker_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -16,13 +15,18 @@ class _AuthScreenState extends State<AuthScreen> {
   UserRole _selectedRole = UserRole.customer;
 
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController(text: 'John Doe');
-  final _emailController = TextEditingController(text: 'barber@example.com');
+  final _nameController = TextEditingController(text: 'Alex Johnson');
+  final _emailController = TextEditingController(text: 'alex@example.com');
   final _passwordController = TextEditingController(text: 'password123');
+
+  // Shop Owner fields
   final _shopNameController = TextEditingController(text: 'Crown & Razor Lounge');
-  final _shopAddressController = TextEditingController(text: '350 5th Ave, New York, NY');
-  double _shopLatitude = 40.7484;
-  double _shopLongitude = -73.9857;
+  final _shopAddressController = TextEditingController(text: '350 5th Ave');
+  final _shopCityController = TextEditingController(text: 'New York, NY');
+
+  // Barber fields
+  final _barberTitleController = TextEditingController(text: 'Master Barber / Fade Specialist');
+  String? _selectedAssignedShopId;
 
   bool _isLoading = false;
 
@@ -33,6 +37,8 @@ class _AuthScreenState extends State<AuthScreen> {
     _passwordController.dispose();
     _shopNameController.dispose();
     _shopAddressController.dispose();
+    _shopCityController.dispose();
+    _barberTitleController.dispose();
     super.dispose();
   }
 
@@ -49,8 +55,9 @@ class _AuthScreenState extends State<AuthScreen> {
           role: _selectedRole,
           shopName: _selectedRole == UserRole.barbershopOwner ? _shopNameController.text.trim() : null,
           shopAddress: _selectedRole == UserRole.barbershopOwner ? _shopAddressController.text.trim() : null,
-          latitude: _selectedRole == UserRole.barbershopOwner ? _shopLatitude : null,
-          longitude: _selectedRole == UserRole.barbershopOwner ? _shopLongitude : null,
+          shopCity: _selectedRole == UserRole.barbershopOwner ? _shopCityController.text.trim() : null,
+          assignedShopId: _selectedRole == UserRole.barber ? _selectedAssignedShopId : null,
+          barberTitle: _selectedRole == UserRole.barber ? _barberTitleController.text.trim() : null,
         );
       } else {
         await AppRepository.instance.signIn(
@@ -73,6 +80,9 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final repo = AppRepository.instance;
+    final allShops = repo.getShops();
+
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -86,7 +96,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 children: [
                   const Icon(
                     Icons.content_cut_rounded,
-                    size: 64,
+                    size: 58,
                     color: AppTheme.primaryGold,
                   ),
                   const SizedBox(height: 12),
@@ -101,12 +111,14 @@ class _AuthScreenState extends State<AuthScreen> {
                   const SizedBox(height: 4),
                   Text(
                     _isSignUp
-                        ? 'Join the premier barbershop network'
-                        : 'Sign in to access your appointments & shop',
+                        ? 'Multi-Tenant Barbershop SaaS Platform'
+                        : 'Sign in to access your role workspace',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.textSecondary,
+                        ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
 
                   // Mode Toggle
                   Container(
@@ -119,7 +131,10 @@ class _AuthScreenState extends State<AuthScreen> {
                       children: [
                         Expanded(
                           child: InkWell(
-                            onTap: () => setState(() => _isSignUp = false),
+                            onTap: () => setState(() {
+                              _isSignUp = false;
+                              _emailController.text = 'alex@example.com';
+                            }),
                             borderRadius: BorderRadius.circular(10),
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 10),
@@ -140,7 +155,11 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                         Expanded(
                           child: InkWell(
-                            onTap: () => setState(() => _isSignUp = true),
+                            onTap: () => setState(() {
+                              _isSignUp = true;
+                              _nameController.text = 'Jordan Lee';
+                              _emailController.text = 'jordan@example.com';
+                            }),
                             borderRadius: BorderRadius.circular(10),
                             child: Container(
                               padding: const EdgeInsets.symmetric(vertical: 10),
@@ -167,16 +186,19 @@ class _AuthScreenState extends State<AuthScreen> {
                   // Role Selection (on sign up)
                   if (_isSignUp) ...[
                     Text(
-                      'I want to register as:',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+                      'I want to join as:',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textPrimary,
+                          ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         Expanded(
                           child: ChoiceChip(
                             label: const Center(
-                              child: Text('Customer', style: TextStyle(fontWeight: FontWeight.bold)),
+                              child: Text('Customer', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                             ),
                             selected: _selectedRole == UserRole.customer,
                             selectedColor: AppTheme.primaryGold,
@@ -185,11 +207,24 @@ class _AuthScreenState extends State<AuthScreen> {
                             },
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 6),
                         Expanded(
                           child: ChoiceChip(
                             label: const Center(
-                              child: Text('Shop Owner', style: TextStyle(fontWeight: FontWeight.bold)),
+                              child: Text('Barber', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
+                            selected: _selectedRole == UserRole.barber,
+                            selectedColor: AppTheme.primaryGold,
+                            onSelected: (val) {
+                              if (val) setState(() => _selectedRole = UserRole.barber);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: ChoiceChip(
+                            label: const Center(
+                              child: Text('Shop Owner', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                             ),
                             selected: _selectedRole == UserRole.barbershopOwner,
                             selectedColor: AppTheme.primaryGold,
@@ -237,6 +272,35 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                   const SizedBox(height: 12),
 
+                  // Additional fields for Staff Barber
+                  if (_isSignUp && _selectedRole == UserRole.barber) ...[
+                    TextFormField(
+                      controller: _barberTitleController,
+                      decoration: const InputDecoration(
+                        labelText: 'Professional Title',
+                        prefixIcon: Icon(Icons.badge_outlined),
+                        hintText: 'e.g. Master Fade Specialist',
+                      ),
+                      validator: (v) => v == null || v.isEmpty ? 'Enter your barber title' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: _selectedAssignedShopId ?? (allShops.isNotEmpty ? allShops.first.id : null),
+                      decoration: const InputDecoration(
+                        labelText: 'Assigned Barbershop',
+                        prefixIcon: Icon(Icons.storefront_outlined),
+                      ),
+                      items: allShops.map((shop) {
+                        return DropdownMenuItem(
+                          value: shop.id,
+                          child: Text('${shop.name} (${shop.city})'),
+                        );
+                      }).toList(),
+                      onChanged: (val) => setState(() => _selectedAssignedShopId = val),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+
                   // Additional fields for Barbershop Owner
                   if (_isSignUp && _selectedRole == UserRole.barbershopOwner) ...[
                     TextFormField(
@@ -251,88 +315,24 @@ class _AuthScreenState extends State<AuthScreen> {
                     TextFormField(
                       controller: _shopAddressController,
                       decoration: const InputDecoration(
-                        labelText: 'Shop Street Address',
+                        labelText: 'Street Address',
                         prefixIcon: Icon(Icons.location_on_outlined),
                       ),
                       validator: (v) => v == null || v.isEmpty ? 'Enter shop address' : null,
                     ),
-                    const SizedBox(height: 10),
-                    // Pick location on map card
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.darkCard,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _shopCityController,
+                      decoration: const InputDecoration(
+                        labelText: 'City & State',
+                        prefixIcon: Icon(Icons.location_city_outlined),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Row(
-                                children: [
-                                  Icon(Icons.map, color: AppTheme.primaryGold, size: 16),
-                                  SizedBox(width: 6),
-                                  Text(
-                                    'Pin Shop on Map',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary),
-                                  ),
-                                ],
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryGold.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  '${_shopLatitude.toStringAsFixed(3)}, ${_shopLongitude.toStringAsFixed(3)}',
-                                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: AppTheme.primaryGold),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 36,
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 10),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              ),
-                              onPressed: () async {
-                                final result = await Navigator.push<LocationPickerResult>(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => LocationPickerScreen(
-                                      initialLatitude: _shopLatitude,
-                                      initialLongitude: _shopLongitude,
-                                      initialAddress: _shopAddressController.text,
-                                    ),
-                                  ),
-                                );
-                                if (result != null) {
-                                  setState(() {
-                                    _shopLatitude = result.latitude;
-                                    _shopLongitude = result.longitude;
-                                    _shopAddressController.text = result.address;
-                                  });
-                                }
-                              },
-                              icon: const Icon(Icons.pin_drop, size: 15),
-                              label: const Text('Pick Location on Map', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                            ),
-                          ),
-                        ],
-                      ),
+                      validator: (v) => v == null || v.isEmpty ? 'Enter city & state' : null,
                     ),
                     const SizedBox(height: 12),
                   ],
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
                   ElevatedButton(
                     onPressed: _isLoading ? null : _submit,
                     child: _isLoading
@@ -345,7 +345,9 @@ class _AuthScreenState extends State<AuthScreen> {
                             _isSignUp
                                 ? (_selectedRole == UserRole.barbershopOwner
                                     ? 'Register My Barbershop'
-                                    : 'Create Customer Account')
+                                    : (_selectedRole == UserRole.barber
+                                        ? 'Register as Barber'
+                                        : 'Create Customer Account'))
                                 : 'Sign In',
                           ),
                   ),
@@ -356,71 +358,65 @@ class _AuthScreenState extends State<AuthScreen> {
                       Expanded(child: Divider(color: Colors.white12)),
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 10),
-                        child: Text('ONE-TAP ROLE DEMO ACCESS', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary, letterSpacing: 1, fontWeight: FontWeight.bold)),
+                        child: Text(
+                          'ONE-TAP ROLE DEMO ACCESS',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.textSecondary,
+                            letterSpacing: 1,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                       Expanded(child: Divider(color: Colors.white12)),
                     ],
                   ),
                   const SizedBox(height: 14),
+
+                  // 4 Roles Grid
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                            side: BorderSide(color: Colors.purpleAccent.withValues(alpha: 0.5)),
-                          ),
-                          onPressed: () {
-                            AppRepository.instance.switchRole(UserRole.admin);
-                          },
-                          child: const Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.admin_panel_settings, size: 20, color: Colors.purpleAccent),
-                              SizedBox(height: 4),
-                              Text('Admin', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
-                            ],
-                          ),
+                        child: _buildPersonaButton(
+                          roleName: 'Admin',
+                          subtitle: 'SaaS Platform',
+                          icon: Icons.admin_panel_settings,
+                          color: Colors.purpleAccent,
+                          onTap: () => repo.switchRole(UserRole.admin),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                            side: BorderSide(color: AppTheme.primaryGold.withValues(alpha: 0.5)),
-                          ),
-                          onPressed: () {
-                            AppRepository.instance.switchRole(UserRole.barbershopOwner);
-                          },
-                          child: const Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.storefront, size: 20, color: AppTheme.primaryGold),
-                              SizedBox(height: 4),
-                              Text('Shop Owner', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
-                            ],
-                          ),
+                        child: _buildPersonaButton(
+                          roleName: 'Shop Owner',
+                          subtitle: "Gentleman's Quarter",
+                          icon: Icons.storefront,
+                          color: AppTheme.primaryGold,
+                          onTap: () => repo.switchRole(UserRole.barbershopOwner),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildPersonaButton(
+                          roleName: 'Barber',
+                          subtitle: 'Marcus Vance',
+                          icon: Icons.content_cut,
+                          color: Colors.tealAccent,
+                          onTap: () => repo.switchRole(UserRole.barber),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                            side: BorderSide(color: Colors.lightBlueAccent.withValues(alpha: 0.5)),
-                          ),
-                          onPressed: () {
-                            AppRepository.instance.switchRole(UserRole.customer);
-                          },
-                          child: const Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.person, size: 20, color: Colors.lightBlueAccent),
-                              SizedBox(height: 4),
-                              Text('Customer', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
-                            ],
-                          ),
+                        child: _buildPersonaButton(
+                          roleName: 'Customer',
+                          subtitle: 'Alex Johnson',
+                          icon: Icons.person,
+                          color: Colors.lightBlueAccent,
+                          onTap: () => repo.switchRole(UserRole.customer),
                         ),
                       ),
                     ],
@@ -430,6 +426,41 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPersonaButton({
+    required String roleName,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        side: BorderSide(color: color.withValues(alpha: 0.5)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      onPressed: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 22, color: color),
+          const SizedBox(height: 4),
+          Text(
+            roleName,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }

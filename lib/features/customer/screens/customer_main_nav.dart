@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import 'customer_home_screen.dart';
-import 'nearby_map_screen.dart';
+import 'find_barbers_screen.dart';
 import 'customer_bookings_screen.dart';
 
 class CustomerMainNav extends StatefulWidget {
@@ -14,15 +14,15 @@ class CustomerMainNav extends StatefulWidget {
 class _CustomerMainNavState extends State<CustomerMainNav> {
   int _currentIndex = 0;
 
-  void _navigateToMap() {
+  void _navigateToBarbers() {
     setState(() => _currentIndex = 1);
   }
 
   @override
   Widget build(BuildContext context) {
     final screens = [
-      CustomerHomeScreen(onOpenMap: _navigateToMap),
-      const NearbyMapScreen(),
+      CustomerHomeScreen(onOpenBarbers: _navigateToBarbers),
+      const FindBarbersScreen(),
       const CustomerBookingsScreen(),
     ];
 
@@ -43,9 +43,9 @@ class _CustomerMainNavState extends State<CustomerMainNav> {
             label: 'Barbershops',
           ),
           NavigationDestination(
-            icon: Icon(Icons.map_outlined),
-            selectedIcon: Icon(Icons.map, color: Colors.black),
-            label: 'Nearby Map',
+            icon: Icon(Icons.content_cut_outlined),
+            selectedIcon: Icon(Icons.content_cut, color: Colors.black),
+            label: 'Find Barbers',
           ),
           NavigationDestination(
             icon: Icon(Icons.calendar_month_outlined),

@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:barbershop_booking/core/theme/app_theme.dart';
@@ -6,7 +9,75 @@ import 'package:barbershop_booking/services/app_repository.dart';
 import 'package:barbershop_booking/features/admin/screens/admin_dashboard_screen.dart';
 import 'package:barbershop_booking/features/shop_owner/screens/customize_shop_screen.dart';
 
+class _TestHttpClientResponse extends Fake implements HttpClientResponse {
+  static final _transparentImage = base64Decode(
+    'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+  );
+
+  @override
+  int get statusCode => 200;
+  @override
+  int get contentLength => _transparentImage.length;
+  @override
+  HttpClientResponseCompressionState get compressionState =>
+      HttpClientResponseCompressionState.notCompressed;
+
+  @override
+  StreamSubscription<List<int>> listen(
+    void Function(List<int> event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    return Stream<List<int>>.value(_transparentImage).listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
+  }
+}
+
+class _TestHttpClientRequest extends Fake implements HttpClientRequest {
+  @override
+  final HttpHeaders headers = _TestHttpHeaders();
+
+  @override
+  Future<HttpClientResponse> close() async => _TestHttpClientResponse();
+}
+
+class _TestHttpHeaders extends Fake implements HttpHeaders {
+  @override
+  void add(String name, Object value, {bool preserveHeaderCase = false}) {}
+  @override
+  void set(String name, Object value, {bool preserveHeaderCase = false}) {}
+}
+
+class _TestHttpClient extends Fake implements HttpClient {
+  @override
+  bool autoUncompress = true;
+  @override
+  Duration? connectionTimeout;
+  @override
+  Duration idleTimeout = const Duration(seconds: 15);
+  @override
+  int? maxConnectionsPerHost;
+  @override
+  String? userAgent;
+
+  @override
+  Future<HttpClientRequest> getUrl(Uri url) async => _TestHttpClientRequest();
+}
+
+class _TestHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) => _TestHttpClient();
+}
+
 void main() {
+  setUpAll(() {
+    HttpOverrides.global = _TestHttpOverrides();
+  });
   test('Admin registers a new Barbershop and provisions Owner account', () async {
     final repo = AppRepository.instance;
     final initialCount = repo.getShops().length;
@@ -18,8 +89,6 @@ void main() {
       ownerPhone: '+1 212-555-9988',
       address: '500 W 33rd St',
       city: 'New York, NY',
-      latitude: 40.7538,
-      longitude: -74.0022,
       description: 'Ultra-modern cuts and beard grooming in Hudson Yards.',
       imageUrl: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800',
       openingHour: 8,
@@ -33,8 +102,8 @@ void main() {
     final shop = repo.getShopById(newShopId);
     expect(shop, isNotNull);
     expect(shop!.name, 'Hudson Yards Fade Lounge');
-    expect(shop.latitude, 40.7538);
-    expect(shop.longitude, -74.0022);
+    expect(shop.address, '500 W 33rd St');
+    expect(shop.city, 'New York, NY');
     expect(shop.isVerified, true);
 
     // Verify owner account was created and linked to shopId
@@ -118,9 +187,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Register New Barbershop'), findsOneWidget);
-    expect(find.text('1. Barbershop Business Info'), findsOneWidget);
-    expect(find.text('2. Barbershop Owner Credentials'), findsOneWidget);
-    expect(find.text('3. Location & Map Pin'), findsOneWidget);
+    expect(find.text('1. Shop Profile & Branding'), findsOneWidget);
+    expect(find.text('2. Barbershop Owner Account'), findsOneWidget);
+    expect(find.text('3. Physical Location'), findsOneWidget);
   });
 
   testWidgets('Test CustomizeShopScreen rendering for owner', (tester) async {
@@ -135,9 +204,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Customize Barbershop App'), findsOneWidget);
-    expect(find.text('Shop Branding & Profile'), findsOneWidget);
-    expect(find.text('Location & Pinned Map Coordinates'), findsOneWidget);
-    expect(find.text('Save & Publish Customization'), findsOneWidget);
+    expect(find.text('Customize My Barbershop'), findsOneWidget);
+    expect(find.text('Barbershop Branding & Info'), findsOneWidget);
+    expect(find.text('Physical Location & Address'), findsOneWidget);
+    expect(find.text('Publish Shop Customizations'), findsOneWidget);
   });
 }
