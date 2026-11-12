@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/user_model.dart';
 import '../../../models/booking_model.dart';
@@ -142,7 +143,8 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
               ],
             ),
             actions: [
-              TextButton.icon(
+              if (kDemoMode)
+                TextButton.icon(
                 style: TextButton.styleFrom(
                   backgroundColor: Colors.tealAccent.withValues(alpha: 0.15),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),

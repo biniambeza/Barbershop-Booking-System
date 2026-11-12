@@ -13,8 +13,6 @@ class Barbershop {
   final int closingHour; // e.g. 20 for 20:00
   final List<int> workingDays; // 1 = Mon ... 7 = Sun
   final bool isVerified;
-  final double latitude;
-  final double longitude;
 
   Barbershop({
     required this.id,
@@ -31,8 +29,6 @@ class Barbershop {
     this.closingHour = 20,
     this.workingDays = const [1, 2, 3, 4, 5, 6, 7],
     this.isVerified = false,
-    this.latitude = 40.7527,
-    this.longitude = -73.9772,
   });
 
   String get fullAddress => '$address, $city';
@@ -59,8 +55,6 @@ class Barbershop {
       'closingHour': closingHour,
       'workingDays': workingDays,
       'isVerified': isVerified,
-      'latitude': latitude,
-      'longitude': longitude,
     };
   }
 
@@ -79,8 +73,6 @@ class Barbershop {
     int? closingHour,
     List<int>? workingDays,
     bool? isVerified,
-    double? latitude,
-    double? longitude,
   }) {
     return Barbershop(
       id: id ?? this.id,
@@ -97,8 +89,6 @@ class Barbershop {
       closingHour: closingHour ?? this.closingHour,
       workingDays: workingDays ?? this.workingDays,
       isVerified: isVerified ?? this.isVerified,
-      latitude: latitude ?? this.latitude,
-      longitude: longitude ?? this.longitude,
     );
   }
 
@@ -118,8 +108,6 @@ class Barbershop {
       closingHour: (map['closingHour'] as num?)?.toInt() ?? 20,
       workingDays: List<int>.from(map['workingDays'] ?? [1, 2, 3, 4, 5, 6, 7]),
       isVerified: map['isVerified'] ?? false,
-      latitude: (map['latitude'] as num?)?.toDouble() ?? 40.7527,
-      longitude: (map['longitude'] as num?)?.toDouble() ?? -73.9772,
     );
   }
 }

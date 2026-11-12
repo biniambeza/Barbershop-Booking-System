@@ -1,12 +1,29 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:uuid/uuid.dart';
+import '../core/config/app_config.dart';
+import '../core/utils/phone_utils.dart';
 import '../models/user_model.dart';
 import '../models/barbershop_model.dart';
 import '../models/service_model.dart';
 import '../models/barber_model.dart';
 import '../models/booking_model.dart';
+import '../models/invite_model.dart';
+import 'phone_auth_service.dart';
+
+/// Where the signed-in session currently stands.
+enum AuthStatus {
+  /// Checking Firebase for an existing session / loading the user's profile.
+  initializing,
+  signedOut,
+
+  /// Phone verified, but no `users/{uid}` profile yet (first sign-in).
+  needsProfile,
+  signedIn,
+}
 
 class AppRepository extends ChangeNotifier {
   static final AppRepository instance = AppRepository._internal();
@@ -15,32 +32,62 @@ class AppRepository extends ChangeNotifier {
   }
 
   final _uuid = const Uuid();
-  bool _useFirebase = false;
 
-  FirebaseAuth? get _auth {
-    try {
-      return FirebaseAuth.instance;
-    } catch (_) {
-      return null;
-    }
+  // --- Firebase wiring ---
+  // When Firebase is attached (production), sign-in uses real SMS OTP and the
+  // user's role comes from their `users/{uid}` document. When it is not
+  // attached (demo builds and tests), sign-in runs locally against demo data.
+  bool _firebaseReady = false;
+  PhoneAuthService? _phoneAuth;
+  StreamSubscription<User?>? _authSub;
+
+  bool get isFirebaseAttached => _firebaseReady;
+  FirebaseFirestore get _db => FirebaseFirestore.instance;
+
+  /// True when writes should also go to Firestore.
+  bool get _cloudEnabled => _firebaseReady && FirebaseAuth.instance.currentUser != null;
+
+  /// Connects the repository to Firebase Auth. Call once after
+  /// `Firebase.initializeApp` succeeds.
+  void attachFirebase() {
+    if (_firebaseReady) return;
+    _firebaseReady = true;
+    _phoneAuth = PhoneAuthService(FirebaseAuth.instance);
+    _currentUser = null;
+    _authStatus = AuthStatus.initializing;
+    _authSub = FirebaseAuth.instance.authStateChanges().listen(_onFirebaseAuthChanged);
   }
 
-  FirebaseFirestore? get _firestore {
-    try {
-      return FirebaseFirestore.instance;
-    } catch (_) {
-      return null;
-    }
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
   }
 
   AppUser? _currentUser;
   AppUser? get currentUser => _currentUser;
+
+  AuthStatus _authStatus = AuthStatus.signedOut;
+  AuthStatus get authStatus => _authStatus;
+
+  /// The phone number being verified / just verified (E.164).
+  String? _pendingPhone;
+  String? get pendingPhone => _pendingPhone;
+
+  /// Invite matching the verified phone number, shown on profile setup.
+  UserInvite? _pendingInvite;
+  UserInvite? get pendingInvite => _pendingInvite;
+
+  /// Last session-level error (e.g. profile could not be loaded).
+  String? _authError;
+  String? get authError => _authError;
 
   final List<AppUser> _mockUsers = [];
   final List<Barbershop> _mockShops = [];
   final List<BarbershopService> _mockServices = [];
   final List<Barber> _mockBarbers = [];
   final List<Booking> _mockBookings = [];
+  final Map<String, UserInvite> _mockInvites = {};
 
   final Set<String> _favoriteShopIds = {'shop_1'};
   final Set<String> _favoriteBarberIds = {'barber_1'};
@@ -51,7 +98,7 @@ class AppRepository extends ChangeNotifier {
       uid: 'user_admin_1',
       email: 'admin@crownblade.com',
       name: 'System Platform Admin',
-      phone: '+1 212-555-0001',
+      phone: '+251911000001',
       role: UserRole.admin,
       createdAt: DateTime.now().subtract(const Duration(days: 90)),
     );
@@ -62,7 +109,7 @@ class AppRepository extends ChangeNotifier {
       uid: 'owner_1',
       email: 'marcus@royalcuts.com',
       name: 'Marcus Vance (Owner)',
-      phone: '+1 212-555-8901',
+      phone: '+251911000101',
       role: UserRole.barbershopOwner,
       shopId: 'shop_1',
       createdAt: DateTime.now().subtract(const Duration(days: 60)),
@@ -74,7 +121,7 @@ class AppRepository extends ChangeNotifier {
       uid: 'barber_user_1',
       email: 'marcus.barber@gentlemansquarter.com',
       name: 'Marcus Vance',
-      phone: '+1 212-555-8901',
+      phone: '+251911000201',
       role: UserRole.barber,
       shopId: 'shop_1',
       barberId: 'barber_1',
@@ -84,7 +131,7 @@ class AppRepository extends ChangeNotifier {
       uid: 'barber_user_2',
       email: 'david.barber@gentlemansquarter.com',
       name: 'David Rossi',
-      phone: '+1 212-555-3344',
+      phone: '+251911000202',
       role: UserRole.barber,
       shopId: 'shop_1',
       barberId: 'barber_2',
@@ -97,12 +144,11 @@ class AppRepository extends ChangeNotifier {
       uid: 'user_cust_1',
       email: 'alex@example.com',
       name: 'Alex Johnson',
-      phone: '+1 555-0199',
+      phone: '+251911000301',
       role: UserRole.customer,
       createdAt: DateTime.now().subtract(const Duration(days: 30)),
     );
     _mockUsers.add(custUser);
-    _currentUser = custUser;
 
     // Additional Owners for multi-tenant network
     _mockUsers.addAll([
@@ -110,7 +156,7 @@ class AppRepository extends ChangeNotifier {
         uid: 'owner_2',
         email: 'leo@classicblade.com',
         name: 'Leo Thorne',
-        phone: '+1 718-555-4321',
+        phone: '+251911000102',
         role: UserRole.barbershopOwner,
         shopId: 'shop_2',
         createdAt: DateTime.now().subtract(const Duration(days: 50)),
@@ -119,7 +165,7 @@ class AppRepository extends ChangeNotifier {
         uid: 'owner_3',
         email: 'julian@empirebarber.com',
         name: 'Julian Hayes',
-        phone: '+1 212-555-1212',
+        phone: '+251911000103',
         role: UserRole.barbershopOwner,
         shopId: 'shop_3',
         createdAt: DateTime.now().subtract(const Duration(days: 40)),
@@ -128,7 +174,7 @@ class AppRepository extends ChangeNotifier {
         uid: 'owner_4',
         email: 'samir@dumbosteel.com',
         name: 'Samir Brooks',
-        phone: '+1 718-555-9800',
+        phone: '+251911000104',
         role: UserRole.barbershopOwner,
         shopId: 'shop_4',
         createdAt: DateTime.now().subtract(const Duration(days: 35)),
@@ -137,7 +183,7 @@ class AppRepository extends ChangeNotifier {
         uid: 'owner_5',
         email: 'arthur@upperwestclub.com',
         name: 'Arthur Sterling',
-        phone: '+1 212-555-7733',
+        phone: '+251911000105',
         role: UserRole.barbershopOwner,
         shopId: 'shop_5',
         createdAt: DateTime.now().subtract(const Duration(days: 20)),
@@ -529,7 +575,243 @@ class AppRepository extends ChangeNotifier {
     return List.unmodifiable(_mockUsers);
   }
 
+  List<UserInvite> getPendingInvites() => List.unmodifiable(_mockInvites.values);
+
+  /// The not-yet-accepted owner invite for a shop, if any.
+  UserInvite? getPendingOwnerInvite(String shopId) {
+    return _mockInvites.values
+        .where((i) => i.role == UserRole.barbershopOwner && i.shopId == shopId)
+        .firstOrNull;
+  }
+
+  /// The not-yet-accepted login invite for a barber profile, if any.
+  UserInvite? getPendingBarberInvite(String barberId) {
+    return _mockInvites.values.where((i) => i.role == UserRole.barber && i.barberId == barberId).firstOrNull;
+  }
+
+  /// Sends a one-time SMS code to an Ethiopian mobile number.
+  /// Throws [FormatException] if the number is not valid.
+  Future<void> sendOtp(String phoneInput) async {
+    final phone = normalizeEthiopianPhone(phoneInput);
+    if (phone == null) {
+      throw const FormatException('Enter a valid Ethiopian mobile number (09... or 07...).');
+    }
+    _authError = null;
+    if (_firebaseReady) {
+      await _phoneAuth!.sendCode(phone);
+    }
+    _pendingPhone = phone;
+  }
+
+  /// Confirms the SMS code. On success the session moves to
+  /// [AuthStatus.signedIn] (existing account) or [AuthStatus.needsProfile]
+  /// (first sign-in).
+  Future<void> verifyOtp(String code) async {
+    final trimmed = code.trim();
+    if (!RegExp(r'^\d{6}$').hasMatch(trimmed)) {
+      throw const FormatException('Enter the 6-digit code from the SMS.');
+    }
+
+    if (_firebaseReady) {
+      // Firebase signs in; _onFirebaseAuthChanged then loads the profile.
+      await _phoneAuth!.verifyCode(trimmed);
+      return;
+    }
+
+    // Local (demo / test) verification.
+    final phone = _pendingPhone;
+    if (phone == null) throw StateError('Request a code first.');
+    if (trimmed != kDemoOtpCode) {
+      throw const FormatException('Wrong code. In demo mode the code is $kDemoOtpCode.');
+    }
+
+    final existing = _mockUsers.where((u) => u.phone == phone).firstOrNull;
+    final invite = _mockInvites[phone];
+    if (existing != null) {
+      var user = existing;
+      if (invite != null && existing.role == UserRole.customer) {
+        user = _withInviteRole(existing, invite);
+        _mockInvites.remove(phone);
+        _upsertLocalUser(user);
+        _claimShopLocally(user);
+      }
+      _currentUser = user;
+      _authStatus = AuthStatus.signedIn;
+    } else {
+      _pendingInvite = invite;
+      _authStatus = AuthStatus.needsProfile;
+    }
+    notifyListeners();
+  }
+
+  /// Creates the profile for a first-time user. The role comes from the
+  /// pending invite for their phone number, or is `customer` without one.
+  Future<void> completeProfile({required String name}) async {
+    final cleanName = name.trim();
+    if (cleanName.isEmpty || cleanName.length > 100) {
+      throw const FormatException('Enter your name (up to 100 characters).');
+    }
+    final phone = _pendingPhone;
+    if (_authStatus != AuthStatus.needsProfile || phone == null) {
+      throw StateError('Verify your phone number first.');
+    }
+    final invite = _pendingInvite;
+
+    final uid = _firebaseReady ? FirebaseAuth.instance.currentUser!.uid : _uuid.v4();
+    final user = AppUser(
+      uid: uid,
+      name: cleanName,
+      phone: phone,
+      role: invite?.role ?? UserRole.customer,
+      shopId: invite?.shopId,
+      barberId: invite?.barberId,
+      createdAt: DateTime.now(),
+    );
+
+    if (_firebaseReady) {
+      final batch = _db.batch();
+      batch.set(_db.collection('users').doc(uid), user.toMap());
+      if (invite != null) batch.delete(_db.collection('invites').doc(phone));
+      await batch.commit();
+      await _claimShopInCloud(user);
+    } else {
+      _mockInvites.remove(phone);
+    }
+
+    _upsertLocalUser(user);
+    _claimShopLocally(user);
+    _currentUser = user;
+    _pendingInvite = null;
+    _authStatus = AuthStatus.signedIn;
+    notifyListeners();
+  }
+
+  Future<void> signOut() async {
+    _pendingPhone = null;
+    _pendingInvite = null;
+    _authError = null;
+    if (_firebaseReady) {
+      _phoneAuth?.reset();
+      await FirebaseAuth.instance.signOut();
+      return; // _onFirebaseAuthChanged resets the session.
+    }
+    _currentUser = null;
+    _authStatus = AuthStatus.signedOut;
+    notifyListeners();
+  }
+
+  Future<void> _onFirebaseAuthChanged(User? fbUser) async {
+    if (fbUser == null) {
+      _currentUser = null;
+      _pendingInvite = null;
+      _authStatus = AuthStatus.signedOut;
+      notifyListeners();
+      return;
+    }
+
+    _authStatus = AuthStatus.initializing;
+    notifyListeners();
+
+    try {
+      final phone = fbUser.phoneNumber;
+      _pendingPhone = phone;
+
+      UserInvite? invite;
+      if (phone != null) {
+        final inviteSnap = await _db.collection('invites').doc(phone).get();
+        if (inviteSnap.exists) invite = UserInvite.fromMap(inviteSnap.data()!, inviteSnap.id);
+      }
+
+      final userSnap = await _db.collection('users').doc(fbUser.uid).get();
+      if (!userSnap.exists) {
+        _pendingInvite = invite;
+        _authStatus = AuthStatus.needsProfile;
+        notifyListeners();
+        return;
+      }
+
+      var user = AppUser.fromMap(userSnap.data()!, userSnap.id);
+      // A customer who was later invited as staff/owner is upgraded once.
+      // Existing staff, owners and admins are never changed by an invite.
+      if (invite != null && user.role == UserRole.customer) {
+        final upgraded = _withInviteRole(user, invite);
+        final batch = _db.batch();
+        batch.set(_db.collection('users').doc(user.uid), upgraded.toMap());
+        batch.delete(_db.collection('invites').doc(invite.phone));
+        await batch.commit();
+        await _claimShopInCloud(upgraded);
+        user = upgraded;
+      }
+
+      _upsertLocalUser(user);
+      _claimShopLocally(user);
+      _currentUser = user;
+      _authError = null;
+      _authStatus = AuthStatus.signedIn;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Could not load user profile: $e');
+      _authError = 'Could not load your account. Check your connection and try again.';
+      await FirebaseAuth.instance.signOut();
+    }
+  }
+
+  AppUser _withInviteRole(AppUser user, UserInvite invite) {
+    return AppUser(
+      uid: user.uid,
+      email: user.email,
+      name: user.name,
+      phone: user.phone,
+      role: invite.role,
+      shopId: invite.shopId,
+      barberId: invite.barberId,
+      createdAt: user.createdAt,
+    );
+  }
+
+  void _upsertLocalUser(AppUser user) {
+    final index = _mockUsers.indexWhere((u) => u.uid == user.uid);
+    if (index == -1) {
+      _mockUsers.add(user);
+    } else {
+      _mockUsers[index] = user;
+    }
+  }
+
+  /// Shops registered by the admin start with an empty ownerId; the invited
+  /// owner fills it in on first sign-in.
+  void _claimShopLocally(AppUser user) {
+    if (user.role != UserRole.barbershopOwner || user.shopId == null) return;
+    final index = _mockShops.indexWhere((s) => s.id == user.shopId && s.ownerId.isEmpty);
+    if (index != -1) _mockShops[index] = _mockShops[index].copyWith(ownerId: user.uid);
+  }
+
+  Future<void> _claimShopInCloud(AppUser user) async {
+    if (user.role != UserRole.barbershopOwner || user.shopId == null) return;
+    try {
+      final ref = _db.collection('barbershops').doc(user.shopId);
+      final snap = await ref.get();
+      if (snap.exists && (snap.data()?['ownerId'] ?? '') == '') {
+        await ref.update({'ownerId': user.uid});
+      }
+    } catch (e) {
+      debugPrint('Could not link shop owner: $e');
+    }
+  }
+
+  /// Throws if [phone] already belongs to a staff, owner or admin account
+  /// (an invite must never silently move that person to another role).
+  void _assertPhoneCanBeInvited(String phone) {
+    final existing = _mockUsers.where((u) => u.phone == phone).firstOrNull;
+    if (existing != null && existing.role != UserRole.customer) {
+      throw FormatException('This phone number already belongs to a ${existing.role.displayName} account.');
+    }
+  }
+
+  /// Demo / test helper: instantly become a demo persona of [role].
+  /// Does nothing once Firebase is attached, so it cannot bypass real sign-in.
   void switchRole(UserRole role, {String? targetShopId, String? targetBarberId}) {
+    if (_firebaseReady) return;
     if (role == UserRole.admin) {
       _currentUser = _mockUsers.firstWhere(
         (u) => u.role == UserRole.admin,
@@ -589,131 +871,17 @@ class AppRepository extends ChangeNotifier {
         ),
       );
     }
-    notifyListeners();
-  }
-
-  Future<void> signIn({required String email, required String password}) async {
-    final cleanEmail = email.trim().toLowerCase();
-
-    // 1. Check existing mock users first
-    final existingUser = _mockUsers.where((u) => u.email.toLowerCase() == cleanEmail).firstOrNull;
-    if (existingUser != null) {
-      _currentUser = existingUser;
-      notifyListeners();
-      return;
-    }
-
-    // 2. Role matching by email convention
-    if (cleanEmail.contains('admin')) {
-      switchRole(UserRole.admin);
-      return;
-    } else if (cleanEmail.contains('barber')) {
-      switchRole(UserRole.barber);
-      return;
-    } else if (cleanEmail.contains('owner')) {
-      switchRole(UserRole.barbershopOwner);
-      return;
-    }
-
-    // 3. Fallback Mock Sign In (new customer)
-    final newUser = AppUser(
-      uid: _uuid.v4(),
-      email: email,
-      name: email.split('@').first,
-      role: UserRole.customer,
-      createdAt: DateTime.now(),
-    );
-    _mockUsers.add(newUser);
-    _currentUser = newUser;
-    notifyListeners();
-  }
-
-  Future<void> signUp({
-    required String email,
-    required String password,
-    required String name,
-    required UserRole role,
-    String? shopName,
-    String? shopAddress,
-    String? shopCity,
-    String? assignedShopId,
-    String? barberTitle,
-  }) async {
-    final auth = _auth;
-    String newUid = _uuid.v4();
-
-    if (auth != null) {
-      try {
-        final credential = await auth.createUserWithEmailAndPassword(email: email, password: password);
-        newUid = credential.user!.uid;
-        _useFirebase = true;
-      } catch (e) {
-        debugPrint('Firebase signup notice: $e (running with local store)');
-      }
-    }
-
-    String? createdShopId;
-    String? createdBarberId;
-
-    if (role == UserRole.barbershopOwner && shopName != null) {
-      createdShopId = _uuid.v4();
-    } else if (role == UserRole.barber) {
-      createdShopId = assignedShopId ?? (_mockShops.isNotEmpty ? _mockShops.first.id : null);
-      createdBarberId = _uuid.v4();
-    }
-
-    final user = AppUser(
-      uid: newUid,
-      email: email,
-      name: name,
-      role: role,
-      shopId: createdShopId,
-      barberId: createdBarberId,
-      createdAt: DateTime.now(),
-    );
-
-    if (_useFirebase && _firestore != null) {
-      await _firestore!.collection('users').doc(newUid).set(user.toMap());
-    }
-
-    _mockUsers.add(user);
-
-    if (role == UserRole.barbershopOwner && shopName != null && createdShopId != null) {
-      await createShop(
-        shopId: createdShopId,
-        ownerId: newUid,
-        name: shopName,
-        address: shopAddress ?? '123 Downtown St',
-        city: shopCity ?? 'New York, NY',
-        description: 'New barbershop registered in Crown & Blade SaaS network.',
-      );
-    } else if (role == UserRole.barber && createdBarberId != null && createdShopId != null) {
-      final newBarber = Barber(
-        id: createdBarberId,
-        shopId: createdShopId,
-        name: name,
-        title: barberTitle ?? 'Professional Barber',
-        email: email,
-        isAvailable: true,
-      );
-      _mockBarbers.add(newBarber);
-    }
-
-    _currentUser = user;
-    notifyListeners();
-  }
-
-  void signOut() {
-    _auth?.signOut();
-    _currentUser = null;
+    _authStatus = AuthStatus.signedIn;
     notifyListeners();
   }
 
   // --- Platform Admin: SaaS Barbershop Registration & Metrics ---
+
+  /// Registers a shop and invites its owner by phone number. The owner gets
+  /// the barbershopOwner role when they first sign in with that number.
   Future<String> registerBarbershopByAdmin({
     required String shopName,
     required String ownerName,
-    required String ownerEmail,
     required String ownerPhone,
     required String address,
     required String city,
@@ -724,31 +892,24 @@ class AppRepository extends ChangeNotifier {
     required List<int> workingDays,
     required bool isVerified,
   }) async {
+    final phone = normalizeEthiopianPhone(ownerPhone);
+    if (phone == null) {
+      throw const FormatException('Enter a valid Ethiopian mobile number for the owner (09... or 07...).');
+    }
+    _assertPhoneCanBeInvited(phone);
+
     final shopId = _uuid.v4();
-    final ownerUid = _uuid.v4();
     final leadBarberId = _uuid.v4();
+    final now = DateTime.now();
 
-    // 1. Create and register the Barbershop Owner user
-    final ownerUser = AppUser(
-      uid: ownerUid,
-      email: ownerEmail,
-      name: ownerName,
-      phone: ownerPhone,
-      role: UserRole.barbershopOwner,
-      shopId: shopId,
-      createdAt: DateTime.now(),
-    );
-    _mockUsers.add(ownerUser);
-
-    // 2. Create the Barbershop
     final shop = Barbershop(
       id: shopId,
-      ownerId: ownerUid,
+      ownerId: '', // Filled in when the invited owner signs in.
       name: shopName,
       description: description,
       address: address,
       city: city,
-      phone: ownerPhone,
+      phone: phone,
       imageUrl: imageUrl.isNotEmpty ? imageUrl : 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800',
       rating: 5.0,
       reviewCount: 1,
@@ -757,53 +918,62 @@ class AppRepository extends ChangeNotifier {
       workingDays: workingDays,
       isVerified: isVerified,
     );
-    _mockShops.insert(0, shop);
 
-    // 3. Add default starter services
-    await addService(
-      shopId: shopId,
-      name: 'Signature Haircut & Style',
-      description: 'Precision cut, neck razor cleanup, and bespoke styling with artisan product.',
-      price: 45.0,
-      durationMinutes: 40,
-    );
-    await addService(
-      shopId: shopId,
-      name: 'Beard Sculpt & Hot Towel',
-      description: 'Full beard shaping, warm aromatic towels, and straight razor line-up.',
-      price: 30.0,
-      durationMinutes: 30,
-    );
+    final starterServices = [
+      BarbershopService(
+        id: _uuid.v4(),
+        shopId: shopId,
+        name: 'Signature Haircut & Style',
+        description: 'Precision cut, neck razor cleanup, and bespoke styling with artisan product.',
+        price: 45.0,
+        durationMinutes: 40,
+      ),
+      BarbershopService(
+        id: _uuid.v4(),
+        shopId: shopId,
+        name: 'Beard Sculpt & Hot Towel',
+        description: 'Full beard shaping, warm aromatic towels, and straight razor line-up.',
+        price: 30.0,
+        durationMinutes: 30,
+      ),
+    ];
 
-    // 4. Add the lead barber & create dedicated barber login account
+    // The owner also appears as the shop's lead barber profile.
     final leadBarber = Barber(
       id: leadBarberId,
       shopId: shopId,
       name: ownerName,
       title: 'Master Barber / Lead Stylist',
-      email: ownerEmail,
-      phone: ownerPhone,
+      phone: phone,
       avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
       specialties: ['Skin Fade', 'Beard Sculpting', 'Hot Shave'],
     );
-    _mockBarbers.add(leadBarber);
 
-    final barberUser = AppUser(
-      uid: _uuid.v4(),
-      email: 'barber.$ownerEmail',
+    final ownerInvite = UserInvite(
+      phone: phone,
+      role: UserRole.barbershopOwner,
       name: ownerName,
-      phone: ownerPhone,
-      role: UserRole.barber,
       shopId: shopId,
-      barberId: leadBarberId,
-      createdAt: DateTime.now(),
+      createdBy: _currentUser?.uid ?? 'system',
+      createdAt: now,
     );
-    _mockUsers.add(barberUser);
 
-    if (_useFirebase && _firestore != null) {
-      await _firestore!.collection('users').doc(ownerUid).set(ownerUser.toMap());
-      await _firestore!.collection('barbershops').doc(shopId).set(shop.toMap());
+    if (_cloudEnabled) {
+      final shopRef = _db.collection('barbershops').doc(shopId);
+      final batch = _db.batch();
+      batch.set(shopRef, shop.toMap());
+      for (final service in starterServices) {
+        batch.set(shopRef.collection('services').doc(service.id), service.toMap());
+      }
+      batch.set(shopRef.collection('barbers').doc(leadBarberId), leadBarber.toMap());
+      batch.set(_db.collection('invites').doc(phone), ownerInvite.toMap());
+      await batch.commit();
     }
+
+    _mockShops.insert(0, shop);
+    _mockServices.addAll(starterServices);
+    _mockBarbers.add(leadBarber);
+    _mockInvites[phone] = ownerInvite;
 
     notifyListeners();
     return shopId;
@@ -813,8 +983,8 @@ class AppRepository extends ChangeNotifier {
     final index = _mockShops.indexWhere((s) => s.id == updatedShop.id);
     if (index != -1) {
       _mockShops[index] = updatedShop;
-      if (_useFirebase && _firestore != null) {
-        await _firestore!.collection('barbershops').doc(updatedShop.id).update(updatedShop.toMap());
+      if (_cloudEnabled) {
+        await _db.collection('barbershops').doc(updatedShop.id).update(updatedShop.toMap());
       }
       notifyListeners();
     }
@@ -826,8 +996,8 @@ class AppRepository extends ChangeNotifier {
       final old = _mockShops[index];
       final updated = old.copyWith(isVerified: !old.isVerified);
       _mockShops[index] = updated;
-      if (_useFirebase && _firestore != null) {
-        await _firestore!.collection('barbershops').doc(shopId).update({'isVerified': updated.isVerified});
+      if (_cloudEnabled) {
+        await _db.collection('barbershops').doc(shopId).update({'isVerified': updated.isVerified});
       }
       notifyListeners();
     }
@@ -839,9 +1009,16 @@ class AppRepository extends ChangeNotifier {
     _mockServices.removeWhere((s) => s.shopId == shopId);
     _mockBookings.removeWhere((b) => b.shopId == shopId);
     _mockUsers.removeWhere((u) => u.shopId == shopId);
+    final shopInvites = _mockInvites.values.where((i) => i.shopId == shopId).map((i) => i.phone).toList();
+    shopInvites.forEach(_mockInvites.remove);
 
-    if (_useFirebase && _firestore != null) {
-      await _firestore!.collection('barbershops').doc(shopId).delete();
+    if (_cloudEnabled) {
+      final batch = _db.batch();
+      batch.delete(_db.collection('barbershops').doc(shopId));
+      for (final phone in shopInvites) {
+        batch.delete(_db.collection('invites').doc(phone));
+      }
+      await batch.commit();
     }
     notifyListeners();
   }
@@ -857,36 +1034,6 @@ class AppRepository extends ChangeNotifier {
     } catch (_) {
       return null;
     }
-  }
-
-  Future<String> createShop({
-    String? shopId,
-    required String ownerId,
-    required String name,
-    required String address,
-    required String city,
-    required String description,
-  }) async {
-    final finalShopId = shopId ?? _uuid.v4();
-    final newShop = Barbershop(
-      id: finalShopId,
-      ownerId: ownerId,
-      name: name,
-      description: description,
-      address: address,
-      city: city,
-      phone: '+1 555-0100',
-      imageUrl: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800',
-      isVerified: true,
-    );
-
-    if (_useFirebase && _firestore != null) {
-      await _firestore!.collection('barbershops').doc(finalShopId).set(newShop.toMap());
-    }
-
-    _mockShops.add(newShop);
-    notifyListeners();
-    return finalShopId;
   }
 
   List<BarberWithShop> getAllBarbersWithShops() {
@@ -922,8 +1069,8 @@ class AppRepository extends ChangeNotifier {
       durationMinutes: durationMinutes,
     );
 
-    if (_useFirebase && _firestore != null) {
-      await _firestore!.collection('barbershops').doc(shopId).collection('services').doc(id).set(service.toMap());
+    if (_cloudEnabled) {
+      await _db.collection('barbershops').doc(shopId).collection('services').doc(id).set(service.toMap());
     }
 
     _mockServices.add(service);
@@ -934,14 +1081,19 @@ class AppRepository extends ChangeNotifier {
     final index = _mockServices.indexWhere((s) => s.id == service.id);
     if (index != -1) {
       _mockServices[index] = service;
-      if (_useFirebase && _firestore != null) {
-        await _firestore!.collection('barbershops').doc(service.shopId).collection('services').doc(service.id).update(service.toMap());
+      if (_cloudEnabled) {
+        await _db.collection('barbershops').doc(service.shopId).collection('services').doc(service.id).update(service.toMap());
       }
       notifyListeners();
     }
   }
 
   Future<void> deleteService(String serviceId) async {
+    final service = _mockServices.where((s) => s.id == serviceId).firstOrNull;
+    if (service == null) return;
+    if (_cloudEnabled) {
+      await _db.collection('barbershops').doc(service.shopId).collection('services').doc(serviceId).delete();
+    }
     _mockServices.removeWhere((s) => s.id == serviceId);
     notifyListeners();
   }
@@ -963,19 +1115,16 @@ class AppRepository extends ChangeNotifier {
     }
   }
 
+  /// The barber profile linked to the signed-in barber account, if any.
   Barber? getBarberForCurrentUser() {
-    if (_currentUser == null) return null;
-    if (_currentUser!.barberId != null) {
-      return getBarberById(_currentUser!.barberId!);
-    }
-    // Fallback: match by email or name in barbers
-    try {
-      return _mockBarbers.firstWhere((b) => b.email == _currentUser!.email || b.name == _currentUser!.name);
-    } catch (_) {
-      return _mockBarbers.isNotEmpty ? _mockBarbers.first : null;
-    }
+    final barberId = _currentUser?.barberId;
+    if (barberId == null) return null;
+    return getBarberById(barberId);
   }
 
+  /// Adds a barber profile to a shop. If [phone] is given, the barber is also
+  /// invited to sign in: the first sign-in with that number gets the barber
+  /// role linked to this profile.
   Future<void> addBarber({
     required String shopId,
     required String name,
@@ -985,6 +1134,15 @@ class AppRepository extends ChangeNotifier {
     List<String>? specialties,
     String? avatarUrl,
   }) async {
+    String? normalizedPhone;
+    if (phone != null && phone.trim().isNotEmpty) {
+      normalizedPhone = normalizeEthiopianPhone(phone);
+      if (normalizedPhone == null) {
+        throw const FormatException('Enter a valid Ethiopian mobile number (09... or 07...).');
+      }
+      _assertPhoneCanBeInvited(normalizedPhone);
+    }
+
     final id = _uuid.v4();
     final barber = Barber(
       id: id,
@@ -992,30 +1150,32 @@ class AppRepository extends ChangeNotifier {
       name: name,
       title: title,
       email: email,
-      phone: phone,
+      phone: normalizedPhone,
       specialties: specialties ?? const ['Skin Fade', 'Beard Trim'],
       avatarUrl: avatarUrl ?? 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
     );
 
-    if (_useFirebase && _firestore != null) {
-      await _firestore!.collection('barbershops').doc(shopId).collection('barbers').doc(id).set(barber.toMap());
+    final invite = normalizedPhone == null
+        ? null
+        : UserInvite(
+            phone: normalizedPhone,
+            role: UserRole.barber,
+            name: name,
+            shopId: shopId,
+            barberId: id,
+            createdBy: _currentUser?.uid ?? 'system',
+            createdAt: DateTime.now(),
+          );
+
+    if (_cloudEnabled) {
+      final batch = _db.batch();
+      batch.set(_db.collection('barbershops').doc(shopId).collection('barbers').doc(id), barber.toMap());
+      if (invite != null) batch.set(_db.collection('invites').doc(invite.phone), invite.toMap());
+      await batch.commit();
     }
 
     _mockBarbers.add(barber);
-
-    // Also provision a dedicated Barber login account in SaaS platform
-    final barberAccount = AppUser(
-      uid: _uuid.v4(),
-      email: email ?? 'barber.${name.toLowerCase().replaceAll(' ', '')}@crownblade.com',
-      name: name,
-      phone: phone,
-      role: UserRole.barber,
-      shopId: shopId,
-      barberId: id,
-      createdAt: DateTime.now(),
-    );
-    _mockUsers.add(barberAccount);
-
+    if (invite != null) _mockInvites[invite.phone] = invite;
     notifyListeners();
   }
 
@@ -1023,8 +1183,8 @@ class AppRepository extends ChangeNotifier {
     final index = _mockBarbers.indexWhere((b) => b.id == barber.id);
     if (index != -1) {
       _mockBarbers[index] = barber;
-      if (_useFirebase && _firestore != null) {
-        await _firestore!.collection('barbershops').doc(barber.shopId).collection('barbers').doc(barber.id).update(barber.toMap());
+      if (_cloudEnabled) {
+        await _db.collection('barbershops').doc(barber.shopId).collection('barbers').doc(barber.id).update(barber.toMap());
       }
       notifyListeners();
     }
@@ -1033,14 +1193,37 @@ class AppRepository extends ChangeNotifier {
   Future<void> updateBarberAvailability(String barberId, bool isAvailable) async {
     final index = _mockBarbers.indexWhere((b) => b.id == barberId);
     if (index != -1) {
-      _mockBarbers[index] = _mockBarbers[index].copyWith(isAvailable: isAvailable);
+      final barber = _mockBarbers[index];
+      if (_cloudEnabled) {
+        await _db
+            .collection('barbershops')
+            .doc(barber.shopId)
+            .collection('barbers')
+            .doc(barberId)
+            .update({'isAvailable': isAvailable});
+      }
+      _mockBarbers[index] = barber.copyWith(isAvailable: isAvailable);
       notifyListeners();
     }
   }
 
+  /// Removes a barber profile. Deleting the profile also revokes the linked
+  /// barber account's access (the rules require the profile to exist).
   Future<void> deleteBarber(String barberId) async {
+    final barber = getBarberById(barberId);
+    if (barber == null) return;
+    final invite = getPendingBarberInvite(barberId);
+
+    if (_cloudEnabled) {
+      final batch = _db.batch();
+      batch.delete(_db.collection('barbershops').doc(barber.shopId).collection('barbers').doc(barberId));
+      if (invite != null) batch.delete(_db.collection('invites').doc(invite.phone));
+      await batch.commit();
+    }
+
     _mockBarbers.removeWhere((b) => b.id == barberId);
     _mockUsers.removeWhere((u) => u.barberId == barberId);
+    if (invite != null) _mockInvites.remove(invite.phone);
     notifyListeners();
   }
 
@@ -1094,8 +1277,8 @@ class AppRepository extends ChangeNotifier {
       createdAt: DateTime.now(),
     );
 
-    if (_useFirebase && _firestore != null) {
-      await _firestore!.collection('bookings').doc(bookingId).set(booking.toMap());
+    if (_cloudEnabled) {
+      await _db.collection('bookings').doc(bookingId).set(booking.toMap());
     }
 
     _mockBookings.insert(0, booking);
@@ -1108,8 +1291,8 @@ class AppRepository extends ChangeNotifier {
     if (index != -1) {
       _mockBookings[index] = _mockBookings[index].copyWith(status: newStatus);
 
-      if (_useFirebase && _firestore != null) {
-        _firestore!.collection('bookings').doc(bookingId).update({'status': newStatus.name});
+      if (_cloudEnabled) {
+        _db.collection('bookings').doc(bookingId).update({'status': newStatus.name});
       }
 
       notifyListeners();

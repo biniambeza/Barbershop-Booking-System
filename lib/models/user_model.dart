@@ -33,7 +33,7 @@ enum UserRole {
 
 class AppUser {
   final String uid;
-  final String email;
+  final String? email;
   final String name;
   final String? phone;
   final UserRole role;
@@ -43,7 +43,7 @@ class AppUser {
 
   AppUser({
     required this.uid,
-    required this.email,
+    this.email,
     required this.name,
     this.phone,
     required this.role,
@@ -55,13 +55,13 @@ class AppUser {
   Map<String, dynamic> toMap() {
     return {
       'uid': uid,
-      'email': email,
+      if (email != null) 'email': email,
       'name': name,
-      'phone': phone,
+      if (phone != null) 'phone': phone,
       'role': role.name,
-      'shopId': shopId,
-      'barberId': barberId,
-      'createdAt': createdAt.toIso8601String(),
+      if (shopId != null) 'shopId': shopId,
+      if (barberId != null) 'barberId': barberId,
+      'createdAt': createdAt.toUtc().toIso8601String(),
     };
   }
 
@@ -90,7 +90,7 @@ class AppUser {
   factory AppUser.fromMap(Map<String, dynamic> map, String id) {
     return AppUser(
       uid: id,
-      email: map['email'] ?? '',
+      email: map['email'],
       name: map['name'] ?? '',
       phone: map['phone'],
       role: UserRole.fromString(map['role']),

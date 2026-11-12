@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../core/utils/phone_utils.dart';
+import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../models/booking_model.dart';
@@ -195,8 +197,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           ],
         ),
         actions: [
-          TextButton.icon(
-            onPressed: () => _showPersonaSwitcher(context),
+          if (kDemoMode)
+            TextButton.icon(
+              onPressed: () => _showPersonaSwitcher(context),
             icon: const Icon(Icons.swap_horiz, size: 18, color: AppTheme.primaryGold),
             label: const Text('Switch Role', style: TextStyle(color: AppTheme.primaryGold, fontSize: 13, fontWeight: FontWeight.bold)),
           ),
@@ -356,7 +359,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               final barbers = repo.getBarbersForShop(shop.id);
               final services = repo.getServicesForShop(shop.id);
               final bookings = repo.getShopBookings(shop.id);
-              final owner = repo.getAllUsers().where((u) => u.shopId == shop.id).firstOrNull;
+              final owner = repo.getAllUsers()
+                  .where((u) => u.shopId == shop.id && u.role == UserRole.barbershopOwner)
+                  .firstOrNull;
+              final ownerInvite = owner == null ? repo.getPendingOwnerInvite(shop.id) : null;
+              final ownerLabel = owner != null
+                  ? '${owner.name} (${formatEthiopianPhone(owner.phone ?? shop.phone)})'
+                  : ownerInvite != null
+                      ? '${ownerInvite.name} (${formatEthiopianPhone(ownerInvite.phone)}) - invite pending'
+                      : 'Not assigned';
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 14),
@@ -425,7 +436,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Owner: ${owner?.name ?? "Assigned Partner"} (${owner?.email ?? shop.phone})',
+                                  'Owner: $ownerLabel',
                                   style: const TextStyle(fontSize: 12, color: AppTheme.primaryGold),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -470,9 +481,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                           ),
                           Row(
                             children: [
-                              TextButton.icon(
+                              if (kDemoMode)
+                                TextButton.icon(
                                 onPressed: () {
-                                  // Switch to that shop's customized owner app
+                                  // Demo only: open that shop's owner app
                                   repo.switchRole(UserRole.barbershopOwner, targetShopId: shop.id);
                                 },
                                 icon: const Icon(Icons.dashboard_customize, size: 16, color: AppTheme.primaryGold),
@@ -540,7 +552,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   children: [
                     Text(u.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                     const SizedBox(height: 2),
-                    Text(u.email, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                    Text(
+                      u.phone != null ? formatEthiopianPhone(u.phone!) : (u.email ?? ''),
+                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                    ),
                     if (u.shopId != null) ...[
                       const SizedBox(height: 4),
                       Text('Assigned Shop: ${u.shopId}', style: const TextStyle(color: AppTheme.primaryGold, fontSize: 11)),

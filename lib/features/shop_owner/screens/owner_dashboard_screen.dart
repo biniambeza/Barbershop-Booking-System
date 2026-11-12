@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/booking_model.dart';
 import '../../../models/user_model.dart';
@@ -57,7 +58,8 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
           ],
         ),
         actions: [
-          PopupMenuButton<String>(
+          if (kDemoMode)
+            PopupMenuButton<String>(
             icon: const Icon(Icons.swap_horiz, color: AppTheme.primaryGold),
             tooltip: 'Switch Persona',
             color: AppTheme.darkCard,

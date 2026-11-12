@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/phone_utils.dart';
+import '../../../services/phone_auth_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../services/app_repository.dart';
 
@@ -24,8 +26,7 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
 
   // Owner Details
   final _ownerNameCtrl = TextEditingController(text: 'Victor Cole');
-  final _ownerEmailCtrl = TextEditingController(text: 'victor@grandbarber.com');
-  final _ownerPhoneCtrl = TextEditingController(text: '+1 212-555-7801');
+  final _ownerPhoneCtrl = TextEditingController();
 
   // Location Details
   final _addressCtrl = TextEditingController(text: '89 E 42nd St');
@@ -63,7 +64,6 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
     _shopPhoneCtrl.dispose();
     _imageCtrl.dispose();
     _ownerNameCtrl.dispose();
-    _ownerEmailCtrl.dispose();
     _ownerPhoneCtrl.dispose();
     _addressCtrl.dispose();
     _cityCtrl.dispose();
@@ -78,7 +78,6 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
       await AppRepository.instance.registerBarbershopByAdmin(
         shopName: _shopNameCtrl.text.trim(),
         ownerName: _ownerNameCtrl.text.trim(),
-        ownerEmail: _ownerEmailCtrl.text.trim(),
         ownerPhone: _ownerPhoneCtrl.text.trim(),
         address: _addressCtrl.text.trim(),
         city: _cityCtrl.text.trim(),
@@ -95,7 +94,7 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
           SnackBar(
             backgroundColor: Colors.green.shade800,
             content: Text(
-              'Successfully registered "${_shopNameCtrl.text}" into the SaaS network!',
+              'Registered "${_shopNameCtrl.text}". The owner can now sign in with ${formatEthiopianPhone(_ownerPhoneCtrl.text)}.',
               style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
             ),
           ),
@@ -105,7 +104,7 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Registration error: $e')),
+          SnackBar(content: Text('Registration error: ${describeAuthError(e)}')),
         );
       }
     } finally {
@@ -237,21 +236,17 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
               ),
               const SizedBox(height: 14),
               TextFormField(
-                controller: _ownerEmailCtrl,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Owner Email (Login ID) *',
-                  prefixIcon: Icon(Icons.email_outlined),
-                ),
-                validator: (val) => val == null || !val.contains('@') ? 'Valid email required' : null,
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
                 controller: _ownerPhoneCtrl,
+                keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(
-                  labelText: 'Owner Mobile Phone',
+                  labelText: 'Owner Mobile Number (Login) *',
+                  hintText: '09XX XXX XXX',
+                  helperText: 'The owner signs in with this number to manage the shop.',
                   prefixIcon: Icon(Icons.phone_android),
                 ),
+                validator: (val) => normalizeEthiopianPhone(val ?? '') == null
+                    ? 'Enter a valid Ethiopian mobile number (09... or 07...)'
+                    : null,
               ),
               const SizedBox(height: 28),
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/phone_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../services/app_repository.dart';
 
@@ -24,6 +25,8 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
   void _showAddBarberDialog() {
     final nameCtrl = TextEditingController();
     final titleCtrl = TextEditingController(text: 'Stylist & Fade Specialist');
+    final phoneCtrl = TextEditingController();
+    String? phoneError;
     String selectedAvatar = _avatarPresets[0];
 
     showDialog(
@@ -46,6 +49,18 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                 TextField(
                   controller: titleCtrl,
                   decoration: const InputDecoration(labelText: 'Specialization (e.g. Master Barber)', prefixIcon: Icon(Icons.badge)),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Mobile Number (for login)',
+                    hintText: '09XX XXX XXX',
+                    helperText: 'Optional. The barber signs in with this number.',
+                    errorText: phoneError,
+                    prefixIcon: const Icon(Icons.phone_android),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 const Text('Select Avatar Portrait:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
@@ -86,16 +101,30 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
               child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 if (nameCtrl.text.trim().isEmpty) return;
-                AppRepository.instance.addBarber(
-                  shopId: widget.shopId,
-                  name: nameCtrl.text.trim(),
-                  title: titleCtrl.text.trim(),
-                  avatarUrl: selectedAvatar,
-                );
-                Navigator.of(ctx).pop();
-                setState(() {});
+                final phone = phoneCtrl.text.trim();
+                if (phone.isNotEmpty && normalizeEthiopianPhone(phone) == null) {
+                  setDialogState(() => phoneError = 'Enter a valid number (09... or 07...)');
+                  return;
+                }
+                try {
+                  await AppRepository.instance.addBarber(
+                    shopId: widget.shopId,
+                    name: nameCtrl.text.trim(),
+                    title: titleCtrl.text.trim(),
+                    phone: phone.isEmpty ? null : phone,
+                    avatarUrl: selectedAvatar,
+                  );
+                } on FormatException catch (e) {
+                  setDialogState(() => phoneError = e.message);
+                  return;
+                } catch (e) {
+                  setDialogState(() => phoneError = 'Could not add barber. Please try again.');
+                  return;
+                }
+                if (ctx.mounted) Navigator.of(ctx).pop();
+                if (mounted) setState(() {});
               },
               child: const Text('Add Barber'),
             ),
@@ -197,6 +226,13 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                               barber.title,
                               style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
                             ),
+                            if (AppRepository.instance.getPendingBarberInvite(barber.id) != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                'Login invite pending: ${formatEthiopianPhone(barber.phone ?? '')}',
+                                style: const TextStyle(color: AppTheme.primaryGold, fontSize: 12),
+                              ),
+                            ],
                             const SizedBox(height: 6),
                             Row(
                               children: [

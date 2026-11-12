@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../models/user_model.dart';
@@ -157,7 +158,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           ],
         ),
         actions: [
-          TextButton.icon(
+          if (kDemoMode)
+            TextButton.icon(
             style: TextButton.styleFrom(
               backgroundColor: Colors.lightBlueAccent.withValues(alpha: 0.15),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),

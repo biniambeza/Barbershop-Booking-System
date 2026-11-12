@@ -1,8 +1,16 @@
-import 'package:flutter/material.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../models/user_model.dart';
-import '../../../services/app_repository.dart';
+import 'dart:async';
 
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../../core/config/app_config.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/phone_utils.dart';
+import '../../../services/app_repository.dart';
+import '../../../services/phone_auth_service.dart';
+
+/// Phone number + SMS code sign-in. The same flow covers new and returning
+/// users; the role comes from the user's profile (or their invite), never
+/// from anything chosen on this screen.
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -11,94 +19,111 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  bool _isSignUp = false;
-  UserRole _selectedRole = UserRole.customer;
+  final _phoneController = TextEditingController();
+  final _codeController = TextEditingController();
 
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController(text: 'Alex Johnson');
-  final _emailController = TextEditingController(text: 'alex@example.com');
-  final _passwordController = TextEditingController(text: 'password123');
-
-  // Shop Owner fields
-  final _shopNameController = TextEditingController(text: 'Crown & Razor Lounge');
-  final _shopAddressController = TextEditingController(text: '350 5th Ave');
-  final _shopCityController = TextEditingController(text: 'New York, NY');
-
-  // Barber fields
-  final _barberTitleController = TextEditingController(text: 'Master Barber / Fade Specialist');
-  String? _selectedAssignedShopId;
-
+  bool _codeSent = false;
   bool _isLoading = false;
+  String? _error;
+
+  static const _resendSeconds = 60;
+  int _resendIn = 0;
+  Timer? _resendTimer;
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _shopNameController.dispose();
-    _shopAddressController.dispose();
-    _shopCityController.dispose();
-    _barberTitleController.dispose();
+    _resendTimer?.cancel();
+    _phoneController.dispose();
+    _codeController.dispose();
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
+  void _startResendTimer() {
+    _resendTimer?.cancel();
+    setState(() => _resendIn = _resendSeconds);
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted || _resendIn <= 1) {
+        timer.cancel();
+        if (mounted) setState(() => _resendIn = 0);
+        return;
+      }
+      setState(() => _resendIn--);
+    });
+  }
 
-    try {
-      if (_isSignUp) {
-        await AppRepository.instance.signUp(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-          name: _nameController.text.trim(),
-          role: _selectedRole,
-          shopName: _selectedRole == UserRole.barbershopOwner ? _shopNameController.text.trim() : null,
-          shopAddress: _selectedRole == UserRole.barbershopOwner ? _shopAddressController.text.trim() : null,
-          shopCity: _selectedRole == UserRole.barbershopOwner ? _shopCityController.text.trim() : null,
-          assignedShopId: _selectedRole == UserRole.barber ? _selectedAssignedShopId : null,
-          barberTitle: _selectedRole == UserRole.barber ? _barberTitleController.text.trim() : null,
-        );
-      } else {
-        await AppRepository.instance.signIn(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+  Future<void> _sendCode() async {
+    if (normalizeEthiopianPhone(_phoneController.text) == null) {
+      setState(() => _error = 'Enter a valid Ethiopian mobile number (09... or 07...).');
+      return;
     }
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      await AppRepository.instance.sendOtp(_phoneController.text);
+      if (!mounted) return;
+      setState(() => _codeSent = true);
+      _codeController.clear();
+      _startResendTimer();
+    } catch (e) {
+      if (mounted) setState(() => _error = describeAuthError(e));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _verifyCode() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      await AppRepository.instance.verifyOtp(_codeController.text);
+      // On success the root gate switches screens.
+    } catch (e) {
+      if (mounted) setState(() => _error = describeAuthError(e));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _changeNumber() {
+    _resendTimer?.cancel();
+    setState(() {
+      _codeSent = false;
+      _resendIn = 0;
+      _error = null;
+      _codeController.clear();
+    });
+  }
+
+  Future<void> _demoQuickLogin(String phone) async {
+    _phoneController.text = phone;
+    await _sendCode();
+    if (!_codeSent) return;
+    _codeController.text = kDemoOtpCode;
+    await _verifyCode();
   }
 
   @override
   Widget build(BuildContext context) {
     final repo = AppRepository.instance;
-    final allShops = repo.getShops();
+    final sessionError = repo.authError;
+    final phone = repo.pendingPhone;
 
     return Scaffold(
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Form(
-              key: _formKey,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(
-                    Icons.content_cut_rounded,
-                    size: 58,
-                    color: AppTheme.primaryGold,
-                  ),
+                  const Icon(Icons.content_cut_rounded, size: 58, color: AppTheme.primaryGold),
                   const SizedBox(height: 12),
                   Text(
                     'CROWN & BLADE',
@@ -110,317 +135,23 @@ class _AuthScreenState extends State<AuthScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    _isSignUp
-                        ? 'Multi-Tenant Barbershop SaaS Platform'
-                        : 'Sign in to access your role workspace',
+                    _codeSent
+                        ? 'Enter the 6-digit code sent to ${formatEthiopianPhone(phone ?? _phoneController.text)}'
+                        : 'Sign in or create an account with your phone number',
                     textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppTheme.textSecondary,
-                        ),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondary),
                   ),
-                  const SizedBox(height: 24),
-
-                  // Mode Toggle
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppTheme.darkCard,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.all(4),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => setState(() {
-                              _isSignUp = false;
-                              _emailController.text = 'alex@example.com';
-                            }),
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              decoration: BoxDecoration(
-                                color: !_isSignUp ? AppTheme.primaryGold : Colors.transparent,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                'Sign In',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: !_isSignUp ? Colors.black : AppTheme.textSecondary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: InkWell(
-                            onTap: () => setState(() {
-                              _isSignUp = true;
-                              _nameController.text = 'Jordan Lee';
-                              _emailController.text = 'jordan@example.com';
-                            }),
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              decoration: BoxDecoration(
-                                color: _isSignUp ? AppTheme.primaryGold : Colors.transparent,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                'Create Account',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: _isSignUp ? Colors.black : AppTheme.textSecondary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Role Selection (on sign up)
-                  if (_isSignUp) ...[
+                  const SizedBox(height: 28),
+                  if (!_codeSent) ..._buildPhoneStep() else ..._buildCodeStep(),
+                  if (_error != null || sessionError != null) ...[
+                    const SizedBox(height: 14),
                     Text(
-                      'I want to join as:',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.textPrimary,
-                          ),
+                      _error ?? sessionError!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.redAccent, fontSize: 13),
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ChoiceChip(
-                            label: const Center(
-                              child: Text('Customer', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                            ),
-                            selected: _selectedRole == UserRole.customer,
-                            selectedColor: AppTheme.primaryGold,
-                            onSelected: (val) {
-                              if (val) setState(() => _selectedRole = UserRole.customer);
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: ChoiceChip(
-                            label: const Center(
-                              child: Text('Barber', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                            ),
-                            selected: _selectedRole == UserRole.barber,
-                            selectedColor: AppTheme.primaryGold,
-                            onSelected: (val) {
-                              if (val) setState(() => _selectedRole = UserRole.barber);
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: ChoiceChip(
-                            label: const Center(
-                              child: Text('Shop Owner', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                            ),
-                            selected: _selectedRole == UserRole.barbershopOwner,
-                            selectedColor: AppTheme.primaryGold,
-                            onSelected: (val) {
-                              if (val) setState(() => _selectedRole = UserRole.barbershopOwner);
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
                   ],
-
-                  if (_isSignUp) ...[
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Full Name',
-                        prefixIcon: Icon(Icons.person_outline),
-                      ),
-                      validator: (v) => v == null || v.isEmpty ? 'Please enter name' : null,
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'Email Address',
-                      prefixIcon: Icon(Icons.email_outlined),
-                    ),
-                    validator: (v) => v == null || !v.contains('@') ? 'Enter a valid email' : null,
-                  ),
-                  const SizedBox(height: 12),
-
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Password',
-                      prefixIcon: Icon(Icons.lock_outline),
-                    ),
-                    validator: (v) => v == null || v.length < 6 ? 'Password must be 6+ chars' : null,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Additional fields for Staff Barber
-                  if (_isSignUp && _selectedRole == UserRole.barber) ...[
-                    TextFormField(
-                      controller: _barberTitleController,
-                      decoration: const InputDecoration(
-                        labelText: 'Professional Title',
-                        prefixIcon: Icon(Icons.badge_outlined),
-                        hintText: 'e.g. Master Fade Specialist',
-                      ),
-                      validator: (v) => v == null || v.isEmpty ? 'Enter your barber title' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: _selectedAssignedShopId ?? (allShops.isNotEmpty ? allShops.first.id : null),
-                      decoration: const InputDecoration(
-                        labelText: 'Assigned Barbershop',
-                        prefixIcon: Icon(Icons.storefront_outlined),
-                      ),
-                      items: allShops.map((shop) {
-                        return DropdownMenuItem(
-                          value: shop.id,
-                          child: Text('${shop.name} (${shop.city})'),
-                        );
-                      }).toList(),
-                      onChanged: (val) => setState(() => _selectedAssignedShopId = val),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-
-                  // Additional fields for Barbershop Owner
-                  if (_isSignUp && _selectedRole == UserRole.barbershopOwner) ...[
-                    TextFormField(
-                      controller: _shopNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Barbershop Name',
-                        prefixIcon: Icon(Icons.storefront_outlined),
-                      ),
-                      validator: (v) => v == null || v.isEmpty ? 'Enter barbershop name' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _shopAddressController,
-                      decoration: const InputDecoration(
-                        labelText: 'Street Address',
-                        prefixIcon: Icon(Icons.location_on_outlined),
-                      ),
-                      validator: (v) => v == null || v.isEmpty ? 'Enter shop address' : null,
-                    ),
-                    const SizedBox(height: 12),
-                    TextFormField(
-                      controller: _shopCityController,
-                      decoration: const InputDecoration(
-                        labelText: 'City & State',
-                        prefixIcon: Icon(Icons.location_city_outlined),
-                      ),
-                      validator: (v) => v == null || v.isEmpty ? 'Enter city & state' : null,
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-
-                  const SizedBox(height: 8),
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _submit,
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
-                          )
-                        : Text(
-                            _isSignUp
-                                ? (_selectedRole == UserRole.barbershopOwner
-                                    ? 'Register My Barbershop'
-                                    : (_selectedRole == UserRole.barber
-                                        ? 'Register as Barber'
-                                        : 'Create Customer Account'))
-                                : 'Sign In',
-                          ),
-                  ),
-
-                  const SizedBox(height: 24),
-                  const Row(
-                    children: [
-                      Expanded(child: Divider(color: Colors.white12)),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 10),
-                        child: Text(
-                          'ONE-TAP ROLE DEMO ACCESS',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.textSecondary,
-                            letterSpacing: 1,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      Expanded(child: Divider(color: Colors.white12)),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-
-                  // 4 Roles Grid
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildPersonaButton(
-                          roleName: 'Admin',
-                          subtitle: 'SaaS Platform',
-                          icon: Icons.admin_panel_settings,
-                          color: Colors.purpleAccent,
-                          onTap: () => repo.switchRole(UserRole.admin),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildPersonaButton(
-                          roleName: 'Shop Owner',
-                          subtitle: "Gentleman's Quarter",
-                          icon: Icons.storefront,
-                          color: AppTheme.primaryGold,
-                          onTap: () => repo.switchRole(UserRole.barbershopOwner),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildPersonaButton(
-                          roleName: 'Barber',
-                          subtitle: 'Marcus Vance',
-                          icon: Icons.content_cut,
-                          color: Colors.tealAccent,
-                          onTap: () => repo.switchRole(UserRole.barber),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildPersonaButton(
-                          roleName: 'Customer',
-                          subtitle: 'Alex Johnson',
-                          icon: Icons.person,
-                          color: Colors.lightBlueAccent,
-                          onTap: () => repo.switchRole(UserRole.customer),
-                        ),
-                      ),
-                    ],
-                  ),
+                  if (kDemoMode && !_codeSent) ..._buildDemoPanel(),
                 ],
               ),
             ),
@@ -430,38 +161,147 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Widget _buildPersonaButton({
-    required String roleName,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return OutlinedButton(
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        side: BorderSide(color: color.withValues(alpha: 0.5)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+  List<Widget> _buildPhoneStep() {
+    return [
+      TextField(
+        controller: _phoneController,
+        keyboardType: TextInputType.phone,
+        autofillHints: const [AutofillHints.telephoneNumber],
+        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+ ]'))],
+        decoration: const InputDecoration(
+          labelText: 'Mobile Number',
+          hintText: '09XX XXX XXX',
+          prefixIcon: Icon(Icons.phone_android),
+        ),
+        onSubmitted: (_) => _isLoading ? null : _sendCode(),
       ),
-      onPressed: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      const SizedBox(height: 16),
+      ElevatedButton(
+        onPressed: _isLoading ? null : _sendCode,
+        child: _isLoading ? _spinner() : const Text('Send Code'),
+      ),
+      const SizedBox(height: 12),
+      const Text(
+        'We will send you a one-time code by SMS. Standard SMS rates may apply.',
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+      ),
+    ];
+  }
+
+  List<Widget> _buildCodeStep() {
+    return [
+      TextField(
+        controller: _codeController,
+        keyboardType: TextInputType.number,
+        autofillHints: const [AutofillHints.oneTimeCode],
+        maxLength: 6,
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 24, letterSpacing: 10, fontWeight: FontWeight.bold),
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        decoration: const InputDecoration(counterText: '', hintText: '------'),
+        onChanged: (value) {
+          if (value.length == 6 && !_isLoading) _verifyCode();
+        },
+      ),
+      const SizedBox(height: 16),
+      ElevatedButton(
+        onPressed: _isLoading ? null : _verifyCode,
+        child: _isLoading ? _spinner() : const Text('Verify'),
+      ),
+      const SizedBox(height: 8),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Icon(icon, size: 22, color: color),
-          const SizedBox(height: 4),
-          Text(
-            roleName,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+          TextButton(
+            onPressed: _isLoading ? null : _changeNumber,
+            child: const Text('Change number'),
           ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          TextButton(
+            onPressed: _isLoading || _resendIn > 0 ? null : _sendCode,
+            child: Text(_resendIn > 0 ? 'Resend in ${_resendIn}s' : 'Resend code'),
           ),
         ],
       ),
+      if (kDemoMode)
+        const Text(
+          'Demo mode: the code is $kDemoOtpCode',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12, color: AppTheme.primaryGold),
+        ),
+    ];
+  }
+
+  List<Widget> _buildDemoPanel() {
+    // Phone numbers of the demo accounts in AppRepository._initDemoData.
+    final personas = <(String, String, IconData, Color)>[
+      ('Admin', '+251911000001', Icons.admin_panel_settings, Colors.purpleAccent),
+      ('Shop Owner', '+251911000101', Icons.storefront, AppTheme.primaryGold),
+      ('Barber', '+251911000201', Icons.content_cut, Colors.tealAccent),
+      ('Customer', '+251911000301', Icons.person, Colors.lightBlueAccent),
+    ];
+
+    return [
+      const SizedBox(height: 28),
+      const Row(
+        children: [
+          Expanded(child: Divider(color: Colors.white12)),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 10),
+            child: Text(
+              'DEMO ACCOUNTS',
+              style: TextStyle(
+                fontSize: 11,
+                color: AppTheme.textSecondary,
+                letterSpacing: 1,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Expanded(child: Divider(color: Colors.white12)),
+        ],
+      ),
+      const SizedBox(height: 14),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        alignment: WrapAlignment.center,
+        children: [
+          for (final (label, phone, icon, color) in personas)
+            SizedBox(
+              width: 180,
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  side: BorderSide(color: color.withValues(alpha: 0.5)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: _isLoading ? null : () => _demoQuickLogin(phone),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 22, color: color),
+                    const SizedBox(height: 4),
+                    Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                    const SizedBox(height: 2),
+                    Text(
+                      formatEthiopianPhone(phone),
+                      style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    ];
+  }
+
+  Widget _spinner() {
+    return const SizedBox(
+      height: 20,
+      width: 20,
+      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
     );
   }
 }

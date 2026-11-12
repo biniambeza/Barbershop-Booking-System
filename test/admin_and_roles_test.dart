@@ -85,8 +85,7 @@ void main() {
     final newShopId = await repo.registerBarbershopByAdmin(
       shopName: 'Hudson Yards Fade Lounge',
       ownerName: 'Gregory King',
-      ownerEmail: 'gregory@hudsonfade.com',
-      ownerPhone: '+1 212-555-9988',
+      ownerPhone: '0912 345 678',
       address: '500 W 33rd St',
       city: 'New York, NY',
       description: 'Ultra-modern cuts and beard grooming in Hudson Yards.',
@@ -106,11 +105,28 @@ void main() {
     expect(shop.city, 'New York, NY');
     expect(shop.isVerified, true);
 
-    // Verify owner account was created and linked to shopId
-    final owner = repo.getAllUsers().firstWhere((u) => u.email == 'gregory@hudsonfade.com');
+    // The owner is invited by phone; no account exists until they sign in.
+    final invite = repo.getPendingOwnerInvite(newShopId);
+    expect(invite, isNotNull);
+    expect(invite!.phone, '+251912345678');
+    expect(invite.role, UserRole.barbershopOwner);
+    expect(shop.ownerId, isEmpty);
+    expect(repo.getAllUsers().any((u) => u.phone == '+251912345678'), false);
+
+    // The owner signs in with that number and gets the owner role.
+    await repo.sendOtp('0912345678');
+    await repo.verifyOtp('123456');
+    expect(repo.authStatus, AuthStatus.needsProfile);
+    expect(repo.pendingInvite?.shopId, newShopId);
+    await repo.completeProfile(name: 'Gregory King');
+
+    final owner = repo.currentUser!;
     expect(owner.role, UserRole.barbershopOwner);
     expect(owner.shopId, newShopId);
     expect(owner.name, 'Gregory King');
+    expect(repo.getShopById(newShopId)!.ownerId, owner.uid);
+    expect(repo.getPendingOwnerInvite(newShopId), isNull);
+    await repo.signOut();
 
     // Verify starter services and starter lead barber
     final services = repo.getServicesForShop(newShopId);
