@@ -72,6 +72,18 @@ const PHONES = {
   newPerson: '+251933445566',
 };
 
+// Google sign-in identities (verified emails, lowercased). Placeholders only.
+const EMAILS = {
+  admin: 'admin@example.com',
+  owner1: 'owner1@example.com',
+  owner2: 'owner2@example.com',
+  barber1: 'barber1@example.com',
+  barber2: 'barber2@example.com',
+  customer: 'customer@example.com',
+  customer2: 'customer2@example.com',
+  newPerson: 'new.person@example.com',
+};
+
 let env;
 
 before(async () => {
@@ -90,7 +102,7 @@ beforeEach(async () => {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
     const user = (uid, phone, role, extra = {}) =>
-      setDoc(doc(db, 'users', uid), { uid, name: uid, phone, role, createdAt: NOW, ...extra });
+      setDoc(doc(db, 'users', uid), { uid, email: EMAILS[uid], name: uid, phone, role, createdAt: NOW, ...extra });
 
     await user('admin', PHONES.admin, 'admin');
     await user('owner1', PHONES.owner1, 'barbershopOwner', { shopId: 'shop1' });
@@ -265,13 +277,13 @@ function cancelTx(db, bookingId, startAt, minutes, extra = {}) {
   });
 }
 
-function invite(phone, role, extra = {}, createdBy = 'admin') {
-  return { phone, role, name: 'Invited', createdBy, createdAt: NOW, ...extra };
+function invite(email, role, extra = {}, createdBy = 'admin') {
+  return { email, role, name: 'Invited', createdBy, createdAt: NOW, ...extra };
 }
 
-// A signed-in client. Phone sign-in puts phone_number in the token.
-function as(uid, phone) {
-  return env.authenticatedContext(uid, { phone_number: phone }).firestore();
+// A signed-in client. Google sign-in puts the (verified) email in the token.
+function as(uid, email, emailVerified = true) {
+  return env.authenticatedContext(uid, { email, email_verified: emailVerified }).firestore();
 }
 
 const anon = () => env.unauthenticatedContext().firestore();
@@ -281,11 +293,12 @@ async function seed(path, id, data) {
 }
 
 describe('users: self sign-up', () => {
-  test('a new phone user can create a customer profile', async () => {
-    const db = as('new', PHONES.newPerson);
+  test('a new Google user can create a customer profile', async () => {
+    const db = as('new', EMAILS.newPerson);
     await assertSucceeds(
       setDoc(doc(db, 'users', 'new'), {
         uid: 'new',
+        email: EMAILS.newPerson,
         name: 'Hanna',
         phone: PHONES.newPerson,
         role: 'customer',
@@ -295,7 +308,7 @@ describe('users: self sign-up', () => {
   });
 
   test('cannot give yourself a privileged role', async () => {
-    const db = as('new', PHONES.newPerson);
+    const db = as('new', EMAILS.newPerson);
     for (const [role, extra] of [
       ['admin', {}],
       ['barbershopOwner', { shopId: 'shop3' }],
@@ -304,6 +317,7 @@ describe('users: self sign-up', () => {
       await assertFails(
         setDoc(doc(db, 'users', 'new'), {
           uid: 'new',
+          email: EMAILS.newPerson,
           name: 'X',
           phone: PHONES.newPerson,
           role,
@@ -314,24 +328,56 @@ describe('users: self sign-up', () => {
     }
   });
 
-  test('profile phone must be the verified phone', async () => {
-    const db = as('new', PHONES.newPerson);
-    await assertFails(
-      setDoc(doc(db, 'users', 'new'), {
-        uid: 'new',
-        name: 'X',
-        phone: PHONES.customer2,
-        role: 'customer',
-        createdAt: NOW,
-      }),
-    );
+  const newProfile = (extra = {}) => ({
+    uid: 'new',
+    email: EMAILS.newPerson,
+    name: 'X',
+    phone: PHONES.newPerson,
+    role: 'customer',
+    createdAt: NOW,
+    ...extra,
+  });
+
+  test('profile email must be the verified sign-in email', async () => {
+    const db = as('new', EMAILS.newPerson);
+    await assertFails(setDoc(doc(db, 'users', 'new'), newProfile({ email: EMAILS.customer2 })));
+    // Missing email.
+    const { email, ...noEmail } = newProfile();
+    await assertFails(setDoc(doc(db, 'users', 'new'), noEmail));
+  });
+
+  test('the token email is compared lowercased', async () => {
+    const db = as('new', 'New.Person@Example.com');
+    await assertSucceeds(setDoc(doc(db, 'users', 'new'), newProfile()));
+  });
+
+  test('the stored email must be lowercase', async () => {
+    const db = as('new', 'New.Person@Example.com');
+    await assertFails(setDoc(doc(db, 'users', 'new'), newProfile({ email: 'New.Person@Example.com' })));
+  });
+
+  test('an unverified email cannot create a profile', async () => {
+    const db = as('new', EMAILS.newPerson, false);
+    await assertFails(setDoc(doc(db, 'users', 'new'), newProfile()));
+    // A token without any email (e.g. anonymous or phone auth) neither.
+    const noEmail = env.authenticatedContext('new', {}).firestore();
+    await assertFails(setDoc(doc(noEmail, 'users', 'new'), newProfile()));
+  });
+
+  test('the contact phone is typed in (any Ethiopian mobile) but must be valid', async () => {
+    const db = as('new', EMAILS.newPerson);
+    await assertFails(setDoc(doc(db, 'users', 'new'), newProfile({ phone: '0911223344' })));
+    const { phone, ...noPhone } = newProfile();
+    await assertFails(setDoc(doc(db, 'users', 'new'), noPhone));
+    await assertSucceeds(setDoc(doc(db, 'users', 'new'), newProfile({ phone: PHONES.customer2 })));
   });
 
   test('cannot create a profile for another uid', async () => {
-    const db = as('new', PHONES.newPerson);
+    const db = as('new', EMAILS.newPerson);
     await assertFails(
       setDoc(doc(db, 'users', 'someoneElse'), {
         uid: 'someoneElse',
+        email: EMAILS.newPerson,
         name: 'X',
         phone: PHONES.newPerson,
         role: 'customer',
@@ -341,10 +387,11 @@ describe('users: self sign-up', () => {
   });
 
   test('a customer profile cannot carry a shopId', async () => {
-    const db = as('new', PHONES.newPerson);
+    const db = as('new', EMAILS.newPerson);
     await assertFails(
       setDoc(doc(db, 'users', 'new'), {
         uid: 'new',
+        email: EMAILS.newPerson,
         name: 'X',
         phone: PHONES.newPerson,
         role: 'customer',
@@ -358,6 +405,7 @@ describe('users: self sign-up', () => {
 describe('users: invites grant roles', () => {
   const ownerProfile = {
     uid: 'new',
+    email: EMAILS.newPerson,
     name: 'Owner Three',
     phone: PHONES.newPerson,
     role: 'barbershopOwner',
@@ -366,69 +414,115 @@ describe('users: invites grant roles', () => {
   };
 
   test('invited owner gets the role when the invite is consumed in the same batch', async () => {
-    await seed('invites', PHONES.newPerson, invite(PHONES.newPerson, 'barbershopOwner', { shopId: 'shop3' }));
-    const db = as('new', PHONES.newPerson);
+    await seed('invites', EMAILS.newPerson, invite(EMAILS.newPerson, 'barbershopOwner', { shopId: 'shop3' }));
+    const db = as('new', EMAILS.newPerson);
     const batch = writeBatch(db);
     batch.set(doc(db, 'users', 'new'), ownerProfile);
-    batch.delete(doc(db, 'invites', PHONES.newPerson));
+    batch.delete(doc(db, 'invites', EMAILS.newPerson));
     await assertSucceeds(batch.commit());
   });
 
   test('invite cannot be used without deleting it', async () => {
-    await seed('invites', PHONES.newPerson, invite(PHONES.newPerson, 'barbershopOwner', { shopId: 'shop3' }));
-    const db = as('new', PHONES.newPerson);
+    await seed('invites', EMAILS.newPerson, invite(EMAILS.newPerson, 'barbershopOwner', { shopId: 'shop3' }));
+    const db = as('new', EMAILS.newPerson);
     await assertFails(setDoc(doc(db, 'users', 'new'), ownerProfile));
   });
 
   test('profile must match the invite (shop)', async () => {
-    await seed('invites', PHONES.newPerson, invite(PHONES.newPerson, 'barbershopOwner', { shopId: 'shop3' }));
-    const db = as('new', PHONES.newPerson);
+    await seed('invites', EMAILS.newPerson, invite(EMAILS.newPerson, 'barbershopOwner', { shopId: 'shop3' }));
+    const db = as('new', EMAILS.newPerson);
     const batch = writeBatch(db);
     batch.set(doc(db, 'users', 'new'), { ...ownerProfile, shopId: 'shop1' });
-    batch.delete(doc(db, 'invites', PHONES.newPerson));
+    batch.delete(doc(db, 'invites', EMAILS.newPerson));
     await assertFails(batch.commit());
   });
 
   test("someone else's invite cannot be used", async () => {
-    await seed('invites', PHONES.customer2, invite(PHONES.customer2, 'barbershopOwner', { shopId: 'shop3' }));
-    const db = as('new', PHONES.newPerson);
+    await seed('invites', EMAILS.customer2, invite(EMAILS.customer2, 'barbershopOwner', { shopId: 'shop3' }));
+    const db = as('new', EMAILS.newPerson);
     const batch = writeBatch(db);
     batch.set(doc(db, 'users', 'new'), ownerProfile);
-    batch.delete(doc(db, 'invites', PHONES.customer2));
+    batch.delete(doc(db, 'invites', EMAILS.customer2));
+    await assertFails(batch.commit());
+  });
+
+  test('an unverified email cannot use an invite', async () => {
+    await seed('invites', EMAILS.newPerson, invite(EMAILS.newPerson, 'barbershopOwner', { shopId: 'shop3' }));
+    const db = as('new', EMAILS.newPerson, false);
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'users', 'new'), ownerProfile);
+    batch.delete(doc(db, 'invites', EMAILS.newPerson));
+    await assertFails(batch.commit());
+    // ...nor read or delete it.
+    await assertFails(getDoc(doc(db, 'invites', EMAILS.newPerson)));
+    await assertFails(deleteDoc(doc(db, 'invites', EMAILS.newPerson)));
+  });
+
+  test('a mixed-case Google email matches its lowercased invite', async () => {
+    await seed('invites', EMAILS.newPerson, invite(EMAILS.newPerson, 'barbershopOwner', { shopId: 'shop3' }));
+    const db = as('new', 'NEW.Person@example.COM');
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'users', 'new'), ownerProfile);
+    batch.delete(doc(db, 'invites', EMAILS.newPerson));
+    await assertSucceeds(batch.commit());
+  });
+
+  test('an invite cannot be used with a profile email other than your own', async () => {
+    await seed('invites', EMAILS.newPerson, invite(EMAILS.newPerson, 'barbershopOwner', { shopId: 'shop3' }));
+    const db = as('new', EMAILS.newPerson);
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'users', 'new'), { ...ownerProfile, email: EMAILS.customer2 });
+    batch.delete(doc(db, 'invites', EMAILS.newPerson));
     await assertFails(batch.commit());
   });
 
   test('an existing customer can accept a barber invite once', async () => {
-    await seed('invites', PHONES.customer, invite(PHONES.customer, 'barber', { shopId: 'shop1', barberId: 'b2' }, 'owner1'));
-    const db = as('customer', PHONES.customer);
+    await seed('invites', EMAILS.customer, invite(EMAILS.customer, 'barber', { shopId: 'shop1', barberId: 'b2' }, 'owner1'));
+    const db = as('customer', EMAILS.customer);
     const batch = writeBatch(db);
     batch.update(doc(db, 'users', 'customer'), { role: 'barber', shopId: 'shop1', barberId: 'b2' });
-    batch.delete(doc(db, 'invites', PHONES.customer));
+    batch.delete(doc(db, 'invites', EMAILS.customer));
     await assertSucceeds(batch.commit());
   });
 
   test('an invite cannot change an existing owner or barber', async () => {
-    await seed('invites', PHONES.owner1, invite(PHONES.owner1, 'barber', { shopId: 'shop2', barberId: 'b3' }, 'owner2'));
-    const db = as('owner1', PHONES.owner1);
+    await seed('invites', EMAILS.owner1, invite(EMAILS.owner1, 'barber', { shopId: 'shop2', barberId: 'b3' }, 'owner2'));
+    const db = as('owner1', EMAILS.owner1);
     const batch = writeBatch(db);
     batch.update(doc(db, 'users', 'owner1'), { role: 'barber', shopId: 'shop2', barberId: 'b3' });
-    batch.delete(doc(db, 'invites', PHONES.owner1));
+    batch.delete(doc(db, 'invites', EMAILS.owner1));
     await assertFails(batch.commit());
   });
 
   test('users cannot change their own role or shop', async () => {
-    await assertFails(updateDoc(doc(as('customer', PHONES.customer), 'users', 'customer'), { role: 'admin' }));
-    await assertFails(updateDoc(doc(as('owner1', PHONES.owner1), 'users', 'owner1'), { shopId: 'shop2' }));
-    await assertFails(updateDoc(doc(as('barber1', PHONES.barber1), 'users', 'barber1'), { barberId: 'b2' }));
+    await assertFails(updateDoc(doc(as('customer', EMAILS.customer), 'users', 'customer'), { role: 'admin' }));
+    await assertFails(updateDoc(doc(as('owner1', EMAILS.owner1), 'users', 'owner1'), { shopId: 'shop2' }));
+    await assertFails(updateDoc(doc(as('barber1', EMAILS.barber1), 'users', 'barber1'), { barberId: 'b2' }));
   });
 
   test('users can edit their own name', async () => {
-    await assertSucceeds(updateDoc(doc(as('customer', PHONES.customer), 'users', 'customer'), { name: 'New Name' }));
+    await assertSucceeds(updateDoc(doc(as('customer', EMAILS.customer), 'users', 'customer'), { name: 'New Name' }));
+  });
+
+  test('users can change their contact phone but not their email', async () => {
+    const ref = doc(as('customer', EMAILS.customer), 'users', 'customer');
+    await assertSucceeds(updateDoc(ref, { phone: '+251722334455' }));
+    await assertFails(updateDoc(ref, { phone: '+15551234567' }));
+    await assertFails(updateDoc(ref, { email: 'other@example.com' }));
+    await assertFails(updateDoc(ref, { email: EMAILS.customer.toUpperCase() }));
+    // Not even to the current sign-in email if it differs from the stored one.
+    const other = doc(as('customer', 'customer.new@example.com'), 'users', 'customer');
+    await assertFails(updateDoc(other, { email: 'customer.new@example.com' }));
+  });
+
+  test('admin can correct a user email', async () => {
+    await assertSucceeds(updateDoc(doc(as('admin', EMAILS.admin), 'users', 'customer2'), { email: 'customer2.new@example.com' }));
+    await assertFails(updateDoc(doc(as('admin', EMAILS.admin), 'users', 'customer2'), { email: 'not-an-email' }));
   });
 
   test('admin can change roles', async () => {
     await assertSucceeds(
-      updateDoc(doc(as('admin', PHONES.admin), 'users', 'customer2'), {
+      updateDoc(doc(as('admin', EMAILS.admin), 'users', 'customer2'), {
         role: 'barbershopOwner',
         shopId: 'shop3',
       }),
@@ -438,17 +532,17 @@ describe('users: invites grant roles', () => {
 
 describe('users: reading profiles', () => {
   test('own profile and admin reads', async () => {
-    await assertSucceeds(getDoc(doc(as('customer', PHONES.customer), 'users', 'customer')));
-    await assertSucceeds(getDoc(doc(as('admin', PHONES.admin), 'users', 'customer')));
+    await assertSucceeds(getDoc(doc(as('customer', EMAILS.customer), 'users', 'customer')));
+    await assertSucceeds(getDoc(doc(as('admin', EMAILS.admin), 'users', 'customer')));
   });
 
   test('owners can read their own staff only', async () => {
-    await assertSucceeds(getDoc(doc(as('owner1', PHONES.owner1), 'users', 'barber1')));
-    await assertFails(getDoc(doc(as('owner2', PHONES.owner2), 'users', 'barber1')));
+    await assertSucceeds(getDoc(doc(as('owner1', EMAILS.owner1), 'users', 'barber1')));
+    await assertFails(getDoc(doc(as('owner2', EMAILS.owner2), 'users', 'barber1')));
   });
 
   test('customers cannot read other users', async () => {
-    await assertFails(getDoc(doc(as('customer', PHONES.customer), 'users', 'customer2')));
+    await assertFails(getDoc(doc(as('customer', EMAILS.customer), 'users', 'customer2')));
     await assertFails(getDoc(doc(anon(), 'users', 'customer')));
   });
 });
@@ -456,66 +550,85 @@ describe('users: reading profiles', () => {
 describe('invites', () => {
   test('admin can invite an owner for an existing shop', async () => {
     await assertSucceeds(
-      setDoc(doc(as('admin', PHONES.admin), 'invites', PHONES.newPerson), invite(PHONES.newPerson, 'barbershopOwner', { shopId: 'shop3' })),
+      setDoc(doc(as('admin', EMAILS.admin), 'invites', EMAILS.newPerson), invite(EMAILS.newPerson, 'barbershopOwner', { shopId: 'shop3' })),
     );
   });
 
   test('owner invite must point to a real shop', async () => {
     await assertFails(
-      setDoc(doc(as('admin', PHONES.admin), 'invites', PHONES.newPerson), invite(PHONES.newPerson, 'barbershopOwner', { shopId: 'nope' })),
+      setDoc(doc(as('admin', EMAILS.admin), 'invites', EMAILS.newPerson), invite(EMAILS.newPerson, 'barbershopOwner', { shopId: 'nope' })),
     );
   });
 
   test('owner can invite a barber for their own shop only', async () => {
-    const db = as('owner1', PHONES.owner1);
+    const db = as('owner1', EMAILS.owner1);
     await assertSucceeds(
-      setDoc(doc(db, 'invites', PHONES.newPerson), invite(PHONES.newPerson, 'barber', { shopId: 'shop1', barberId: 'b2' }, 'owner1')),
+      setDoc(doc(db, 'invites', EMAILS.newPerson), invite(EMAILS.newPerson, 'barber', { shopId: 'shop1', barberId: 'b2' }, 'owner1')),
     );
     await assertFails(
-      setDoc(doc(db, 'invites', PHONES.customer2), invite(PHONES.customer2, 'barber', { shopId: 'shop2', barberId: 'b3' }, 'owner1')),
+      setDoc(doc(db, 'invites', EMAILS.customer2), invite(EMAILS.customer2, 'barber', { shopId: 'shop2', barberId: 'b3' }, 'owner1')),
     );
   });
 
   test('owner cannot invite owners or admins', async () => {
-    const db = as('owner1', PHONES.owner1);
+    const db = as('owner1', EMAILS.owner1);
     await assertFails(
-      setDoc(doc(db, 'invites', PHONES.newPerson), invite(PHONES.newPerson, 'barbershopOwner', { shopId: 'shop1' }, 'owner1')),
+      setDoc(doc(db, 'invites', EMAILS.newPerson), invite(EMAILS.newPerson, 'barbershopOwner', { shopId: 'shop1' }, 'owner1')),
     );
-    await assertFails(setDoc(doc(db, 'invites', PHONES.newPerson), invite(PHONES.newPerson, 'admin', {}, 'owner1')));
+    await assertFails(setDoc(doc(db, 'invites', EMAILS.newPerson), invite(EMAILS.newPerson, 'admin', {}, 'owner1')));
   });
 
   test('owner cannot overwrite an admin-created owner invite', async () => {
-    await seed('invites', PHONES.newPerson, invite(PHONES.newPerson, 'barbershopOwner', { shopId: 'shop3' }));
+    await seed('invites', EMAILS.newPerson, invite(EMAILS.newPerson, 'barbershopOwner', { shopId: 'shop3' }));
     await assertFails(
-      setDoc(doc(as('owner1', PHONES.owner1), 'invites', PHONES.newPerson), invite(PHONES.newPerson, 'barber', { shopId: 'shop1', barberId: 'b2' }, 'owner1')),
+      setDoc(doc(as('owner1', EMAILS.owner1), 'invites', EMAILS.newPerson), invite(EMAILS.newPerson, 'barber', { shopId: 'shop1', barberId: 'b2' }, 'owner1')),
     );
   });
 
   test('customers and barbers cannot create invites', async () => {
     await assertFails(
-      setDoc(doc(as('customer', PHONES.customer), 'invites', PHONES.newPerson), invite(PHONES.newPerson, 'admin', {}, 'customer')),
+      setDoc(doc(as('customer', EMAILS.customer), 'invites', EMAILS.newPerson), invite(EMAILS.newPerson, 'admin', {}, 'customer')),
     );
     await assertFails(
-      setDoc(doc(as('barber1', PHONES.barber1), 'invites', PHONES.newPerson), invite(PHONES.newPerson, 'barber', { shopId: 'shop1', barberId: 'b2' }, 'barber1')),
+      setDoc(doc(as('barber1', EMAILS.barber1), 'invites', EMAILS.newPerson), invite(EMAILS.newPerson, 'barber', { shopId: 'shop1', barberId: 'b2' }, 'barber1')),
     );
+  });
+
+  test('invite id must equal the lowercased email field', async () => {
+    const db = as('admin', EMAILS.admin);
+    // id and field differ
+    await assertFails(setDoc(doc(db, 'invites', EMAILS.newPerson), invite(EMAILS.customer2, 'admin')));
+    // uppercase id/field
+    await assertFails(setDoc(doc(db, 'invites', 'New.Person@Example.com'), invite('New.Person@Example.com', 'admin')));
+    // not an email (e.g. the old phone-keyed invites)
+    await assertFails(setDoc(doc(db, 'invites', PHONES.newPerson), invite(PHONES.newPerson, 'admin')));
+    // the old `phone` field is no longer accepted
+    await assertFails(setDoc(doc(db, 'invites', EMAILS.newPerson), { ...invite(EMAILS.newPerson, 'admin'), phone: PHONES.newPerson }));
+    await assertSucceeds(setDoc(doc(db, 'invites', EMAILS.newPerson), invite(EMAILS.newPerson, 'admin')));
+  });
+
+  test('the invitee (verified email) can decline their invite', async () => {
+    await seed('invites', EMAILS.newPerson, invite(EMAILS.newPerson, 'barber', { shopId: 'shop1', barberId: 'b2' }, 'owner1'));
+    await assertFails(deleteDoc(doc(as('customer', EMAILS.customer), 'invites', EMAILS.newPerson)));
+    await assertSucceeds(deleteDoc(doc(as('new', EMAILS.newPerson), 'invites', EMAILS.newPerson)));
   });
 
   test('createdBy must be the caller', async () => {
     await assertFails(
-      setDoc(doc(as('admin', PHONES.admin), 'invites', PHONES.newPerson), invite(PHONES.newPerson, 'admin', {}, 'someoneElse')),
+      setDoc(doc(as('admin', EMAILS.admin), 'invites', EMAILS.newPerson), invite(EMAILS.newPerson, 'admin', {}, 'someoneElse')),
     );
   });
 
   test('only the invitee, admin or the shop owner can read an invite', async () => {
-    await seed('invites', PHONES.newPerson, invite(PHONES.newPerson, 'barber', { shopId: 'shop1', barberId: 'b2' }, 'owner1'));
-    await assertSucceeds(getDoc(doc(as('new', PHONES.newPerson), 'invites', PHONES.newPerson)));
-    await assertSucceeds(getDoc(doc(as('owner1', PHONES.owner1), 'invites', PHONES.newPerson)));
-    await assertFails(getDoc(doc(as('owner2', PHONES.owner2), 'invites', PHONES.newPerson)));
-    await assertFails(getDoc(doc(as('customer', PHONES.customer), 'invites', PHONES.newPerson)));
+    await seed('invites', EMAILS.newPerson, invite(EMAILS.newPerson, 'barber', { shopId: 'shop1', barberId: 'b2' }, 'owner1'));
+    await assertSucceeds(getDoc(doc(as('new', EMAILS.newPerson), 'invites', EMAILS.newPerson)));
+    await assertSucceeds(getDoc(doc(as('owner1', EMAILS.owner1), 'invites', EMAILS.newPerson)));
+    await assertFails(getDoc(doc(as('owner2', EMAILS.owner2), 'invites', EMAILS.newPerson)));
+    await assertFails(getDoc(doc(as('customer', EMAILS.customer), 'invites', EMAILS.newPerson)));
   });
 
   test('a user can check for their own invite even if none exists', async () => {
-    await assertSucceeds(getDoc(doc(as('new', PHONES.newPerson), 'invites', PHONES.newPerson)));
+    await assertSucceeds(getDoc(doc(as('new', EMAILS.newPerson), 'invites', EMAILS.newPerson)));
   });
 });
 
@@ -525,8 +638,8 @@ describe('barbershops', () => {
   });
 
   test('legacy shops without subscription fields: staff and admin only', async () => {
-    await assertFails(getDoc(doc(as('customer', PHONES.customer), 'barbershops', 'shop3')));
-    await assertSucceeds(getDoc(doc(as('admin', PHONES.admin), 'barbershops', 'shop3')));
+    await assertFails(getDoc(doc(as('customer', EMAILS.customer), 'barbershops', 'shop3')));
+    await assertSucceeds(getDoc(doc(as('admin', EMAILS.admin), 'barbershops', 'shop3')));
   });
 
   test('legacy shops without subscription fields can still be booked', async () => {
@@ -534,17 +647,17 @@ describe('barbershops', () => {
       const db = ctx.firestore();
       await setDoc(doc(db, 'barbershops', 'shop1'), shop('owner1'));
     });
-    await assertSucceeds(bookTx(as('customer', PHONES.customer), 'legacyShop', newBooking(addisSlot(9, 9))));
+    await assertSucceeds(bookTx(as('customer', EMAILS.customer), 'legacyShop', newBooking(addisSlot(9, 9))));
   });
 
   test('only admins can register shops', async () => {
-    await assertSucceeds(setDoc(doc(as('admin', PHONES.admin), 'barbershops', 'new'), { ...shop(''), reviewCount: 0 }));
-    await assertFails(setDoc(doc(as('owner1', PHONES.owner1), 'barbershops', 'new2'), shop('owner1')));
-    await assertFails(setDoc(doc(as('customer', PHONES.customer), 'barbershops', 'new3'), shop('customer')));
+    await assertSucceeds(setDoc(doc(as('admin', EMAILS.admin), 'barbershops', 'new'), { ...shop(''), reviewCount: 0 }));
+    await assertFails(setDoc(doc(as('owner1', EMAILS.owner1), 'barbershops', 'new2'), shop('owner1')));
+    await assertFails(setDoc(doc(as('customer', EMAILS.customer), 'barbershops', 'new3'), shop('customer')));
   });
 
   test('owner edits their own shop but not verification or rating', async () => {
-    const db = as('owner1', PHONES.owner1);
+    const db = as('owner1', EMAILS.owner1);
     await assertSucceeds(updateDoc(doc(db, 'barbershops', 'shop1'), { name: 'Renamed', closingHour: 21 }));
     await assertFails(updateDoc(doc(db, 'barbershops', 'shop1'), { isVerified: false }));
     await assertFails(updateDoc(doc(db, 'barbershops', 'shop1'), { rating: 5 }));
@@ -552,33 +665,34 @@ describe('barbershops', () => {
   });
 
   test("owner cannot edit another owner's shop", async () => {
-    await assertFails(updateDoc(doc(as('owner2', PHONES.owner2), 'barbershops', 'shop1'), { name: 'Hacked' }));
+    await assertFails(updateDoc(doc(as('owner2', EMAILS.owner2), 'barbershops', 'shop1'), { name: 'Hacked' }));
   });
 
   test('the invited owner can claim an unowned shop', async () => {
     await seed('users', 'owner3', {
       uid: 'owner3',
+      email: EMAILS.newPerson,
       name: 'Owner Three',
       phone: PHONES.newPerson,
       role: 'barbershopOwner',
       shopId: 'shop3',
       createdAt: NOW,
     });
-    await assertSucceeds(updateDoc(doc(as('owner3', PHONES.newPerson), 'barbershops', 'shop3'), { ownerId: 'owner3' }));
+    await assertSucceeds(updateDoc(doc(as('owner3', EMAILS.newPerson), 'barbershops', 'shop3'), { ownerId: 'owner3' }));
   });
 
   test('an owner of another shop cannot claim an unowned shop', async () => {
-    await assertFails(updateDoc(doc(as('owner1', PHONES.owner1), 'barbershops', 'shop3'), { ownerId: 'owner1' }));
+    await assertFails(updateDoc(doc(as('owner1', EMAILS.owner1), 'barbershops', 'shop3'), { ownerId: 'owner1' }));
   });
 
   test('admin verifies and deletes shops; owners cannot delete', async () => {
-    await assertSucceeds(updateDoc(doc(as('admin', PHONES.admin), 'barbershops', 'shop2'), { isVerified: false }));
-    await assertFails(deleteDoc(doc(as('owner1', PHONES.owner1), 'barbershops', 'shop1')));
-    await assertSucceeds(deleteDoc(doc(as('admin', PHONES.admin), 'barbershops', 'shop2')));
+    await assertSucceeds(updateDoc(doc(as('admin', EMAILS.admin), 'barbershops', 'shop2'), { isVerified: false }));
+    await assertFails(deleteDoc(doc(as('owner1', EMAILS.owner1), 'barbershops', 'shop1')));
+    await assertSucceeds(deleteDoc(doc(as('admin', EMAILS.admin), 'barbershops', 'shop2')));
   });
 
   test('service duration is 5 to 120 minutes', async () => {
-    const db = as('owner1', PHONES.owner1);
+    const db = as('owner1', EMAILS.owner1);
     const service = (durationMinutes) => ({ shopId: 'shop1', name: 'Svc', description: 'Svc', price: 300, durationMinutes });
     await assertSucceeds(setDoc(doc(db, 'barbershops/shop1/services', 'd120'), service(120)));
     await assertSucceeds(setDoc(doc(db, 'barbershops/shop1/services', 'd5'), service(5)));
@@ -586,31 +700,31 @@ describe('barbershops', () => {
     await assertFails(setDoc(doc(db, 'barbershops/shop1/services', 'd180'), service(180)));
     await assertFails(setDoc(doc(db, 'barbershops/shop1/services', 'd4'), service(4)));
     await assertFails(updateDoc(doc(db, 'barbershops/shop1/services', 'srv1'), { durationMinutes: 240 }));
-    await assertFails(setDoc(doc(as('admin', PHONES.admin), 'barbershops/shop1/services', 'a480'), service(480)));
+    await assertFails(setDoc(doc(as('admin', EMAILS.admin), 'barbershops/shop1/services', 'a480'), service(480)));
   });
 
   test('owner manages services of their own shop only', async () => {
     const service = { shopId: 'shop1', name: 'Shave', description: 'Hot towel shave', price: 300, durationMinutes: 30 };
-    await assertSucceeds(setDoc(doc(as('owner1', PHONES.owner1), 'barbershops/shop1/services', 'srv2'), service));
-    await assertFails(setDoc(doc(as('owner2', PHONES.owner2), 'barbershops/shop1/services', 'srv3'), service));
-    await assertFails(setDoc(doc(as('barber1', PHONES.barber1), 'barbershops/shop1/services', 'srv4'), service));
+    await assertSucceeds(setDoc(doc(as('owner1', EMAILS.owner1), 'barbershops/shop1/services', 'srv2'), service));
+    await assertFails(setDoc(doc(as('owner2', EMAILS.owner2), 'barbershops/shop1/services', 'srv3'), service));
+    await assertFails(setDoc(doc(as('barber1', EMAILS.barber1), 'barbershops/shop1/services', 'srv4'), service));
   });
 });
 
 describe('barber profiles', () => {
   test('owner adds and removes barbers in their own shop', async () => {
-    const db = as('owner1', PHONES.owner1);
+    const db = as('owner1', EMAILS.owner1);
     await assertSucceeds(setDoc(doc(db, 'barbershops/shop1/barbers', 'b9'), barber('shop1', 'New')));
     await assertSucceeds(deleteDoc(doc(db, 'barbershops/shop1/barbers', 'b9')));
     await assertFails(setDoc(doc(db, 'barbershops/shop2/barbers', 'b9'), barber('shop2', 'New')));
   });
 
   test('owner cannot change barber ratings', async () => {
-    await assertFails(updateDoc(doc(as('owner1', PHONES.owner1), 'barbershops/shop1/barbers', 'b1'), { rating: 5, reviewCount: 99 }));
+    await assertFails(updateDoc(doc(as('owner1', EMAILS.owner1), 'barbershops/shop1/barbers', 'b1'), { rating: 5, reviewCount: 99 }));
   });
 
   test('barber toggles only their own availability', async () => {
-    const db = as('barber1', PHONES.barber1);
+    const db = as('barber1', EMAILS.barber1);
     await assertSucceeds(updateDoc(doc(db, 'barbershops/shop1/barbers', 'b1'), { isAvailable: false }));
     await assertFails(updateDoc(doc(db, 'barbershops/shop1/barbers', 'b1'), { name: 'Renamed' }));
     await assertFails(updateDoc(doc(db, 'barbershops/shop1/barbers', 'b2'), { isAvailable: false }));
@@ -619,13 +733,13 @@ describe('barber profiles', () => {
 
 describe('bookings', () => {
   test('customer books at the real service price', async () => {
-    const db = as('customer', PHONES.customer);
+    const db = as('customer', EMAILS.customer);
     await assertSucceeds(bookTx(db, 'bk2', newBooking(addisSlot(3, 14))));
     await assertFails(bookBatch(db, 'bk3', newBooking(addisSlot(3, 16), { price: 1 })));
   });
 
   test('cannot book for someone else, as completed, or with a fake barber/service', async () => {
-    const db = as('customer', PHONES.customer);
+    const db = as('customer', EMAILS.customer);
     const at = addisSlot(4, 9);
     await assertFails(bookBatch(db, 'bk4', newBooking(at, { customerId: 'customer2' })));
     await assertFails(bookBatch(db, 'bk5', newBooking(at, { status: 'completed' })));
@@ -633,49 +747,49 @@ describe('bookings', () => {
     await assertFails(bookBatch(db, 'bk7', newBooking(at, { serviceId: 'nope' })));
   });
 
-  test('a signed-in phone without a profile cannot book', async () => {
-    await assertFails(bookBatch(as('new', PHONES.newPerson), 'bk8', newBooking(addisSlot(4, 9), { customerId: 'new' })));
+  test('a signed-in user without a profile cannot book', async () => {
+    await assertFails(bookBatch(as('new', EMAILS.newPerson), 'bk8', newBooking(addisSlot(4, 9), { customerId: 'new' })));
   });
 
   test('who can read a booking', async () => {
-    await assertSucceeds(getDoc(doc(as('customer', PHONES.customer), 'bookings', 'bk1')));
-    await assertSucceeds(getDoc(doc(as('owner1', PHONES.owner1), 'bookings', 'bk1')));
-    await assertSucceeds(getDoc(doc(as('barber1', PHONES.barber1), 'bookings', 'bk1')));
-    await assertSucceeds(getDoc(doc(as('admin', PHONES.admin), 'bookings', 'bk1')));
+    await assertSucceeds(getDoc(doc(as('customer', EMAILS.customer), 'bookings', 'bk1')));
+    await assertSucceeds(getDoc(doc(as('owner1', EMAILS.owner1), 'bookings', 'bk1')));
+    await assertSucceeds(getDoc(doc(as('barber1', EMAILS.barber1), 'bookings', 'bk1')));
+    await assertSucceeds(getDoc(doc(as('admin', EMAILS.admin), 'bookings', 'bk1')));
 
-    await assertFails(getDoc(doc(as('customer2', PHONES.customer2), 'bookings', 'bk1')));
-    await assertFails(getDoc(doc(as('barber2', PHONES.barber2), 'bookings', 'bk1')));
-    await assertFails(getDoc(doc(as('owner2', PHONES.owner2), 'bookings', 'bk1')));
+    await assertFails(getDoc(doc(as('customer2', EMAILS.customer2), 'bookings', 'bk1')));
+    await assertFails(getDoc(doc(as('barber2', EMAILS.barber2), 'bookings', 'bk1')));
+    await assertFails(getDoc(doc(as('owner2', EMAILS.owner2), 'bookings', 'bk1')));
     await assertFails(getDoc(doc(anon(), 'bookings', 'bk1')));
   });
 
   test('customer can cancel but not complete their booking', async () => {
-    const db = as('customer', PHONES.customer);
+    const db = as('customer', EMAILS.customer);
     await assertFails(updateDoc(doc(db, 'bookings', 'bk1'), { status: 'completed' }));
     await assertFails(updateDoc(doc(db, 'bookings', 'bk1'), { price: 1 }));
     await assertSucceeds(updateDoc(doc(db, 'bookings', 'bk1'), { status: 'cancelled' }));
   });
 
   test('assigned barber runs the booking; other barbers cannot', async () => {
-    await assertSucceeds(updateDoc(doc(as('barber1', PHONES.barber1), 'bookings', 'bk1'), { status: 'inProgress' }));
-    await assertSucceeds(updateDoc(doc(as('barber1', PHONES.barber1), 'bookings', 'bk1'), { status: 'completed' }));
-    await assertFails(updateDoc(doc(as('barber2', PHONES.barber2), 'bookings', 'bk1'), { status: 'cancelled' }));
+    await assertSucceeds(updateDoc(doc(as('barber1', EMAILS.barber1), 'bookings', 'bk1'), { status: 'inProgress' }));
+    await assertSucceeds(updateDoc(doc(as('barber1', EMAILS.barber1), 'bookings', 'bk1'), { status: 'completed' }));
+    await assertFails(updateDoc(doc(as('barber2', EMAILS.barber2), 'bookings', 'bk1'), { status: 'cancelled' }));
   });
 
   test("removing a barber profile revokes that barber's access", async () => {
     await env.withSecurityRulesDisabled((ctx) => deleteDoc(doc(ctx.firestore(), 'barbershops/shop1/barbers', 'b1')));
-    await assertFails(getDoc(doc(as('barber1', PHONES.barber1), 'bookings', 'bk1')));
-    await assertFails(updateDoc(doc(as('barber1', PHONES.barber1), 'bookings', 'bk1'), { status: 'completed' }));
+    await assertFails(getDoc(doc(as('barber1', EMAILS.barber1), 'bookings', 'bk1')));
+    await assertFails(updateDoc(doc(as('barber1', EMAILS.barber1), 'bookings', 'bk1'), { status: 'completed' }));
   });
 
   test('only admins delete bookings', async () => {
-    await assertFails(deleteDoc(doc(as('owner1', PHONES.owner1), 'bookings', 'bk1')));
-    await assertSucceeds(deleteDoc(doc(as('admin', PHONES.admin), 'bookings', 'bk1')));
+    await assertFails(deleteDoc(doc(as('owner1', EMAILS.owner1), 'bookings', 'bk1')));
+    await assertSucceeds(deleteDoc(doc(as('admin', EMAILS.admin), 'bookings', 'bk1')));
   });
 });
 
 describe('bookings: appointment interval and payment fields on create', () => {
-  const db = () => as('customer', PHONES.customer);
+  const db = () => as('customer', EMAILS.customer);
 
   test('chapa as payment method is allowed, paid/pending payment status is not', async () => {
     await assertSucceeds(bookBatch(db(), 'c1', newBooking(addisSlot(5, 9), { paymentMethod: 'chapa' })));
@@ -739,8 +853,8 @@ describe('bookings: appointment interval and payment fields on create', () => {
 });
 
 describe('double-booking prevention (slot locks)', () => {
-  const cust = () => as('customer', PHONES.customer);
-  const cust2 = () => as('customer2', PHONES.customer2);
+  const cust = () => as('customer', EMAILS.customer);
+  const cust2 = () => as('customer2', EMAILS.customer2);
 
   test('a booking must hold every slot lock it covers', async () => {
     const at = addisSlot(7, 9);
@@ -903,13 +1017,13 @@ describe('double-booking prevention (slot locks)', () => {
     const ref = (db) => doc(locksOf(db), lockId(START));
     await assertFails(setDoc(ref(cust()), lockDoc('bk1', START, BK1_END)));
     await assertFails(updateDoc(ref(cust()), { bookingId: 'other' }));
-    await assertFails(updateDoc(ref(as('admin', PHONES.admin)), { bookingId: 'other' }));
+    await assertFails(updateDoc(ref(as('admin', EMAILS.admin)), { bookingId: 'other' }));
   });
 
   test('clients cannot run the cleanup collection-group query on slotLocks', async () => {
     const q = (db) => query(collectionGroup(db, 'slotLocks'), where('expiresAt', '<', new Date().toISOString()));
     await assertFails(getDocs(q(cust())));
-    await assertFails(getDocs(q(as('admin', PHONES.admin))));
+    await assertFails(getDocs(q(as('admin', EMAILS.admin))));
   });
 
   test('any signed-in user can read a day of locks; anonymous cannot', async () => {
@@ -932,49 +1046,49 @@ describe('double-booking prevention (slot locks)', () => {
     const ref = (db) => doc(locksOf(db), lockId(START));
     await assertFails(deleteDoc(ref(cust())));
     await assertFails(deleteDoc(ref(cust2())));
-    await assertFails(deleteDoc(ref(as('barber1', PHONES.barber1))));
-    await assertFails(deleteDoc(ref(as('owner2', PHONES.owner2))));
+    await assertFails(deleteDoc(ref(as('barber1', EMAILS.barber1))));
+    await assertFails(deleteDoc(ref(as('owner2', EMAILS.owner2))));
   });
 
   test('another customer cannot release locks even of a cancelled booking', async () => {
     await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'bookings', 'bk1'), { status: 'cancelled' }));
     await assertFails(deleteDoc(doc(locksOf(cust2()), lockId(START))));
-    await assertFails(deleteDoc(doc(locksOf(as('barber2', PHONES.barber2)), lockId(START))));
+    await assertFails(deleteDoc(doc(locksOf(as('barber2', EMAILS.barber2)), lockId(START))));
     await assertSucceeds(deleteDoc(doc(locksOf(cust()), lockId(START))));
   });
 
   test('the assigned barber and the owner can cancel and release', async () => {
-    await assertSucceeds(cancelTx(as('barber1', PHONES.barber1), 'bk1', START, 40, { cancelledBy: 'barber1' }));
+    await assertSucceeds(cancelTx(as('barber1', EMAILS.barber1), 'bk1', START, 40, { cancelledBy: 'barber1' }));
     await env.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'bookings', 'bk1'), booking());
       for (const b of blocks(START, 40)) await setDoc(doc(locksOf(ctx.firestore()), lockId(b)), lockDoc('bk1', b, BK1_END));
     });
-    await assertSucceeds(cancelTx(as('owner1', PHONES.owner1), 'bk1', START, 40));
+    await assertSucceeds(cancelTx(as('owner1', EMAILS.owner1), 'bk1', START, 40));
   });
 
   test('owners and admins can clear locks of their shop at any time', async () => {
-    await assertSucceeds(deleteDoc(doc(locksOf(as('owner1', PHONES.owner1)), lockId(START))));
-    await assertSucceeds(deleteDoc(doc(locksOf(as('admin', PHONES.admin)), lockId(plusMinutes(START, 15)))));
+    await assertSucceeds(deleteDoc(doc(locksOf(as('owner1', EMAILS.owner1)), lockId(START))));
+    await assertSucceeds(deleteDoc(doc(locksOf(as('admin', EMAILS.admin)), lockId(plusMinutes(START, 15)))));
   });
 });
 
 describe('bookings: status updates, cancelledBy and function-owned fields', () => {
   test('cancelledBy must be the caller and only on cancelling', async () => {
-    const cust = as('customer', PHONES.customer);
+    const cust = as('customer', EMAILS.customer);
     await assertFails(updateDoc(doc(cust, 'bookings', 'bk1'), { status: 'cancelled', cancelledBy: 'owner1' }));
-    await assertFails(updateDoc(doc(as('barber1', PHONES.barber1), 'bookings', 'bk1'), { status: 'inProgress', cancelledBy: 'barber1' }));
+    await assertFails(updateDoc(doc(as('barber1', EMAILS.barber1), 'bookings', 'bk1'), { status: 'inProgress', cancelledBy: 'barber1' }));
     await assertSucceeds(updateDoc(doc(cust, 'bookings', 'bk1'), { status: 'cancelled', cancelledBy: 'customer' }));
     // Not again once cancelled.
-    await assertFails(updateDoc(doc(as('owner1', PHONES.owner1), 'bookings', 'bk1'), { cancelledBy: 'owner1' }));
+    await assertFails(updateDoc(doc(as('owner1', EMAILS.owner1), 'bookings', 'bk1'), { cancelledBy: 'owner1' }));
   });
 
   test('clients cannot write payment fields or reminder flags', async () => {
-    for (const [uid, phone] of [
-      ['customer', PHONES.customer],
-      ['owner1', PHONES.owner1],
-      ['barber1', PHONES.barber1],
+    for (const [uid, email] of [
+      ['customer', EMAILS.customer],
+      ['owner1', EMAILS.owner1],
+      ['barber1', EMAILS.barber1],
     ]) {
-      const ref = doc(as(uid, phone), 'bookings', 'bk1');
+      const ref = doc(as(uid, email), 'bookings', 'bk1');
       await assertFails(updateDoc(ref, { paymentStatus: 'paid' }));
       await assertFails(updateDoc(ref, { paymentMethod: 'chapa' }));
       await assertFails(updateDoc(ref, { paymentId: 'p1' }));
@@ -986,8 +1100,8 @@ describe('bookings: status updates, cancelledBy and function-owned fields', () =
   });
 
   test('admin may correct paymentStatus', async () => {
-    await assertSucceeds(updateDoc(doc(as('admin', PHONES.admin), 'bookings', 'bk1'), { paymentStatus: 'refunded' }));
-    await assertFails(updateDoc(doc(as('admin', PHONES.admin), 'bookings', 'bk1'), { paymentStatus: 'free' }));
+    await assertSucceeds(updateDoc(doc(as('admin', EMAILS.admin), 'bookings', 'bk1'), { paymentStatus: 'refunded' }));
+    await assertFails(updateDoc(doc(as('admin', EMAILS.admin), 'bookings', 'bk1'), { paymentStatus: 'free' }));
   });
 
   test('status updates still work on documents carrying function-written fields', async () => {
@@ -1000,39 +1114,39 @@ describe('bookings: status updates, cancelledBy and function-owned fields', () =
         reminder24hSentAt: NOW,
       }),
     );
-    await assertSucceeds(updateDoc(doc(as('barber1', PHONES.barber1), 'bookings', 'bk1'), { status: 'inProgress' }));
+    await assertSucceeds(updateDoc(doc(as('barber1', EMAILS.barber1), 'bookings', 'bk1'), { status: 'inProgress' }));
   });
 
   test('cancelReason is written by functions only; such bookings still update', async () => {
-    for (const [uid, phone] of [
-      ['customer', PHONES.customer],
-      ['owner1', PHONES.owner1],
-      ['admin', PHONES.admin],
+    for (const [uid, email] of [
+      ['customer', EMAILS.customer],
+      ['owner1', EMAILS.owner1],
+      ['admin', EMAILS.admin],
     ]) {
-      await assertFails(updateDoc(doc(as(uid, phone), 'bookings', 'bk1'), { status: 'cancelled', cancelReason: 'slot_conflict' }));
+      await assertFails(updateDoc(doc(as(uid, email), 'bookings', 'bk1'), { status: 'cancelled', cancelReason: 'slot_conflict' }));
     }
-    await assertFails(bookBatch(as('customer', PHONES.customer), 'cr1', newBooking(addisSlot(6, 13), { cancelReason: 'x' })));
+    await assertFails(bookBatch(as('customer', EMAILS.customer), 'cr1', newBooking(addisSlot(6, 13), { cancelReason: 'x' })));
     // verifyBookingLocks cancelled it (Admin SDK).
     await env.withSecurityRulesDisabled((ctx) =>
       updateDoc(doc(ctx.firestore(), 'bookings', 'bk1'), { status: 'cancelled', cancelledBy: 'system', cancelReason: 'slot_conflict' }),
     );
-    await assertSucceeds(getDoc(doc(as('customer', PHONES.customer), 'bookings', 'bk1')));
-    await assertSucceeds(updateDoc(doc(as('admin', PHONES.admin), 'bookings', 'bk1'), { paymentStatus: 'refunded' }));
-    await assertFails(updateDoc(doc(as('owner1', PHONES.owner1), 'bookings', 'bk1'), { cancelReason: 'other' }));
+    await assertSucceeds(getDoc(doc(as('customer', EMAILS.customer), 'bookings', 'bk1')));
+    await assertSucceeds(updateDoc(doc(as('admin', EMAILS.admin), 'bookings', 'bk1'), { paymentStatus: 'refunded' }));
+    await assertFails(updateDoc(doc(as('owner1', EMAILS.owner1), 'bookings', 'bk1'), { cancelReason: 'other' }));
   });
 
   test('legacy bookings without startAt can still change status', async () => {
     const legacy = booking();
     for (const k of ['startAt', 'endAt', 'durationMinutes', 'paymentStatus', 'paymentMethod']) delete legacy[k];
     await seed('bookings', 'legacy', legacy);
-    await assertSucceeds(updateDoc(doc(as('owner1', PHONES.owner1), 'bookings', 'legacy'), { status: 'completed' }));
+    await assertSucceeds(updateDoc(doc(as('owner1', EMAILS.owner1), 'bookings', 'legacy'), { status: 'completed' }));
   });
 
   test('staff cannot reopen a cancelled booking (its slot was released)', async () => {
     await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'bookings', 'bk1'), { status: 'cancelled' }));
-    await assertFails(updateDoc(doc(as('owner1', PHONES.owner1), 'bookings', 'bk1'), { status: 'confirmed' }));
-    await assertFails(updateDoc(doc(as('barber1', PHONES.barber1), 'bookings', 'bk1'), { status: 'inProgress' }));
-    await assertFails(updateDoc(doc(as('customer', PHONES.customer), 'bookings', 'bk1'), { status: 'confirmed' }));
+    await assertFails(updateDoc(doc(as('owner1', EMAILS.owner1), 'bookings', 'bk1'), { status: 'confirmed' }));
+    await assertFails(updateDoc(doc(as('barber1', EMAILS.barber1), 'bookings', 'bk1'), { status: 'inProgress' }));
+    await assertFails(updateDoc(doc(as('customer', EMAILS.customer), 'bookings', 'bk1'), { status: 'confirmed' }));
   });
 });
 
@@ -1045,7 +1159,7 @@ describe('booking listeners (list queries)', () => {
   });
 
   test('customer: where customerId == uid', async () => {
-    const db = as('customer', PHONES.customer);
+    const db = as('customer', EMAILS.customer);
     const snap = await assertSucceeds(getDocs(query(bookings(db), where('customerId', '==', 'customer'))));
     assert.equal(snap.size, 1);
     await assertFails(getDocs(bookings(db)));
@@ -1053,14 +1167,14 @@ describe('booking listeners (list queries)', () => {
   });
 
   test('owner: where shopId == own shop', async () => {
-    const db = as('owner1', PHONES.owner1);
+    const db = as('owner1', EMAILS.owner1);
     const snap = await assertSucceeds(getDocs(query(bookings(db), where('shopId', '==', 'shop1'))));
     assert.equal(snap.size, 2);
     await assertFails(getDocs(query(bookings(db), where('shopId', '==', 'shop2'))));
   });
 
   test('barber: where shopId == S and barberId == own profile', async () => {
-    const db = as('barber1', PHONES.barber1);
+    const db = as('barber1', EMAILS.barber1);
     const snap = await assertSucceeds(
       getDocs(query(bookings(db), where('shopId', '==', 'shop1'), where('barberId', '==', 'b1'))),
     );
@@ -1085,9 +1199,9 @@ describe('booking listeners (list queries)', () => {
     await seed('bookings', 'bkPast', booking({ startAt: addisSlot(-10, 10), endAt: plusMinutes(addisSlot(-10, 10), 40) }));
     await seed('bookings', 'bkAncient', booking({ startAt: addisSlot(-120, 10), endAt: plusMinutes(addisSlot(-120, 10), 40) }));
     const cases = [
-      [as('customer', PHONES.customer), [where('customerId', '==', 'customer')], ['bk1'], ['bkPast']],
-      [as('owner1', PHONES.owner1), [where('shopId', '==', 'shop1')], ['bk1', 'bkOther'], ['bkPast']],
-      [as('barber1', PHONES.barber1), [where('shopId', '==', 'shop1'), where('barberId', '==', 'b1')], ['bk1'], ['bkPast']],
+      [as('customer', EMAILS.customer), [where('customerId', '==', 'customer')], ['bk1'], ['bkPast']],
+      [as('owner1', EMAILS.owner1), [where('shopId', '==', 'shop1')], ['bk1', 'bkOther'], ['bkPast']],
+      [as('barber1', EMAILS.barber1), [where('shopId', '==', 'shop1'), where('barberId', '==', 'b1')], ['bk1'], ['bkPast']],
     ];
     for (const [db, filters, upcoming, history] of cases) {
       const [up, past] = windowed(query(collection(db, 'bookings'), ...filters));
@@ -1097,55 +1211,56 @@ describe('booking listeners (list queries)', () => {
       assert.deepEqual(pastSnap.docs.map((d) => d.id), history);
     }
     // The same windows without the role filter are still denied.
-    for (const q of windowed(collection(as('customer', PHONES.customer), 'bookings'))) await assertFails(getDocs(q));
-    for (const q of windowed(query(collection(as('owner2', PHONES.owner2), 'bookings'), where('shopId', '==', 'shop1')))) {
+    for (const q of windowed(collection(as('customer', EMAILS.customer), 'bookings'))) await assertFails(getDocs(q));
+    for (const q of windowed(query(collection(as('owner2', EMAILS.owner2), 'bookings'), where('shopId', '==', 'shop1')))) {
       await assertFails(getDocs(q));
     }
     for (const q of windowed(
-      query(collection(as('barber1', PHONES.barber1), 'bookings'), where('shopId', '==', 'shop1'), where('barberId', '==', 'b2')),
+      query(collection(as('barber1', EMAILS.barber1), 'bookings'), where('shopId', '==', 'shop1'), where('barberId', '==', 'b2')),
     )) {
       await assertFails(getDocs(q));
     }
   });
 
   test('admin: orderBy createdAt desc limit 500', async () => {
-    const db = as('admin', PHONES.admin);
+    const db = as('admin', EMAILS.admin);
     const snap = await assertSucceeds(getDocs(query(bookings(db), orderBy('createdAt', 'desc'), limit(500))));
     assert.equal(snap.size, 3);
-    await assertFails(getDocs(query(bookings(as('owner1', PHONES.owner1)), orderBy('createdAt', 'desc'), limit(500))));
+    await assertFails(getDocs(query(bookings(as('owner1', EMAILS.owner1)), orderBy('createdAt', 'desc'), limit(500))));
   });
 });
 
 describe('users: language, profile edits and staff listener', () => {
   test('users can set their language to en or am only', async () => {
-    const ref = doc(as('customer', PHONES.customer), 'users', 'customer');
+    const ref = doc(as('customer', EMAILS.customer), 'users', 'customer');
     await assertSucceeds(updateDoc(ref, { language: 'am' }));
     await assertSucceeds(updateDoc(ref, { name: 'Liya', language: 'en' }));
     await assertFails(updateDoc(ref, { language: 'fr' }));
   });
 
   test('owners, barbers and admins can set their language too, nothing else changes', async () => {
-    for (const [uid, phone] of [
-      ['owner1', PHONES.owner1],
-      ['barber1', PHONES.barber1],
-      ['admin', PHONES.admin],
+    for (const [uid, email] of [
+      ['owner1', EMAILS.owner1],
+      ['barber1', EMAILS.barber1],
+      ['admin', EMAILS.admin],
     ]) {
-      const ref = doc(as(uid, phone), 'users', uid);
+      const ref = doc(as(uid, email), 'users', uid);
       await assertSucceeds(updateDoc(ref, { language: 'am' }), uid);
       await assertSucceeds(updateDoc(ref, { language: 'en' }), uid);
       await assertFails(updateDoc(ref, { language: 'AM' }), uid);
       await assertFails(updateDoc(ref, { language: 3 }), uid);
     }
     // Not someone else's.
-    await assertFails(updateDoc(doc(as('customer', PHONES.customer), 'users', 'customer2'), { language: 'en' }));
-    await assertFails(updateDoc(doc(as('barber1', PHONES.barber1), 'users', 'barber1'), { language: 'en', role: 'admin' }));
+    await assertFails(updateDoc(doc(as('customer', EMAILS.customer), 'users', 'customer2'), { language: 'en' }));
+    await assertFails(updateDoc(doc(as('barber1', EMAILS.barber1), 'users', 'barber1'), { language: 'en', role: 'admin' }));
   });
 
   test('a new profile may carry a language', async () => {
-    const db = as('new', PHONES.newPerson);
+    const db = as('new', EMAILS.newPerson);
     await assertSucceeds(
       setDoc(doc(db, 'users', 'new'), {
         uid: 'new',
+        email: EMAILS.newPerson,
         name: 'Hanna',
         phone: PHONES.newPerson,
         role: 'customer',
@@ -1156,26 +1271,26 @@ describe('users: language, profile edits and staff listener', () => {
   });
 
   test('profile edits cannot add unknown fields', async () => {
-    await assertFails(updateDoc(doc(as('customer', PHONES.customer), 'users', 'customer'), { isVip: true }));
+    await assertFails(updateDoc(doc(as('customer', EMAILS.customer), 'users', 'customer'), { isVip: true }));
   });
 
   test('owner lists their staff: users where shopId == own shop', async () => {
     const users = (db) => collection(db, 'users');
-    const snap = await assertSucceeds(getDocs(query(users(as('owner1', PHONES.owner1)), where('shopId', '==', 'shop1'))));
+    const snap = await assertSucceeds(getDocs(query(users(as('owner1', EMAILS.owner1)), where('shopId', '==', 'shop1'))));
     assert.equal(snap.size, 3);
-    await assertFails(getDocs(query(users(as('owner2', PHONES.owner2)), where('shopId', '==', 'shop1'))));
-    await assertFails(getDocs(users(as('owner1', PHONES.owner1))));
-    await assertSucceeds(getDocs(users(as('admin', PHONES.admin))));
+    await assertFails(getDocs(query(users(as('owner2', EMAILS.owner2)), where('shopId', '==', 'shop1'))));
+    await assertFails(getDocs(users(as('owner1', EMAILS.owner1))));
+    await assertSucceeds(getDocs(users(as('admin', EMAILS.admin))));
   });
 
   test('owner lists pending barber invites of their shop', async () => {
-    await seed('invites', PHONES.newPerson, invite(PHONES.newPerson, 'barber', { shopId: 'shop1', barberId: 'b2' }, 'owner1'));
+    await seed('invites', EMAILS.newPerson, invite(EMAILS.newPerson, 'barber', { shopId: 'shop1', barberId: 'b2' }, 'owner1'));
     const invites = (db) => collection(db, 'invites');
     const q = (db, shopId) => query(invites(db), where('shopId', '==', shopId), where('role', '==', 'barber'));
-    const snap = await assertSucceeds(getDocs(q(as('owner1', PHONES.owner1), 'shop1')));
+    const snap = await assertSucceeds(getDocs(q(as('owner1', EMAILS.owner1), 'shop1')));
     assert.equal(snap.size, 1);
-    await assertFails(getDocs(q(as('owner2', PHONES.owner2), 'shop1')));
-    await assertSucceeds(getDocs(invites(as('admin', PHONES.admin))));
+    await assertFails(getDocs(q(as('owner2', EMAILS.owner2), 'shop1')));
+    await assertSucceeds(getDocs(invites(as('admin', EMAILS.admin))));
   });
 });
 
@@ -1184,7 +1299,7 @@ describe('users/{uid}/devices (FCM tokens)', () => {
   const ref = (db, uid = 'customer', id = '0123456789abcdef') => doc(db, `users/${uid}/devices`, id);
 
   test('a user registers, refreshes and removes their own device', async () => {
-    const db = as('customer', PHONES.customer);
+    const db = as('customer', EMAILS.customer);
     await assertSucceeds(setDoc(ref(db), device));
     await assertSucceeds(setDoc(ref(db), { ...device, token: 'fcm-token-new', updatedAt: NOW }));
     await assertSucceeds(getDoc(ref(db)));
@@ -1192,7 +1307,7 @@ describe('users/{uid}/devices (FCM tokens)', () => {
   });
 
   test('device docs are validated', async () => {
-    const db = as('customer', PHONES.customer);
+    const db = as('customer', EMAILS.customer);
     await assertFails(setDoc(ref(db), { ...device, platform: 'windows' }));
     await assertFails(setDoc(ref(db), { ...device, extra: 1 }));
     await assertFails(setDoc(ref(db), { token: 'x', platform: 'web' }));
@@ -1201,12 +1316,12 @@ describe('users/{uid}/devices (FCM tokens)', () => {
 
   test("nobody else can touch a user's devices", async () => {
     await seed('users/customer/devices', '0123456789abcdef', device);
-    for (const [uid, phone] of [
-      ['customer2', PHONES.customer2],
-      ['admin', PHONES.admin],
-      ['owner1', PHONES.owner1],
+    for (const [uid, email] of [
+      ['customer2', EMAILS.customer2],
+      ['admin', EMAILS.admin],
+      ['owner1', EMAILS.owner1],
     ]) {
-      const db = as(uid, phone);
+      const db = as(uid, email);
       await assertFails(getDoc(ref(db)));
       await assertFails(setDoc(ref(db), device));
       await assertFails(deleteDoc(ref(db)));
@@ -1225,27 +1340,27 @@ describe('users/{uid}/notifications (inbox)', () => {
   });
 
   test('a user reads their own inbox (newest first, limit 50)', async () => {
-    const db = as('customer', PHONES.customer);
+    const db = as('customer', EMAILS.customer);
     const snap = await assertSucceeds(getDocs(query(inbox(db), orderBy('createdAt', 'desc'), limit(50))));
     assert.equal(snap.size, 2);
   });
 
   test("other users cannot read someone's inbox", async () => {
-    await assertFails(getDocs(inbox(as('customer2', PHONES.customer2))));
-    await assertFails(getDoc(doc(inbox(as('admin', PHONES.admin)), 'bk1_confirmed')));
+    await assertFails(getDocs(inbox(as('customer2', EMAILS.customer2))));
+    await assertFails(getDoc(doc(inbox(as('admin', EMAILS.admin)), 'bk1_confirmed')));
     await assertFails(getDocs(inbox(anon())));
   });
 
   test('a user can only mark a notification as read', async () => {
-    const db = as('customer', PHONES.customer);
+    const db = as('customer', EMAILS.customer);
     await assertSucceeds(updateDoc(doc(inbox(db), 'bk1_confirmed'), { read: true }));
     await assertFails(updateDoc(doc(inbox(db), 'bk1_reminder24h'), { read: false }));
     await assertFails(updateDoc(doc(inbox(db), 'bk1_reminder24h'), { read: true, title: 'Hacked' }));
-    await assertFails(updateDoc(doc(inbox(as('customer2', PHONES.customer2), 'customer'), 'bk1_reminder24h'), { read: true }));
+    await assertFails(updateDoc(doc(inbox(as('customer2', EMAILS.customer2), 'customer'), 'bk1_reminder24h'), { read: true }));
   });
 
   test('mark all read is a batch of read updates', async () => {
-    const db = as('customer', PHONES.customer);
+    const db = as('customer', EMAILS.customer);
     const batch = writeBatch(db);
     batch.update(doc(inbox(db), 'bk1_confirmed'), { read: true });
     batch.update(doc(inbox(db), 'bk1_reminder24h'), { read: true });
@@ -1253,56 +1368,56 @@ describe('users/{uid}/notifications (inbox)', () => {
   });
 
   test('clients cannot create or delete notifications', async () => {
-    const db = as('customer', PHONES.customer);
+    const db = as('customer', EMAILS.customer);
     await assertFails(setDoc(doc(inbox(db), 'fake'), note));
     await assertFails(deleteDoc(doc(inbox(db), 'bk1_confirmed')));
-    await assertFails(setDoc(doc(inbox(as('admin', PHONES.admin)), 'fake'), note));
+    await assertFails(setDoc(doc(inbox(as('admin', EMAILS.admin)), 'fake'), note));
   });
 
   test('notificationLog is closed to clients', async () => {
     await seed('notificationLog', 'bk1_confirmed_sms', { bookingId: 'bk1', type: 'confirmed', channel: 'sms' });
-    await assertFails(getDoc(doc(as('admin', PHONES.admin), 'notificationLog', 'bk1_confirmed_sms')));
-    await assertFails(getDoc(doc(as('customer', PHONES.customer), 'notificationLog', 'bk1_confirmed_sms')));
-    await assertFails(setDoc(doc(as('admin', PHONES.admin), 'notificationLog', 'x'), { a: 1 }));
+    await assertFails(getDoc(doc(as('admin', EMAILS.admin), 'notificationLog', 'bk1_confirmed_sms')));
+    await assertFails(getDoc(doc(as('customer', EMAILS.customer), 'notificationLog', 'bk1_confirmed_sms')));
+    await assertFails(setDoc(doc(as('admin', EMAILS.admin), 'notificationLog', 'x'), { a: 1 }));
   });
 });
 
 describe('barbershops: Addis location and subscriptions', () => {
   test('admin registers a shop with sub-city, landmark and a trial', async () => {
-    await assertSucceeds(setDoc(doc(as('admin', PHONES.admin), 'barbershops', 'new'), newShop('')));
+    await assertSucceeds(setDoc(doc(as('admin', EMAILS.admin), 'barbershops', 'new'), newShop('')));
     const noLandmark = newShop('', { subCity: '' });
     delete noLandmark.landmark;
-    await assertSucceeds(setDoc(doc(as('admin', PHONES.admin), 'barbershops', 'new2'), noLandmark));
-    await assertFails(setDoc(doc(as('admin', PHONES.admin), 'barbershops', 'bad1'), newShop('', { subscriptionStatus: 'free' })));
-    await assertFails(setDoc(doc(as('admin', PHONES.admin), 'barbershops', 'bad2'), newShop('', { subscriptionPlan: 'gold' })));
-    await assertFails(setDoc(doc(as('admin', PHONES.admin), 'barbershops', 'bad3'), newShop('', { workingDays: [0, 8] })));
+    await assertSucceeds(setDoc(doc(as('admin', EMAILS.admin), 'barbershops', 'new2'), noLandmark));
+    await assertFails(setDoc(doc(as('admin', EMAILS.admin), 'barbershops', 'bad1'), newShop('', { subscriptionStatus: 'free' })));
+    await assertFails(setDoc(doc(as('admin', EMAILS.admin), 'barbershops', 'bad2'), newShop('', { subscriptionPlan: 'gold' })));
+    await assertFails(setDoc(doc(as('admin', EMAILS.admin), 'barbershops', 'bad3'), newShop('', { workingDays: [0, 8] })));
   });
 
   test('registerBarbershopByAdmin batch: shop, services, lead barber, owner invite', async () => {
-    const db = as('admin', PHONES.admin);
+    const db = as('admin', EMAILS.admin);
     const batch = writeBatch(db);
     batch.set(doc(db, 'barbershops', 'reg'), newShop(''));
     batch.set(doc(db, 'barbershops/reg/services', 's1'), { shopId: 'reg', name: 'Haircut', description: 'Cut', price: 300, durationMinutes: 30 });
     batch.set(doc(db, 'barbershops/reg/services', 's2'), { shopId: 'reg', name: 'Shave', description: 'Shave', price: 200, durationMinutes: 20 });
     batch.set(doc(db, 'barbershops/reg/barbers', 'lead'), { shopId: 'reg', name: 'Lead', title: 'Owner', rating: 5, reviewCount: 0, isAvailable: true, phone: PHONES.newPerson, specialties: [] });
-    batch.set(doc(db, 'invites', PHONES.newPerson), invite(PHONES.newPerson, 'barbershopOwner', { shopId: 'reg' }));
+    batch.set(doc(db, 'invites', EMAILS.newPerson), invite(EMAILS.newPerson, 'barbershopOwner', { shopId: 'reg' }));
     await assertSucceeds(batch.commit());
   });
 
   test('deleteShop batch (admin): services, barbers, invites and the shop', async () => {
-    await seed('invites', PHONES.newPerson, invite(PHONES.newPerson, 'barber', { shopId: 'shop1', barberId: 'b2' }, 'owner1'));
-    const db = as('admin', PHONES.admin);
+    await seed('invites', EMAILS.newPerson, invite(EMAILS.newPerson, 'barber', { shopId: 'shop1', barberId: 'b2' }, 'owner1'));
+    const db = as('admin', EMAILS.admin);
     const batch = writeBatch(db);
     for (const id of ['srv1', 'srvLong']) batch.delete(doc(db, 'barbershops/shop1/services', id));
     for (const id of ['b1', 'b2']) batch.delete(doc(db, 'barbershops/shop1/barbers', id));
-    batch.delete(doc(db, 'invites', PHONES.newPerson));
+    batch.delete(doc(db, 'invites', EMAILS.newPerson));
     batch.delete(doc(db, 'barbershops', 'shop1'));
     await assertSucceeds(batch.commit());
   });
 
   test("owner's profile update (toProfileMap) succeeds, including removing the landmark", async () => {
     await seed('barbershops', 'shop1', newShop('owner1'));
-    const db = as('owner1', PHONES.owner1);
+    const db = as('owner1', EMAILS.owner1);
     await assertSucceeds(
       updateDoc(doc(db, 'barbershops', 'shop1'), {
         name: 'Crown Cuts Bole',
@@ -1321,7 +1436,7 @@ describe('barbershops: Addis location and subscriptions', () => {
   });
 
   test('shop phone: an Ethiopian mobile or fixed line in +251 form', async () => {
-    const admin = as('admin', PHONES.admin);
+    const admin = as('admin', EMAILS.admin);
     const ok = ['+251911223344', '+251711223344', '+251115512345', '+251221112233', '+251331112233', '+251461112233', '+251581112233'];
     for (const [i, phone] of ok.entries()) {
       await assertSucceeds(setDoc(doc(admin, 'barbershops', `ph${i}`), newShop('', { phone })), phone);
@@ -1332,14 +1447,14 @@ describe('barbershops: Addis location and subscriptions', () => {
     }
     // Owners can switch their shop to a landline, but not to junk.
     await seed('barbershops', 'shop1', newShop('owner1'));
-    const owner = as('owner1', PHONES.owner1);
+    const owner = as('owner1', EMAILS.owner1);
     await assertSucceeds(updateDoc(doc(owner, 'barbershops', 'shop1'), { phone: '+251115512345' }));
     await assertFails(updateDoc(doc(owner, 'barbershops', 'shop1'), { phone: 'call us' }));
   });
 
   test('owners cannot change subscription fields', async () => {
     await seed('barbershops', 'shop1', newShop('owner1'));
-    const ref = doc(as('owner1', PHONES.owner1), 'barbershops', 'shop1');
+    const ref = doc(as('owner1', EMAILS.owner1), 'barbershops', 'shop1');
     await assertFails(updateDoc(ref, { subscriptionStatus: 'active' }));
     await assertFails(updateDoc(ref, { subscriptionPlan: 'pro' }));
     await assertFails(updateDoc(ref, { subscriptionEndsAt: '2030-01-01T00:00:00.000Z' }));
@@ -1347,7 +1462,7 @@ describe('barbershops: Addis location and subscriptions', () => {
   });
 
   test('admin updates subscriptions', async () => {
-    const ref = doc(as('admin', PHONES.admin), 'barbershops', 'shop2');
+    const ref = doc(as('admin', EMAILS.admin), 'barbershops', 'shop2');
     await assertSucceeds(
       updateDoc(ref, { subscriptionPlan: 'basic', subscriptionStatus: 'active', subscriptionEndsAt: '2027-01-01T00:00:00.000Z' }),
     );
@@ -1356,30 +1471,30 @@ describe('barbershops: Addis location and subscriptions', () => {
 
   test('suspended shops are hidden from customers but not from their staff or admins', async () => {
     await seed('barbershops', 'shop1', newShop('owner1', { subscriptionStatus: 'suspended' }));
-    await assertFails(getDoc(doc(as('customer', PHONES.customer), 'barbershops', 'shop1')));
+    await assertFails(getDoc(doc(as('customer', EMAILS.customer), 'barbershops', 'shop1')));
     await assertFails(getDoc(doc(anon(), 'barbershops', 'shop1')));
-    await assertFails(getDoc(doc(as('owner2', PHONES.owner2), 'barbershops', 'shop1')));
-    await assertSucceeds(getDoc(doc(as('owner1', PHONES.owner1), 'barbershops', 'shop1')));
-    await assertSucceeds(getDoc(doc(as('barber1', PHONES.barber1), 'barbershops', 'shop1')));
-    await assertSucceeds(getDoc(doc(as('admin', PHONES.admin), 'barbershops', 'shop1')));
+    await assertFails(getDoc(doc(as('owner2', EMAILS.owner2), 'barbershops', 'shop1')));
+    await assertSucceeds(getDoc(doc(as('owner1', EMAILS.owner1), 'barbershops', 'shop1')));
+    await assertSucceeds(getDoc(doc(as('barber1', EMAILS.barber1), 'barbershops', 'shop1')));
+    await assertSucceeds(getDoc(doc(as('admin', EMAILS.admin), 'barbershops', 'shop1')));
   });
 
   test('customer listener: where subscriptionStatus in visible statuses', async () => {
     await seed('barbershops', 'shop1', newShop('owner1', { subscriptionStatus: 'active' }));
     await seed('barbershops', 'shop2', newShop('owner2', { subscriptionStatus: 'suspended' }));
-    const db = as('customer', PHONES.customer);
+    const db = as('customer', EMAILS.customer);
     const shops = collection(db, 'barbershops');
     const snap = await assertSucceeds(
       getDocs(query(shops, where('subscriptionStatus', 'in', ['trialing', 'active', 'past_due']))),
     );
     assert.equal(snap.size, 1);
     await assertFails(getDocs(shops));
-    await assertSucceeds(getDocs(collection(as('admin', PHONES.admin), 'barbershops')));
+    await assertSucceeds(getDocs(collection(as('admin', EMAILS.admin), 'barbershops')));
     await assertFails(getDocs(query(shops, where('subscriptionStatus', 'in', ['active', 'suspended']))));
   });
 
   test('collection-group reads of services and barbers are public', async () => {
-    for (const db of [as('customer', PHONES.customer), as('admin', PHONES.admin), anon()]) {
+    for (const db of [as('customer', EMAILS.customer), as('admin', EMAILS.admin), anon()]) {
       const services = await assertSucceeds(getDocs(collectionGroup(db, 'services')));
       assert.equal(services.size, 2);
       const barbers = await assertSucceeds(getDocs(collectionGroup(db, 'barbers')));
@@ -1391,7 +1506,7 @@ describe('barbershops: Addis location and subscriptions', () => {
 
 describe('barber working hours', () => {
   test('owner and admin edit a barber profile with working days and hours', async () => {
-    const db = as('owner1', PHONES.owner1);
+    const db = as('owner1', EMAILS.owner1);
     await assertSucceeds(setDoc(doc(db, 'barbershops/shop1/barbers', 'b9'), { ...barber('shop1', 'New'), workingDays: [1, 2, 3], startHour: 9, endHour: 17 }));
     await assertSucceeds(
       updateDoc(doc(db, 'barbershops/shop1/barbers', 'b1'), {
@@ -1407,11 +1522,11 @@ describe('barber working hours', () => {
         endHour: 18,
       }),
     );
-    await assertSucceeds(updateDoc(doc(as('admin', PHONES.admin), 'barbershops/shop1/barbers', 'b1'), { workingDays: deleteField(), startHour: deleteField() }));
+    await assertSucceeds(updateDoc(doc(as('admin', EMAILS.admin), 'barbershops/shop1/barbers', 'b1'), { workingDays: deleteField(), startHour: deleteField() }));
   });
 
   test('working hours are validated', async () => {
-    const ref = doc(as('owner1', PHONES.owner1), 'barbershops/shop1/barbers', 'b1');
+    const ref = doc(as('owner1', EMAILS.owner1), 'barbershops/shop1/barbers', 'b1');
     await assertFails(updateDoc(ref, { workingDays: [0] }));
     await assertFails(updateDoc(ref, { startHour: 24 }));
     await assertFails(updateDoc(ref, { endHour: 0 }));
@@ -1419,7 +1534,7 @@ describe('barber working hours', () => {
   });
 
   test('barbers cannot change their own hours, only availability', async () => {
-    const ref = doc(as('barber1', PHONES.barber1), 'barbershops/shop1/barbers', 'b1');
+    const ref = doc(as('barber1', EMAILS.barber1), 'barbershops/shop1/barbers', 'b1');
     await assertFails(updateDoc(ref, { workingDays: [1] }));
     await assertFails(updateDoc(ref, { startHour: 6 }));
     await assertSucceeds(updateDoc(ref, { isAvailable: false }));
@@ -1432,15 +1547,15 @@ describe('plans', () => {
   test('anyone can read plans', async () => {
     await seed('plans', 'basic', plan);
     await assertSucceeds(getDoc(doc(anon(), 'plans', 'basic')));
-    await assertSucceeds(getDocs(collection(as('owner1', PHONES.owner1), 'plans')));
+    await assertSucceeds(getDocs(collection(as('owner1', EMAILS.owner1), 'plans')));
   });
 
   test('only admins write plans', async () => {
-    await assertSucceeds(setDoc(doc(as('admin', PHONES.admin), 'plans', 'pro'), { ...plan, name: 'Pro', maxBarbers: -1 }));
-    await assertFails(setDoc(doc(as('admin', PHONES.admin), 'plans', 'bad'), { ...plan, priceMonthlyEtb: '500' }));
-    await assertFails(setDoc(doc(as('owner1', PHONES.owner1), 'plans', 'cheap'), { ...plan, priceMonthlyEtb: 1 }));
-    await assertFails(setDoc(doc(as('customer', PHONES.customer), 'plans', 'cheap'), plan));
-    await assertSucceeds(deleteDoc(doc(as('admin', PHONES.admin), 'plans', 'pro')));
+    await assertSucceeds(setDoc(doc(as('admin', EMAILS.admin), 'plans', 'pro'), { ...plan, name: 'Pro', maxBarbers: -1 }));
+    await assertFails(setDoc(doc(as('admin', EMAILS.admin), 'plans', 'bad'), { ...plan, priceMonthlyEtb: '500' }));
+    await assertFails(setDoc(doc(as('owner1', EMAILS.owner1), 'plans', 'cheap'), { ...plan, priceMonthlyEtb: 1 }));
+    await assertFails(setDoc(doc(as('customer', EMAILS.customer), 'plans', 'cheap'), plan));
+    await assertSucceeds(deleteDoc(doc(as('admin', EMAILS.admin), 'plans', 'pro')));
   });
 });
 
@@ -1469,33 +1584,33 @@ describe('payments (Cloud Functions only)', () => {
   });
 
   test('payer, shop owner and admin can read a payment', async () => {
-    await assertSucceeds(getDoc(doc(as('customer', PHONES.customer), 'payments', 'pay1')));
-    await assertSucceeds(getDoc(doc(as('owner1', PHONES.owner1), 'payments', 'pay1')));
-    await assertSucceeds(getDoc(doc(as('admin', PHONES.admin), 'payments', 'pay1')));
-    await assertFails(getDoc(doc(as('customer2', PHONES.customer2), 'payments', 'pay1')));
-    await assertFails(getDoc(doc(as('owner2', PHONES.owner2), 'payments', 'pay1')));
-    await assertFails(getDoc(doc(as('barber1', PHONES.barber1), 'payments', 'pay1')));
+    await assertSucceeds(getDoc(doc(as('customer', EMAILS.customer), 'payments', 'pay1')));
+    await assertSucceeds(getDoc(doc(as('owner1', EMAILS.owner1), 'payments', 'pay1')));
+    await assertSucceeds(getDoc(doc(as('admin', EMAILS.admin), 'payments', 'pay1')));
+    await assertFails(getDoc(doc(as('customer2', EMAILS.customer2), 'payments', 'pay1')));
+    await assertFails(getDoc(doc(as('owner2', EMAILS.owner2), 'payments', 'pay1')));
+    await assertFails(getDoc(doc(as('barber1', EMAILS.barber1), 'payments', 'pay1')));
     await assertFails(getDoc(doc(anon(), 'payments', 'pay1')));
   });
 
   test('history queries: where userId == uid, and owner where shopId == own shop', async () => {
     const payments = (db) => collection(db, 'payments');
-    const mine = await assertSucceeds(getDocs(query(payments(as('customer', PHONES.customer)), where('userId', '==', 'customer'))));
+    const mine = await assertSucceeds(getDocs(query(payments(as('customer', EMAILS.customer)), where('userId', '==', 'customer'))));
     assert.equal(mine.size, 1);
-    const shop = await assertSucceeds(getDocs(query(payments(as('owner1', PHONES.owner1)), where('shopId', '==', 'shop1'))));
+    const shop = await assertSucceeds(getDocs(query(payments(as('owner1', EMAILS.owner1)), where('shopId', '==', 'shop1'))));
     assert.equal(shop.size, 2);
-    await assertFails(getDocs(query(payments(as('owner1', PHONES.owner1)), where('shopId', '==', 'shop2'))));
-    await assertFails(getDocs(payments(as('customer', PHONES.customer))));
-    await assertSucceeds(getDocs(payments(as('admin', PHONES.admin))));
+    await assertFails(getDocs(query(payments(as('owner1', EMAILS.owner1)), where('shopId', '==', 'shop2'))));
+    await assertFails(getDocs(payments(as('customer', EMAILS.customer))));
+    await assertSucceeds(getDocs(payments(as('admin', EMAILS.admin))));
   });
 
   test('no client can write payments', async () => {
-    for (const [uid, phone] of [
-      ['customer', PHONES.customer],
-      ['owner1', PHONES.owner1],
-      ['admin', PHONES.admin],
+    for (const [uid, email] of [
+      ['customer', EMAILS.customer],
+      ['owner1', EMAILS.owner1],
+      ['admin', EMAILS.admin],
     ]) {
-      const db = as(uid, phone);
+      const db = as(uid, email);
       await assertFails(setDoc(doc(db, 'payments', 'new'), payment({ userId: uid })));
       await assertFails(updateDoc(doc(db, 'payments', 'pay1'), { status: 'success' }));
       await assertFails(deleteDoc(doc(db, 'payments', 'pay1')));
@@ -1504,7 +1619,7 @@ describe('payments (Cloud Functions only)', () => {
 });
 
 test('unknown collections are closed', async () => {
-  await assertFails(setDoc(doc(as('admin', PHONES.admin), 'anything', 'x'), { a: 1 }));
+  await assertFails(setDoc(doc(as('admin', EMAILS.admin), 'anything', 'x'), { a: 1 }));
 });
 
 // =====================================================================
@@ -1580,7 +1695,7 @@ async function setShopFields(fields, shopId = 'shop1') {
 }
 
 describe('reschedule (customer transaction)', () => {
-  const cust = () => as('customer', PHONES.customer);
+  const cust = () => as('customer', EMAILS.customer);
   // withSecurityRulesDisabled does not return the callback's result.
   async function adminGet(path, id) {
     let snap;
@@ -1600,7 +1715,7 @@ describe('reschedule (customer transaction)', () => {
     for (const s of blocks(START, 40)) assert.equal((await lockSnap(s)).exists(), false);
     for (const s of blocks(to, 40)) assert.equal((await lockSnap(s)).data().bookingId, 'bk1');
     // The old time is free for someone else now.
-    await assertSucceeds(bookTx(as('customer2', PHONES.customer2), 'took', newBooking(START, { customerId: 'customer2' })));
+    await assertSucceeds(bookTx(as('customer2', EMAILS.customer2), 'took', newBooking(START, { customerId: 'customer2' })));
   });
 
   test('moves into an overlapping interval, keeping the shared locks', async () => {
@@ -1667,10 +1782,10 @@ describe('reschedule (customer transaction)', () => {
   });
 
   test('only the booking customer, and only the reschedule fields', async () => {
-    await assertFails(rescheduleTx(as('customer2', PHONES.customer2), 'bk1', addisSlot(4, 9)));
-    await assertFails(rescheduleTx(as('owner1', PHONES.owner1), 'bk1', addisSlot(4, 9)));
-    await assertFails(rescheduleTx(as('barber1', PHONES.barber1), 'bk1', addisSlot(4, 9)));
-    await assertFails(rescheduleTx(as('admin', PHONES.admin), 'bk1', addisSlot(4, 9)));
+    await assertFails(rescheduleTx(as('customer2', EMAILS.customer2), 'bk1', addisSlot(4, 9)));
+    await assertFails(rescheduleTx(as('owner1', EMAILS.owner1), 'bk1', addisSlot(4, 9)));
+    await assertFails(rescheduleTx(as('barber1', EMAILS.barber1), 'bk1', addisSlot(4, 9)));
+    await assertFails(rescheduleTx(as('admin', EMAILS.admin), 'bk1', addisSlot(4, 9)));
     for (const patch of [
       { price: 1 },
       { status: 'pending' },
@@ -1731,8 +1846,8 @@ describe('reschedule (customer transaction)', () => {
     await assertFails(batch.commit());
     // Another customer or the barber cannot release locks the move left behind.
     await assertSucceeds(rescheduleTx(db, 'bk1', addisSlot(4, 9), { skipDelete: true }));
-    await assertFails(deleteDoc(doc(locksOf(as('customer2', PHONES.customer2)), lockId(START))));
-    await assertFails(deleteDoc(doc(locksOf(as('barber1', PHONES.barber1)), lockId(START))));
+    await assertFails(deleteDoc(doc(locksOf(as('customer2', EMAILS.customer2)), lockId(START))));
+    await assertFails(deleteDoc(doc(locksOf(as('barber1', EMAILS.barber1)), lockId(START))));
     // The booking's customer can (the block is outside the new interval).
     await assertSucceeds(deleteDoc(doc(locksOf(db), lockId(START))));
     // But not a lock of the new interval.
@@ -1753,27 +1868,27 @@ describe('cancellation cutoff', () => {
   });
 
   test('default cutoff (2 h) lets the customer cancel a booking a day ahead', async () => {
-    await assertSucceeds(cancelTx(as('customer', PHONES.customer), 'bkSoon', at, 40, { cancelledBy: 'customer' }));
+    await assertSucceeds(cancelTx(as('customer', EMAILS.customer), 'bkSoon', at, 40, { cancelledBy: 'customer' }));
   });
 
   test('inside the cutoff the customer cannot cancel', async () => {
     await setShopFields({ cancellationCutoffHours: 48 });
-    await assertFails(cancelTx(as('customer', PHONES.customer), 'bkSoon', at, 40, { cancelledBy: 'customer' }));
-    await assertFails(updateDoc(doc(as('customer', PHONES.customer), 'bookings', 'bkSoon'), { status: 'cancelled' }));
+    await assertFails(cancelTx(as('customer', EMAILS.customer), 'bkSoon', at, 40, { cancelledBy: 'customer' }));
+    await assertFails(updateDoc(doc(as('customer', EMAILS.customer), 'bookings', 'bkSoon'), { status: 'cancelled' }));
   });
 
   test('the owner, the assigned barber and the admin still can', async () => {
     await setShopFields({ cancellationCutoffHours: 72 });
-    await assertSucceeds(cancelTx(as('barber1', PHONES.barber1), 'bkSoon', at, 40, { cancelledBy: 'barber1' }));
+    await assertSucceeds(cancelTx(as('barber1', EMAILS.barber1), 'bkSoon', at, 40, { cancelledBy: 'barber1' }));
     await seedBookingWithLocks('bkSoon', newBooking(at));
-    await assertSucceeds(cancelTx(as('owner1', PHONES.owner1), 'bkSoon', at, 40, { cancelledBy: 'owner1' }));
+    await assertSucceeds(cancelTx(as('owner1', EMAILS.owner1), 'bkSoon', at, 40, { cancelledBy: 'owner1' }));
     await seedBookingWithLocks('bkSoon', newBooking(at));
-    await assertSucceeds(updateDoc(doc(as('admin', PHONES.admin), 'bookings', 'bkSoon'), { status: 'cancelled', cancelledBy: 'admin' }));
+    await assertSucceeds(updateDoc(doc(as('admin', EMAILS.admin), 'bookings', 'bkSoon'), { status: 'cancelled', cancelledBy: 'admin' }));
   });
 
   test('an out-of-range cutoff reads as the default', async () => {
     await setShopFields({ cancellationCutoffHours: 500 });
-    await assertSucceeds(cancelTx(as('customer', PHONES.customer), 'bkSoon', at, 40));
+    await assertSucceeds(cancelTx(as('customer', EMAILS.customer), 'bkSoon', at, 40));
   });
 });
 
@@ -1785,39 +1900,39 @@ describe('no-show', () => {
   });
 
   test('the assigned barber, the owner or an admin marks it after the start', async () => {
-    for (const [uid, phone] of [
-      ['barber1', PHONES.barber1],
-      ['owner1', PHONES.owner1],
-      ['admin', PHONES.admin],
+    for (const [uid, email] of [
+      ['barber1', EMAILS.barber1],
+      ['owner1', EMAILS.owner1],
+      ['admin', EMAILS.admin],
     ]) {
       await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'bookings', 'bkPast'), { status: 'confirmed' }));
-      await assertSucceeds(updateDoc(doc(as(uid, phone), 'bookings', 'bkPast'), { status: 'noShow' }), uid);
+      await assertSucceeds(updateDoc(doc(as(uid, email), 'bookings', 'bkPast'), { status: 'noShow' }), uid);
     }
     // From pending too.
     await seedBookingWithLocks('bkPast2', newBooking(past, { status: 'pending' }));
-    await assertSucceeds(updateDoc(doc(as('barber1', PHONES.barber1), 'bookings', 'bkPast2'), { status: 'noShow' }));
+    await assertSucceeds(updateDoc(doc(as('barber1', EMAILS.barber1), 'bookings', 'bkPast2'), { status: 'noShow' }));
   });
 
   test('nobody else, and never before the start', async () => {
-    for (const [uid, phone] of [
-      ['customer', PHONES.customer],
-      ['customer2', PHONES.customer2],
-      ['barber2', PHONES.barber2],
-      ['owner2', PHONES.owner2],
+    for (const [uid, email] of [
+      ['customer', EMAILS.customer],
+      ['customer2', EMAILS.customer2],
+      ['barber2', EMAILS.barber2],
+      ['owner2', EMAILS.owner2],
     ]) {
-      await assertFails(updateDoc(doc(as(uid, phone), 'bookings', 'bkPast'), { status: 'noShow' }), uid);
+      await assertFails(updateDoc(doc(as(uid, email), 'bookings', 'bkPast'), { status: 'noShow' }), uid);
     }
-    for (const [uid, phone] of [
-      ['barber1', PHONES.barber1],
-      ['owner1', PHONES.owner1],
-      ['admin', PHONES.admin],
+    for (const [uid, email] of [
+      ['barber1', EMAILS.barber1],
+      ['owner1', EMAILS.owner1],
+      ['admin', EMAILS.admin],
     ]) {
-      await assertFails(updateDoc(doc(as(uid, phone), 'bookings', 'bk1'), { status: 'noShow' }), uid);
+      await assertFails(updateDoc(doc(as(uid, email), 'bookings', 'bk1'), { status: 'noShow' }), uid);
     }
   });
 
   test('only from pending or confirmed, only the status, and it is final', async () => {
-    const barber = doc(as('barber1', PHONES.barber1), 'bookings', 'bkPast');
+    const barber = doc(as('barber1', EMAILS.barber1), 'bookings', 'bkPast');
     for (const status of ['completed', 'inProgress', 'cancelled']) {
       await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'bookings', 'bkPast'), { status }));
       await assertFails(updateDoc(barber, { status: 'noShow' }), status);
@@ -1826,17 +1941,17 @@ describe('no-show', () => {
     await assertFails(updateDoc(barber, { status: 'noShow', cancelledBy: 'barber1' }));
     await assertSucceeds(updateDoc(barber, { status: 'noShow' }));
     await assertFails(updateDoc(barber, { status: 'completed' }));
-    await assertFails(updateDoc(doc(as('owner1', PHONES.owner1), 'bookings', 'bkPast'), { status: 'cancelled' }));
-    await assertFails(updateDoc(doc(as('admin', PHONES.admin), 'bookings', 'bkPast'), { status: 'confirmed' }));
+    await assertFails(updateDoc(doc(as('owner1', EMAILS.owner1), 'bookings', 'bkPast'), { status: 'cancelled' }));
+    await assertFails(updateDoc(doc(as('admin', EMAILS.admin), 'bookings', 'bkPast'), { status: 'confirmed' }));
     // The admin's payment correction still works on a no-show booking.
-    await assertSucceeds(updateDoc(doc(as('admin', PHONES.admin), 'bookings', 'bkPast'), { paymentStatus: 'refunded' }));
+    await assertSucceeds(updateDoc(doc(as('admin', EMAILS.admin), 'bookings', 'bkPast'), { paymentStatus: 'refunded' }));
     // Its locks are kept and are not released by the customer.
-    await assertFails(deleteDoc(doc(locksOf(as('customer', PHONES.customer)), lockId(past))));
+    await assertFails(deleteDoc(doc(locksOf(as('customer', EMAILS.customer)), lockId(past))));
   });
 
   test('existing status updates are unchanged (inProgress / completed)', async () => {
-    await assertSucceeds(updateDoc(doc(as('barber1', PHONES.barber1), 'bookings', 'bkPast'), { status: 'inProgress' }));
-    await assertSucceeds(updateDoc(doc(as('owner1', PHONES.owner1), 'bookings', 'bkPast'), { status: 'completed' }));
+    await assertSucceeds(updateDoc(doc(as('barber1', EMAILS.barber1), 'bookings', 'bkPast'), { status: 'inProgress' }));
+    await assertSucceeds(updateDoc(doc(as('owner1', EMAILS.owner1), 'bookings', 'bkPast'), { status: 'completed' }));
   });
 });
 
@@ -1844,28 +1959,28 @@ describe('shop booking policy', () => {
   const policy = (cancellationCutoffHours, maxReschedules) => ({ cancellationCutoffHours, maxReschedules });
 
   test('the owner and the admin set cutoff (0..72) and max reschedules (0..5)', async () => {
-    const owner = doc(as('owner1', PHONES.owner1), 'barbershops', 'shop1');
+    const owner = doc(as('owner1', EMAILS.owner1), 'barbershops', 'shop1');
     await assertSucceeds(updateDoc(owner, policy(24, 1)));
     await assertSucceeds(updateDoc(owner, policy(0, 0)));
     await assertSucceeds(updateDoc(owner, policy(72, 5)));
-    await assertSucceeds(updateDoc(doc(as('admin', PHONES.admin), 'barbershops', 'shop1'), policy(2, 2)));
+    await assertSucceeds(updateDoc(doc(as('admin', EMAILS.admin), 'barbershops', 'shop1'), policy(2, 2)));
   });
 
   test('out-of-range or non-integer values are rejected', async () => {
-    const owner = doc(as('owner1', PHONES.owner1), 'barbershops', 'shop1');
+    const owner = doc(as('owner1', EMAILS.owner1), 'barbershops', 'shop1');
     for (const [c, m] of [[73, 2], [-1, 2], [2, 6], [2, -1], ['2', 2], [2.5, 2], [2, 1.5]]) {
       await assertFails(updateDoc(owner, policy(c, m)), `${c}/${m}`);
     }
   });
 
   test('other owners, barbers and customers cannot change it', async () => {
-    await assertFails(updateDoc(doc(as('owner2', PHONES.owner2), 'barbershops', 'shop1'), policy(0, 5)));
-    await assertFails(updateDoc(doc(as('barber1', PHONES.barber1), 'barbershops', 'shop1'), policy(0, 5)));
-    await assertFails(updateDoc(doc(as('customer', PHONES.customer), 'barbershops', 'shop1'), policy(0, 5)));
+    await assertFails(updateDoc(doc(as('owner2', EMAILS.owner2), 'barbershops', 'shop1'), policy(0, 5)));
+    await assertFails(updateDoc(doc(as('barber1', EMAILS.barber1), 'barbershops', 'shop1'), policy(0, 5)));
+    await assertFails(updateDoc(doc(as('customer', EMAILS.customer), 'barbershops', 'shop1'), policy(0, 5)));
   });
 
   test('admin createShop (toMap) carries the policy fields', async () => {
-    const admin = as('admin', PHONES.admin);
+    const admin = as('admin', EMAILS.admin);
     await assertSucceeds(setDoc(doc(admin, 'barbershops', 'pol1'), newShop('', policy(2, 2))));
     await assertFails(setDoc(doc(admin, 'barbershops', 'pol2'), newShop('', policy(100, 2))));
     await assertFails(setDoc(doc(admin, 'barbershops', 'pol3'), newShop('', policy(2, 9))));
@@ -1874,23 +1989,23 @@ describe('shop booking policy', () => {
 
 describe('rating and reviewCount are written by functions only', () => {
   test('no client changes shop or barber ratings, admin included', async () => {
-    for (const [uid, phone] of [
-      ['admin', PHONES.admin],
-      ['owner1', PHONES.owner1],
+    for (const [uid, email] of [
+      ['admin', EMAILS.admin],
+      ['owner1', EMAILS.owner1],
     ]) {
-      const db = as(uid, phone);
+      const db = as(uid, email);
       await assertFails(updateDoc(doc(db, 'barbershops', 'shop1'), { rating: 1 }), uid);
       await assertFails(updateDoc(doc(db, 'barbershops', 'shop1'), { reviewCount: 99 }), uid);
       await assertFails(updateDoc(doc(db, 'barbershops/shop1/barbers', 'b1'), { rating: 1 }), uid);
       await assertFails(updateDoc(doc(db, 'barbershops/shop1/barbers', 'b1'), { reviewCount: 99 }), uid);
     }
-    await assertFails(updateDoc(doc(as('barber1', PHONES.barber1), 'barbershops/shop1/barbers', 'b1'), { rating: 1 }));
+    await assertFails(updateDoc(doc(as('barber1', EMAILS.barber1), 'barbershops/shop1/barbers', 'b1'), { rating: 1 }));
   });
 
   test('new shops and barbers start with no reviews', async () => {
-    await assertFails(setDoc(doc(as('admin', PHONES.admin), 'barbershops', 'fake'), newShop('', { reviewCount: 500 })));
-    await assertFails(setDoc(doc(as('owner1', PHONES.owner1), 'barbershops/shop1/barbers', 'b9'), { ...barber('shop1', 'New'), reviewCount: 40 }));
-    await assertSucceeds(setDoc(doc(as('owner1', PHONES.owner1), 'barbershops/shop1/barbers', 'b9'), barber('shop1', 'New')));
+    await assertFails(setDoc(doc(as('admin', EMAILS.admin), 'barbershops', 'fake'), newShop('', { reviewCount: 500 })));
+    await assertFails(setDoc(doc(as('owner1', EMAILS.owner1), 'barbershops/shop1/barbers', 'b9'), { ...barber('shop1', 'New'), reviewCount: 40 }));
+    await assertSucceeds(setDoc(doc(as('owner1', EMAILS.owner1), 'barbershops/shop1/barbers', 'b9'), barber('shop1', 'New')));
   });
 });
 
@@ -1932,14 +2047,14 @@ describe('barber time off', () => {
     return batch.commit();
   }
 
-  const barber1 = () => as('barber1', PHONES.barber1);
-  const owner1 = () => as('owner1', PHONES.owner1);
+  const barber1 = () => as('barber1', EMAILS.barber1);
+  const owner1 = () => as('owner1', EMAILS.owner1);
 
   test('the barber adds their own time off; customers can no longer book it', async () => {
     await assertSucceeds(timeOffBatch(barber1(), 'barber1', { data: { reason: 'Doctor' } }));
-    await assertFails(bookBatch(as('customer', PHONES.customer), 'inOff', newBooking(OFF)));
-    await assertFails(bookBatch(as('customer', PHONES.customer), 'inOff2', newBooking(plusMinutes(OFF, -30))));
-    await assertSucceeds(bookBatch(as('customer', PHONES.customer), 'afterOff', newBooking(OFF_END)));
+    await assertFails(bookBatch(as('customer', EMAILS.customer), 'inOff', newBooking(OFF)));
+    await assertFails(bookBatch(as('customer', EMAILS.customer), 'inOff2', newBooking(plusMinutes(OFF, -30))));
+    await assertSucceeds(bookBatch(as('customer', EMAILS.customer), 'afterOff', newBooking(OFF_END)));
   });
 
   test('the owner adds time off for any barber of the shop', async () => {
@@ -1951,10 +2066,10 @@ describe('barber time off', () => {
   });
 
   test('other barbers, other owners, customers and admins cannot add it', async () => {
-    await assertFails(timeOffBatch(as('barber2', PHONES.barber2), 'barber2'));
-    await assertFails(timeOffBatch(as('owner2', PHONES.owner2), 'owner2'));
-    await assertFails(timeOffBatch(as('customer', PHONES.customer), 'customer'));
-    await assertFails(timeOffBatch(as('admin', PHONES.admin), 'admin'));
+    await assertFails(timeOffBatch(as('barber2', EMAILS.barber2), 'barber2'));
+    await assertFails(timeOffBatch(as('owner2', EMAILS.owner2), 'owner2'));
+    await assertFails(timeOffBatch(as('customer', EMAILS.customer), 'customer'));
+    await assertFails(timeOffBatch(as('admin', EMAILS.admin), 'admin'));
   });
 
   test('the doc and its locks go together', async () => {
@@ -2027,17 +2142,17 @@ describe('barber time off', () => {
     const q = (db) => query(collection(db, 'barbershops/shop1/barbers/b1/timeOff'), where('endAt', '>=', since), orderBy('endAt'));
     assert.equal((await assertSucceeds(getDocs(q(barber1())))).size, 1);
     assert.equal((await assertSucceeds(getDocs(q(owner1())))).size, 1);
-    for (const [uid, phone] of [
-      ['barber2', PHONES.barber2],
-      ['owner2', PHONES.owner2],
-      ['customer', PHONES.customer],
-      ['admin', PHONES.admin],
+    for (const [uid, email] of [
+      ['barber2', EMAILS.barber2],
+      ['owner2', EMAILS.owner2],
+      ['customer', EMAILS.customer],
+      ['admin', EMAILS.admin],
     ]) {
-      await assertFails(getDocs(q(as(uid, phone))), uid);
+      await assertFails(getDocs(q(as(uid, email))), uid);
     }
     await assertFails(getDocs(q(anon())));
     // Customers still see the locks (busy times), which carry no reason.
-    const locks = await assertSucceeds(getDocs(query(locksOf(as('customer', PHONES.customer)), where('timeOffId', '==', 'to1'))));
+    const locks = await assertSucceeds(getDocs(query(locksOf(as('customer', EMAILS.customer)), where('timeOffId', '==', 'to1'))));
     assert.equal(locks.size, 8);
   });
 
@@ -2053,7 +2168,7 @@ describe('barber time off', () => {
   test('the barber or the owner deletes the doc and its locks together', async () => {
     await assertSucceeds(timeOffBatch(barber1(), 'barber1'));
     await assertSucceeds(deleteTimeOffBatch(barber1()));
-    await assertSucceeds(bookBatch(as('customer', PHONES.customer), 'freed', newBooking(OFF)));
+    await assertSucceeds(bookBatch(as('customer', EMAILS.customer), 'freed', newBooking(OFF)));
     await assertSucceeds(timeOffBatch(owner1(), 'owner1', { id: 'to3', startAt: addisSlot(2, 9), endAt: addisSlot(2, 12) }));
     await assertSucceeds(deleteTimeOffBatch(owner1(), 'to3'));
   });
@@ -2070,13 +2185,13 @@ describe('barber time off', () => {
     await assertFails(deleteTimeOffBatch(barber1(), 'to1', { keepLocks: true }));
     await assertFails(deleteTimeOffBatch(barber1(), 'to1', { keepDoc: true }));
     await assertFails(deleteDoc(doc(locksOf(barber1()), lockId(OFF))));
-    for (const [uid, phone] of [
-      ['barber2', PHONES.barber2],
-      ['owner2', PHONES.owner2],
-      ['customer', PHONES.customer],
+    for (const [uid, email] of [
+      ['barber2', EMAILS.barber2],
+      ['owner2', EMAILS.owner2],
+      ['customer', EMAILS.customer],
     ]) {
-      await assertFails(deleteTimeOffBatch(as(uid, phone)), uid);
-      await assertFails(deleteDoc(doc(locksOf(as(uid, phone)), lockId(OFF))), uid);
+      await assertFails(deleteTimeOffBatch(as(uid, email)), uid);
+      await assertFails(deleteDoc(doc(locksOf(as(uid, email)), lockId(OFF))), uid);
     }
   });
 });
@@ -2104,21 +2219,21 @@ describe('walk-in queue', () => {
   const ownQuery = (db, uid) => query(queue(db), where('addedBy', '==', uid), orderBy('createdAt', 'desc'), limit(1));
 
   test('staff list every active entry of their shop', async () => {
-    assert.equal((await assertSucceeds(getDocs(activeQuery(as('owner1', PHONES.owner1))))).size, 4);
-    assert.equal((await assertSucceeds(getDocs(activeQuery(as('barber1', PHONES.barber1))))).size, 4);
-    await assertFails(getDocs(activeQuery(as('owner2', PHONES.owner2))));
-    await assertFails(getDocs(activeQuery(as('customer', PHONES.customer))));
-    await assertFails(getDocs(activeQuery(as('admin', PHONES.admin))));
+    assert.equal((await assertSucceeds(getDocs(activeQuery(as('owner1', EMAILS.owner1))))).size, 4);
+    assert.equal((await assertSucceeds(getDocs(activeQuery(as('barber1', EMAILS.barber1))))).size, 4);
+    await assertFails(getDocs(activeQuery(as('owner2', EMAILS.owner2))));
+    await assertFails(getDocs(activeQuery(as('customer', EMAILS.customer))));
+    await assertFails(getDocs(activeQuery(as('admin', EMAILS.admin))));
     await assertFails(getDocs(activeQuery(anon())));
   });
 
   test('a removed barber profile loses access', async () => {
     await env.withSecurityRulesDisabled((ctx) => deleteDoc(doc(ctx.firestore(), 'barbershops/shop1/barbers', 'b1')));
-    await assertFails(getDocs(activeQuery(as('barber1', PHONES.barber1))));
+    await assertFails(getDocs(activeQuery(as('barber1', EMAILS.barber1))));
   });
 
   test('customers read only their own entry', async () => {
-    const db = as('customer', PHONES.customer);
+    const db = as('customer', EMAILS.customer);
     const snap = await assertSucceeds(getDocs(ownQuery(db, 'customer')));
     assert.deepEqual(snap.docs.map((d) => d.id), ['r1']);
     await assertSucceeds(getDoc(doc(queue(db), 'r1')));
@@ -2128,14 +2243,14 @@ describe('walk-in queue', () => {
   });
 
   test('staff add walk-ins', async () => {
-    await assertSucceeds(setDoc(doc(queue(as('owner1', PHONES.owner1)), 'n1'), entry({ phone: '+251712345678', serviceId: 'srv1', barberId: 'b1' })));
-    await assertSucceeds(setDoc(doc(queue(as('barber1', PHONES.barber1)), 'n2'), entry({ addedBy: 'barber1' })));
-    await assertFails(setDoc(doc(queue(as('owner2', PHONES.owner2)), 'n3'), entry({ addedBy: 'owner2' })));
-    await assertFails(setDoc(doc(queue(as('admin', PHONES.admin)), 'n4'), entry({ addedBy: 'admin' })));
+    await assertSucceeds(setDoc(doc(queue(as('owner1', EMAILS.owner1)), 'n1'), entry({ phone: '+251712345678', serviceId: 'srv1', barberId: 'b1' })));
+    await assertSucceeds(setDoc(doc(queue(as('barber1', EMAILS.barber1)), 'n2'), entry({ addedBy: 'barber1' })));
+    await assertFails(setDoc(doc(queue(as('owner2', EMAILS.owner2)), 'n3'), entry({ addedBy: 'owner2' })));
+    await assertFails(setDoc(doc(queue(as('admin', EMAILS.admin)), 'n4'), entry({ addedBy: 'admin' })));
   });
 
   test('walk-in entries are validated', async () => {
-    const db = as('owner1', PHONES.owner1);
+    const db = as('owner1', EMAILS.owner1);
     for (const [name, overrides] of [
       ['long name', { name: 'x'.repeat(61) }],
       ['empty name', { name: '' }],
@@ -2156,7 +2271,7 @@ describe('walk-in queue', () => {
   });
 
   test('a signed-in customer joins remotely with their own phone', async () => {
-    const db = as('customer2', PHONES.customer2);
+    const db = as('customer2', EMAILS.customer2);
     const mine = entry({ name: 'Liya', phone: PHONES.customer2, addedBy: 'customer2', source: 'remote', serviceId: 'srv1', barberId: 'b1' });
     await assertSucceeds(setDoc(doc(queue(db), 'j1'), mine));
     const noPhone = { ...mine };
@@ -2168,28 +2283,28 @@ describe('walk-in queue', () => {
     await assertFails(setDoc(doc(queue(db), 'j5'), { ...mine, source: 'walkIn' }));
     await assertFails(setDoc(doc(queue(db), 'j6'), { ...mine, status: 'serving' }));
     // Staff cannot join as remote customers; anonymous users cannot join.
-    await assertFails(setDoc(doc(queue(as('barber1', PHONES.barber1)), 'j7'), { ...mine, addedBy: 'barber1', phone: PHONES.barber1 }));
+    await assertFails(setDoc(doc(queue(as('barber1', EMAILS.barber1)), 'j7'), { ...mine, addedBy: 'barber1', phone: PHONES.barber1 }));
     await assertFails(setDoc(doc(queue(anon()), 'j8'), mine));
   });
 
   test('customers cannot join the queue of a suspended shop', async () => {
     await setShopFields({ subscriptionStatus: 'suspended' });
     const mine = entry({ name: 'Liya', phone: PHONES.customer2, addedBy: 'customer2', source: 'remote' });
-    await assertFails(setDoc(doc(queue(as('customer2', PHONES.customer2)), 'j1'), mine));
+    await assertFails(setDoc(doc(queue(as('customer2', EMAILS.customer2)), 'j1'), mine));
   });
 
   test('staff start serving, finish and mark left', async () => {
-    const barber = queue(as('barber1', PHONES.barber1));
+    const barber = queue(as('barber1', EMAILS.barber1));
     const later = new Date().toISOString();
     await assertSucceeds(updateDoc(doc(barber, 'w1'), { status: 'serving', barberId: 'b1', servingStartedAt: later }));
     await assertSucceeds(updateDoc(doc(barber, 'w1'), { status: 'done', finishedAt: later }));
-    const owner = queue(as('owner1', PHONES.owner1));
+    const owner = queue(as('owner1', EMAILS.owner1));
     await assertSucceeds(updateDoc(doc(owner, 's1'), { status: 'done', finishedAt: later }));
     await assertSucceeds(updateDoc(doc(owner, 'r2'), { status: 'left', finishedAt: later }));
   });
 
   test('staff updates follow the status flow and touch nothing else', async () => {
-    const owner = queue(as('owner1', PHONES.owner1));
+    const owner = queue(as('owner1', EMAILS.owner1));
     const later = new Date().toISOString();
     // Serving with a barber of another shop or none.
     await assertFails(updateDoc(doc(owner, 'w1'), { status: 'serving', barberId: 'b3', servingStartedAt: later }));
@@ -2203,11 +2318,11 @@ describe('walk-in queue', () => {
     await assertFails(updateDoc(doc(owner, 'w1'), { status: 'left', finishedAt: later, addedBy: 'x' }));
     await assertFails(updateDoc(doc(owner, 'w1'), { status: 'left' }));
     // Another shop's staff.
-    await assertFails(updateDoc(doc(queue(as('owner2', PHONES.owner2)), 'w1'), { status: 'left', finishedAt: later }));
+    await assertFails(updateDoc(doc(queue(as('owner2', EMAILS.owner2)), 'w1'), { status: 'left', finishedAt: later }));
   });
 
   test('a customer leaves only their own waiting remote entry', async () => {
-    const db = queue(as('customer', PHONES.customer));
+    const db = queue(as('customer', EMAILS.customer));
     const later = new Date().toISOString();
     await assertFails(updateDoc(doc(db, 'r1'), { status: 'serving', barberId: 'b1', servingStartedAt: later }));
     await assertFails(updateDoc(doc(db, 'r1'), { status: 'done', finishedAt: later }));
@@ -2220,27 +2335,27 @@ describe('walk-in queue', () => {
   });
 
   test('nobody deletes queue entries', async () => {
-    for (const [uid, phone] of [
-      ['owner1', PHONES.owner1],
-      ['barber1', PHONES.barber1],
-      ['customer', PHONES.customer],
-      ['admin', PHONES.admin],
+    for (const [uid, email] of [
+      ['owner1', EMAILS.owner1],
+      ['barber1', EMAILS.barber1],
+      ['customer', EMAILS.customer],
+      ['admin', EMAILS.admin],
     ]) {
-      await assertFails(deleteDoc(doc(queue(as(uid, phone)), 'r1')), uid);
+      await assertFails(deleteDoc(doc(queue(as(uid, email)), 'r1')), uid);
     }
   });
 
   test('queueSummary/current: public read, functions-only writes', async () => {
     await seed('barbershops/shop1/queueSummary', 'current', { waitingCount: 3, estimatedWaitMinutes: 35, updatedAt: NOW, positions: {} });
     await assertSucceeds(getDoc(doc(anon(), 'barbershops/shop1/queueSummary', 'current')));
-    await assertSucceeds(getDoc(doc(as('customer', PHONES.customer), 'barbershops/shop1/queueSummary', 'current')));
-    for (const [uid, phone] of [
-      ['owner1', PHONES.owner1],
-      ['barber1', PHONES.barber1],
-      ['customer', PHONES.customer],
-      ['admin', PHONES.admin],
+    await assertSucceeds(getDoc(doc(as('customer', EMAILS.customer), 'barbershops/shop1/queueSummary', 'current')));
+    for (const [uid, email] of [
+      ['owner1', EMAILS.owner1],
+      ['barber1', EMAILS.barber1],
+      ['customer', EMAILS.customer],
+      ['admin', EMAILS.admin],
     ]) {
-      const ref = doc(as(uid, phone), 'barbershops/shop1/queueSummary', 'current');
+      const ref = doc(as(uid, email), 'barbershops/shop1/queueSummary', 'current');
       await assertFails(setDoc(ref, { waitingCount: 0, estimatedWaitMinutes: 0, updatedAt: NOW }), uid);
       await assertFails(updateDoc(ref, { waitingCount: 0 }), uid);
       await assertFails(deleteDoc(ref), uid);
@@ -2250,7 +2365,7 @@ describe('walk-in queue', () => {
   test('queueNext inbox entries: read and mark read like other notifications', async () => {
     const id = 'queue_r1-1700000000000_queueNext';
     await seed('users/customer/notifications', id, { title: 'You are next', body: 'Come in', type: 'queueNext', shopId: 'shop1', queueEntryId: 'r1', read: false, createdAt: NOW });
-    const db = as('customer', PHONES.customer);
+    const db = as('customer', EMAILS.customer);
     await assertSucceeds(getDoc(doc(db, 'users/customer/notifications', id)));
     await assertSucceeds(updateDoc(doc(db, 'users/customer/notifications', id), { read: true }));
     await assertFails(setDoc(doc(db, 'users/customer/notifications', 'queue_x_queueNext'), { title: 'x', body: 'x', type: 'queueNext', read: false, createdAt: NOW }));
@@ -2287,7 +2402,7 @@ describe('reviews', () => {
   }
 
   test('the customer reviews a completed booking once', async () => {
-    const db = as('customer', PHONES.customer);
+    const db = as('customer', EMAILS.customer);
     await assertSucceeds(createReviewTx(db, review()));
     await assert.rejects(createReviewTx(db, review()), /already reviewed/);
     // A blind second write is an update, which customers cannot make.
@@ -2300,13 +2415,13 @@ describe('reviews', () => {
   test('without a comment', async () => {
     const data = review();
     delete data.comment;
-    await assertSucceeds(createReviewTx(as('customer', PHONES.customer), data));
+    await assertSucceeds(createReviewTx(as('customer', EMAILS.customer), data));
   });
 
   test('only for their own completed booking, matching the booking', async () => {
-    const cust = as('customer', PHONES.customer);
-    await assertFails(createReviewTx(as('customer2', PHONES.customer2), review({ customerId: 'customer2' })));
-    await assertFails(createReviewTx(as('owner1', PHONES.owner1), review({ customerId: 'owner1' })));
+    const cust = as('customer', EMAILS.customer);
+    await assertFails(createReviewTx(as('customer2', EMAILS.customer2), review({ customerId: 'customer2' })));
+    await assertFails(createReviewTx(as('owner1', EMAILS.owner1), review({ customerId: 'owner1' })));
     await assertFails(createReviewTx(cust, review({ bookingId: 'bk1' })));
     await assertFails(createReviewTx(cust, review({ bookingId: 'nope' })));
     await assertFails(createReviewTx(cust, review(), 'other-id'));
@@ -2317,7 +2432,7 @@ describe('reviews', () => {
   });
 
   test('rating is an integer 1..5; comment 1..500; no extra or reply fields', async () => {
-    const cust = as('customer', PHONES.customer);
+    const cust = as('customer', EMAILS.customer);
     for (const [name, overrides] of [
       ['0', { rating: 0 }],
       ['6', { rating: 6 }],
@@ -2335,7 +2450,7 @@ describe('reviews', () => {
   });
 
   test('public read: anyone lists, pages and counts reviews', async () => {
-    for (const db of [anon(), as('customer', PHONES.customer), as('barber1', PHONES.barber1)]) {
+    for (const db of [anon(), as('customer', EMAILS.customer), as('barber1', EMAILS.barber1)]) {
       await assertSucceeds(getDocs(query(reviews(db), orderBy('createdAt', 'desc'), limit(4))));
       await assertSucceeds(getDocs(query(reviews(db), where('barberId', '==', 'b2'), orderBy('createdAt', 'desc'), limit(11))));
       await assertSucceeds(getDoc(doc(reviews(db), 'bkDone2')));
@@ -2346,7 +2461,7 @@ describe('reviews', () => {
   });
 
   test('the owner adds and edits a reply, nothing else', async () => {
-    const ref = doc(reviews(as('owner1', PHONES.owner1)), 'bkDone2');
+    const ref = doc(reviews(as('owner1', EMAILS.owner1)), 'bkDone2');
     await assertSucceeds(updateDoc(ref, { reply: 'Thank you!', replyAt: NOW }));
     await assertSucceeds(updateDoc(ref, { reply: 'Edited reply', replyAt: new Date().toISOString() }));
     await assertFails(updateDoc(ref, { reply: '', replyAt: NOW }));
@@ -2358,13 +2473,13 @@ describe('reviews', () => {
   });
 
   test('nobody else replies or deletes', async () => {
-    for (const [uid, phone] of [
-      ['owner2', PHONES.owner2],
-      ['barber2', PHONES.barber2],
-      ['customer2', PHONES.customer2],
-      ['admin', PHONES.admin],
+    for (const [uid, email] of [
+      ['owner2', EMAILS.owner2],
+      ['barber2', EMAILS.barber2],
+      ['customer2', EMAILS.customer2],
+      ['admin', EMAILS.admin],
     ]) {
-      const ref = doc(reviews(as(uid, phone)), 'bkDone2');
+      const ref = doc(reviews(as(uid, email)), 'bkDone2');
       await assertFails(updateDoc(ref, { reply: 'Hi', replyAt: NOW }), uid);
       await assertFails(deleteDoc(ref), uid);
     }
@@ -2379,11 +2494,11 @@ describe('insights aggregates (functions only)', () => {
   });
 
   test('the owner and the admin read stats and clients', async () => {
-    for (const [uid, phone] of [
-      ['owner1', PHONES.owner1],
-      ['admin', PHONES.admin],
+    for (const [uid, email] of [
+      ['owner1', EMAILS.owner1],
+      ['admin', EMAILS.admin],
     ]) {
-      const db = as(uid, phone);
+      const db = as(uid, email);
       await assertSucceeds(getDoc(doc(db, 'barbershops/shop1/stats', '2026-11')), uid);
       await assertSucceeds(getDoc(doc(db, 'barbershops/shop1/stats', '2026-10')), uid);
       await assertSucceeds(getDocs(query(collection(db, 'barbershops/shop1/clients'), orderBy('completedCount', 'desc'), limit(100))), uid);
@@ -2391,12 +2506,12 @@ describe('insights aggregates (functions only)', () => {
   });
 
   test('barbers, customers, other owners and anonymous users read nothing', async () => {
-    for (const [uid, phone] of [
-      ['barber1', PHONES.barber1],
-      ['customer', PHONES.customer],
-      ['owner2', PHONES.owner2],
+    for (const [uid, email] of [
+      ['barber1', EMAILS.barber1],
+      ['customer', EMAILS.customer],
+      ['owner2', EMAILS.owner2],
     ]) {
-      const db = as(uid, phone);
+      const db = as(uid, email);
       await assertFails(getDoc(doc(db, 'barbershops/shop1/stats', '2026-11')), uid);
       await assertFails(getDoc(doc(db, 'barbershops/shop1/clients', 'customer')), uid);
       await assertFails(getDocs(collection(db, 'barbershops/shop1/clients')), uid);
@@ -2405,12 +2520,12 @@ describe('insights aggregates (functions only)', () => {
   });
 
   test('no client writes stats, clients or insightsApplied', async () => {
-    for (const [uid, phone] of [
-      ['owner1', PHONES.owner1],
-      ['admin', PHONES.admin],
-      ['customer', PHONES.customer],
+    for (const [uid, email] of [
+      ['owner1', EMAILS.owner1],
+      ['admin', EMAILS.admin],
+      ['customer', EMAILS.customer],
     ]) {
-      const db = as(uid, phone);
+      const db = as(uid, email);
       await assertFails(setDoc(doc(db, 'barbershops/shop1/stats', '2026-12'), { month: '2026-12' }), uid);
       await assertFails(updateDoc(doc(db, 'barbershops/shop1/stats', '2026-11'), { revenueEtb: 1 }), uid);
       await assertFails(deleteDoc(doc(db, 'barbershops/shop1/stats', '2026-11')), uid);

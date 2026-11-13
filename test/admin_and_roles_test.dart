@@ -21,7 +21,8 @@ void main() {
     final newShopId = await repo.registerBarbershopByAdmin(
       shopName: 'Summit Fade Lounge',
       ownerName: 'Girma Tadesse',
-      ownerPhone: '0912 345 678',
+      ownerEmail: ' Girma.Tadesse@Gmail.com ',
+      shopPhone: '0912 345 678',
       address: 'Summit Condominium Road',
       city: 'Addis Ababa',
       subCity: 'Bole',
@@ -49,25 +50,28 @@ void main() {
     expect(shop.subscriptionStatus, SubscriptionStatus.trialing);
     expect(shop.subscriptionEndsAt!.isAfter(DateTime.now().toUtc().add(const Duration(days: 29))), true);
 
-    // The owner is invited by phone; no account exists until they sign in.
+    // The owner is invited by (lowercased) email; no account exists until
+    // they sign in with Google.
     final invite = repo.getPendingOwnerInvite(newShopId);
     expect(invite, isNotNull);
-    expect(invite!.phone, '+251912345678');
+    expect(invite!.email, 'girma.tadesse@gmail.com');
     expect(invite.role, UserRole.barbershopOwner);
     expect(shop.ownerId, isEmpty);
-    expect(repo.getAllUsers().any((u) => u.phone == '+251912345678'), false);
+    expect(shop.phone, '0912 345 678');
+    expect(repo.getAllUsers().any((u) => u.email == 'girma.tadesse@gmail.com'), false);
 
-    // The owner signs in with that number and gets the owner role.
-    await repo.sendOtp('0912345678');
-    await repo.verifyOtp('123456');
+    // The owner signs in with that Google account and gets the owner role.
+    await signInWithGoogleAs('Girma.Tadesse@gmail.com', displayName: 'Girma T.');
     expect(repo.authStatus, AuthStatus.needsProfile);
     expect(repo.pendingInvite?.shopId, newShopId);
-    await repo.completeProfile(name: 'Girma Tadesse');
+    await repo.completeProfile(name: 'Girma Tadesse', phone: '0912345678');
 
     final owner = repo.currentUser!;
     expect(owner.role, UserRole.barbershopOwner);
     expect(owner.shopId, newShopId);
     expect(owner.name, 'Girma Tadesse');
+    expect(owner.email, 'girma.tadesse@gmail.com');
+    expect(owner.phone, '+251912345678');
     expect(repo.getShopById(newShopId)!.ownerId, owner.uid);
     expect(repo.getPendingOwnerInvite(newShopId), isNull);
     await repo.signOut();

@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:barbershop_booking/data/seed_dataset.dart';
 import 'package:barbershop_booking/services/app_repository.dart';
+import 'package:barbershop_booking/services/google_auth_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Reads the bundled demo dataset straight from disk (tests run from the
@@ -17,6 +18,15 @@ void loadTestSeed({DateTime? now}) {
   AppRepository.instance.loadSeed(loadSeedDataset(now: now));
   // Policy checks (cancellation cutoff, no-show) use the seed's clock.
   AppRepository.instance.debugClock = now == null ? null : () => now;
+}
+
+/// Local-mode Google sign-in as [email] (the Google account picker is
+/// replaced by a fake that returns this account). [loadTestSeed] restores
+/// the default demo account.
+Future<void> signInWithGoogleAs(String email, {String? displayName}) {
+  final repo = AppRepository.instance;
+  repo.googleAuthService = FakeGoogleAuthService(GoogleIdentity(email: email, displayName: displayName));
+  return repo.signInWithGoogle();
 }
 
 /// Serves a 1x1 GIF for every network image, so widget tests don't hit the

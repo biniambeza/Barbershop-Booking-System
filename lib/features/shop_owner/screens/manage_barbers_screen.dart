@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/email_utils.dart';
 import '../../../core/utils/phone_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../l10n/l10n.dart';
@@ -31,8 +32,11 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
     final l = context.l10n;
     final nameCtrl = TextEditingController();
     final titleCtrl = TextEditingController(text: l.defaultBarberTitle);
+    final emailCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
+    String? emailError;
     String? phoneError;
+    String? formError;
     String selectedAvatar = _avatarPresets[0];
 
     showDialog(
@@ -58,16 +62,32 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                 ),
                 const SizedBox(height: 12),
                 TextField(
+                  controller: emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  autocorrect: false,
+                  decoration: InputDecoration(
+                    labelText: l.emailForLogin,
+                    hintText: 'barber@gmail.com',
+                    helperText: l.barberEmailHelper,
+                    errorText: emailError,
+                    prefixIcon: const Icon(Icons.alternate_email),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
                   controller: phoneCtrl,
                   keyboardType: TextInputType.phone,
                   decoration: InputDecoration(
-                    labelText: l.mobileForLogin,
+                    labelText: l.barberMobileOptional,
                     hintText: '09XX XXX XXX',
-                    helperText: l.barberPhoneHelper,
                     errorText: phoneError,
                     prefixIcon: const Icon(Icons.phone_android),
                   ),
                 ),
+                if (formError != null) ...[
+                  const SizedBox(height: 10),
+                  Text(formError!, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+                ],
                 const SizedBox(height: 16),
                 Text(l.selectAvatar, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 8),
@@ -109,21 +129,27 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
             ElevatedButton(
               onPressed: () async {
                 if (nameCtrl.text.trim().isEmpty) return;
+                final email = emailCtrl.text.trim();
                 final phone = phoneCtrl.text.trim();
-                if (phone.isNotEmpty && normalizeEthiopianPhone(phone) == null) {
-                  setDialogState(() => phoneError = l.invalidPhoneShort);
-                  return;
-                }
+                final badEmail = email.isNotEmpty && validEmailOrNull(email) == null;
+                final badPhone = phone.isNotEmpty && normalizeEthiopianPhone(phone) == null;
+                setDialogState(() {
+                  emailError = badEmail ? l.invalidEmailShort : null;
+                  phoneError = badPhone ? l.invalidPhoneShort : null;
+                  formError = null;
+                });
+                if (badEmail || badPhone) return;
                 try {
                   await AppRepository.instance.addBarber(
                     shopId: widget.shopId,
                     name: nameCtrl.text.trim(),
                     title: titleCtrl.text.trim(),
+                    email: email.isEmpty ? null : email,
                     phone: phone.isEmpty ? null : phone,
                     avatarUrl: selectedAvatar,
                   );
                 } catch (e) {
-                  setDialogState(() => phoneError = e is AppException ? l.errorText(e) : l.addBarberFailed);
+                  setDialogState(() => formError = e is AppException ? l.errorText(e) : l.addBarberFailed);
                   return;
                 }
                 if (ctx.mounted) Navigator.of(ctx).pop();
@@ -248,10 +274,10 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                               barber.title,
                               style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
                             ),
-                            if (AppRepository.instance.getPendingBarberInvite(barber.id) != null) ...[
+                            if (AppRepository.instance.getPendingBarberInvite(barber.id) case final invite?) ...[
                               const SizedBox(height: 4),
                               Text(
-                                context.l10n.loginInvitePending(formatEthiopianPhone(barber.phone ?? '')),
+                                context.l10n.loginInvitePending(invite.email),
                                 style: const TextStyle(color: AppTheme.primaryGold, fontSize: 12),
                               ),
                             ],

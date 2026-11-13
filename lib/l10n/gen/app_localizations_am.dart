@@ -796,41 +796,7 @@ class AppLocalizationsAm extends AppLocalizations {
   }
 
   @override
-  String get authSubtitlePhone => 'በስልክ ቁጥርዎ ይግቡ ወይም አዲስ መለያ ይፍጠሩ';
-
-  @override
-  String authSubtitleCode(String phone) {
-    return 'ወደ $phone የተላከውን ባለ 6 አሃዝ ኮድ ያስገቡ';
-  }
-
-  @override
   String get mobileNumber => 'የሞባይል ቁጥር';
-
-  @override
-  String get sendCode => 'ኮድ ላክ';
-
-  @override
-  String get smsNotice =>
-      'የአንድ ጊዜ ኮድ በኤስኤምኤስ እንልክልዎታለን። መደበኛ የኤስኤምኤስ ክፍያ ሊኖር ይችላል።';
-
-  @override
-  String get verify => 'አረጋግጥ';
-
-  @override
-  String get changeNumber => 'ቁጥር ቀይር';
-
-  @override
-  String resendIn(int seconds) {
-    return 'በ$seconds ሰከንድ ውስጥ እንደገና ላክ';
-  }
-
-  @override
-  String get resendCode => 'ኮዱን እንደገና ላክ';
-
-  @override
-  String demoCodeNotice(String code) {
-    return 'የሙከራ ሁነታ፦ ኮዱ $code ነው';
-  }
 
   @override
   String get demoAccounts => 'የሙከራ መለያዎች';
@@ -869,31 +835,87 @@ class AppLocalizationsAm extends AppLocalizations {
   String get continueLabel => 'ቀጥል';
 
   @override
-  String get useDifferentNumber => 'ሌላ ቁጥር ተጠቀም';
-
-  @override
-  String get authErrInvalidPhone => 'ይህ ስልክ ቁጥር ትክክል አይደለም።';
-
-  @override
-  String get authErrWrongCode => 'የተሳሳተ ኮድ። ኤስኤምኤሱን አረጋግጠው እንደገና ይሞክሩ።';
-
-  @override
-  String get authErrCodeExpired => 'ኮዱ ጊዜው አልፎበታል። አዲስ ኮድ ይጠይቁ።';
-
-  @override
-  String get authErrTooMany => 'በጣም ብዙ ሙከራዎች። እባክዎ ጥቂት ደቂቃዎች ጠብቀው እንደገና ይሞክሩ።';
-
-  @override
-  String get authErrQuota => 'የኤስኤምኤስ ገደብ ተደርሷል። እባክዎ ቆየት ብለው ይሞክሩ።';
-
-  @override
   String get authErrNetwork => 'የኢንተርኔት ግንኙነት የለም።';
 
   @override
-  String get authErrNotEnabled => 'በስልክ መግባት ለዚህ መተግበሪያ ገና አልነቃም።';
+  String get authErrNotEnabled => 'በGoogle መግባት ለዚህ መተግበሪያ ገና አልነቃም።';
 
   @override
   String get authErrGeneric => 'የሆነ ችግር ተፈጥሯል። እባክዎ እንደገና ይሞክሩ።';
+
+  @override
+  String get authSubtitle => 'በGoogle መለያዎ ይግቡ ወይም አዲስ መለያ ይፍጠሩ';
+
+  @override
+  String get continueWithGoogle => 'በGoogle ይቀጥሉ';
+
+  @override
+  String get googleSignInNotice =>
+      'የኤስኤምኤስ ኮድ አያስፈልግም። የGoogle ስምዎን እና የኢሜይል አድራሻዎን ብቻ እንጠቀማለን።';
+
+  @override
+  String demoContinueAs(String name) {
+    return 'እንደ $name ይቀጥሉ';
+  }
+
+  @override
+  String get demoGoogleNotice => 'የሙከራ ሁነታ፦ እውነተኛ የGoogle መለያ ጥቅም ላይ አይውልም።';
+
+  @override
+  String get useDifferentAccount => 'ሌላ የGoogle መለያ ተጠቀም';
+
+  @override
+  String get profilePhoneHelper => 'ለኤስኤምኤስ የቀጠሮ ማስታወሻዎች እና ለክፍያ።';
+
+  @override
+  String get authErrPopupBlocked =>
+      'የመግቢያ መስኮቱ ታግዷል። ለዚህ ድረ-ገጽ ብቅ-ባይ መስኮቶችን ይፍቀዱ እና እንደገና ይሞክሩ።';
+
+  @override
+  String get authErrAccountExists => 'በዚህ ኢሜይል የተፈጠረ መለያ ሌላ የመግቢያ ዘዴ ይጠቀማል።';
+
+  @override
+  String get authErrUnauthorizedDomain => 'ይህ የድር አድራሻ ለመግቢያ አልተፈቀደም።';
+
+  @override
+  String get authErrUserDisabled => 'ይህ መለያ ታግዷል። እባክዎ ድጋፍ ሰጪን ያነጋግሩ።';
+
+  @override
+  String authErrWithCode(String code) {
+    return 'መግባት አልተሳካም ($code)።';
+  }
+
+  @override
+  String get errInvalidEmail => 'ትክክለኛ የኢሜይል አድራሻ ያስገቡ።';
+
+  @override
+  String get errInvalidOwnerEmail => 'ለባለቤቱ ትክክለኛ የGmail / ኢሜይል አድራሻ ያስገቡ።';
+
+  @override
+  String errEmailAlreadyStaff(String role) {
+    return 'ይህ የኢሜይል አድራሻ ቀድሞውኑ የ$role መለያ ነው።';
+  }
+
+  @override
+  String get errGoogleEmailMissing => 'የGoogle መለያዎ የተረጋገጠ የኢሜይል አድራሻ የለውም።';
+
+  @override
+  String get ownerEmailLogin => 'የባለቤቱ Gmail አድራሻ (ለመግቢያ) *';
+
+  @override
+  String get ownerEmailHelper => 'ባለቤቱ ፀጉር ቤቱን ለማስተዳደር በዚህ የGoogle መለያ ይገባሉ።';
+
+  @override
+  String get emailForLogin => 'የGmail አድራሻ (ለመግቢያ)';
+
+  @override
+  String get barberEmailHelper => 'አማራጭ። ፀጉር አስተካካዩ በዚህ የGoogle መለያ ይገባሉ።';
+
+  @override
+  String get barberMobileOptional => 'የሞባይል ቁጥር (አማራጭ)';
+
+  @override
+  String get invalidEmailShort => 'ትክክለኛ ኢሜይል ያስገቡ';
 
   @override
   String get adminSubtitle => 'የመድረክ ሲስተም አስተዳደር';
@@ -975,8 +997,8 @@ class AppLocalizationsAm extends AppLocalizations {
       'አዲስ ፀጉር ቤት ወደ መድረኩ ለመጨመር \"ፀጉር ቤት መዝግብ\"ን ይንኩ።';
 
   @override
-  String ownerInvitePending(String name, String phone) {
-    return '$name ($phone) - ግብዣ በመጠባበቅ ላይ';
+  String ownerInvitePending(String name, String email) {
+    return '$name ($email) - ግብዣ በመጠባበቅ ላይ';
   }
 
   @override
@@ -1022,8 +1044,8 @@ class AppLocalizationsAm extends AppLocalizations {
   String get registerNewBarbershop => 'አዲስ ፀጉር ቤት መዝግብ';
 
   @override
-  String registeredShopSnack(String shop, String phone) {
-    return '\"$shop\" ተመዝግቧል። ባለቤቱ አሁን በ$phone መግባት ይችላሉ።';
+  String registeredShopSnack(String shop, String email) {
+    return '\"$shop\" ተመዝግቧል። ባለቤቱ አሁን በGoogle መለያ $email መግባት ይችላሉ።';
   }
 
   @override
@@ -1061,12 +1083,6 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get ownerFullName => 'የባለቤቱ ሙሉ ስም *';
-
-  @override
-  String get ownerMobileLogin => 'የባለቤቱ ሞባይል ቁጥር (ለመግቢያ) *';
-
-  @override
-  String get ownerMobileHelper => 'ባለቤቱ ፀጉር ቤቱን ለማስተዳደር በዚህ ቁጥር ይገባሉ።';
 
   @override
   String get sectionLocation => '3. አካላዊ አድራሻ';
@@ -1811,12 +1827,6 @@ class AppLocalizationsAm extends AppLocalizations {
   String get specialization => 'ሙያ (ለምሳሌ ዋና ፀጉር አስተካካይ)';
 
   @override
-  String get mobileForLogin => 'የሞባይል ቁጥር (ለመግቢያ)';
-
-  @override
-  String get barberPhoneHelper => 'አማራጭ። ፀጉር አስተካካዩ በዚህ ቁጥር ይገባሉ።';
-
-  @override
   String get selectAvatar => 'የመገለጫ ፎቶ ይምረጡ፦';
 
   @override
@@ -1846,8 +1856,8 @@ class AppLocalizationsAm extends AppLocalizations {
   String get noBarbersHint => 'ደንበኞች ቀጠሮ እንዲይዙ ፀጉር አስተካካዮችን ይጨምሩ።';
 
   @override
-  String loginInvitePending(String phone) {
-    return 'የመግቢያ ግብዣ በመጠባበቅ ላይ፦ $phone';
+  String loginInvitePending(String email) {
+    return 'የመግቢያ ግብዣ በመጠባበቅ ላይ፦ $email';
   }
 
   @override
@@ -2141,33 +2151,10 @@ class AppLocalizationsAm extends AppLocalizations {
   String get errInvalidPhone => 'ትክክለኛ የኢትዮጵያ ሞባይል ቁጥር ያስገቡ (09... ወይም 07...)።';
 
   @override
-  String get errInvalidOwnerPhone =>
-      'ለባለቤቱ ትክክለኛ የኢትዮጵያ ሞባይል ቁጥር ያስገቡ (09... ወይም 07...)።';
-
-  @override
-  String get errInvalidOtp => 'በኤስኤምኤስ የደረሰዎትን ባለ 6 አሃዝ ኮድ ያስገቡ።';
-
-  @override
-  String errWrongDemoCode(String code) {
-    return 'የተሳሳተ ኮድ። በሙከራ ሁነታ ኮዱ $code ነው።';
-  }
-
-  @override
-  String get errRequestCodeFirst => 'መጀመሪያ ኮድ ይጠይቁ።';
-
-  @override
   String get errInvalidName => 'ስምዎን ያስገቡ (እስከ 100 ፊደላት)።';
 
   @override
-  String get errVerifyPhoneFirst => 'መጀመሪያ ስልክ ቁጥርዎን ያረጋግጡ።';
-
-  @override
   String get errSignInRequired => 'እባክዎ መጀመሪያ ይግቡ።';
-
-  @override
-  String errPhoneAlreadyStaff(String role) {
-    return 'ይህ ስልክ ቁጥር ቀድሞውኑ የ$role መለያ ነው።';
-  }
 
   @override
   String get errSignInToBook => 'ቀጠሮ ለመያዝ ይግቡ።';

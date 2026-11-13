@@ -5,7 +5,7 @@ Multi-tenant barbershop booking platform for Addis Ababa, built with Flutter and
 | Role | Can do |
 |---|---|
 | Admin | Register shops and invite their owners, verify or remove shops, see all users and bookings, resolve payments flagged for review |
-| Shop owner | Manage one shop: profile, hours, services, barbers (invites them by phone), all of the shop's bookings. Set the booking policy (cancellation cutoff, reschedule limit), mark no-shows, add or remove any of the shop's barbers' time off, run the walk-in queue, reply to reviews, see monthly reports and the client list |
+| Shop owner | Manage one shop: profile, hours, services, barbers (invites them by Google email), all of the shop's bookings. Set the booking policy (cancellation cutoff, reschedule limit), mark no-shows, add or remove any of the shop's barbers' time off, run the walk-in queue, reply to reviews, see monthly reports and the client list |
 | Barber | See and run their own appointment queue, set availability, add or remove their own time off, mark no-shows, run the walk-in queue, see earnings and their own reviews |
 | Customer | Find shops and barbers, book, reschedule and cancel (within the shop's policy), keep favorites, join a shop's walk-in queue from the app, rate completed visits |
 
@@ -40,13 +40,13 @@ In demo mode and in tests every feature runs on a local store (`LocalDataStore`,
 
 ## How sign-in and roles work
 
-- Everyone signs in with an Ethiopian mobile number and a 6-digit SMS code (Firebase phone auth). There are no passwords.
-- On first sign-in the person enters their name and gets a profile at `users/{uid}`.
+- Everyone signs in with their Google account (Firebase Authentication, Google provider). There are no passwords and no SMS codes. A person is identified by their verified Google email, lowercased.
+- On first sign-in the person enters their name and a contact phone number (Ethiopian mobile, `+2519...` or `+2517...`) and gets a profile at `users/{uid}` holding `email` (taken from the Google account, cannot be changed later), `name` and `phone`. The phone is not verified; it is used for bookings, SMS reminders and Chapa, and the person can change it (and their name and language) in their profile.
 - The role on that profile is enforced by [firestore.rules](firestore.rules). Nobody can choose their own role:
   - Without an invite, a new account is a **customer**.
-  - The admin registers a shop with the owner's phone number. That creates an invite at `invites/{phone}`, and the owner gets the **shop owner** role when they sign in with that number.
-  - A shop owner adds a barber with a phone number, which creates a **barber** invite for their own shop.
-  - An invite upgrades an existing customer once. It never changes an existing barber, owner or admin.
+  - The admin registers a shop with the owner's Google email. That creates an invite at `invites/{email}` (the lowercased address), and the owner gets the **shop owner** role when they sign in with that Google account.
+  - A shop owner adds a barber with the barber's Google email, which creates a **barber** invite for their own shop.
+  - An invite only works for a verified Google email that matches it, and it upgrades an existing customer once. It never changes an existing barber, owner or admin.
 - Removing a barber profile removes that barber's access.
 
 ## Running the app
@@ -57,7 +57,7 @@ In demo mode and in tests every feature runs on a local store (`LocalDataStore`,
 flutter run --dart-define=DEMO_MODE=true
 ```
 
-Runs offline on the Addis Ababa demo dataset in [assets/seed/addis_seed.json](assets/seed/addis_seed.json). The sign-in screen shows one-tap demo accounts, and the SMS code is always `123456`. Chapa payments are simulated, and booking notifications appear only in the in-app inbox (no push or SMS). The GitHub Pages build is a demo build. Never ship a production build with `DEMO_MODE`.
+Runs offline on the Addis Ababa demo dataset in [assets/seed/addis_seed.json](assets/seed/addis_seed.json). The sign-in screen shows one-tap demo accounts (no Google sign-in needed). Chapa payments are simulated, and booking notifications appear only in the in-app inbox (no push or SMS). The GitHub Pages build is a demo build. Never ship a production build with `DEMO_MODE`.
 
 ### Production (Firebase)
 
@@ -82,7 +82,7 @@ GOOGLE_APPLICATION_CREDENTIALS=service-account.json node seed.js --invites --pro
 
 Besides shops, users and bookings, the seed has booking policies on every shop, one time-off entry, a walk-in queue for `shop_1` with its summary, and 13 reviews whose averages match the shops' and barbers' `rating` fields. Report stats are not seeded: the `insights` trigger builds them when the Functions emulator runs during seeding, or the admin calls `rebuildShopStats` afterwards.
 
-On a real project use `--invites`: it writes no fake accounts or bookings. The plans can also be created from the admin app (Subscriptions > Plans > Create default plans), which calls the `seedDefaultPlans` function.
+On a real project use `--invites`: it writes no fake accounts or bookings. Invites are keyed by email (`invites/{email}`), and the dataset's emails are `@example.com` placeholders, so put the real people's Google addresses in the JSON first. The plans can also be created from the admin app (Subscriptions > Plans > Create default plans), which calls the `seedDefaultPlans` function.
 
 ### Translations
 
@@ -105,13 +105,18 @@ Edit `lib/l10n/app_en.arb` and `lib/l10n/app_am.arb` (they have the same keys), 
    ```
 
 3. In the Firebase console:
-   - **Authentication > Sign-in method:** enable **Phone**.
-   - **Authentication > Settings > SMS region policy:** allow Ethiopia (+251).
-   - **Authentication > Settings > Authorized domains:** add your web domain (for example `<user>.github.io`).
+   - **Authentication > Get started** (first time only), then **Sign-in method > Add new provider > Google**: turn it on, choose the project support email, and save.
+   - **Authentication > Settings > Authorized domains:** `localhost` and the project's `<project>.firebaseapp.com` / `<project>.web.app` domains are there by default. Add any other domain the web app is served from (for example `<user>.github.io` or your Firebase Hosting custom domain), or Google sign-in fails there with `auth/unauthorized-domain`.
    - **Firestore Database:** create the database (choose a region near Ethiopia, such as `europe-west`).
-   - For testing without real SMS, add test numbers under **Phone numbers for testing**.
 
-4. Android phone auth needs your app's signing fingerprints. Get them with `cd android && ./gradlew signingReport` and add the SHA-1 and SHA-256 under **Project settings > Your apps > Android**.
+4. Android Google sign-in needs your app's signing fingerprints (debug, release and, if you publish through Google Play, the Play app signing key). Get them with `cd android && ./gradlew signingReport`, then add each SHA-1 (and SHA-256) either in the console under **Project settings > Your apps > Android > Add fingerprint**, or with the CLI:
+
+   ```sh
+   firebase apps:list ANDROID                                   # find the Android app id
+   firebase apps:android:sha:create <android-app-id> <SHA-1>
+   ```
+
+   Then download the updated `google-services.json` again (or rerun `flutterfire configure`) so it contains the OAuth client.
 
 5. Deploy the security rules:
 
@@ -121,10 +126,10 @@ Edit `lib/l10n/app_en.arb` and `lib/l10n/app_am.arb` (they have the same keys), 
    ```
 
 6. Create the first admin. In the Firestore console, add a document to the `invites` collection:
-   - Document ID: the admin's phone number in `+2519XXXXXXXX` form
-   - Fields: `phone` (same number), `role` = `admin`, `name`, `createdBy` = `console`, `createdAt` = an ISO date string such as `2026-11-13T00:00:00Z`
+   - Document ID: the admin's Google email in lowercase, for example `someone@gmail.com`
+   - Fields: `email` (the same lowercased address), `role` = `admin`, `name`, `createdBy` = `console`, `createdAt` = an ISO date string such as `2026-11-13T00:00:00Z`
 
-   Then sign in with that number in the app. From there the admin registers shops and invites owners.
+   Then sign in with that Google account in the app (it asks for a contact phone on first sign-in). From there the admin registers shops and invites owners by their Google email, and owners invite their barbers the same way.
 
 ## Cloud Functions
 
@@ -178,7 +183,7 @@ There are five codebases (TypeScript, Node 20, region `europe-west1`), all liste
 
 ## What still needs real-world setup
 
-- A Firebase project (`flutterfire configure`), phone sign-in with +251 allowed in the SMS region policy, and the first admin invite (see above).
+- A Firebase project (`flutterfire configure`), the Google sign-in provider enabled (with the Android SHA-1 fingerprints and the web domains authorized), and the first admin invite (see above).
 - A Chapa merchant account. Test with Chapa test keys first: the webhook signature check and the verify response were written from Chapa's docs and have not run against live Chapa.
 - An AfroMessage account with an approved sender name. Until then, set `AFROMESSAGE_TOKEN` to `none`.
 - Final plan prices. Edit them in the admin app; the defaults live in `functions/payments/src/config.ts` and `assets/seed/addis_seed.json`.

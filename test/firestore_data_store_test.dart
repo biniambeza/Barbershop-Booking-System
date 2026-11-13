@@ -86,8 +86,8 @@ void main() {
   });
 
   test('owner sees only their shop and its bookings, invites and staff', () async {
-    await db.collection('invites').doc('+251912000999').set(UserInvite(
-          phone: '+251912000999',
+    await db.collection('invites').doc('new.barber@gmail.com').set(UserInvite(
+          email: 'new.barber@gmail.com',
           role: UserRole.barber,
           name: 'New',
           shopId: 'shop_1',
@@ -95,8 +95,8 @@ void main() {
           createdBy: 'owner_1',
           createdAt: DateTime.now(),
         ).toMap());
-    await db.collection('invites').doc('+251912000888').set(UserInvite(
-          phone: '+251912000888',
+    await db.collection('invites').doc('other.barber@gmail.com').set(UserInvite(
+          email: 'other.barber@gmail.com',
           role: UserRole.barber,
           name: 'Other shop',
           shopId: 'shop_2',
@@ -111,7 +111,7 @@ void main() {
     expect(cache.barbers.values.every((b) => b.shopId == 'shop_1'), true);
     expect(cache.bookings.values.every((b) => b.shopId == 'shop_1'), true);
     expect(cache.bookings.length, 5);
-    expect(cache.invites.keys, ['+251912000999']);
+    expect(cache.invites.keys, ['new.barber@gmail.com']);
     expect(cache.users.values.every((u) => u.shopId == 'shop_1'), true);
     expect(cache.plans.length, 3);
   });
@@ -169,8 +169,8 @@ void main() {
   });
 
   test('deleteShop removes the subcollections and invites too', () async {
-    await db.collection('invites').doc('+251912000777').set(UserInvite(
-          phone: '+251912000777',
+    await db.collection('invites').doc('pending.owner@gmail.com').set(UserInvite(
+          email: 'pending.owner@gmail.com',
           role: UserRole.barbershopOwner,
           name: 'X',
           shopId: 'shop_4',
@@ -182,7 +182,7 @@ void main() {
     expect((await db.collection('barbershops').doc('shop_4').get()).exists, false);
     expect((await db.collection('barbershops').doc('shop_4').collection('services').get()).docs, isEmpty);
     expect((await db.collection('barbershops').doc('shop_4').collection('barbers').get()).docs, isEmpty);
-    expect((await db.collection('invites').doc('+251912000777').get()).exists, false);
+    expect((await db.collection('invites').doc('pending.owner@gmail.com').get()).exists, false);
     await pumpEventQueue();
     expect(cache.shops.containsKey('shop_4'), false);
   });

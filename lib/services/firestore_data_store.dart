@@ -319,7 +319,7 @@ class FirestoreDataStore implements DataStore {
     for (final b in barbers) {
       batch.set(shopRef.collection('barbers').doc(b.id), _withoutNulls(b.toMap()));
     }
-    if (ownerInvite != null) batch.set(_invites.doc(ownerInvite.phone), ownerInvite.toMap());
+    if (ownerInvite != null) batch.set(_invites.doc(ownerInvite.email), ownerInvite.toMap());
     await batch.commit();
   }
 
@@ -358,7 +358,7 @@ class FirestoreDataStore implements DataStore {
       batch.delete(_barbersOf(shopId).doc(b.id));
     }
     for (final i in cache.invites.values.where((i) => i.shopId == shopId)) {
-      batch.delete(_invites.doc(i.phone));
+      batch.delete(_invites.doc(i.email));
     }
     batch.delete(_shops.doc(shopId));
     await batch.commit();
@@ -379,7 +379,7 @@ class FirestoreDataStore implements DataStore {
   Future<void> addBarber(Barber barber, UserInvite? invite) async {
     final batch = _db.batch();
     batch.set(_barbersOf(barber.shopId).doc(barber.id), _withoutNulls(barber.toMap()));
-    if (invite != null) batch.set(_invites.doc(invite.phone), invite.toMap());
+    if (invite != null) batch.set(_invites.doc(invite.email), invite.toMap());
     await batch.commit();
   }
 
@@ -395,7 +395,7 @@ class FirestoreDataStore implements DataStore {
   Future<void> deleteBarber(Barber barber, UserInvite? pendingInvite) async {
     final batch = _db.batch();
     batch.delete(_barbersOf(barber.shopId).doc(barber.id));
-    if (pendingInvite != null) batch.delete(_invites.doc(pendingInvite.phone));
+    if (pendingInvite != null) batch.delete(_invites.doc(pendingInvite.email));
     await batch.commit();
   }
 
@@ -494,10 +494,11 @@ class FirestoreDataStore implements DataStore {
   }
 
   @override
-  Future<void> updateUserProfile(String uid, {String? name, String? language}) {
+  Future<void> updateUserProfile(String uid, {String? name, String? language, String? phone}) {
     return _users.doc(uid).update({
       if (name != null) 'name': name,
       if (language != null) 'language': language,
+      if (phone != null) 'phone': phone,
     });
   }
 

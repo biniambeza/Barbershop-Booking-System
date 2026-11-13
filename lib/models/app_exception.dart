@@ -14,17 +14,17 @@ library;
 enum AppErrorCode {
   // --- Sign-in & profile
   invalidPhone,
-  invalidOwnerPhone,
-  invalidOtpCode,
-  wrongDemoCode,
-  requestCodeFirst,
+  invalidEmail,
+  invalidOwnerEmail,
+
+  /// The Google account has no verified email address.
+  googleEmailMissing,
   invalidName,
-  verifyPhoneFirst,
   signInRequired,
   accountLoadFailed,
 
   /// args: [UserRole] of the existing account.
-  phoneAlreadyStaff,
+  emailAlreadyStaff,
 
   // --- Bookings
   signInToBook,
@@ -85,24 +85,20 @@ enum AppErrorCode {
     switch (this) {
       case AppErrorCode.invalidPhone:
         return 'Enter a valid Ethiopian mobile number (09... or 07...).';
-      case AppErrorCode.invalidOwnerPhone:
-        return 'Enter a valid Ethiopian mobile number for the owner (09... or 07...).';
-      case AppErrorCode.invalidOtpCode:
-        return 'Enter the 6-digit code from the SMS.';
-      case AppErrorCode.wrongDemoCode:
-        return 'Wrong code. In demo mode the code is ${arg(0)}.';
-      case AppErrorCode.requestCodeFirst:
-        return 'Request a code first.';
+      case AppErrorCode.invalidEmail:
+        return 'Enter a valid email address.';
+      case AppErrorCode.invalidOwnerEmail:
+        return 'Enter a valid Gmail / email address for the owner.';
+      case AppErrorCode.googleEmailMissing:
+        return 'Your Google account has no verified email address.';
       case AppErrorCode.invalidName:
         return 'Enter your name (up to 100 characters).';
-      case AppErrorCode.verifyPhoneFirst:
-        return 'Verify your phone number first.';
       case AppErrorCode.signInRequired:
         return 'Sign in first.';
       case AppErrorCode.accountLoadFailed:
         return 'Could not load your account. Check your connection and try again.';
-      case AppErrorCode.phoneAlreadyStaff:
-        return 'This phone number already belongs to a ${arg(0)} account.';
+      case AppErrorCode.emailAlreadyStaff:
+        return 'This email address already belongs to a ${arg(0)} account.';
       case AppErrorCode.signInToBook:
         return 'Sign in to book an appointment.';
       case AppErrorCode.shopNotTakingBookings:

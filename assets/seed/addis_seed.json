@@ -28,22 +28,22 @@
     }
   ],
   "users": [
-    { "uid": "user_admin_1", "name": "Meron Haile", "phone": "+251911000001", "role": "admin", "email": "admin@crownblade.et", "language": "en", "createdDaysAgo": 120 },
+    { "uid": "user_admin_1", "name": "Meron Haile", "email": "admin@example.com", "phone": "+251911000001", "role": "admin", "language": "en", "createdDaysAgo": 120 },
 
-    { "uid": "owner_1", "name": "Abebe Kebede", "phone": "+251911000101", "role": "barbershopOwner", "shopId": "shop_1", "email": "abebe@crowncuts.et", "language": "am", "createdDaysAgo": 90 },
-    { "uid": "owner_2", "name": "Tewodros Alemu", "phone": "+251911000102", "role": "barbershopOwner", "shopId": "shop_2", "language": "am", "createdDaysAgo": 80 },
-    { "uid": "owner_3", "name": "Mulugeta Bekele", "phone": "+251911000103", "role": "barbershopOwner", "shopId": "shop_3", "language": "am", "createdDaysAgo": 70 },
-    { "uid": "owner_4", "name": "Henok Girma", "phone": "+251911000104", "role": "barbershopOwner", "shopId": "shop_4", "language": "en", "createdDaysAgo": 15 },
-    { "uid": "owner_5", "name": "Samuel Tesfaye", "phone": "+251911000105", "role": "barbershopOwner", "shopId": "shop_5", "language": "am", "createdDaysAgo": 60 },
-    { "uid": "owner_6", "name": "Bereket Wolde", "phone": "+251911000106", "role": "barbershopOwner", "shopId": "shop_6", "language": "am", "createdDaysAgo": 45 },
+    { "uid": "owner_1", "name": "Abebe Kebede", "email": "owner.shop1@example.com", "phone": "+251911000101", "role": "barbershopOwner", "shopId": "shop_1", "language": "am", "createdDaysAgo": 90 },
+    { "uid": "owner_2", "name": "Tewodros Alemu", "email": "owner.shop2@example.com", "phone": "+251911000102", "role": "barbershopOwner", "shopId": "shop_2", "language": "am", "createdDaysAgo": 80 },
+    { "uid": "owner_3", "name": "Mulugeta Bekele", "email": "owner.shop3@example.com", "phone": "+251911000103", "role": "barbershopOwner", "shopId": "shop_3", "language": "am", "createdDaysAgo": 70 },
+    { "uid": "owner_4", "name": "Henok Girma", "email": "owner.shop4@example.com", "phone": "+251911000104", "role": "barbershopOwner", "shopId": "shop_4", "language": "en", "createdDaysAgo": 15 },
+    { "uid": "owner_5", "name": "Samuel Tesfaye", "email": "owner.shop5@example.com", "phone": "+251911000105", "role": "barbershopOwner", "shopId": "shop_5", "language": "am", "createdDaysAgo": 60 },
+    { "uid": "owner_6", "name": "Bereket Wolde", "email": "owner.shop6@example.com", "phone": "+251911000106", "role": "barbershopOwner", "shopId": "shop_6", "language": "am", "createdDaysAgo": 45 },
 
-    { "uid": "barber_user_1", "name": "Yonas Tadesse", "phone": "+251911000201", "role": "barber", "shopId": "shop_1", "barberId": "barber_1", "language": "am", "createdDaysAgo": 85 },
-    { "uid": "barber_user_2", "name": "Kaleab Mekonnen", "phone": "+251911000202", "role": "barber", "shopId": "shop_1", "barberId": "barber_2", "language": "am", "createdDaysAgo": 60 },
+    { "uid": "barber_user_1", "name": "Yonas Tadesse", "email": "barber1.shop1@example.com", "phone": "+251911000201", "role": "barber", "shopId": "shop_1", "barberId": "barber_1", "language": "am", "createdDaysAgo": 85 },
+    { "uid": "barber_user_2", "name": "Kaleab Mekonnen", "email": "barber2.shop1@example.com", "phone": "+251911000202", "role": "barber", "shopId": "shop_1", "barberId": "barber_2", "language": "am", "createdDaysAgo": 60 },
 
-    { "uid": "user_cust_1", "name": "Liya Getachew", "phone": "+251911000301", "role": "customer", "email": "liya@example.com", "language": "en", "createdDaysAgo": 30 },
-    { "uid": "user_cust_2", "name": "Natnael Assefa", "phone": "+251911000302", "role": "customer", "language": "am", "createdDaysAgo": 25 },
-    { "uid": "user_cust_3", "name": "Rahel Desta", "phone": "+251911000303", "role": "customer", "language": "am", "createdDaysAgo": 20 },
-    { "uid": "user_cust_4", "name": "Eyob Fikre", "phone": "+251911000304", "role": "customer", "language": "en", "createdDaysAgo": 10 }
+    { "uid": "user_cust_1", "name": "Liya Getachew", "email": "liya@example.com", "phone": "+251911000301", "role": "customer", "language": "en", "createdDaysAgo": 30 },
+    { "uid": "user_cust_2", "name": "Natnael Assefa", "email": "customer2@example.com", "phone": "+251911000302", "role": "customer", "language": "am", "createdDaysAgo": 25 },
+    { "uid": "user_cust_3", "name": "Rahel Desta", "email": "customer3@example.com", "phone": "+251911000303", "role": "customer", "language": "am", "createdDaysAgo": 20 },
+    { "uid": "user_cust_4", "name": "Eyob Fikre", "email": "customer4@example.com", "phone": "+251911000304", "role": "customer", "language": "en", "createdDaysAgo": 10 }
   ],
   "shops": [
     {

@@ -270,7 +270,7 @@ void main() {
 
     test('deleting a shop removes its services, barbers and invites', () async {
       repo.switchRole(UserRole.admin);
-      await repo.addBarber(shopId: 'shop_3', name: 'Invited', title: 'Barber', phone: '0977001122');
+      await repo.addBarber(shopId: 'shop_3', name: 'Invited', title: 'Barber', email: 'invited.barber@gmail.com');
       expect(repo.getPendingInvites().any((i) => i.shopId == 'shop_3'), true);
       await repo.deleteShop('shop_3');
       expect(repo.getShopById('shop_3'), isNull);

@@ -1346,65 +1346,11 @@ abstract class AppLocalizations {
   /// **'{count} d ago'**
   String daysAgo(int count);
 
-  /// No description provided for @authSubtitlePhone.
-  ///
-  /// In en, this message translates to:
-  /// **'Sign in or create an account with your phone number'**
-  String get authSubtitlePhone;
-
-  /// No description provided for @authSubtitleCode.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter the 6-digit code sent to {phone}'**
-  String authSubtitleCode(String phone);
-
   /// No description provided for @mobileNumber.
   ///
   /// In en, this message translates to:
   /// **'Mobile Number'**
   String get mobileNumber;
-
-  /// No description provided for @sendCode.
-  ///
-  /// In en, this message translates to:
-  /// **'Send Code'**
-  String get sendCode;
-
-  /// No description provided for @smsNotice.
-  ///
-  /// In en, this message translates to:
-  /// **'We will send you a one-time code by SMS. Standard SMS rates may apply.'**
-  String get smsNotice;
-
-  /// No description provided for @verify.
-  ///
-  /// In en, this message translates to:
-  /// **'Verify'**
-  String get verify;
-
-  /// No description provided for @changeNumber.
-  ///
-  /// In en, this message translates to:
-  /// **'Change number'**
-  String get changeNumber;
-
-  /// No description provided for @resendIn.
-  ///
-  /// In en, this message translates to:
-  /// **'Resend in {seconds}s'**
-  String resendIn(int seconds);
-
-  /// No description provided for @resendCode.
-  ///
-  /// In en, this message translates to:
-  /// **'Resend code'**
-  String get resendCode;
-
-  /// No description provided for @demoCodeNotice.
-  ///
-  /// In en, this message translates to:
-  /// **'Demo mode: the code is {code}'**
-  String demoCodeNotice(String code);
 
   /// No description provided for @demoAccounts.
   ///
@@ -1466,42 +1412,6 @@ abstract class AppLocalizations {
   /// **'Continue'**
   String get continueLabel;
 
-  /// No description provided for @useDifferentNumber.
-  ///
-  /// In en, this message translates to:
-  /// **'Use a different number'**
-  String get useDifferentNumber;
-
-  /// No description provided for @authErrInvalidPhone.
-  ///
-  /// In en, this message translates to:
-  /// **'That phone number is not valid.'**
-  String get authErrInvalidPhone;
-
-  /// No description provided for @authErrWrongCode.
-  ///
-  /// In en, this message translates to:
-  /// **'Wrong code. Check the SMS and try again.'**
-  String get authErrWrongCode;
-
-  /// No description provided for @authErrCodeExpired.
-  ///
-  /// In en, this message translates to:
-  /// **'The code expired. Request a new one.'**
-  String get authErrCodeExpired;
-
-  /// No description provided for @authErrTooMany.
-  ///
-  /// In en, this message translates to:
-  /// **'Too many attempts. Please wait a few minutes and try again.'**
-  String get authErrTooMany;
-
-  /// No description provided for @authErrQuota.
-  ///
-  /// In en, this message translates to:
-  /// **'SMS limit reached. Please try again later.'**
-  String get authErrQuota;
-
   /// No description provided for @authErrNetwork.
   ///
   /// In en, this message translates to:
@@ -1511,7 +1421,7 @@ abstract class AppLocalizations {
   /// No description provided for @authErrNotEnabled.
   ///
   /// In en, this message translates to:
-  /// **'Phone sign-in is not enabled for this app yet.'**
+  /// **'Google sign-in is not enabled for this app yet.'**
   String get authErrNotEnabled;
 
   /// No description provided for @authErrGeneric.
@@ -1519,6 +1429,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Something went wrong. Please try again.'**
   String get authErrGeneric;
+
+  /// No description provided for @authSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in or create an account with your Google account'**
+  String get authSubtitle;
+
+  /// No description provided for @continueWithGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Google'**
+  String get continueWithGoogle;
+
+  /// No description provided for @googleSignInNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'No SMS code needed. We only use your Google name and email address.'**
+  String get googleSignInNotice;
+
+  /// No description provided for @demoContinueAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue as {name}'**
+  String demoContinueAs(String name);
+
+  /// No description provided for @demoGoogleNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo mode: no real Google account is used.'**
+  String get demoGoogleNotice;
+
+  /// No description provided for @useDifferentAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a different Google account'**
+  String get useDifferentAccount;
+
+  /// No description provided for @profilePhoneHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'For SMS booking reminders and payments.'**
+  String get profilePhoneHelper;
+
+  /// No description provided for @authErrPopupBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'The sign-in window was blocked. Allow pop-ups for this site and try again.'**
+  String get authErrPopupBlocked;
+
+  /// No description provided for @authErrAccountExists.
+  ///
+  /// In en, this message translates to:
+  /// **'An account with this email already uses a different sign-in method.'**
+  String get authErrAccountExists;
+
+  /// No description provided for @authErrUnauthorizedDomain.
+  ///
+  /// In en, this message translates to:
+  /// **'This web address is not authorised for sign-in.'**
+  String get authErrUnauthorizedDomain;
+
+  /// No description provided for @authErrUserDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'This account has been disabled. Please contact support.'**
+  String get authErrUserDisabled;
+
+  /// No description provided for @authErrWithCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in failed ({code}).'**
+  String authErrWithCode(String code);
+
+  /// No description provided for @errInvalidEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email address.'**
+  String get errInvalidEmail;
+
+  /// No description provided for @errInvalidOwnerEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid Gmail / email address for the owner.'**
+  String get errInvalidOwnerEmail;
+
+  /// No description provided for @errEmailAlreadyStaff.
+  ///
+  /// In en, this message translates to:
+  /// **'This email address already belongs to a {role} account.'**
+  String errEmailAlreadyStaff(String role);
+
+  /// No description provided for @errGoogleEmailMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Google account has no verified email address.'**
+  String get errGoogleEmailMissing;
+
+  /// No description provided for @ownerEmailLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner Gmail Address (Login) *'**
+  String get ownerEmailLogin;
+
+  /// No description provided for @ownerEmailHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'The owner signs in with this Google account to manage the shop.'**
+  String get ownerEmailHelper;
+
+  /// No description provided for @emailForLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Gmail Address (for login)'**
+  String get emailForLogin;
+
+  /// No description provided for @barberEmailHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional. The barber signs in with this Google account.'**
+  String get barberEmailHelper;
+
+  /// No description provided for @barberMobileOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile Number (optional)'**
+  String get barberMobileOptional;
+
+  /// No description provided for @invalidEmailShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email address'**
+  String get invalidEmailShort;
 
   /// No description provided for @adminSubtitle.
   ///
@@ -1655,8 +1697,8 @@ abstract class AppLocalizations {
   /// No description provided for @ownerInvitePending.
   ///
   /// In en, this message translates to:
-  /// **'{name} ({phone}) - invite pending'**
-  String ownerInvitePending(String name, String phone);
+  /// **'{name} ({email}) - invite pending'**
+  String ownerInvitePending(String name, String email);
 
   /// No description provided for @notAssigned.
   ///
@@ -1733,8 +1775,8 @@ abstract class AppLocalizations {
   /// No description provided for @registeredShopSnack.
   ///
   /// In en, this message translates to:
-  /// **'Registered \"{shop}\". The owner can now sign in with {phone}.'**
-  String registeredShopSnack(String shop, String phone);
+  /// **'Registered \"{shop}\". The owner can now sign in with Google as {email}.'**
+  String registeredShopSnack(String shop, String email);
 
   /// No description provided for @registrationError.
   ///
@@ -1801,18 +1843,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Owner Full Name *'**
   String get ownerFullName;
-
-  /// No description provided for @ownerMobileLogin.
-  ///
-  /// In en, this message translates to:
-  /// **'Owner Mobile Number (Login) *'**
-  String get ownerMobileLogin;
-
-  /// No description provided for @ownerMobileHelper.
-  ///
-  /// In en, this message translates to:
-  /// **'The owner signs in with this number to manage the shop.'**
-  String get ownerMobileHelper;
 
   /// No description provided for @sectionLocation.
   ///
@@ -3116,18 +3146,6 @@ abstract class AppLocalizations {
   /// **'Specialization (e.g. Master Barber)'**
   String get specialization;
 
-  /// No description provided for @mobileForLogin.
-  ///
-  /// In en, this message translates to:
-  /// **'Mobile Number (for login)'**
-  String get mobileForLogin;
-
-  /// No description provided for @barberPhoneHelper.
-  ///
-  /// In en, this message translates to:
-  /// **'Optional. The barber signs in with this number.'**
-  String get barberPhoneHelper;
-
   /// No description provided for @selectAvatar.
   ///
   /// In en, this message translates to:
@@ -3185,8 +3203,8 @@ abstract class AppLocalizations {
   /// No description provided for @loginInvitePending.
   ///
   /// In en, this message translates to:
-  /// **'Login invite pending: {phone}'**
-  String loginInvitePending(String phone);
+  /// **'Login invite pending: {email}'**
+  String loginInvitePending(String email);
 
   /// No description provided for @removeBarber.
   ///
@@ -3620,53 +3638,17 @@ abstract class AppLocalizations {
   /// **'Enter a valid Ethiopian mobile number (09... or 07...).'**
   String get errInvalidPhone;
 
-  /// No description provided for @errInvalidOwnerPhone.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter a valid Ethiopian mobile number for the owner (09... or 07...).'**
-  String get errInvalidOwnerPhone;
-
-  /// No description provided for @errInvalidOtp.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter the 6-digit code from the SMS.'**
-  String get errInvalidOtp;
-
-  /// No description provided for @errWrongDemoCode.
-  ///
-  /// In en, this message translates to:
-  /// **'Wrong code. In demo mode the code is {code}.'**
-  String errWrongDemoCode(String code);
-
-  /// No description provided for @errRequestCodeFirst.
-  ///
-  /// In en, this message translates to:
-  /// **'Request a code first.'**
-  String get errRequestCodeFirst;
-
   /// No description provided for @errInvalidName.
   ///
   /// In en, this message translates to:
   /// **'Enter your name (up to 100 characters).'**
   String get errInvalidName;
 
-  /// No description provided for @errVerifyPhoneFirst.
-  ///
-  /// In en, this message translates to:
-  /// **'Verify your phone number first.'**
-  String get errVerifyPhoneFirst;
-
   /// No description provided for @errSignInRequired.
   ///
   /// In en, this message translates to:
   /// **'Please sign in first.'**
   String get errSignInRequired;
-
-  /// No description provided for @errPhoneAlreadyStaff.
-  ///
-  /// In en, this message translates to:
-  /// **'This phone number already belongs to a {role} account.'**
-  String errPhoneAlreadyStaff(String role);
 
   /// No description provided for @errSignInToBook.
   ///

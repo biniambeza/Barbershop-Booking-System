@@ -4,9 +4,10 @@ rules_version = '2';
 // Crown & Blade - Firestore security rules
 // =====================================================================
 //
-// Sign-in is by phone number (Firebase phone auth). Every signed-in person
-// has a profile at users/{uid}, and the `role` stored there is the only
-// source of truth for what they may do:
+// Sign-in is with Google (Firebase Auth). A person is identified by their
+// verified Google email, lowercased (myEmail() below). Every signed-in
+// person has a profile at users/{uid}, and the `role` stored there is the
+// only source of truth for what they may do:
 //
 //   customer         - books appointments, sees only their own bookings
 //   barber           - linked to one barber profile in one shop; manages
@@ -17,14 +18,21 @@ rules_version = '2';
 //                      plans and subscriptions
 //
 // Nobody can give themselves a role. A role other than `customer` is only
-// granted through an invite at invites/{phone} (the E.164 phone number),
-// created by an admin (any role) or by a shop owner (barbers for their own
-// shop). When the invited person signs in, the app creates or upgrades
-// their profile from the invite and deletes the invite in the same batch.
+// granted through an invite at invites/{email} (the invitee's Google email,
+// lowercased), created by an admin (any role) or by a shop owner (barbers
+// for their own shop). When the invited person signs in with that Google
+// account (verified email), the app creates or upgrades their profile from
+// the invite and deletes the invite in the same batch.
 //
-// Bootstrap the first admin by creating invites/{+2519XXXXXXXX} in the
-// Firebase console with: phone, role: "admin", name, createdBy: "console",
-// createdAt: an ISO-8601 string. Then sign in with that number.
+// The profile's `phone` is a contact number the person types in (used for
+// bookings, SMS reminders and Chapa). It is not verified and is not part of
+// the sign-in identity.
+//
+// Bootstrap the first admin by creating invites/{their-gmail-lowercased}
+// (e.g. invites/someone@gmail.com) in the Firebase console with:
+// email (the same lowercased address), role: "admin", name,
+// createdBy: "console", createdAt: an ISO-8601 string. Then sign in with
+// that Google account.
 //
 // Cloud Functions (functions/notifications, functions/payments,
 // functions/bookings) use the Admin SDK and bypass these rules. Everything they own is read-only (or
@@ -36,13 +44,15 @@ rules_version = '2';
 // Addis Ababa is UTC+3 with no DST.
 //
 // Collections
-//   users/{uid}                uid, name, phone, role, shopId?, barberId?,
-//                              email?, createdAt, language? ('en'|'am')
+//   users/{uid}                uid, email (verified Google email, lowercased;
+//                              fixed after create), name, phone (contact,
+//                              +2519/+2517...), role, shopId?, barberId?,
+//                              createdAt, language? ('en'|'am')
 //     /devices/{deviceId}      token, platform, updatedAt   (owner only)
 //     /notifications/{id}      title, body, type, bookingId?, paymentId?, read,
 //                              createdAt   (functions; owner reads, sets read)
-//   invites/{phone}            phone, role, name, shopId?, barberId?,
-//                              createdBy, createdAt
+//   invites/{email}            email (== doc id, lowercased), role, name,
+//                              shopId?, barberId?, createdBy, createdAt
 //   barbershops/{shopId}       ownerId ('' until the invited owner signs
 //                              in), name, description, address, city,
 //                              subCity?, landmark?, phone, imageUrl, rating,
@@ -107,8 +117,8 @@ service cloud.firestore {
       return /databases/$(database)/documents/users/$(uid);
     }
 
-    function invitePath(phone) {
-      return /databases/$(database)/documents/invites/$(phone);
+    function invitePath(email) {
+      return /databases/$(database)/documents/invites/$(email);
     }
 
     function shopPath(shopId) {
@@ -143,9 +153,13 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Verified phone number from Firebase phone auth, or '' if none.
-    function myPhone() {
-      return request.auth.token.get('phone_number', '');
+    // The caller's verified sign-in email (Google), lowercased, or '' if
+    // the token has no email or it is not verified.
+    function myEmail() {
+      return request.auth.token.get('email_verified', false) == true &&
+          request.auth.token.get('email', '') is string
+        ? request.auth.token.get('email', '').lower()
+        : '';
     }
 
     function hasProfile() {
@@ -195,6 +209,13 @@ service cloud.firestore {
 
     function isEthiopianPhone(phone) {
       return phone is string && phone.matches('^[+]251[79][0-9]{8}$');
+    }
+
+    // A lowercased email address (invite ids and profile emails).
+    function isValidEmail(email) {
+      return email is string &&
+        email.size() >= 3 && email.size() <= 254 &&
+        email.matches('^[a-z0-9._%+-]+@[a-z0-9-]+([.][a-z0-9-]+)*[.][a-z]{2,}$');
     }
 
     // A business contact number: a mobile (+2519..., +2517...) or a fixed
@@ -358,12 +379,12 @@ service cloud.firestore {
 
     function isValidUser(d) {
       return d.keys().hasOnly(['uid', 'email', 'name', 'phone', 'role', 'shopId', 'barberId', 'createdAt', 'language']) &&
-        d.keys().hasAll(['uid', 'name', 'phone', 'role', 'createdAt']) &&
+        d.keys().hasAll(['uid', 'email', 'name', 'phone', 'role', 'createdAt']) &&
         isString(d.uid, 1, 128) &&
+        isValidEmail(d.email) &&
         isString(d.name, 1, 100) &&
         isEthiopianPhone(d.phone) &&
         d.role in ['customer', 'barber', 'barbershopOwner', 'admin'] &&
-        optString(d, 'email', 3, 254) &&
         optString(d, 'shopId', 1, 128) &&
         optString(d, 'barberId', 1, 128) &&
         (!('language' in d) || d.language in ['en', 'am']) &&
@@ -382,19 +403,20 @@ service cloud.firestore {
     // The role fields in `d` match the caller's own invite, and the same
     // batch deletes that invite (so it can only be used once).
     function matchesMyInvite(d) {
-      return myPhone() != '' &&
-        exists(invitePath(myPhone())) &&
-        get(invitePath(myPhone())).data.role == d.role &&
-        get(invitePath(myPhone())).data.get('shopId', null) == d.get('shopId', null) &&
-        get(invitePath(myPhone())).data.get('barberId', null) == d.get('barberId', null) &&
-        !existsAfter(invitePath(myPhone()));
+      return myEmail() != '' &&
+        exists(invitePath(myEmail())) &&
+        get(invitePath(myEmail())).data.role == d.role &&
+        get(invitePath(myEmail())).data.get('shopId', null) == d.get('shopId', null) &&
+        get(invitePath(myEmail())).data.get('barberId', null) == d.get('barberId', null) &&
+        !existsAfter(invitePath(myEmail()));
     }
 
-    function isValidInvite(d, phone) {
-      return d.keys().hasOnly(['phone', 'role', 'name', 'shopId', 'barberId', 'createdBy', 'createdAt']) &&
-        d.keys().hasAll(['phone', 'role', 'name', 'createdBy', 'createdAt']) &&
-        d.phone == phone &&
-        isEthiopianPhone(phone) &&
+    // Invite ids are the invitee's lowercased email, repeated in `email`.
+    function isValidInvite(d, email) {
+      return d.keys().hasOnly(['email', 'role', 'name', 'shopId', 'barberId', 'createdBy', 'createdAt']) &&
+        d.keys().hasAll(['email', 'role', 'name', 'createdBy', 'createdAt']) &&
+        d.email == email &&
+        isValidEmail(email) &&
         isString(d.name, 1, 100) &&
         d.createdBy == request.auth.uid &&
         isValidDateOrTimestamp(d.createdAt) &&
@@ -864,22 +886,24 @@ service cloud.firestore {
         (resource.data.get('shopId', null) is string && isOwnerOf(resource.data.shopId))
       );
 
-      // First sign-in: create your own profile with your verified phone.
-      // The role is `customer`, or whatever your invite says.
+      // First sign-in: create your own profile with your verified Google
+      // email (lowercased) and a contact phone you type in. The role is
+      // `customer`, or whatever your invite says.
       allow create: if signedIn() &&
         request.auth.uid == userId &&
         isValidUser(request.resource.data) &&
         request.resource.data.uid == userId &&
-        request.resource.data.phone == myPhone() &&
+        myEmail() != '' &&
+        request.resource.data.email == myEmail() &&
         (request.resource.data.role == 'customer' || matchesMyInvite(request.resource.data));
 
       allow update: if signedIn() && isValidUser(request.resource.data) && (
         isAdmin() ||
         (request.auth.uid == userId &&
-          unchanged('uid') && unchanged('createdAt') && unchanged('phone') &&
+          unchanged('uid') && unchanged('createdAt') && unchanged('email') &&
           (
-            // Ordinary profile edits: name, language, email.
-            changedKeys().hasOnly(['name', 'language', 'email']) ||
+            // Ordinary profile edits: name, language, contact phone.
+            changedKeys().hasOnly(['name', 'language', 'phone']) ||
             // ...or a customer accepting an invite (one time).
             (resource.data.role == 'customer' && matchesMyInvite(request.resource.data))
           ))
@@ -908,17 +932,17 @@ service cloud.firestore {
     }
 
     // -----------------------------------------------------------------
-    // invites/{phone}
+    // invites/{email}
     // -----------------------------------------------------------------
-    match /invites/{phone} {
+    match /invites/{email} {
       allow read: if signedIn() && (
-        myPhone() == phone ||
+        (myEmail() != '' && myEmail() == email) ||
         isAdmin() ||
         (resource.data.role == 'barber' && isOwnerOf(resource.data.shopId))
       );
 
       allow create: if signedIn() &&
-        isValidInvite(request.resource.data, phone) &&
+        isValidInvite(request.resource.data, email) &&
         (
           isAdmin() ||
           (request.resource.data.role == 'barber' && isOwnerOf(request.resource.data.shopId))
@@ -926,7 +950,7 @@ service cloud.firestore {
 
       // Owners may only replace their own shop's barber invites.
       allow update: if signedIn() &&
-        isValidInvite(request.resource.data, phone) &&
+        isValidInvite(request.resource.data, email) &&
         (
           isAdmin() ||
           (request.resource.data.role == 'barber' && isOwnerOf(request.resource.data.shopId) &&
@@ -936,7 +960,7 @@ service cloud.firestore {
       // The invitee (accepting/declining), an admin, or the shop owner
       // (cancelling a barber invite).
       allow delete: if signedIn() && (
-        myPhone() == phone ||
+        (myEmail() != '' && myEmail() == email) ||
         isAdmin() ||
         (resource.data.role == 'barber' && isOwnerOf(resource.data.shopId))
       );

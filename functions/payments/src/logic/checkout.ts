@@ -21,6 +21,17 @@ export function toChapaPhone(e164: unknown): string | undefined {
 }
 
 /**
+ * The customer's email for Chapa (the verified Google sign-in email stored on
+ * users/{uid}), lowercased; undefined when missing or not a plausible address,
+ * so Chapa falls back to the phone number.
+ */
+export function toChapaEmail(email: unknown): string | undefined {
+  if (typeof email !== 'string') return undefined;
+  const e = email.trim().toLowerCase();
+  return e.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? e : undefined;
+}
+
+/**
  * Chapa rejects customization text with characters other than letters,
  * numbers, hyphens, underscores, spaces and dots.
  */

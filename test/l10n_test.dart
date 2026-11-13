@@ -151,8 +151,8 @@ void main() {
 
     testWidgets('sign-in screen in Amharic', (tester) async {
       await tester.pumpWidget(_app(const AuthScreen(), locale: const Locale('am')));
-      expect(find.text('ኮድ ላክ'), findsOneWidget);
-      expect(find.text('Send Code'), findsNothing);
+      expect(find.text('በGoogle ይቀጥሉ'), findsOneWidget);
+      expect(find.text('Continue with Google'), findsNothing);
       expect(find.byType(LanguageToggle), findsOneWidget);
     });
 
@@ -164,16 +164,16 @@ void main() {
         builder: (_, __) => _app(
           Scaffold(
             appBar: AppBar(actions: [LanguageToggle(controller: ctrl)]),
-            body: Builder(builder: (context) => Text(context.l10n.sendCode)),
+            body: Builder(builder: (context) => Text(context.l10n.continueWithGoogle)),
           ),
           locale: ctrl.locale,
         ),
       ));
-      expect(find.text('Send Code'), findsOneWidget);
+      expect(find.text('Continue with Google'), findsOneWidget);
       await tester.tap(find.byKey(const ValueKey('language-toggle')));
       await tester.pumpAndSettle();
       expect(ctrl.languageCode, 'am');
-      expect(find.text('ኮድ ላክ'), findsOneWidget);
+      expect(find.text('በGoogle ይቀጥሉ'), findsOneWidget);
     });
 
     testWidgets('customer appointments show Birr and Amharic labels', (tester) async {

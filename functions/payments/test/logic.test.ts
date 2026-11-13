@@ -17,6 +17,7 @@ import {
   firstNameOf,
   paymentIdFromTxRef,
   sanitizeCheckoutText,
+  toChapaEmail,
   toChapaPhone,
 } from '../src/logic/checkout';
 import { checkBookingPayable, checkPlanFitsShop, checkShopOwner } from '../src/logic/eligibility';
@@ -246,6 +247,15 @@ test('toChapaPhone converts Ethiopian numbers to local 10-digit form', () => {
   assert.equal(toChapaPhone('+15551234567'), undefined);
   assert.equal(toChapaPhone('+251811234567'), undefined);
   assert.equal(toChapaPhone(undefined), undefined);
+});
+
+test('toChapaEmail passes the profile email, lowercased, or nothing', () => {
+  assert.equal(toChapaEmail('Owner.Shop1@Example.com'), 'owner.shop1@example.com');
+  assert.equal(toChapaEmail(' a@b.co '), 'a@b.co');
+  assert.equal(toChapaEmail('not-an-email'), undefined);
+  assert.equal(toChapaEmail(''), undefined);
+  assert.equal(toChapaEmail(undefined), undefined);
+  assert.equal(toChapaEmail(42), undefined);
 });
 
 test('checkout text is sanitized for Chapa', () => {

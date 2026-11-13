@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/services.dart' show rootBundle;
 
+import '../core/utils/email_utils.dart';
 import '../models/barber_model.dart';
 import '../models/barbershop_model.dart';
 import '../models/booking_model.dart';
@@ -12,6 +13,10 @@ import 'addis_time.dart';
 
 /// Asset path of the demo dataset (also read by tool/seed/seed.js).
 const String kSeedAssetPath = 'assets/seed/addis_seed.json';
+
+/// Demo-only Google email for a seed user that has none (e.g. `owner_2` ->
+/// `owner_2@demo.crownblade.et`).
+String demoEmailForUid(String uid) => '${uid.toLowerCase()}@demo.crownblade.et';
 
 /// The demo dataset, resolved into models.
 ///
@@ -61,7 +66,13 @@ class SeedDataset {
 
     final users = [
       for (final u in _list(json['users']))
-        AppUser.fromMap({...u, 'createdAt': daysAgo(u['createdDaysAgo']).toIso8601String()}, u['uid'] as String),
+        AppUser.fromMap({
+          ...u,
+          // Everyone signs in with Google: seed users without an email get a
+          // stable demo address (see demoEmailForUid).
+          'email': normalizeEmail((u['email'] as String?) ?? demoEmailForUid(u['uid'] as String)),
+          'createdAt': daysAgo(u['createdDaysAgo']).toIso8601String(),
+        }, u['uid'] as String),
     ];
 
     final shops = <Barbershop>[];

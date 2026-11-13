@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:barbershop_booking/core/config/app_config.dart';
 import 'package:barbershop_booking/core/theme/app_theme.dart';
 import 'package:barbershop_booking/features/admin/screens/admin_payment_review_screen.dart';
 import 'package:barbershop_booking/features/customer/screens/customer_bookings_screen.dart';
@@ -67,19 +66,23 @@ void main() {
     }
 
     test('repository errors carry codes (and stay Format/State errors)', () async {
-      final phone = await appError(() => repo.sendOtp('12345'));
+      await signInWithGoogleAs('new.person@gmail.com');
+      final phone = await appError(() => repo.completeProfile(name: 'New Person', phone: '12345'));
       expect(phone.code, AppErrorCode.invalidPhone);
       expect(phone, isA<FormatException>());
+      await repo.signOut();
 
-      await repo.sendOtp('0911000001');
-      final wrong = await appError(() => repo.verifyOtp('000000'));
-      expect(wrong.code, AppErrorCode.wrongDemoCode);
-      expect(wrong.args, ['123456']);
-
-      final staff = await appError(
-        () => repo.addBarber(shopId: 'shop_2', name: 'Someone', title: 'Barber', phone: '0911000101'),
+      final email = await appError(
+        () => repo.addBarber(shopId: 'shop_2', name: 'Someone', title: 'Barber', email: 'not-an-email'),
       );
-      expect(staff.code, AppErrorCode.phoneAlreadyStaff);
+      expect(email.code, AppErrorCode.invalidEmail);
+
+      // owner_1's email, typed in another case: still recognised.
+      final ownerEmail = repo.getAllUsers().firstWhere((u) => u.uid == 'owner_1').email!;
+      final staff = await appError(
+        () => repo.addBarber(shopId: 'shop_2', name: 'Someone', title: 'Barber', email: ownerEmail.toUpperCase()),
+      );
+      expect(staff.code, AppErrorCode.emailAlreadyStaff);
       expect(staff.args, [UserRole.barbershopOwner]);
 
       final signedOut = await appError(() => repo.createBooking(
@@ -477,9 +480,8 @@ void main() {
       expect(ctrl.languageCode, 'am');
 
       // A brand-new customer (no language on the profile yet).
-      await repo.sendOtp('0911999888');
-      await repo.verifyOtp(kDemoOtpCode);
-      await repo.completeProfile(name: 'New Customer');
+      await signInWithGoogleAs('new.customer@gmail.com');
+      await repo.completeProfile(name: 'New Customer', phone: '0911999888');
       await pumpEventQueue();
       expect(repo.currentUser!.language, 'am');
       ctrl.dispose();

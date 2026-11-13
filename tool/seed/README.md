@@ -31,12 +31,12 @@ GOOGLE_APPLICATION_CREDENTIALS=service-account.json node seed.js --invites --pro
 
 | Mode | Writes | Use for |
 |---|---|---|
-| default (users) | `users/{uid}` with fixed uids (`user_admin_1`, `owner_1`, `barber_user_1`, `user_cust_1`, ...), bookings, shops, services, barbers, plans. With the Auth emulator running or `--with-auth`, also Firebase Auth phone users with the same uids. | Emulator, staging |
-| `--invites` | `invites/{phone}` for the admin, owners and barbers (no customers), shops with `ownerId: ''`, services, barbers, plans. No users or bookings. | A real project |
+| default (users) | `users/{uid}` with fixed uids (`user_admin_1`, `owner_1`, `barber_user_1`, `user_cust_1`, ...), each with an `email` and a contact `phone`, plus bookings, shops, services, barbers, plans. With the Auth emulator running or `--with-auth`, also Firebase Auth users with the same uids and verified emails. | Emulator, staging |
+| `--invites` | `invites/{email}` (doc id = the lowercased email) for the admin, owners and barbers (no customers), shops with `ownerId: ''`, services, barbers, plans. No users or bookings. | A real project |
 
-In invites mode each person gets their role on first sign-in with their number, as with any invite (owners then claim their shop).
+Sign-in is with Google, so people are identified by their (lowercased) Google email. In invites mode each person gets their role the first time they sign in with Google using the invited address, as with any invite (owners then claim their shop). The dataset's emails are `@example.com` placeholders: before running `--invites` on a real project, replace them in `assets/seed/addis_seed.json` (or a copy) with the real people's Google addresses, otherwise nobody can accept the invites. The script lowercases emails and refuses users without one.
 
-Demo numbers: admin `+251911000001`, owner of `shop_1` `+251911000101`, barber `barber_1` `+251911000201`, customer `+251911000301`. To sign in with them on a real project without SMS, add them under **Authentication > Phone numbers for testing**.
+Demo emails: admin `admin@example.com`, owner of `shop_1` `owner.shop1@example.com` (shops 2-6: `owner.shop2@example.com` ...), barbers `barber1.shop1@example.com` and `barber2.shop1@example.com`, customer `liya@example.com`. Phones (`+251911000001`, ...) are contact numbers on the profile, not sign-in identities.
 
 `npm test` checks the script resolves the data like the app does.
 

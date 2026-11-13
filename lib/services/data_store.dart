@@ -80,8 +80,8 @@ abstract class DataStore {
   /// a single empty list.
   Stream<List<SlotLock>> watchSlotLocks(String shopId, String barberId, DateTime addisDate);
 
-  /// The signed-in user's own editable fields (name, language).
-  Future<void> updateUserProfile(String uid, {String? name, String? language});
+  /// The signed-in user's own editable fields (name, language, phone).
+  Future<void> updateUserProfile(String uid, {String? name, String? language, String? phone});
 
   // --- Reschedule, policy, time off (see booking_policy.dart and
   // time_off_service.dart) ---
@@ -174,7 +174,7 @@ class LocalDataStore implements DataStore {
     for (final b in barbers) {
       cache.barbers[b.id] = b;
     }
-    if (ownerInvite != null) cache.invites[ownerInvite.phone] = ownerInvite;
+    if (ownerInvite != null) cache.invites[ownerInvite.email] = ownerInvite;
   }
 
   @override
@@ -241,7 +241,7 @@ class LocalDataStore implements DataStore {
   @override
   Future<void> addBarber(Barber barber, UserInvite? invite) async {
     cache.barbers[barber.id] = barber;
-    if (invite != null) cache.invites[invite.phone] = invite;
+    if (invite != null) cache.invites[invite.email] = invite;
   }
 
   @override
@@ -279,7 +279,7 @@ class LocalDataStore implements DataStore {
     cache.barbers.remove(barber.id);
     // Deleting the profile revokes the linked account (as the rules do).
     cache.users.removeWhere((_, u) => u.barberId == barber.id);
-    if (pendingInvite != null) cache.invites.remove(pendingInvite.phone);
+    if (pendingInvite != null) cache.invites.remove(pendingInvite.email);
   }
 
   /// Same rule as the Firestore transaction: no two non-cancelled bookings
@@ -315,9 +315,9 @@ class LocalDataStore implements DataStore {
   }
 
   @override
-  Future<void> updateUserProfile(String uid, {String? name, String? language}) async {
+  Future<void> updateUserProfile(String uid, {String? name, String? language, String? phone}) async {
     final old = cache.users[uid];
-    if (old != null) cache.users[uid] = old.copyWith(name: name, language: language);
+    if (old != null) cache.users[uid] = old.copyWith(name: name, language: language, phone: phone);
   }
 
   @override

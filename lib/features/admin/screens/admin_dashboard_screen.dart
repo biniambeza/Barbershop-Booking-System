@@ -311,7 +311,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               final ownerLabel = owner != null
                   ? '${owner.name} (${formatEthiopianPhone(owner.phone ?? shop.phone)})'
                   : ownerInvite != null
-                      ? l.ownerInvitePending(ownerInvite.name, formatEthiopianPhone(ownerInvite.phone))
+                      ? l.ownerInvitePending(ownerInvite.name, ownerInvite.email)
                       : l.notAssigned;
 
               return Container(

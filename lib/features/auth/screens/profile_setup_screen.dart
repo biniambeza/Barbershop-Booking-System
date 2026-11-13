@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/phone_utils.dart';
 import '../../../l10n/l10n.dart';
@@ -6,9 +7,12 @@ import '../../shared/widgets/language_toggle.dart';
 import '../../../models/user_model.dart';
 import '../../../services/app_repository.dart';
 
-/// First sign-in: ask for the user's name and create their profile.
+/// First sign-in: ask for the user's name and mobile number and create
+/// their profile.
 ///
-/// If the phone number has a pending invite (shop owner or barber), the
+/// The name is prefilled from the invite or the Google account. The mobile
+/// number is required (SMS reminders, payments, bookings) but not verified.
+/// If the Google email has a pending invite (shop owner or barber), the
 /// screen says which role they are joining as; otherwise they become a
 /// customer.
 class ProfileSetupScreen extends StatefulWidget {
@@ -20,28 +24,40 @@ class ProfileSetupScreen extends StatefulWidget {
 
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   late final TextEditingController _nameController;
+  final _phoneController = TextEditingController();
   bool _isLoading = false;
   String? _error;
+  String? _phoneError;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: AppRepository.instance.pendingInvite?.name ?? '');
+    final repo = AppRepository.instance;
+    final inviteName = repo.pendingInvite?.name.trim() ?? '';
+    _nameController = TextEditingController(
+      text: inviteName.isNotEmpty ? inviteName : (repo.pendingDisplayName ?? ''),
+    );
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
+    if (normalizeEthiopianPhone(_phoneController.text) == null) {
+      setState(() => _phoneError = context.l10n.invalidEthiopianPhone);
+      return;
+    }
     setState(() {
       _isLoading = true;
       _error = null;
+      _phoneError = null;
     });
     try {
-      await AppRepository.instance.completeProfile(name: _nameController.text);
+      await AppRepository.instance.completeProfile(name: _nameController.text, phone: _phoneController.text);
     } catch (e) {
       if (mounted) setState(() => _error = context.l10n.authError(e));
     } finally {
@@ -53,7 +69,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   Widget build(BuildContext context) {
     final repo = AppRepository.instance;
     final invite = repo.pendingInvite;
-    final phone = repo.pendingPhone;
+    final email = repo.pendingEmail;
     final shopName = invite?.shopId != null ? repo.getShopById(invite!.shopId!)?.name : null;
 
     final l = context.l10n;
@@ -93,9 +109,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 6),
-                  if (phone != null)
+                  if (email != null)
                     Text(
-                      formatEthiopianPhone(phone),
+                      email,
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: AppTheme.textSecondary),
                     ),
@@ -121,6 +137,21 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       prefixIcon: const Icon(Icons.person_outline),
                       counterText: '',
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    key: const ValueKey('profile-phone'),
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    autofillHints: const [AutofillHints.telephoneNumber],
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+ ]'))],
+                    decoration: InputDecoration(
+                      labelText: '${l.mobileNumber} *',
+                      hintText: '09XX XXX XXX',
+                      helperText: l.profilePhoneHelper,
+                      errorText: _phoneError,
+                      prefixIcon: const Icon(Icons.phone_android),
+                    ),
                     onSubmitted: (_) => _isLoading ? null : _submit(),
                   ),
                   const SizedBox(height: 16),
@@ -136,7 +167,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   ),
                   TextButton(
                     onPressed: _isLoading ? null : () => repo.signOut(),
-                    child: Text(l.useDifferentNumber),
+                    child: Text(l.useDifferentAccount),
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 8),

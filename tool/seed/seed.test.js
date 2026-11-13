@@ -2,7 +2,7 @@
 // node --test (no Firebase needed): checks the seed resolves like lib/data/seed_dataset.dart.
 const test = require('node:test');
 const assert = require('node:assert');
-const { buildDocuments, formatTimeSlot } = require('./seed.js');
+const { buildDocuments, formatTimeSlot, emailOf } = require('./seed.js');
 const seed = require('../../assets/seed/addis_seed.json');
 
 const now = new Date(Date.UTC(2026, 10, 20, 7, 0)); // 10:00 in Addis
@@ -35,8 +35,8 @@ test('invites mode writes no fake accounts or bookings', () => {
   const docs = buildDocuments(seed, { now, mode: 'invites' });
   assert.ok(!docs.some((d) => d.path.startsWith('users/') || d.path.startsWith('bookings/')));
   assert.strictEqual(get(docs, 'barbershops/shop_1').ownerId, '');
-  assert.deepStrictEqual(get(docs, 'invites/+251911000201'), {
-    phone: '+251911000201',
+  assert.deepStrictEqual(get(docs, 'invites/barber1.shop1@example.com'), {
+    email: 'barber1.shop1@example.com',
     role: 'barber',
     name: 'Yonas Tadesse',
     createdBy: 'seed',
@@ -44,7 +44,39 @@ test('invites mode writes no fake accounts or bookings', () => {
     shopId: 'shop_1',
     barberId: 'barber_1',
   });
-  assert.strictEqual(get(docs, 'invites/+251911000301'), undefined); // customers need no invite
+  assert.strictEqual(get(docs, 'invites/liya@example.com'), undefined); // customers need no invite
+  assert.ok(!docs.some((d) => d.path.startsWith('invites/+')), 'no phone-keyed invites');
+  // Every invite id is its lowercased email field.
+  const invites = docs.filter((d) => d.path.startsWith('invites/'));
+  assert.strictEqual(invites.length, 9); // admin, 6 owners, 2 barbers
+  for (const d of invites) {
+    assert.strictEqual(d.path, `invites/${d.data.email}`);
+    assert.strictEqual(d.data.email, d.data.email.toLowerCase());
+    assert.strictEqual(d.data.phone, undefined);
+  }
+  assert.strictEqual(get(docs, 'invites/admin@example.com').role, 'admin');
+});
+
+test('users mode gives every user a lowercased email and keeps the phone', () => {
+  const docs = buildDocuments(seed, { now });
+  const users = docs.filter((d) => d.path.startsWith('users/'));
+  assert.strictEqual(users.length, seed.users.length);
+  for (const { data } of users) {
+    assert.match(data.email, /^[a-z0-9._%+-]+@example\.com$/);
+    assert.match(data.phone, /^\+251[79]\d{8}$/);
+  }
+  assert.strictEqual(get(docs, 'users/owner_1').email, 'owner.shop1@example.com');
+  assert.strictEqual(get(docs, 'users/owner_1').phone, '+251911000101');
+  // Emails are unique (one Google account per person).
+  assert.strictEqual(new Set(users.map((d) => d.data.email)).size, users.length);
+});
+
+test('emailOf lowercases and rejects missing emails', () => {
+  assert.strictEqual(emailOf({ uid: 'x', email: ' Owner.Shop1@Example.COM ' }), 'owner.shop1@example.com');
+  assert.throws(() => emailOf({ uid: 'x' }), /valid email/);
+  assert.throws(() => emailOf({ uid: 'x', email: '+251911000001' }), /valid email/);
+  const noEmail = { ...seed, users: seed.users.map((u, i) => (i === 0 ? { ...u, email: undefined } : u)) };
+  assert.throws(() => buildDocuments(noEmail, { now, mode: 'invites' }), /valid email/);
 });
 
 test('active bookings get slot locks like the app writes them', () => {

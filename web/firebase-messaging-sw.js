@@ -13,12 +13,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js
 importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js');
 
 const firebaseConfig = {
-  apiKey: 'REPLACE_ME',
-  appId: 'REPLACE_ME',
-  messagingSenderId: 'REPLACE_ME',
-  projectId: 'REPLACE_ME',
-  authDomain: 'REPLACE_ME',
-  storageBucket: 'REPLACE_ME',
+  apiKey: 'AIzaSyBMI3JfcN6y1jUkyCufsbr8LlBKTgnjKhg',
+  appId: '1:756289834540:web:b700bce8bfaaa1ea248b89',
+  messagingSenderId: '756289834540',
+  projectId: 'barbershop-booking-syste-8a9b8',
+  authDomain: 'barbershop-booking-syste-8a9b8.firebaseapp.com',
+  storageBucket: 'barbershop-booking-syste-8a9b8.firebasestorage.app',
 };
 
 if (firebaseConfig.apiKey !== 'REPLACE_ME') {

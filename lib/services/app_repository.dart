@@ -5,7 +5,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:uuid/uuid.dart';
-import '../core/config/app_config.dart';
+import '../core/utils/email_utils.dart';
 import '../core/utils/phone_utils.dart';
 import '../data/addis_time.dart';
 import '../data/seed_dataset.dart';
@@ -23,7 +23,7 @@ import 'booking_policy.dart' as policy;
 import 'data_cache.dart';
 import 'data_store.dart';
 import 'firestore_data_store.dart';
-import 'phone_auth_service.dart';
+import 'google_auth_service.dart';
 import 'time_off_service.dart';
 
 export '../models/app_exception.dart';
@@ -34,7 +34,8 @@ enum AuthStatus {
   initializing,
   signedOut,
 
-  /// Phone verified, but no `users/{uid}` profile yet (first sign-in).
+  /// Signed in with Google, but no `users/{uid}` profile yet (first
+  /// sign-in): the profile setup screen asks for a name and phone number.
   needsProfile,
   signedIn,
 }
@@ -64,8 +65,20 @@ class AppRepository extends ChangeNotifier {
 
   // --- Firebase wiring ---
   bool _firebaseReady = false;
-  PhoneAuthService? _phoneAuth;
+  GoogleAuthService _googleAuth = _defaultLocalGoogleAuth();
   StreamSubscription<User?>? _authSub;
+
+  /// The account "Continue with Google" signs in as without Firebase (demo
+  /// builds and tests): a new customer, so the profile setup step shows.
+  static final GoogleIdentity demoGoogleIdentity =
+      GoogleIdentity(email: 'demo.customer@gmail.com', displayName: 'Selam Bekele');
+
+  static GoogleAuthService _defaultLocalGoogleAuth() => FakeGoogleAuthService(demoGoogleIdentity);
+
+  /// Tests: replaces the Google sign-in used in local mode. [loadSeed]
+  /// restores the default demo account.
+  @visibleForTesting
+  set googleAuthService(GoogleAuthService service) => _googleAuth = service;
 
   bool get isFirebaseAttached => _firebaseReady;
   FirebaseFirestore get _db => FirebaseFirestore.instance;
@@ -75,7 +88,14 @@ class AppRepository extends ChangeNotifier {
   void attachFirebase() {
     if (_firebaseReady) return;
     _firebaseReady = true;
-    _phoneAuth = PhoneAuthService(FirebaseAuth.instance);
+    final google = FirebaseGoogleAuthService(FirebaseAuth.instance);
+    _googleAuth = google;
+    // Web: report a failed redirect sign-in (used when the popup is blocked).
+    google.redirectError().then((error) {
+      if (error == null) return;
+      _authError = error;
+      notifyListeners();
+    });
     _cache.clear();
     final cloud = FirestoreDataStore(
       cache: _cache,
@@ -112,8 +132,9 @@ class AppRepository extends ChangeNotifier {
       ..addAll(seed.favoriteBarberIds);
     _currentUser = null;
     _authStatus = AuthStatus.signedOut;
-    _pendingPhone = null;
-    _pendingInvite = null;
+    _googleAuth = _defaultLocalGoogleAuth();
+    _clearPending();
+    _authError = null;
     notifyListeners();
   }
 
@@ -130,17 +151,28 @@ class AppRepository extends ChangeNotifier {
   AuthStatus _authStatus = AuthStatus.signedOut;
   AuthStatus get authStatus => _authStatus;
 
-  /// The phone number being verified / just verified (E.164).
-  String? _pendingPhone;
-  String? get pendingPhone => _pendingPhone;
+  /// The signed-in Google email (lowercased) while the profile is set up.
+  String? _pendingEmail;
+  String? get pendingEmail => _pendingEmail;
 
-  /// Invite matching the verified phone number, shown on profile setup.
+  /// The Google display name, used to prefill the profile name.
+  String? _pendingDisplayName;
+  String? get pendingDisplayName => _pendingDisplayName;
+
+  /// Invite matching the signed-in email, shown on profile setup.
   UserInvite? _pendingInvite;
   UserInvite? get pendingInvite => _pendingInvite;
 
-  /// Last session-level error (e.g. profile could not be loaded).
-  AppException? _authError;
-  AppException? get authError => _authError;
+  void _clearPending() {
+    _pendingEmail = null;
+    _pendingDisplayName = null;
+    _pendingInvite = null;
+  }
+
+  /// Last session-level error: an [AppException] (e.g. the profile could not
+  /// be loaded) or a FirebaseAuthException from a redirect sign-in.
+  Object? _authError;
+  Object? get authError => _authError;
 
   /// Last Firestore listener error (e.g. permission denied), if any.
   String? get syncError => _cloud?.lastError;
@@ -168,53 +200,53 @@ class AppRepository extends ChangeNotifier {
     return _cache.invites.values.where((i) => i.role == UserRole.barber && i.barberId == barberId).firstOrNull;
   }
 
-  /// Sends a one-time SMS code to an Ethiopian mobile number.
-  /// Throws [AppFormatException] ([AppErrorCode.invalidPhone]) if the number
-  /// is not valid.
-  Future<void> sendOtp(String phoneInput) async {
-    final phone = normalizeEthiopianPhone(phoneInput);
-    if (phone == null) {
-      throw AppFormatException(AppErrorCode.invalidPhone);
-    }
+  /// Signs in with Google (popup / redirect on web, the native account
+  /// picker on Android and iOS). Cancelling does nothing. On success the
+  /// session moves to [AuthStatus.signedIn] (existing account) or
+  /// [AuthStatus.needsProfile] (first sign-in).
+  ///
+  /// Without Firebase (demo builds and tests) the injected
+  /// [GoogleAuthService] supplies the account.
+  Future<void> signInWithGoogle() async {
     _authError = null;
-    if (_firebaseReady) {
-      await _phoneAuth!.sendCode(phone);
-    }
-    _pendingPhone = phone;
+    final identity = await _googleAuth.signIn();
+    if (identity == null) return; // Cancelled (or redirecting on web).
+    // With Firebase, _onFirebaseAuthChanged loads the profile.
+    if (_firebaseReady) return;
+    _signInLocally(identity);
   }
 
-  /// Confirms the SMS code. On success the session moves to
-  /// [AuthStatus.signedIn] (existing account) or [AuthStatus.needsProfile]
-  /// (first sign-in).
-  Future<void> verifyOtp(String code) async {
-    final trimmed = code.trim();
-    if (!RegExp(r'^\d{6}$').hasMatch(trimmed)) {
-      throw AppFormatException(AppErrorCode.invalidOtpCode);
-    }
+  /// Demo builds: one-tap sign-in as the seeded account with [email] (the
+  /// "Continue as ..." persona buttons). Does nothing once Firebase is
+  /// attached, so it cannot bypass real sign-in.
+  void signInAsDemoUser(String email) {
+    if (_firebaseReady) return;
+    final normalized = normalizeEmail(email);
+    final user = _findUserByEmail(normalized);
+    _authError = null;
+    _signInLocally(GoogleIdentity(email: normalized, displayName: user?.name));
+  }
 
-    if (_firebaseReady) {
-      // Firebase signs in; _onFirebaseAuthChanged then loads the profile.
-      await _phoneAuth!.verifyCode(trimmed);
-      return;
-    }
+  AppUser? _findUserByEmail(String email) =>
+      _cache.users.values.where((u) => u.email != null && normalizeEmail(u.email!) == email).firstOrNull;
 
-    // Local (demo / test) verification.
-    final phone = _pendingPhone;
-    if (phone == null) throw AppStateException(AppErrorCode.requestCodeFirst);
-    if (trimmed != kDemoOtpCode) {
-      throw AppFormatException(AppErrorCode.wrongDemoCode, [kDemoOtpCode]);
-    }
+  /// Local (demo / test) equivalent of [_onFirebaseAuthChanged].
+  void _signInLocally(GoogleIdentity identity) {
+    final email = identity.email;
+    _pendingEmail = email;
+    _pendingDisplayName = identity.displayName;
 
-    final existing = _cache.users.values.where((u) => u.phone == phone).firstOrNull;
-    final invite = _cache.invites[phone];
+    final existing = _findUserByEmail(email);
+    final invite = _cache.invites[email];
     if (existing != null) {
       var user = existing;
       if (invite != null && existing.role == UserRole.customer) {
         user = _withInviteRole(existing, invite);
-        _cache.invites.remove(phone);
+        _cache.invites.remove(email);
         _cache.users[user.uid] = user;
         _claimShopLocally(user);
       }
+      _clearPending();
       _currentUser = user;
       _authStatus = AuthStatus.signedIn;
     } else {
@@ -224,24 +256,32 @@ class AppRepository extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Creates the profile for a first-time user. The role comes from the
-  /// pending invite for their phone number, or is `customer` without one.
-  Future<void> completeProfile({required String name}) async {
+  /// Creates the profile for a first-time user: [name] and an Ethiopian
+  /// mobile [phone] (for SMS reminders, payments and bookings; not
+  /// verified). The email is the signed-in Google email. The role comes
+  /// from the pending invite for that email, or is `customer` without one;
+  /// the invite is consumed in the same write.
+  Future<void> completeProfile({required String name, required String phone}) async {
     final cleanName = name.trim();
     if (cleanName.isEmpty || cleanName.length > 100) {
       throw AppFormatException(AppErrorCode.invalidName);
     }
-    final phone = _pendingPhone;
-    if (_authStatus != AuthStatus.needsProfile || phone == null) {
-      throw AppStateException(AppErrorCode.verifyPhoneFirst);
+    final normalizedPhone = normalizeEthiopianPhone(phone);
+    if (normalizedPhone == null) {
+      throw AppFormatException(AppErrorCode.invalidPhone);
+    }
+    final email = _pendingEmail;
+    if (_authStatus != AuthStatus.needsProfile || email == null) {
+      throw AppStateException(AppErrorCode.signInRequired);
     }
     final invite = _pendingInvite;
 
     final uid = _firebaseReady ? FirebaseAuth.instance.currentUser!.uid : _uuid.v4();
     final user = AppUser(
       uid: uid,
+      email: email,
       name: cleanName,
-      phone: phone,
+      phone: normalizedPhone,
       role: invite?.role ?? UserRole.customer,
       shopId: invite?.shopId,
       barberId: invite?.barberId,
@@ -251,24 +291,25 @@ class AppRepository extends ChangeNotifier {
     if (_firebaseReady) {
       final batch = _db.batch();
       batch.set(_db.collection('users').doc(uid), user.toMap());
-      if (invite != null) batch.delete(_db.collection('invites').doc(phone));
+      if (invite != null) batch.delete(_db.collection('invites').doc(email));
       await batch.commit();
       await _claimShopInCloud(user);
       await _cloud!.start(user);
     } else {
-      _cache.invites.remove(phone);
+      _cache.invites.remove(email);
       _claimShopLocally(user);
     }
 
     _cache.users[user.uid] = user;
     _currentUser = user;
-    _pendingInvite = null;
+    _clearPending();
     _authStatus = AuthStatus.signedIn;
     notifyListeners();
   }
 
-  /// Updates the signed-in user's own name and/or language ('en' | 'am').
-  Future<void> updateMyProfile({String? name, String? language}) async {
+  /// Updates the signed-in user's own name, language ('en' | 'am') and/or
+  /// mobile [phone] (validated, stored as E.164).
+  Future<void> updateMyProfile({String? name, String? language, String? phone}) async {
     final user = _currentUser;
     if (user == null) throw AppStateException(AppErrorCode.signInRequired);
     final cleanName = name?.trim();
@@ -278,9 +319,14 @@ class AppRepository extends ChangeNotifier {
     if (language != null && language != 'en' && language != 'am') {
       throw ArgumentError.value(language, 'language', "must be 'en' or 'am'");
     }
-    final updated = user.copyWith(name: cleanName, language: language);
+    String? normalizedPhone;
+    if (phone != null) {
+      normalizedPhone = normalizeEthiopianPhone(phone);
+      if (normalizedPhone == null) throw AppFormatException(AppErrorCode.invalidPhone);
+    }
+    final updated = user.copyWith(name: cleanName, language: language, phone: normalizedPhone);
     _currentUser = updated;
-    final write = _store.updateUserProfile(user.uid, name: cleanName, language: language);
+    final write = _store.updateUserProfile(user.uid, name: cleanName, language: language, phone: normalizedPhone);
     notifyListeners();
     await write;
   }
@@ -298,12 +344,10 @@ class AppRepository extends ChangeNotifier {
         debugPrint('beforeSignOut failed: $e');
       }
     }
-    _pendingPhone = null;
-    _pendingInvite = null;
+    _clearPending();
     _authError = null;
     if (_firebaseReady) {
-      _phoneAuth?.reset();
-      await FirebaseAuth.instance.signOut();
+      await _googleAuth.signOut();
       return; // _onFirebaseAuthChanged resets the session.
     }
     _currentUser = null;
@@ -315,7 +359,7 @@ class AppRepository extends ChangeNotifier {
     if (fbUser == null) {
       await _cloud?.stop();
       _currentUser = null;
-      _pendingInvite = null;
+      _clearPending();
       _authStatus = AuthStatus.signedOut;
       notifyListeners();
       return;
@@ -325,14 +369,24 @@ class AppRepository extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final phone = fbUser.phoneNumber;
-      _pendingPhone = phone;
+      final rawEmail = fbUser.email;
+      if (rawEmail == null || rawEmail.isEmpty || !fbUser.emailVerified) {
+        // Only verified Google emails can sign in (the rules check
+        // request.auth.token.email_verified too). Sessions from the old
+        // phone sign-in end here quietly.
+        if (fbUser.providerData.any((p) => p.providerId == 'google.com')) {
+          _authError = AppStateException(AppErrorCode.googleEmailMissing);
+        }
+        await FirebaseAuth.instance.signOut();
+        return;
+      }
+      final email = normalizeEmail(rawEmail);
+      _pendingEmail = email;
+      _pendingDisplayName = fbUser.displayName;
 
       UserInvite? invite;
-      if (phone != null) {
-        final inviteSnap = await _db.collection('invites').doc(phone).get();
-        if (inviteSnap.exists) invite = UserInvite.fromMap(inviteSnap.data()!, inviteSnap.id);
-      }
+      final inviteSnap = await _db.collection('invites').doc(email).get();
+      if (inviteSnap.exists) invite = UserInvite.fromMap(inviteSnap.data()!, inviteSnap.id);
 
       final userSnap = await _db.collection('users').doc(fbUser.uid).get();
       if (!userSnap.exists) {
@@ -349,12 +403,13 @@ class AppRepository extends ChangeNotifier {
         final upgraded = _withInviteRole(user, invite);
         final batch = _db.batch();
         batch.set(_db.collection('users').doc(user.uid), upgraded.toMap());
-        batch.delete(_db.collection('invites').doc(invite.phone));
+        batch.delete(_db.collection('invites').doc(invite.email));
         await batch.commit();
         await _claimShopInCloud(upgraded);
         user = upgraded;
       }
 
+      _clearPending();
       _currentUser = user;
       // Open the role-scoped listeners and wait for the first data so the
       // dashboards do not flash empty.
@@ -420,16 +475,16 @@ class AppRepository extends ChangeNotifier {
     }
   }
 
-  /// Throws if [phone] already belongs to a staff, owner or admin account
+  /// Throws if [email] already belongs to a staff, owner or admin account
   /// (an invite must never silently move that person to another role).
   /// With Firestore this checks the users the caller can see (all for the
   /// admin, the shop's staff for an owner); the security rules and the
   /// sign-in flow enforce it for everyone else (invites only upgrade
   /// customers).
-  void _assertPhoneCanBeInvited(String phone) {
-    final existing = _cache.users.values.where((u) => u.phone == phone).firstOrNull;
+  void _assertEmailCanBeInvited(String email) {
+    final existing = _findUserByEmail(email);
     if (existing != null && existing.role != UserRole.customer) {
-      throw AppFormatException(AppErrorCode.phoneAlreadyStaff, [existing.role]);
+      throw AppFormatException(AppErrorCode.emailAlreadyStaff, [existing.role]);
     }
   }
 
@@ -465,12 +520,13 @@ class AppRepository extends ChangeNotifier {
   /// Length of the free trial given to newly registered shops.
   static const Duration trialPeriod = Duration(days: 30);
 
-  /// Registers a shop and invites its owner by phone number. The owner gets
-  /// the barbershopOwner role when they first sign in with that number.
+  /// Registers a shop and invites its owner by Google email address. The
+  /// owner gets the barbershopOwner role when they first sign in with
+  /// Google using that email.
   Future<String> registerBarbershopByAdmin({
     required String shopName,
     required String ownerName,
-    required String ownerPhone,
+    required String ownerEmail,
     required String address,
     required String city,
     required String description,
@@ -483,11 +539,12 @@ class AppRepository extends ChangeNotifier {
     String? landmark,
     String? shopPhone,
   }) async {
-    final phone = normalizeEthiopianPhone(ownerPhone);
-    if (phone == null) {
-      throw AppFormatException(AppErrorCode.invalidOwnerPhone);
+    final email = validEmailOrNull(ownerEmail);
+    if (email == null) {
+      throw AppFormatException(AppErrorCode.invalidOwnerEmail);
     }
-    _assertPhoneCanBeInvited(phone);
+    _assertEmailCanBeInvited(email);
+    final contactPhone = shopPhone?.trim() ?? '';
 
     final shopId = _uuid.v4();
     final leadBarberId = _uuid.v4();
@@ -502,7 +559,7 @@ class AppRepository extends ChangeNotifier {
       city: city,
       subCity: subCity,
       landmark: (landmark == null || landmark.trim().isEmpty) ? null : landmark.trim(),
-      phone: (shopPhone == null || shopPhone.trim().isEmpty) ? phone : shopPhone.trim(),
+      phone: contactPhone,
       imageUrl: imageUrl.isNotEmpty ? imageUrl : 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800',
       rating: 5.0,
       reviewCount: 0,
@@ -540,13 +597,15 @@ class AppRepository extends ChangeNotifier {
       shopId: shopId,
       name: ownerName,
       title: 'Master Barber / Lead Stylist',
-      phone: phone,
+      // Barber profiles are public: the sign-in email lives only in the
+      // invite and the private users/{uid} profile.
+      phone: normalizeEthiopianPhone(contactPhone),
       avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
       specialties: ['Skin Fade', 'Beard Sculpting', 'Hot Shave'],
     );
 
     final ownerInvite = UserInvite(
-      phone: phone,
+      email: email,
       role: UserRole.barbershopOwner,
       name: ownerName,
       shopId: shopId,
@@ -709,9 +768,10 @@ class AppRepository extends ChangeNotifier {
     return getBarberById(barberId);
   }
 
-  /// Adds a barber profile to a shop. If [phone] is given, the barber is also
-  /// invited to sign in: the first sign-in with that number gets the barber
-  /// role linked to this profile.
+  /// Adds a barber profile to a shop. If [email] is given, the barber is also
+  /// invited to sign in: the first Google sign-in with that email gets the
+  /// barber role linked to this profile. [phone] is an optional contact
+  /// number (validated when given).
   Future<void> addBarber({
     required String shopId,
     required String name,
@@ -724,13 +784,20 @@ class AppRepository extends ChangeNotifier {
     int? startHour,
     int? endHour,
   }) async {
+    String? inviteEmail;
+    if (email != null && email.trim().isNotEmpty) {
+      inviteEmail = validEmailOrNull(email);
+      if (inviteEmail == null) {
+        throw AppFormatException(AppErrorCode.invalidEmail);
+      }
+      _assertEmailCanBeInvited(inviteEmail);
+    }
     String? normalizedPhone;
     if (phone != null && phone.trim().isNotEmpty) {
       normalizedPhone = normalizeEthiopianPhone(phone);
       if (normalizedPhone == null) {
         throw AppFormatException(AppErrorCode.invalidPhone);
       }
-      _assertPhoneCanBeInvited(normalizedPhone);
     }
 
     final id = _uuid.v4();
@@ -739,7 +806,6 @@ class AppRepository extends ChangeNotifier {
       shopId: shopId,
       name: name,
       title: title,
-      email: email,
       phone: normalizedPhone,
       specialties: specialties ?? const ['Skin Fade', 'Beard Trim'],
       avatarUrl: avatarUrl ?? 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
@@ -748,10 +814,10 @@ class AppRepository extends ChangeNotifier {
       endHour: endHour,
     );
 
-    final invite = normalizedPhone == null
+    final invite = inviteEmail == null
         ? null
         : UserInvite(
-            phone: normalizedPhone,
+            email: inviteEmail,
             role: UserRole.barber,
             name: name,
             shopId: shopId,

@@ -8,7 +8,6 @@ import '../models/plan_model.dart';
 import '../models/user_model.dart';
 import '../services/availability_service.dart' show SlotTakenException;
 import '../services/payment_service.dart' show PaymentErrorReason, PaymentException;
-import '../services/phone_auth_service.dart';
 import 'gen/app_localizations.dart';
 
 /// Amharic names of Addis Ababa's sub-cities (data values stay English).
@@ -166,25 +165,21 @@ extension AppLabels on AppLocalizations {
     switch (code) {
       case AppErrorCode.invalidPhone:
         return errInvalidPhone;
-      case AppErrorCode.invalidOwnerPhone:
-        return errInvalidOwnerPhone;
-      case AppErrorCode.invalidOtpCode:
-        return errInvalidOtp;
-      case AppErrorCode.wrongDemoCode:
-        return errWrongDemoCode('${arg(0) ?? ''}');
-      case AppErrorCode.requestCodeFirst:
-        return errRequestCodeFirst;
+      case AppErrorCode.invalidEmail:
+        return errInvalidEmail;
+      case AppErrorCode.invalidOwnerEmail:
+        return errInvalidOwnerEmail;
+      case AppErrorCode.googleEmailMissing:
+        return errGoogleEmailMissing;
       case AppErrorCode.invalidName:
         return errInvalidName;
-      case AppErrorCode.verifyPhoneFirst:
-        return errVerifyPhoneFirst;
       case AppErrorCode.signInRequired:
         return errSignInRequired;
       case AppErrorCode.accountLoadFailed:
         return errAccountLoadFailed;
-      case AppErrorCode.phoneAlreadyStaff:
+      case AppErrorCode.emailAlreadyStaff:
         final role = arg(0);
-        return errPhoneAlreadyStaff(role is UserRole ? roleName(role) : '${role ?? ''}');
+        return errEmailAlreadyStaff(role is UserRole ? roleName(role) : '${role ?? ''}');
       case AppErrorCode.signInToBook:
         return errSignInToBook;
       case AppErrorCode.shopNotTakingBookings:
@@ -327,32 +322,31 @@ extension AppLabels on AppLocalizations {
     }
   }
 
-  /// Sign-in error text. English keeps describeAuthError's wording; Amharic
-  /// translates the Firebase Auth error codes (other errors stay as given).
+  /// Sign-in error text for Google sign-in (Firebase Auth error codes) and
+  /// the repository's [AppException]s, in the active language.
   String authError(Object error) {
     if (error is AppException) return appError(error.code, error.args);
-    if (!isAmharic) return describeAuthError(error);
     if (error is FirebaseAuthException) {
       switch (error.code) {
-        case 'invalid-phone-number':
-          return authErrInvalidPhone;
-        case 'invalid-verification-code':
-          return authErrWrongCode;
-        case 'session-expired':
-        case 'code-expired':
-          return authErrCodeExpired;
-        case 'too-many-requests':
-          return authErrTooMany;
-        case 'quota-exceeded':
-          return authErrQuota;
+        case 'operation-not-allowed':
+        case 'configuration-not-found':
+          return authErrNotEnabled;
         case 'network-request-failed':
           return authErrNetwork;
-        case 'operation-not-allowed':
-          return authErrNotEnabled;
+        case 'popup-blocked':
+          return authErrPopupBlocked;
+        case 'account-exists-with-different-credential':
+          return authErrAccountExists;
+        case 'unauthorized-domain':
+          return authErrUnauthorizedDomain;
+        case 'user-disabled':
+          return authErrUserDisabled;
       }
-      return authErrGeneric;
+      if ((error.message ?? '').contains('CONFIGURATION_NOT_FOUND')) return authErrNotEnabled;
+      return authErrWithCode(error.code);
     }
-    if (error is FormatException || error is StateError) return describeAuthError(error);
+    if (error is FirebaseException) return errorText(error);
     return authErrGeneric;
   }
+
 }

@@ -23,7 +23,7 @@ import {
 } from './config';
 import { ChapaError, initializeTransaction } from './chapa';
 import { createBookingCheckout } from './logic/bookingCheckout';
-import { appendQuery, buildTxRef, firstNameOf, sanitizeCheckoutText, toChapaPhone } from './logic/checkout';
+import { appendQuery, buildTxRef, firstNameOf, sanitizeCheckoutText, toChapaEmail, toChapaPhone } from './logic/checkout';
 import { FlowError } from './logic/docstore';
 import { checkPlanFitsShop, checkShopOwner, Denial } from './logic/eligibility';
 import { normalizeAmount, toChapaAmount } from './logic/money';
@@ -115,6 +115,7 @@ async function startCheckout(opts: {
   amount: number;
   name: unknown;
   phone: unknown;
+  email?: unknown;
   description: string;
   meta: Record<string, unknown>;
 }): Promise<{ txRef: string; checkoutUrl: string }> {
@@ -125,6 +126,7 @@ async function startCheckout(opts: {
     tx_ref: txRef,
     first_name: firstNameOf(opts.name),
     phone_number: toChapaPhone(opts.phone),
+    email: toChapaEmail(opts.email),
     callback_url: callbackUrl(),
     return_url: returnUrl(opts.paymentId, txRef),
     customization: {
@@ -171,6 +173,7 @@ export const createBookingPayment = onCall({ secrets: [CHAPA_SECRET_KEY] }, asyn
             amount,
             name: user?.name ?? booking.customerName,
             phone: user?.phone ?? booking.customerPhone,
+            email: user?.email,
             description: `${booking.serviceName ?? 'Booking'} ${booking.shopName ?? ''}`,
             meta: { paymentId, bookingId, type: 'booking' },
           });
@@ -221,6 +224,7 @@ export const createSubscriptionPayment = onCall(
         amount,
         name: user?.name,
         phone: user?.phone,
+        email: user?.email,
         description: `${plan.name ?? planId} plan 1 month`,
         meta: { paymentId: paymentRef.id, shopId, planId, type: 'subscription' },
       });

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/utils/email_utils.dart';
 import '../../../core/utils/phone_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../l10n/l10n.dart';
@@ -25,7 +26,7 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
 
   // Owner Details
   final _ownerNameCtrl = TextEditingController();
-  final _ownerPhoneCtrl = TextEditingController();
+  final _ownerEmailCtrl = TextEditingController();
 
   // Location Details
   final _addressCtrl = TextEditingController();
@@ -81,7 +82,7 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
     _shopPhoneCtrl.dispose();
     _imageCtrl.dispose();
     _ownerNameCtrl.dispose();
-    _ownerPhoneCtrl.dispose();
+    _ownerEmailCtrl.dispose();
     _addressCtrl.dispose();
     _cityCtrl.dispose();
     _landmarkCtrl.dispose();
@@ -97,7 +98,7 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
       await AppRepository.instance.registerBarbershopByAdmin(
         shopName: _shopNameCtrl.text.trim(),
         ownerName: _ownerNameCtrl.text.trim(),
-        ownerPhone: _ownerPhoneCtrl.text.trim(),
+        ownerEmail: _ownerEmailCtrl.text.trim(),
         shopPhone: shopPhone,
         address: _addressCtrl.text.trim(),
         city: _cityCtrl.text.trim(),
@@ -116,7 +117,7 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
           SnackBar(
             backgroundColor: Colors.green.shade800,
             content: Text(
-              context.l10n.registeredShopSnack(_shopNameCtrl.text.trim(), formatEthiopianPhone(_ownerPhoneCtrl.text)),
+              context.l10n.registeredShopSnack(_shopNameCtrl.text.trim(), normalizeEmail(_ownerEmailCtrl.text)),
               style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
             ),
           ),
@@ -264,15 +265,16 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
               ),
               const SizedBox(height: 14),
               TextFormField(
-                controller: _ownerPhoneCtrl,
-                keyboardType: TextInputType.phone,
+                controller: _ownerEmailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
                 decoration: InputDecoration(
-                  labelText: l.ownerMobileLogin,
-                  hintText: '09XX XXX XXX',
-                  helperText: l.ownerMobileHelper,
-                  prefixIcon: const Icon(Icons.phone_android),
+                  labelText: l.ownerEmailLogin,
+                  hintText: 'owner@gmail.com',
+                  helperText: l.ownerEmailHelper,
+                  prefixIcon: const Icon(Icons.alternate_email),
                 ),
-                validator: (val) => normalizeEthiopianPhone(val ?? '') == null ? l.invalidEthiopianPhone : null,
+                validator: (val) => validEmailOrNull(val) == null ? l.invalidEmailShort : null,
               ),
               const SizedBox(height: 28),
 

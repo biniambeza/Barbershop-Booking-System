@@ -14,15 +14,18 @@
  * Modes:
  *   (default) "users" mode: writes users/{uid} with the fixed demo uids
  *             (user_admin_1, owner_1, barber_user_1, user_cust_1, ...), the
- *             demo bookings, shops, services, barbers and plans. If the Auth
- *             emulator is running (FIREBASE_AUTH_EMULATOR_HOST) or --with-auth
- *             is passed, it also creates Firebase Auth users with the same uid
- *             and phone number, so signing in with a demo number lands on the
- *             seeded profile.
+ *             demo bookings, shops, services, barbers and plans. Every user
+ *             has an email (lowercased; the demo ones are @example.com
+ *             placeholders) and a contact phone. If the Auth emulator is
+ *             running (FIREBASE_AUTH_EMULATOR_HOST) or --with-auth is passed,
+ *             it also creates Firebase Auth users with the same uid and a
+ *             verified email.
  *   --invites "invites" mode, for a real project: no fake accounts or
  *             bookings. Writes plans, shops (ownerId ''), services, barbers and
- *             invites/{phone} for the admin, owners and barbers. Each person
- *             gets their role when they first sign in with that number.
+ *             invites/{email} for the admin, owners and barbers. Each person
+ *             gets their role when they first sign in with Google using that
+ *             email. Replace the placeholder emails in the JSON with the real
+ *             people's Google addresses first.
  *
  * Other flags:
  *   --project <id>  project id (default: GCLOUD_PROJECT, or demo-crownblade on
@@ -71,6 +74,15 @@ function formatTimeSlot(h, m) {
   return `${pad(h12)}:${pad(m)} ${period}`;
 }
 
+/** Lowercased, trimmed email of a seed user; throws if missing or malformed. */
+function emailOf(u) {
+  const e = typeof u.email === 'string' ? u.email.trim().toLowerCase() : '';
+  if (!/^[a-z0-9._%+-]+@[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/.test(e)) {
+    throw new Error(`User ${u.uid} needs a valid email (sign-in is with Google)`);
+  }
+  return e;
+}
+
 /**
  * Resolves the JSON into Firestore documents: [{ path, data }].
  * Pure (no I/O); `mode` is 'users' or 'invites'.
@@ -89,17 +101,18 @@ function buildDocuments(seed, { now = new Date(), mode = 'users' } = {}) {
   for (const u of seed.users) {
     const createdAt = iso(nowMs - (u.createdDaysAgo || 0) * DAY_MS);
     if (mode === 'users') {
-      const data = { uid: u.uid, name: u.name, phone: u.phone, role: u.role, createdAt };
-      if (u.email) data.email = u.email;
+      const data = { uid: u.uid, email: emailOf(u), name: u.name, phone: u.phone, role: u.role, createdAt };
       if (u.shopId) data.shopId = u.shopId;
       if (u.barberId) data.barberId = u.barberId;
       if (u.language) data.language = u.language;
       docs.push({ path: `users/${u.uid}`, data });
     } else if (u.role !== 'customer') {
-      const data = { phone: u.phone, role: u.role, name: u.name, createdBy: 'seed', createdAt };
+      // invites/{email}: doc id = the invitee's lowercased Google email.
+      const email = emailOf(u);
+      const data = { email, role: u.role, name: u.name, createdBy: 'seed', createdAt };
       if (u.shopId) data.shopId = u.shopId;
       if (u.barberId) data.barberId = u.barberId;
-      docs.push({ path: `invites/${u.phone}`, data });
+      docs.push({ path: `invites/${email}`, data });
     }
   }
 
@@ -379,22 +392,22 @@ async function main() {
     let created = 0;
     for (const u of seed.users) {
       try {
-        await auth.createUser({ uid: u.uid, phoneNumber: u.phone, displayName: u.name });
+        await auth.createUser({ uid: u.uid, email: emailOf(u), emailVerified: true, displayName: u.name });
         created++;
       } catch (e) {
-        if (e.code !== 'auth/uid-already-exists' && e.code !== 'auth/phone-number-already-exists') throw e;
+        if (e.code !== 'auth/uid-already-exists' && e.code !== 'auth/email-already-exists') throw e;
       }
     }
-    console.log(`Auth: created ${created} phone users (existing ones were kept).`);
+    console.log(`Auth: created ${created} users with verified emails (existing ones were kept).`);
   } else if (mode === 'users') {
     console.log(
-      'Auth users were not created (no Auth emulator and no --with-auth). Signing in with a demo number ' +
+      'Auth users were not created (no Auth emulator and no --with-auth). Signing in with a demo email ' +
         'would create a new uid and ask for a profile.',
     );
   }
 }
 
-module.exports = { buildDocuments, formatTimeSlot };
+module.exports = { buildDocuments, formatTimeSlot, emailOf };
 
 if (require.main === module) {
   main().catch((e) => {

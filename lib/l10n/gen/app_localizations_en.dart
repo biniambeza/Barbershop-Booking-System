@@ -836,42 +836,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get authSubtitlePhone =>
-      'Sign in or create an account with your phone number';
-
-  @override
-  String authSubtitleCode(String phone) {
-    return 'Enter the 6-digit code sent to $phone';
-  }
-
-  @override
   String get mobileNumber => 'Mobile Number';
-
-  @override
-  String get sendCode => 'Send Code';
-
-  @override
-  String get smsNotice =>
-      'We will send you a one-time code by SMS. Standard SMS rates may apply.';
-
-  @override
-  String get verify => 'Verify';
-
-  @override
-  String get changeNumber => 'Change number';
-
-  @override
-  String resendIn(int seconds) {
-    return 'Resend in ${seconds}s';
-  }
-
-  @override
-  String get resendCode => 'Resend code';
-
-  @override
-  String demoCodeNotice(String code) {
-    return 'Demo mode: the code is $code';
-  }
 
   @override
   String get demoAccounts => 'DEMO ACCOUNTS';
@@ -911,33 +876,96 @@ class AppLocalizationsEn extends AppLocalizations {
   String get continueLabel => 'Continue';
 
   @override
-  String get useDifferentNumber => 'Use a different number';
-
-  @override
-  String get authErrInvalidPhone => 'That phone number is not valid.';
-
-  @override
-  String get authErrWrongCode => 'Wrong code. Check the SMS and try again.';
-
-  @override
-  String get authErrCodeExpired => 'The code expired. Request a new one.';
-
-  @override
-  String get authErrTooMany =>
-      'Too many attempts. Please wait a few minutes and try again.';
-
-  @override
-  String get authErrQuota => 'SMS limit reached. Please try again later.';
-
-  @override
   String get authErrNetwork => 'No internet connection.';
 
   @override
   String get authErrNotEnabled =>
-      'Phone sign-in is not enabled for this app yet.';
+      'Google sign-in is not enabled for this app yet.';
 
   @override
   String get authErrGeneric => 'Something went wrong. Please try again.';
+
+  @override
+  String get authSubtitle =>
+      'Sign in or create an account with your Google account';
+
+  @override
+  String get continueWithGoogle => 'Continue with Google';
+
+  @override
+  String get googleSignInNotice =>
+      'No SMS code needed. We only use your Google name and email address.';
+
+  @override
+  String demoContinueAs(String name) {
+    return 'Continue as $name';
+  }
+
+  @override
+  String get demoGoogleNotice => 'Demo mode: no real Google account is used.';
+
+  @override
+  String get useDifferentAccount => 'Use a different Google account';
+
+  @override
+  String get profilePhoneHelper => 'For SMS booking reminders and payments.';
+
+  @override
+  String get authErrPopupBlocked =>
+      'The sign-in window was blocked. Allow pop-ups for this site and try again.';
+
+  @override
+  String get authErrAccountExists =>
+      'An account with this email already uses a different sign-in method.';
+
+  @override
+  String get authErrUnauthorizedDomain =>
+      'This web address is not authorised for sign-in.';
+
+  @override
+  String get authErrUserDisabled =>
+      'This account has been disabled. Please contact support.';
+
+  @override
+  String authErrWithCode(String code) {
+    return 'Sign-in failed ($code).';
+  }
+
+  @override
+  String get errInvalidEmail => 'Enter a valid email address.';
+
+  @override
+  String get errInvalidOwnerEmail =>
+      'Enter a valid Gmail / email address for the owner.';
+
+  @override
+  String errEmailAlreadyStaff(String role) {
+    return 'This email address already belongs to a $role account.';
+  }
+
+  @override
+  String get errGoogleEmailMissing =>
+      'Your Google account has no verified email address.';
+
+  @override
+  String get ownerEmailLogin => 'Owner Gmail Address (Login) *';
+
+  @override
+  String get ownerEmailHelper =>
+      'The owner signs in with this Google account to manage the shop.';
+
+  @override
+  String get emailForLogin => 'Gmail Address (for login)';
+
+  @override
+  String get barberEmailHelper =>
+      'Optional. The barber signs in with this Google account.';
+
+  @override
+  String get barberMobileOptional => 'Mobile Number (optional)';
+
+  @override
+  String get invalidEmailShort => 'Enter a valid email address';
 
   @override
   String get adminSubtitle => 'Platform System Administration';
@@ -1020,8 +1048,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Tap \"Register Barbershop\" to add a new shop to the platform.';
 
   @override
-  String ownerInvitePending(String name, String phone) {
-    return '$name ($phone) - invite pending';
+  String ownerInvitePending(String name, String email) {
+    return '$name ($email) - invite pending';
   }
 
   @override
@@ -1067,8 +1095,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get registerNewBarbershop => 'Register New Barbershop';
 
   @override
-  String registeredShopSnack(String shop, String phone) {
-    return 'Registered \"$shop\". The owner can now sign in with $phone.';
+  String registeredShopSnack(String shop, String email) {
+    return 'Registered \"$shop\". The owner can now sign in with Google as $email.';
   }
 
   @override
@@ -1106,13 +1134,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ownerFullName => 'Owner Full Name *';
-
-  @override
-  String get ownerMobileLogin => 'Owner Mobile Number (Login) *';
-
-  @override
-  String get ownerMobileHelper =>
-      'The owner signs in with this number to manage the shop.';
 
   @override
   String get sectionLocation => '3. Physical Location';
@@ -1869,13 +1890,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get specialization => 'Specialization (e.g. Master Barber)';
 
   @override
-  String get mobileForLogin => 'Mobile Number (for login)';
-
-  @override
-  String get barberPhoneHelper =>
-      'Optional. The barber signs in with this number.';
-
-  @override
   String get selectAvatar => 'Select Avatar Portrait:';
 
   @override
@@ -1906,8 +1920,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Add barbers so clients can book appointments with them.';
 
   @override
-  String loginInvitePending(String phone) {
-    return 'Login invite pending: $phone';
+  String loginInvitePending(String email) {
+    return 'Login invite pending: $email';
   }
 
   @override
@@ -2216,33 +2230,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Enter a valid Ethiopian mobile number (09... or 07...).';
 
   @override
-  String get errInvalidOwnerPhone =>
-      'Enter a valid Ethiopian mobile number for the owner (09... or 07...).';
-
-  @override
-  String get errInvalidOtp => 'Enter the 6-digit code from the SMS.';
-
-  @override
-  String errWrongDemoCode(String code) {
-    return 'Wrong code. In demo mode the code is $code.';
-  }
-
-  @override
-  String get errRequestCodeFirst => 'Request a code first.';
-
-  @override
   String get errInvalidName => 'Enter your name (up to 100 characters).';
 
   @override
-  String get errVerifyPhoneFirst => 'Verify your phone number first.';
-
-  @override
   String get errSignInRequired => 'Please sign in first.';
-
-  @override
-  String errPhoneAlreadyStaff(String role) {
-    return 'This phone number already belongs to a $role account.';
-  }
 
   @override
   String get errSignInToBook => 'Sign in to book an appointment.';
