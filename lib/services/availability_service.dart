@@ -27,6 +27,16 @@ const Duration kBookingLeadTime = Duration(minutes: 30);
 /// How many days ahead (including today) customers can book.
 const int kMaxBookingDaysAhead = 30;
 
+/// Longest service the rules accept (`isValidService` in firestore.rules).
+/// A booking writes one slot lock per 15-minute block in the same
+/// transaction, and the rules read the booking for every lock, so this
+/// keeps a booking's writes and rule document reads within Firestore's
+/// per-request limits (8 locks at most).
+const int kMaxServiceDurationMinutes = 120;
+
+/// How long a slot lock outlives its booking's end (`expiresAt`).
+const Duration kSlotLockRetention = Duration(days: 1);
+
 /// Thrown when a booking overlaps an existing one for the same barber, either
 /// caught locally or by the Firestore transaction (another customer took the
 /// slot first).
@@ -62,36 +72,62 @@ class BusyInterval {
 }
 
 /// One `barbershops/{shopId}/barbers/{barberId}/slotLocks/{id}` document:
-/// a 15-minute block of a barber's day held by a booking.
+/// a 15-minute block of a barber's day held by a booking or by a time-off
+/// range.
+///
+/// Every signed-in user can read locks (the booking screen shows other
+/// customers' busy times), so a lock carries no personal data: a booking
+/// lock is `{bookingId, startAt, expiresAt}` and the rules bind it to its
+/// booking through `bookingId`; a time-off lock is `{timeOffId, startAt,
+/// expiresAt}` (no bookingId) and belongs to
+/// `barbers/{barberId}/timeOff/{timeOffId}`. `expiresAt` (the booking's or
+/// time off's end plus [kSlotLockRetention]) lets the daily
+/// `cleanupExpiredSlotLocks` function in functions/bookings delete it.
 class SlotLock {
-  const SlotLock({required this.id, required this.bookingId, required this.customerId, required this.startAt});
+  const SlotLock({
+    required this.id,
+    this.bookingId = '',
+    this.timeOffId,
+    required this.startAt,
+    required this.expiresAt,
+  });
 
   /// `yyyyMMdd-HHmm`, Addis wall-clock start of the block.
   final String id;
+
+  /// The booking holding the block ('' for a time-off lock).
   final String bookingId;
-  final String customerId;
+
+  /// The time-off range holding the block, if this is a time-off lock.
+  final String? timeOffId;
 
   /// UTC start of the block.
   final DateTime startAt;
 
+  /// UTC instant after which the lock may be deleted.
+  final DateTime expiresAt;
+
+  bool get isTimeOff => timeOffId != null;
+
   BusyInterval get interval => BusyInterval(startAt, startAt.add(const Duration(minutes: kSlotStepMinutes)));
 
   Map<String, dynamic> toMap() => {
-        'bookingId': bookingId,
-        'customerId': customerId,
+        if (timeOffId != null) 'timeOffId': timeOffId else 'bookingId': bookingId,
         'startAt': startAt.toUtc().toIso8601String(),
+        'expiresAt': expiresAt.toUtc().toIso8601String(),
       };
 
   factory SlotLock.fromMap(Map<String, dynamic> map, String id) {
-    final raw = map['startAt'];
-    DateTime? start;
-    if (raw is String) start = DateTime.tryParse(raw);
-    start ??= slotLockStartUtc(id);
+    DateTime? parse(Object? raw) => raw is String ? DateTime.tryParse(raw)?.toUtc() : null;
+    final start = (parse(map['startAt']) ?? slotLockStartUtc(id) ?? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true)).toUtc();
+    final timeOffId = map['timeOffId'];
     return SlotLock(
       id: id,
       bookingId: map['bookingId'] as String? ?? '',
-      customerId: map['customerId'] as String? ?? '',
-      startAt: (start ?? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true)).toUtc(),
+      timeOffId: timeOffId is String && timeOffId.isNotEmpty ? timeOffId : null,
+      startAt: start,
+      // Locks written before expiresAt existed: a day after the block.
+      expiresAt: parse(map['expiresAt']) ?? start.add(kSlotLockRetention),
     );
   }
 }
@@ -137,7 +173,12 @@ List<String> slotLockIdsFor(DateTime startUtc, DateTime endUtc) =>
 /// The slot-lock documents a booking creates (one per block it covers).
 List<SlotLock> slotLocksForBooking(Booking booking) => [
       for (final block in slotBlocksFor(booking.startAt, booking.endAt))
-        SlotLock(id: slotLockId(block), bookingId: booking.id, customerId: booking.customerId, startAt: block),
+        SlotLock(
+          id: slotLockId(block),
+          bookingId: booking.id,
+          startAt: block,
+          expiresAt: booking.endAt.toUtc().add(kSlotLockRetention),
+        ),
     ];
 
 /// True when two bookings would hold a common slot lock (the same rule the
@@ -148,16 +189,18 @@ bool bookingsConflict(Booking a, Booking b) {
   return slotLockIdsFor(b.startAt, b.endAt).any(blocksA.contains);
 }
 
-/// Bookings that still occupy the barber's time (anything not cancelled).
+/// Bookings that still occupy the barber's time (anything not cancelled;
+/// no-show and completed bookings keep their locks until they expire).
 bool occupiesSlot(Booking b) => b.status != BookingStatus.cancelled;
 
 /// Busy intervals for [barberId] from the bookings the caller can see.
 /// Intervals are widened to whole lock blocks so the client matches the
-/// server's check exactly.
-List<BusyInterval> busyIntervalsFromBookings(Iterable<Booking> bookings, String barberId) {
+/// server's check exactly. [excludeBookingId] leaves one booking out (the
+/// booking being rescheduled may move into its own blocks).
+List<BusyInterval> busyIntervalsFromBookings(Iterable<Booking> bookings, String barberId, {String? excludeBookingId}) {
   final out = <BusyInterval>[];
   for (final b in bookings) {
-    if (b.barberId != barberId || !occupiesSlot(b)) continue;
+    if (b.barberId != barberId || !occupiesSlot(b) || b.id == excludeBookingId) continue;
     final blocks = slotBlocksFor(b.startAt, b.endAt);
     out.add(BusyInterval(blocks.first, blocks.last.add(const Duration(minutes: kSlotStepMinutes))));
   }

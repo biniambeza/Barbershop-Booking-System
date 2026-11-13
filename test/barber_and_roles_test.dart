@@ -81,6 +81,7 @@ void main() {
 
     await tester.pumpWidget(
       const MaterialApp(
+        locale: Locale('en'),
         home: BarberDashboardScreen(),
       ),
     );
@@ -95,6 +96,7 @@ void main() {
     final barber = repo.getBarberForCurrentUser()!;
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en'),
         home: BarberScheduleScreen(barber: barber),
       ),
     );
@@ -110,6 +112,7 @@ void main() {
 
     await tester.pumpWidget(
       const MaterialApp(
+        locale: Locale('en'),
         home: CustomerMainNav(),
       ),
     );

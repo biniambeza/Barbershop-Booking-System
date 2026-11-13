@@ -15,6 +15,8 @@ SeedDataset loadSeedDataset({DateTime? now}) => SeedDataset.fromJsonString(readS
 /// Resets [AppRepository.instance] to the Addis demo dataset, signed out.
 void loadTestSeed({DateTime? now}) {
   AppRepository.instance.loadSeed(loadSeedDataset(now: now));
+  // Policy checks (cancellation cutoff, no-show) use the seed's clock.
+  AppRepository.instance.debugClock = now == null ? null : () => now;
 }
 
 /// Serves a 1x1 GIF for every network image, so widget tests don't hit the

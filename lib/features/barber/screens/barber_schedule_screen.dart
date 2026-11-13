@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/addis_time.dart';
@@ -7,10 +9,15 @@ import '../../../models/barbershop_model.dart';
 import '../../../models/booking_model.dart';
 import '../../../services/app_repository.dart';
 import '../../../services/availability_service.dart';
+import '../../../services/time_off_service.dart';
 
 /// A barber's day: their effective working hours (own days/hours within the
 /// shop's) on a 30-minute timeline in Addis Ababa time, with each booking
-/// placed at its real start time and spanning its real duration.
+/// placed at its real start time and spanning its real duration, plus the
+/// barber's time off. The barber (own schedule) and the shop owner (any of
+/// their barbers) can add and remove time off for the selected day
+/// ([AppRepository.addTimeOff]: the time-off doc and its slot locks in one
+/// batch, so customers cannot book those times).
 class BarberScheduleScreen extends StatefulWidget {
   final Barber barber;
 
@@ -26,6 +33,8 @@ class BarberScheduleScreen extends StatefulWidget {
 class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
   static const int _rowMinutes = 30;
   late DateTime _selectedDate; // Addis calendar day, DateTime(y, m, d)
+  List<TimeOff> _timeOff = const [];
+  StreamSubscription<List<TimeOff>>? _timeOffSub;
 
   DateTime get _nowUtc => (widget.clock?.call() ?? DateTime.now()).toUtc();
 
@@ -33,7 +42,19 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
   void initState() {
     super.initState();
     _selectedDate = addisToday(_nowUtc);
+    _timeOffSub = AppRepository.instance.watchTimeOff(widget.barber.shopId, widget.barber.id).listen((entries) {
+      if (mounted) setState(() => _timeOff = entries);
+    });
   }
+
+  @override
+  void dispose() {
+    _timeOffSub?.cancel();
+    super.dispose();
+  }
+
+  List<TimeOff> _timeOffOn(DateTime dayStart, DateTime dayEnd) =>
+      _timeOff.where((t) => t.startAt.isBefore(dayEnd) && t.endAt.isAfter(dayStart)).toList();
 
   @override
   Widget build(BuildContext context) {
@@ -50,6 +71,8 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
             .where((b) => b.startAt.isBefore(dayEnd) && b.endAt.isAfter(dayStart))
             .toList()
           ..sort((a, b) => a.startAt.compareTo(b.startAt));
+        final dayTimeOff = _timeOffOn(dayStart, dayEnd);
+        final canManage = repo.canManageTimeOffFor(barber);
 
         return Scaffold(
           appBar: AppBar(
@@ -59,8 +82,9 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
             children: [
               _buildDateSelector(shop, barber),
               _buildHoursBanner(shop, barber),
+              _buildTimeOffBar(shop, barber, dayTimeOff, canManage),
               const Divider(height: 1, color: Colors.white12),
-              Expanded(child: _buildTimeline(shop, barber, dayBookings)),
+              Expanded(child: _buildTimeline(shop, barber, dayBookings, dayTimeOff)),
             ],
           ),
         );
@@ -99,7 +123,112 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
     );
   }
 
-  Widget _buildTimeline(Barbershop? shop, Barber barber, List<Booking> dayBookings) {
+  /// The day's time off, with remove buttons and "Add time off" for the
+  /// barber and the owner.
+  Widget _buildTimeOffBar(Barbershop? shop, Barber barber, List<TimeOff> dayTimeOff, bool canManage) {
+    final l = context.l10n;
+    final fmt = context.fmt;
+    if (!canManage && dayTimeOff.isEmpty) return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      color: AppTheme.darkCard,
+      padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.beach_access_rounded, size: 14, color: Colors.white54),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(l.timeOffTitle,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
+              ),
+              if (canManage && shop != null)
+                TextButton.icon(
+                  key: const ValueKey('add-time-off'),
+                  onPressed: () => _showAddTimeOff(shop, barber),
+                  icon: const Icon(Icons.add_rounded, size: 16),
+                  label: Text(l.timeOffAdd, style: const TextStyle(fontSize: 12)),
+                ),
+            ],
+          ),
+          if (dayTimeOff.isEmpty)
+            Text(l.timeOffEmpty, style: const TextStyle(fontSize: 11, color: Colors.white38))
+          else
+            for (final t in dayTimeOff)
+              Row(
+                key: ValueKey('time-off-${t.id}'),
+                children: [
+                  Expanded(
+                    child: Text(
+                      [
+                        l.timeOffRange(fmt.dayShort(_selectedDate), fmt.addisTime(t.startAt), fmt.addisTime(t.endAt)),
+                        if (t.reason != null) t.reason!,
+                      ].join(' • '),
+                      style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary),
+                    ),
+                  ),
+                  if (canManage)
+                    IconButton(
+                      key: ValueKey('remove-time-off-${t.id}'),
+                      tooltip: l.timeOffRemove,
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent),
+                      onPressed: () => _removeTimeOff(t),
+                    ),
+                ],
+              ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _removeTimeOff(TimeOff entry) async {
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.darkCard,
+        title: Text(l.timeOffRemove),
+        content: Text(l.timeOffRemoveConfirm),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l.cancel)),
+          TextButton(
+            key: const ValueKey('confirm-remove-time-off'),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.timeOffRemove, style: const TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await AppRepository.instance.deleteTimeOff(entry);
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(l.timeOffRemoved)));
+    } catch (e) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(l.errorText(e))));
+    }
+  }
+
+  Future<void> _showAddTimeOff(Barbershop shop, Barber barber) async {
+    final added = await showDialog<bool>(
+      context: context,
+      builder: (_) => _AddTimeOffDialog(shop: shop, barber: barber, date: _selectedDate),
+    );
+    if (added == true && mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(context.l10n.timeOffSaved)));
+    }
+  }
+
+  Widget _buildTimeline(Barbershop? shop, Barber barber, List<Booking> dayBookings, List<TimeOff> dayTimeOff) {
     final schedule = shop == null ? null : WorkingSchedule.of(shop, barber);
     final works = schedule != null && !schedule.isEmpty && schedule.worksOn(_selectedDate);
     final active = dayBookings.where(occupiesSlot).toList();
@@ -133,7 +262,8 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
       final rowEnd = rowStart.add(const Duration(minutes: _rowMinutes));
       final starting = active.where((b) => !b.startAt.isBefore(rowStart) && b.startAt.isBefore(rowEnd)).toList();
       final continuing = active.where((b) => b.startAt.isBefore(rowStart) && b.endAt.isAfter(rowStart)).toList();
-      rows.add(_buildTimelineRow(context.fmt.time(m ~/ 60 % 24, m % 60), starting, continuing.isNotEmpty));
+      final off = dayTimeOff.any((t) => t.startAt.isBefore(rowEnd) && t.endAt.isAfter(rowStart));
+      rows.add(_buildTimelineRow(context.fmt.time(m ~/ 60 % 24, m % 60), starting, continuing.isNotEmpty, timeOff: off));
     }
 
     return ListView(
@@ -238,16 +368,30 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
         return Colors.orangeAccent;
       case BookingStatus.cancelled:
         return Colors.redAccent;
+      case BookingStatus.noShow:
+        return Colors.deepOrangeAccent;
       case BookingStatus.pending:
       case BookingStatus.confirmed:
         return Colors.lightBlueAccent;
     }
   }
 
-  Widget _buildTimelineRow(String time, List<Booking> starting, bool continuing) {
+  Widget _buildTimelineRow(String time, List<Booking> starting, bool continuing, {bool timeOff = false}) {
     Widget content;
     if (starting.isNotEmpty) {
       content = Column(children: starting.map(_buildBookingCard).toList());
+    } else if (timeOff && !continuing) {
+      content = Container(
+        height: 28,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white24),
+        ),
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Text(context.l10n.timeOffSlotLabel, style: const TextStyle(fontSize: 11, color: Colors.white54)),
+      );
     } else if (continuing) {
       content = Container(
         height: 28,
@@ -354,6 +498,172 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
         padding: const EdgeInsets.only(bottom: 8, left: 70),
         child: _buildBookingCard(booking),
       ),
+    );
+  }
+}
+
+/// Whole day (the barber's working hours that day) or a range of hours on
+/// one Addis day, plus an optional note.
+class _AddTimeOffDialog extends StatefulWidget {
+  const _AddTimeOffDialog({required this.shop, required this.barber, required this.date});
+
+  final Barbershop shop;
+  final Barber barber;
+  final DateTime date; // Addis calendar day
+
+  @override
+  State<_AddTimeOffDialog> createState() => _AddTimeOffDialogState();
+}
+
+class _AddTimeOffDialogState extends State<_AddTimeOffDialog> {
+  bool _wholeDay = true;
+  late int _from; // minute of the Addis day
+  late int _to;
+  final _reason = TextEditingController();
+  bool _saving = false;
+
+  WorkingSchedule get _schedule => WorkingSchedule.of(widget.shop, widget.barber);
+
+  /// Selectable minutes: the working hours that day, else the whole day.
+  List<int> get _minutes {
+    final s = _schedule;
+    final works = !s.isEmpty && s.worksOn(widget.date);
+    final start = works ? s.startHour * 60 : 0;
+    final end = works ? s.endHour * 60 : 24 * 60;
+    return [for (var m = start; m <= end; m += kSlotStepMinutes) m];
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final minutes = _minutes;
+    _from = minutes.first;
+    _to = minutes.length > 4 ? minutes[4] : minutes.last;
+  }
+
+  @override
+  void dispose() {
+    _reason.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final l = context.l10n;
+    final navigator = Navigator.of(context);
+    final range = _wholeDay
+        ? wholeDayTimeOffRange(widget.shop, widget.barber, widget.date)
+        : timeOffRangeOnDay(widget.date, _from, _to);
+    if (range == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.timeOffNotWorking(widget.barber.name))));
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      await AppRepository.instance.addTimeOff(
+        barberId: widget.barber.id,
+        startUtc: range.$1,
+        endUtc: range.$2,
+        reason: _reason.text,
+      );
+      navigator.pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppTheme.darkCard,
+          content: Text(l.errorText(e), key: const ValueKey('time-off-error')),
+          actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(MaterialLocalizations.of(ctx).okButtonLabel))],
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final fmt = context.fmt;
+    String label(int m) => fmt.time(m ~/ 60 % 24, m % 60);
+    final minutes = _minutes;
+    return AlertDialog(
+      backgroundColor: AppTheme.darkCard,
+      title: Text(l.timeOffAdd),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${l.timeOffDay}: ${fmt.dayLong(widget.date)}', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              children: [
+                ChoiceChip(
+                  key: const ValueKey('time-off-whole-day'),
+                  label: Text(l.timeOffWholeDay),
+                  selected: _wholeDay,
+                  onSelected: (_) => setState(() => _wholeDay = true),
+                ),
+                ChoiceChip(
+                  key: const ValueKey('time-off-hours'),
+                  label: Text(l.timeOffHours),
+                  selected: !_wholeDay,
+                  onSelected: (_) => setState(() => _wholeDay = false),
+                ),
+              ],
+            ),
+            if (!_wholeDay) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      key: const ValueKey('time-off-from'),
+                      initialValue: _from,
+                      decoration: InputDecoration(labelText: l.timeOffFrom),
+                      items: [
+                        for (final m in minutes.take(minutes.length - 1)) DropdownMenuItem(value: m, child: Text(label(m))),
+                      ],
+                      onChanged: (v) => setState(() {
+                        _from = v ?? _from;
+                        if (_to <= _from) _to = minutes.firstWhere((m) => m > _from, orElse: () => minutes.last);
+                      }),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      key: ValueKey('time-off-to-$_from'),
+                      initialValue: _to,
+                      decoration: InputDecoration(labelText: l.timeOffTo),
+                      items: [
+                        for (final m in minutes.where((m) => m > _from)) DropdownMenuItem(value: m, child: Text(label(m))),
+                      ],
+                      onChanged: (v) => setState(() => _to = v ?? _to),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 12),
+            TextField(
+              key: const ValueKey('time-off-reason'),
+              controller: _reason,
+              maxLength: kMaxTimeOffReasonLength,
+              decoration: InputDecoration(labelText: l.timeOffReasonLabel),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: _saving ? null : () => Navigator.of(context).pop(false), child: Text(l.cancel)),
+        ElevatedButton(
+          key: const ValueKey('save-time-off'),
+          onPressed: _saving ? null : _save,
+          child: Text(l.save),
+        ),
+      ],
     );
   }
 }

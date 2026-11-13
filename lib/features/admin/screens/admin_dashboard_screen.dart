@@ -10,6 +10,7 @@ import '../../../services/app_repository.dart';
 import '../../notifications/widgets/notification_bell.dart';
 import '../../shared/widgets/language_toggle.dart';
 import '../../shared/widgets/persona_switcher.dart';
+import 'admin_payment_review_screen.dart';
 import 'admin_subscriptions_screen.dart';
 import 'admin_register_shop_screen.dart';
 
@@ -136,6 +137,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               MaterialPageRoute(builder: (_) => const AdminSubscriptionsScreen()),
             ),
           ),
+          const PaymentsToReviewButton(),
           const LanguageToggle(),
           const NotificationBell(),
           IconButton(

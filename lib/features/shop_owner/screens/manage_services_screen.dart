@@ -90,7 +90,7 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
                   durationMinutes: duration,
                 );
               } catch (e) {
-                setDialogState(() => error = l.saveFailed('$e'));
+                setDialogState(() => error = e is AppException ? l.errorText(e) : l.saveFailed(l.errorText(e)));
                 return;
               }
               if (ctx.mounted) Navigator.of(ctx).pop();

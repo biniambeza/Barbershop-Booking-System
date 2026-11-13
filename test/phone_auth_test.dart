@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:barbershop_booking/core/utils/phone_utils.dart';
 import 'package:barbershop_booking/features/auth/screens/auth_screen.dart';
+import 'package:barbershop_booking/l10n/locale_controller.dart';
 import 'package:barbershop_booking/main.dart';
 import 'package:barbershop_booking/models/user_model.dart';
 import 'package:barbershop_booking/services/app_repository.dart';
@@ -131,6 +132,10 @@ void main() {
   });
 
   testWidgets('Sign-in screen asks for a phone number, then the code', (tester) async {
+    // English UI regardless of the machine's language.
+    final previous = LocaleController.instance;
+    LocaleController.instance = LocaleController(deviceLocale: const Locale('en'));
+    addTearDown(() => LocaleController.instance = previous);
     await tester.pumpWidget(const BarbershopApp());
     expect(find.byType(AuthScreen), findsOneWidget);
     expect(find.text('Send Code'), findsOneWidget);

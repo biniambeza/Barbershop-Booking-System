@@ -49,21 +49,97 @@ const List<SubscriptionPlan> kDefaultPaidPlans = [
 // Errors
 // ---------------------------------------------------------------------------
 
+/// Why a payment call failed, when known (translated by
+/// `AppLabels.paymentError`). Recognised from the backend's messages by
+/// [paymentReasonFor], or set directly by the offline simulator.
+enum PaymentErrorReason {
+  notSetUp,
+  bookingNotFound,
+  bookingCancelled,
+  bookingRefunded,
+  cannotPayOnline,
+  noValidPrice,
+  notYourBooking,
+  notYourPayment,
+  notShopOwner,
+  shopNotFound,
+  planUnavailable,
+  unknownPlan,
+
+  /// args: [max barbers, barber count].
+  planTooSmall,
+  bookingChanged,
+  stillPreparing,
+  adminsOnly,
+  paymentNotFound,
+  reviewNotNeeded,
+  reviewNotRefundable,
+}
+
 /// A payment call failed. [code] is the callable error code ('not-found',
 /// 'already-exists', 'unavailable', ...) or 'launch-failed' / 'unknown';
-/// [message] is ready to show to the user.
+/// [message] is the English text (logs, tests). Screens show
+/// `context.l10n.paymentError(e)`, which uses [reason] / [cause] / [code].
 class PaymentException implements Exception {
   final String code;
   final String message;
+  final PaymentErrorReason? reason;
+  final List<Object?> args;
 
-  const PaymentException(this.code, this.message);
+  /// A typed app error behind this failure (e.g. an invalid plan).
+  final AppException? cause;
 
-  /// Builds an exception with the user-facing text for [code].
-  factory PaymentException.of(String code, [String? serverMessage]) =>
-      PaymentException(code, paymentErrorMessage(code, serverMessage));
+  const PaymentException(this.code, this.message, {this.reason, this.args = const [], this.cause});
+
+  /// Builds an exception with the user-facing text for [code], recognising
+  /// the backend's [serverMessage] when it is one of the known ones.
+  factory PaymentException.of(String code, [String? serverMessage]) {
+    final match = paymentReasonFor(serverMessage);
+    return PaymentException(
+      code,
+      paymentErrorMessage(code, serverMessage),
+      reason: match?.reason,
+      args: match?.args ?? const [],
+    );
+  }
 
   @override
   String toString() => message;
+}
+
+/// Maps the payments functions' English messages to a [PaymentErrorReason].
+({PaymentErrorReason reason, List<Object?> args})? paymentReasonFor(String? serverMessage) {
+  final m = serverMessage?.trim() ?? '';
+  if (m.isEmpty) return null;
+  ({PaymentErrorReason reason, List<Object?> args}) r(PaymentErrorReason reason, [List<Object?> args = const []]) =>
+      (reason: reason, args: args);
+  if (m.contains('PAYMENT_RETURN_URL')) return r(PaymentErrorReason.notSetUp);
+  final tooSmall = RegExp(r'This plan allows (\d+) barbers but the shop has (\d+)').firstMatch(m);
+  if (tooSmall != null) {
+    return r(PaymentErrorReason.planTooSmall, [int.parse(tooSmall.group(1)!), int.parse(tooSmall.group(2)!)]);
+  }
+  const known = {
+    'Booking not found.': PaymentErrorReason.bookingNotFound,
+    'This booking was cancelled.': PaymentErrorReason.bookingCancelled,
+    'This booking was refunded.': PaymentErrorReason.bookingRefunded,
+    'This booking cannot be paid online.': PaymentErrorReason.cannotPayOnline,
+    'This booking has no valid price.': PaymentErrorReason.noValidPrice,
+    'This plan has no valid price.': PaymentErrorReason.noValidPrice,
+    'Only the customer who made this booking can pay for it.': PaymentErrorReason.notYourBooking,
+    'Not your payment.': PaymentErrorReason.notYourPayment,
+    'Only the owner of this shop can pay its subscription.': PaymentErrorReason.notShopOwner,
+    'Shop not found.': PaymentErrorReason.shopNotFound,
+    'This plan is not available.': PaymentErrorReason.planUnavailable,
+    'Unknown plan.': PaymentErrorReason.unknownPlan,
+    'The booking changed. Please try again.': PaymentErrorReason.bookingChanged,
+    'Your payment is still being prepared. Please try again.': PaymentErrorReason.stillPreparing,
+    'Admins only.': PaymentErrorReason.adminsOnly,
+    'Payment not found.': PaymentErrorReason.paymentNotFound,
+    'This payment is not waiting for review.': PaymentErrorReason.reviewNotNeeded,
+    'Only a successful payment can be marked as refunded.': PaymentErrorReason.reviewNotRefundable,
+  };
+  final reason = known[m];
+  return reason == null ? null : r(reason);
 }
 
 /// User-friendly text for a payments callable error. The backend's own
@@ -226,7 +302,20 @@ abstract class PaymentBackend {
 
   /// The signed-in user's own payments, newest first.
   Stream<List<PaymentRecord>> watchUserPayments(String uid);
+
+  /// Admin: payments flagged needsReview, newest first.
+  Stream<List<PaymentRecord>> watchPaymentsToReview();
+
+  /// Admin: closes a payment's review (resolvePaymentReview callable).
+  Future<PaymentReviewResult> resolvePaymentReview({
+    required String paymentId,
+    required PaymentReviewResolution resolution,
+    String? note,
+  });
 }
+
+/// Longest note an admin can add when closing a review (MAX_REVIEW_NOTE).
+const int kMaxReviewNoteLength = 500;
 
 List<PaymentRecord> _newestFirst(Iterable<PaymentRecord> payments) =>
     payments.toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -303,6 +392,26 @@ class CloudPaymentBackend implements PaymentBackend {
   @override
   Stream<List<PaymentRecord>> watchUserPayments(String uid) =>
       _watch(_db.collection('payments').where('userId', isEqualTo: uid));
+
+  /// Single-field equality query: no composite index needed. The rules let
+  /// admins read every payment.
+  @override
+  Stream<List<PaymentRecord>> watchPaymentsToReview() =>
+      _watch(_db.collection('payments').where('needsReview', isEqualTo: true));
+
+  @override
+  Future<PaymentReviewResult> resolvePaymentReview({
+    required String paymentId,
+    required PaymentReviewResolution resolution,
+    String? note,
+  }) async {
+    final trimmed = note?.trim();
+    return PaymentReviewResult.fromMap(await _call('resolvePaymentReview', {
+      'paymentId': paymentId,
+      'resolution': resolution.value,
+      if (trimmed != null && trimmed.isNotEmpty) 'note': trimmed,
+    }));
+  }
 }
 
 /// Offline simulator for DEMO_MODE builds and tests. It follows the same
@@ -397,7 +506,7 @@ class LocalPaymentBackend implements PaymentBackend {
       amount: booking.price,
     );
     _bookingPaymentIds[bookingId] = record.id;
-    _repo.applySimulatedBookingPayment(bookingId, PaymentStatus.pending);
+    _repo.applySimulatedBookingPayment(bookingId, PaymentStatus.pending, paymentId: record.id);
     return _checkoutOf(record);
   }
 
@@ -445,8 +554,19 @@ class LocalPaymentBackend implements PaymentBackend {
 
     if (record.type == PaymentType.booking && record.bookingId != null) {
       final isCurrent = _bookingPaymentIds[record.bookingId] == record.id;
+      final booking = _repo.getBookingById(record.bookingId!);
       if (success) {
-        _repo.applySimulatedBookingPayment(record.bookingId!, PaymentStatus.paid);
+        // Same rules as applyOutcome in functions/payments/src/store.ts.
+        final paidElsewhere = booking != null &&
+            booking.paymentStatus == PaymentStatus.paid &&
+            _bookingPaymentIds[record.bookingId] != record.id;
+        if (booking == null || paidElsewhere) {
+          updated = updated.copyWith(needsReview: true);
+        } else {
+          if (booking.status == BookingStatus.cancelled) updated = updated.copyWith(needsReview: true);
+          _bookingPaymentIds[record.bookingId!] = record.id;
+          _repo.applySimulatedBookingPayment(record.bookingId!, PaymentStatus.paid, paymentId: record.id);
+        }
       } else if (isCurrent) {
         _repo.applySimulatedBookingPayment(record.bookingId!, PaymentStatus.unpaid);
       }
@@ -535,6 +655,70 @@ class LocalPaymentBackend implements PaymentBackend {
 
   @override
   Stream<List<PaymentRecord>> watchUserPayments(String uid) => _watch((p) => p.userId == uid);
+
+  @override
+  Stream<List<PaymentRecord>> watchPaymentsToReview() {
+    if (_repo.currentUser?.role != UserRole.admin) {
+      return Stream.error(PaymentException.of('permission-denied', 'Admins only.'));
+    }
+    return _watch((p) => p.needsReview);
+  }
+
+  /// Demo/test: puts a payment straight into the simulator (e.g. one that
+  /// needs review).
+  void addSimulatedPayment(PaymentRecord record) {
+    _payments[record.id] = record;
+    if (record.bookingId != null && record.status != PaymentRecordStatus.failed) {
+      _bookingPaymentIds.putIfAbsent(record.bookingId!, () => record.id);
+    }
+    _changes.add(null);
+  }
+
+  @override
+  Future<PaymentReviewResult> resolvePaymentReview({
+    required String paymentId,
+    required PaymentReviewResolution resolution,
+    String? note,
+  }) async {
+    _requireAdmin();
+    final trimmed = note?.trim();
+    if (trimmed != null && trimmed.length > kMaxReviewNoteLength) {
+      throw PaymentException.of('invalid-argument', 'note must be at most $kMaxReviewNoteLength characters.');
+    }
+    final record = _payments[paymentId];
+    if (record == null) throw PaymentException.of('not-found', 'Payment not found.');
+    if (!record.needsReview) {
+      throw PaymentException.of('failed-precondition', 'This payment is not waiting for review.');
+    }
+    var updated = record.copyWith(
+      needsReview: false,
+      resolution: resolution,
+      resolutionNote: (trimmed == null || trimmed.isEmpty) ? null : trimmed,
+      resolvedBy: _repo.currentUser!.uid,
+      resolvedAt: _now,
+    );
+    String? bookingPaymentStatus;
+    final bookingId = record.type == PaymentType.booking ? record.bookingId : null;
+    if (resolution == PaymentReviewResolution.refundedInChapa) {
+      if (record.status != PaymentRecordStatus.success && record.status != PaymentRecordStatus.refunded) {
+        throw PaymentException.of('failed-precondition', 'Only a successful payment can be marked as refunded.');
+      }
+      updated = updated.copyWith(status: PaymentRecordStatus.refunded, refundedAt: record.refundedAt ?? _now);
+      if (bookingId != null && _bookingPaymentIds[bookingId] == paymentId) {
+        _repo.applySimulatedBookingPayment(bookingId, PaymentStatus.refunded);
+      }
+    }
+    if (bookingId != null) bookingPaymentStatus = _repo.getBookingById(bookingId)?.paymentStatus.name;
+    _payments[paymentId] = updated;
+    _changes.add(null);
+    return PaymentReviewResult(
+      paymentId: paymentId,
+      resolution: resolution,
+      status: updated.status,
+      bookingPaymentStatus: bookingPaymentStatus,
+      resolvedAt: _now,
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -642,7 +826,7 @@ class PaymentService {
   /// Admin: creates or edits a plan in `plans/{id}`.
   Future<void> savePlan(SubscriptionPlan plan) {
     final error = validatePlan(plan);
-    if (error != null) return Future.error(PaymentException('invalid-argument', error));
+    if (error != null) return Future.error(PaymentException('invalid-argument', error.message, cause: error));
     return _guard(() => _repo.savePlan(plan));
   }
 
@@ -651,6 +835,19 @@ class PaymentService {
 
   Stream<List<PaymentRecord>> watchShopPayments(String shopId) => backend.watchShopPayments(shopId);
   Stream<List<PaymentRecord>> watchUserPayments(String uid) => backend.watchUserPayments(uid);
+
+  /// Admin: payments flagged needsReview, newest first.
+  Stream<List<PaymentRecord>> watchPaymentsToReview() =>
+      backend.watchPaymentsToReview().handleError((Object e) => throw paymentExceptionFrom(e));
+
+  /// Admin: closes a flagged payment. Use [PaymentReviewResolution.refundedInChapa]
+  /// only after refunding the money in the Chapa dashboard.
+  Future<PaymentReviewResult> resolvePaymentReview({
+    required String paymentId,
+    required PaymentReviewResolution resolution,
+    String? note,
+  }) =>
+      _guard(() => backend.resolvePaymentReview(paymentId: paymentId, resolution: resolution, note: note));
 
   /// The paymentId Chapa sends back on PAYMENT_RETURN_URL
   /// (`?paymentId=<id>&txRef=cb-<id>`), or null.
@@ -663,12 +860,17 @@ class PaymentService {
   }
 }
 
-/// Null when [plan] can be saved, otherwise why not.
-String? validatePlan(SubscriptionPlan plan) {
-  if (!SubscriptionPlan.knownIds.contains(plan.id)) return 'Plan id must be one of ${SubscriptionPlan.knownIds.join(', ')}.';
-  if (plan.name.trim().isEmpty) return 'Plan name is required.';
-  if (plan.priceMonthlyEtb.isNaN || plan.priceMonthlyEtb < 0) return 'Price must be 0 or more.';
-  if (plan.id != 'trial' && plan.active && plan.priceMonthlyEtb <= 0) return 'A paid plan needs a price above 0.';
-  if (plan.maxBarbers == 0 || plan.maxBarbers < -1) return 'Max barbers must be at least 1 (or -1 for unlimited).';
+/// Null when [plan] can be saved, otherwise why not (translate it with
+/// `context.l10n.errorText`).
+AppFormatException? validatePlan(SubscriptionPlan plan) {
+  if (!SubscriptionPlan.knownIds.contains(plan.id)) {
+    return AppFormatException(AppErrorCode.planIdInvalid, [SubscriptionPlan.knownIds.join(', ')]);
+  }
+  if (plan.name.trim().isEmpty) return AppFormatException(AppErrorCode.planNameRequired);
+  if (plan.priceMonthlyEtb.isNaN || plan.priceMonthlyEtb < 0) return AppFormatException(AppErrorCode.planPriceNegative);
+  if (plan.id != 'trial' && plan.active && plan.priceMonthlyEtb <= 0) {
+    return AppFormatException(AppErrorCode.planPriceRequired);
+  }
+  if (plan.maxBarbers == 0 || plan.maxBarbers < -1) return AppFormatException(AppErrorCode.planMaxBarbersInvalid);
   return null;
 }

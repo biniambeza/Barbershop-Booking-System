@@ -53,13 +53,58 @@ test('active bookings get slot locks like the app writes them', () => {
   // book_2: barber_1, 14:15-14:45 Addis on 2026-11-20 (30 min) -> two 15-minute blocks.
   assert.deepStrictEqual(get(docs, 'barbershops/shop_1/barbers/barber_1/slotLocks/20261120-1415'), {
     bookingId: 'book_2',
-    customerId: 'user_cust_2',
     startAt: '2026-11-20T11:15:00.000Z',
+    // book_2 ends 14:45 Addis (11:45Z); locks expire a day later.
+    expiresAt: '2026-11-21T11:45:00.000Z',
   });
+  // No customer data in any lock, and every booking lock expires a day after its booking ends.
+  for (const lock of locks.filter((d) => !('timeOffId' in d.data))) {
+    assert.deepStrictEqual(Object.keys(lock.data).sort(), ['bookingId', 'expiresAt', 'startAt']);
+    const bk = get(docs, `bookings/${lock.data.bookingId}`);
+    assert.strictEqual(Date.parse(lock.data.expiresAt), Date.parse(bk.endAt) + 24 * 3600 * 1000);
+  }
   assert.ok(get(docs, 'barbershops/shop_1/barbers/barber_1/slotLocks/20261120-1430'));
   assert.strictEqual(get(docs, 'barbershops/shop_1/barbers/barber_1/slotLocks/20261120-1445'), undefined);
   // Completed bookings keep their locks; cancelled ones (book_7) have none.
   assert.ok(!locks.some((d) => d.data.bookingId === 'book_7'));
   // invites mode writes no bookings, so no locks.
   assert.ok(!buildDocuments(seed, { now, mode: 'invites' }).some((d) => d.path.includes('/slotLocks/')));
+});
+
+test('every seeded service fits the rules cap of 120 minutes', () => {
+  for (const shop of seed.shops) {
+    for (const service of shop.services || []) {
+      assert.ok(service.durationMinutes >= 5 && service.durationMinutes <= 120, `${service.id}: ${service.durationMinutes}`);
+    }
+  }
+});
+
+test('seeded time off gets a time-off doc and one lock per 15-minute block', () => {
+  const docs = buildDocuments(seed, { now });
+  // timeoff_1: barber_2, tomorrow (2026-11-21) 13:00-15:00 Addis = 10:00-12:00Z.
+  assert.deepStrictEqual(get(docs, 'barbershops/shop_1/barbers/barber_2/timeOff/timeoff_1'), {
+    startAt: '2026-11-21T10:00:00.000Z',
+    endAt: '2026-11-21T12:00:00.000Z',
+    reason: 'Family event',
+    createdBy: 'owner_1',
+    createdAt: '2026-11-20T01:00:00.000Z',
+  });
+  const locks = docs.filter((d) => d.path.startsWith('barbershops/shop_1/barbers/barber_2/slotLocks/') && d.data.timeOffId);
+  assert.deepStrictEqual(locks.map((d) => d.path.split('/').pop()), [
+    '20261121-1300', '20261121-1315', '20261121-1330', '20261121-1345',
+    '20261121-1400', '20261121-1415', '20261121-1430', '20261121-1445',
+  ]);
+  assert.deepStrictEqual(locks[0].data, {
+    timeOffId: 'timeoff_1',
+    startAt: '2026-11-21T10:00:00.000Z',
+    expiresAt: '2026-11-22T12:00:00.000Z',
+  });
+  // No lock id is written twice (time off never overlaps a seeded booking).
+  const lockPaths = docs.filter((d) => d.path.includes('/slotLocks/')).map((d) => d.path);
+  assert.strictEqual(new Set(lockPaths).size, lockPaths.length);
+  // Shop booking policy.
+  assert.strictEqual(get(docs, 'barbershops/shop_1').cancellationCutoffHours, 2);
+  assert.strictEqual(get(docs, 'barbershops/shop_2').maxReschedules, 1);
+  // invites mode writes no time off.
+  assert.ok(!buildDocuments(seed, { now, mode: 'invites' }).some((d) => d.path.includes('/timeOff/')));
 });

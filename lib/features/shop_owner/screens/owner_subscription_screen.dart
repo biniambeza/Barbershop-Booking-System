@@ -231,18 +231,12 @@ class _OwnerSubscriptionScreenState extends State<OwnerSubscriptionScreen> {
             for (final p in items)
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: Icon(
-                  p.status == PaymentRecordStatus.success
-                      ? Icons.check_circle_rounded
-                      : p.status == PaymentRecordStatus.failed
-                          ? Icons.cancel_rounded
-                          : Icons.hourglass_top_rounded,
-                  color: p.status == PaymentRecordStatus.success
-                      ? Colors.greenAccent
-                      : p.status == PaymentRecordStatus.failed
-                          ? Colors.redAccent
-                          : Colors.orangeAccent,
-                ),
+                leading: switch (p.status) {
+                  PaymentRecordStatus.success => const Icon(Icons.check_circle_rounded, color: Colors.greenAccent),
+                  PaymentRecordStatus.failed => const Icon(Icons.cancel_rounded, color: Colors.redAccent),
+                  PaymentRecordStatus.refunded => const Icon(Icons.undo_rounded, color: Colors.lightBlueAccent),
+                  PaymentRecordStatus.pending => const Icon(Icons.hourglass_top_rounded, color: Colors.orangeAccent),
+                },
                 title: Text('${context.l10n.planName(p.plan ?? '', _repo.getPlan(p.plan ?? ''))} • ${context.fmt.birr(p.amount)}'),
                 subtitle: Text(
                   '${_date(p.createdAt)} • ${context.l10n.paymentRecordStatus(p.status)}'

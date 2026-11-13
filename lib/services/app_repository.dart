@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:uuid/uuid.dart';
@@ -8,6 +9,7 @@ import '../core/config/app_config.dart';
 import '../core/utils/phone_utils.dart';
 import '../data/addis_time.dart';
 import '../data/seed_dataset.dart';
+import '../models/app_exception.dart';
 import '../models/user_model.dart';
 import '../models/barbershop_model.dart';
 import '../models/service_model.dart';
@@ -15,11 +17,16 @@ import '../models/barber_model.dart';
 import '../models/booking_model.dart';
 import '../models/invite_model.dart';
 import '../models/plan_model.dart';
+import '../models/review_model.dart' show RatingSummary;
 import 'availability_service.dart';
+import 'booking_policy.dart' as policy;
 import 'data_cache.dart';
 import 'data_store.dart';
 import 'firestore_data_store.dart';
 import 'phone_auth_service.dart';
+import 'time_off_service.dart';
+
+export '../models/app_exception.dart';
 
 /// Where the signed-in session currently stands.
 enum AuthStatus {
@@ -85,7 +92,9 @@ class AppRepository extends ChangeNotifier {
   /// Demo builds: loads the bundled Addis Ababa dataset. No-op with Firebase.
   Future<void> loadDemoData() async {
     if (_firebaseReady) return;
-    loadSeed(await SeedDataset.loadFromAssets());
+    final json = await rootBundle.loadString(kSeedAssetPath);
+    loadSeed(SeedDataset.fromJsonString(json));
+    loadDemoTimeOff(timeOffFromSeedJson(json));
   }
 
   /// Replaces all local data with [seed] and signs out. Local mode only
@@ -93,6 +102,8 @@ class AppRepository extends ChangeNotifier {
   void loadSeed(SeedDataset seed) {
     if (_firebaseReady) return;
     _cache.loadSeed(seed);
+    final local = _store;
+    if (local is LocalDataStore) local.loadTimeOff(const []);
     _favoriteShopIds
       ..clear()
       ..addAll(seed.favoriteShopIds);
@@ -128,8 +139,8 @@ class AppRepository extends ChangeNotifier {
   UserInvite? get pendingInvite => _pendingInvite;
 
   /// Last session-level error (e.g. profile could not be loaded).
-  String? _authError;
-  String? get authError => _authError;
+  AppException? _authError;
+  AppException? get authError => _authError;
 
   /// Last Firestore listener error (e.g. permission denied), if any.
   String? get syncError => _cloud?.lastError;
@@ -158,11 +169,12 @@ class AppRepository extends ChangeNotifier {
   }
 
   /// Sends a one-time SMS code to an Ethiopian mobile number.
-  /// Throws [FormatException] if the number is not valid.
+  /// Throws [AppFormatException] ([AppErrorCode.invalidPhone]) if the number
+  /// is not valid.
   Future<void> sendOtp(String phoneInput) async {
     final phone = normalizeEthiopianPhone(phoneInput);
     if (phone == null) {
-      throw const FormatException('Enter a valid Ethiopian mobile number (09... or 07...).');
+      throw AppFormatException(AppErrorCode.invalidPhone);
     }
     _authError = null;
     if (_firebaseReady) {
@@ -177,7 +189,7 @@ class AppRepository extends ChangeNotifier {
   Future<void> verifyOtp(String code) async {
     final trimmed = code.trim();
     if (!RegExp(r'^\d{6}$').hasMatch(trimmed)) {
-      throw const FormatException('Enter the 6-digit code from the SMS.');
+      throw AppFormatException(AppErrorCode.invalidOtpCode);
     }
 
     if (_firebaseReady) {
@@ -188,9 +200,9 @@ class AppRepository extends ChangeNotifier {
 
     // Local (demo / test) verification.
     final phone = _pendingPhone;
-    if (phone == null) throw StateError('Request a code first.');
+    if (phone == null) throw AppStateException(AppErrorCode.requestCodeFirst);
     if (trimmed != kDemoOtpCode) {
-      throw const FormatException('Wrong code. In demo mode the code is $kDemoOtpCode.');
+      throw AppFormatException(AppErrorCode.wrongDemoCode, [kDemoOtpCode]);
     }
 
     final existing = _cache.users.values.where((u) => u.phone == phone).firstOrNull;
@@ -217,11 +229,11 @@ class AppRepository extends ChangeNotifier {
   Future<void> completeProfile({required String name}) async {
     final cleanName = name.trim();
     if (cleanName.isEmpty || cleanName.length > 100) {
-      throw const FormatException('Enter your name (up to 100 characters).');
+      throw AppFormatException(AppErrorCode.invalidName);
     }
     final phone = _pendingPhone;
     if (_authStatus != AuthStatus.needsProfile || phone == null) {
-      throw StateError('Verify your phone number first.');
+      throw AppStateException(AppErrorCode.verifyPhoneFirst);
     }
     final invite = _pendingInvite;
 
@@ -258,10 +270,10 @@ class AppRepository extends ChangeNotifier {
   /// Updates the signed-in user's own name and/or language ('en' | 'am').
   Future<void> updateMyProfile({String? name, String? language}) async {
     final user = _currentUser;
-    if (user == null) throw StateError('Sign in first.');
+    if (user == null) throw AppStateException(AppErrorCode.signInRequired);
     final cleanName = name?.trim();
     if (cleanName != null && (cleanName.isEmpty || cleanName.length > 100)) {
-      throw const FormatException('Enter your name (up to 100 characters).');
+      throw AppFormatException(AppErrorCode.invalidName);
     }
     if (language != null && language != 'en' && language != 'am') {
       throw ArgumentError.value(language, 'language', "must be 'en' or 'am'");
@@ -352,7 +364,7 @@ class AppRepository extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('Could not load user profile: $e');
-      _authError = 'Could not load your account. Check your connection and try again.';
+      _authError = AppStateException(AppErrorCode.accountLoadFailed);
       await FirebaseAuth.instance.signOut();
     }
   }
@@ -417,7 +429,7 @@ class AppRepository extends ChangeNotifier {
   void _assertPhoneCanBeInvited(String phone) {
     final existing = _cache.users.values.where((u) => u.phone == phone).firstOrNull;
     if (existing != null && existing.role != UserRole.customer) {
-      throw FormatException('This phone number already belongs to a ${existing.role.displayName} account.');
+      throw AppFormatException(AppErrorCode.phoneAlreadyStaff, [existing.role]);
     }
   }
 
@@ -473,7 +485,7 @@ class AppRepository extends ChangeNotifier {
   }) async {
     final phone = normalizeEthiopianPhone(ownerPhone);
     if (phone == null) {
-      throw const FormatException('Enter a valid Ethiopian mobile number for the owner (09... or 07...).');
+      throw AppFormatException(AppErrorCode.invalidOwnerPhone);
     }
     _assertPhoneCanBeInvited(phone);
 
@@ -601,11 +613,12 @@ class AppRepository extends ChangeNotifier {
   /// Local mode only (demo builds, tests): records the outcome of a
   /// simulated Chapa payment on a booking. With Firebase the payments Cloud
   /// Functions write paymentStatus and this throws.
-  void applySimulatedBookingPayment(String bookingId, PaymentStatus status) {
-    if (_firebaseReady) throw StateError('Booking payments are recorded by the server.');
+  void applySimulatedBookingPayment(String bookingId, PaymentStatus status, {String? paymentId}) {
+    if (_firebaseReady) throw AppStateException(AppErrorCode.serverOnly);
     final booking = _cache.bookings[bookingId];
     if (booking == null) return;
-    _cache.bookings[bookingId] = booking.copyWith(paymentStatus: status, paymentMethod: PaymentMethod.chapa);
+    _cache.bookings[bookingId] =
+        booking.copyWith(paymentStatus: status, paymentMethod: PaymentMethod.chapa, paymentId: paymentId);
     notifyListeners();
   }
 
@@ -646,6 +659,7 @@ class AppRepository extends ChangeNotifier {
     required double price,
     required int durationMinutes,
   }) async {
+    _validateService(name: name, price: price, durationMinutes: durationMinutes);
     final service = BarbershopService(
       id: _uuid.v4(),
       shopId: shopId,
@@ -659,7 +673,18 @@ class AppRepository extends ChangeNotifier {
 
   Future<void> updateService(BarbershopService service) async {
     if (!_cache.services.containsKey(service.id)) return;
+    _validateService(name: service.name, price: service.price, durationMinutes: service.durationMinutes);
     await _write(_store.updateService(service));
+  }
+
+  /// Same limits as `isValidService` in firestore.rules.
+  static void _validateService({required String name, required double price, required int durationMinutes}) {
+    if (name.trim().isEmpty || price.isNaN || price < 0 || durationMinutes < 5) {
+      throw AppFormatException(AppErrorCode.invalidService);
+    }
+    if (durationMinutes > kMaxServiceDurationMinutes) {
+      throw AppFormatException(AppErrorCode.serviceTooLong, [kMaxServiceDurationMinutes]);
+    }
   }
 
   Future<void> deleteService(String serviceId) async {
@@ -703,7 +728,7 @@ class AppRepository extends ChangeNotifier {
     if (phone != null && phone.trim().isNotEmpty) {
       normalizedPhone = normalizeEthiopianPhone(phone);
       if (normalizedPhone == null) {
-        throw const FormatException('Enter a valid Ethiopian mobile number (09... or 07...).');
+        throw AppFormatException(AppErrorCode.invalidPhone);
       }
       _assertPhoneCanBeInvited(normalizedPhone);
     }
@@ -742,6 +767,34 @@ class AppRepository extends ChangeNotifier {
   Future<void> updateBarber(Barber barber) async {
     if (!_cache.barbers.containsKey(barber.id)) return;
     await _write(_store.updateBarberProfile(barber));
+  }
+
+  /// Owner: sets a barber's own working days and hours (Addis time).
+  /// Pass all three as null to follow the shop's days and hours again.
+  /// Throws [AppFormatException] for an empty day list or hours where the
+  /// end is not after the start.
+  Future<void> updateBarberSchedule(
+    String barberId, {
+    required List<int>? workingDays,
+    required int? startHour,
+    required int? endHour,
+  }) async {
+    final barber = _cache.barbers[barberId];
+    if (barber == null) return;
+    final days = workingDays == null ? null : (workingDays.toSet().toList()..sort());
+    if (days != null && (days.isEmpty || days.any((d) => d < 1 || d > 7))) {
+      throw AppFormatException(AppErrorCode.noWorkingDays);
+    }
+    if ((startHour == null) != (endHour == null) ||
+        (startHour != null && (startHour < 0 || endHour! > 24 || endHour <= startHour))) {
+      throw AppFormatException(AppErrorCode.invalidWorkingHours);
+    }
+    final updated = barber.copyWith(clearSchedule: true).copyWith(
+          workingDays: days,
+          startHour: startHour,
+          endHour: endHour,
+        );
+    await _write(_store.updateBarberProfile(updated));
   }
 
   Future<void> updateBarberAvailability(String barberId, bool isAvailable) async {
@@ -801,17 +854,17 @@ class AppRepository extends ChangeNotifier {
     PaymentMethod paymentMethod = PaymentMethod.cash,
   }) async {
     final user = _currentUser;
-    if (user == null) throw StateError('Sign in to book an appointment.');
+    if (user == null) throw AppStateException(AppErrorCode.signInToBook);
     final shop = _cache.shops[shopId];
     if (shop != null && shop.isSuspended) {
-      throw StateError('This barbershop is not taking bookings right now.');
+      throw AppStateException(AppErrorCode.shopNotTakingBookings);
     }
     final barber = _cache.barbers[barberId];
     if (barber != null && !barber.isAvailable) {
-      throw StateError('${barber.name} is not taking bookings right now.');
+      throw AppStateException(AppErrorCode.barberNotTakingBookings, [barber.name]);
     }
     final start = (startAt ?? appointmentStartUtc(date, timeSlot))?.toUtc();
-    if (start == null) throw FormatException('Unrecognised time slot "$timeSlot".');
+    if (start == null) throw AppFormatException(AppErrorCode.invalidTimeSlot, [timeSlot]);
     final duration = durationMinutes ?? _cache.services[serviceId]?.durationMinutes ?? 30;
 
     final booking = Booking(
@@ -845,15 +898,20 @@ class AppRepository extends ChangeNotifier {
   /// the barber's non-cancelled bookings visible to this user plus the
   /// slot locks of everyone else's (Firestore mode). Emits again whenever
   /// either changes. Feed it to `availableSlotStarts` (availability_service).
-  Stream<List<BusyInterval>> watchBarberBusyTimes(String shopId, String barberId, DateTime addisDate) {
+  /// [excludeBookingId] (reschedule) leaves that booking and its own locks
+  /// out, so it can move into blocks it already holds. Time-off locks are
+  /// always busy.
+  Stream<List<BusyInterval>> watchBarberBusyTimes(String shopId, String barberId, DateTime addisDate,
+      {String? excludeBookingId}) {
     late StreamController<List<BusyInterval>> controller;
     StreamSubscription<List<SlotLock>>? lockSub;
     var locks = const <SlotLock>[];
     void emit() {
       if (controller.isClosed) return;
       controller.add([
-        ...busyIntervalsFromBookings(_cache.bookings.values, barberId),
-        for (final l in locks) l.interval,
+        ...busyIntervalsFromBookings(_cache.bookings.values, barberId, excludeBookingId: excludeBookingId),
+        for (final l in locks)
+          if (excludeBookingId == null || l.isTimeOff || l.bookingId != excludeBookingId) l.interval,
       ]);
     }
 
@@ -886,11 +944,138 @@ class AppRepository extends ChangeNotifier {
   Future<void> updateBookingStatus(String bookingId, BookingStatus newStatus) async {
     final booking = _cache.bookings[bookingId];
     if (booking == null) return;
+    _checkStatusPolicy(booking, newStatus);
+    final gate = debugWriteGate;
+    if (gate != null) await gate();
     await _write(_store.updateBookingStatus(
       booking,
       newStatus,
       cancelledBy: newStatus == BookingStatus.cancelled ? _currentUser?.uid : null,
     ));
+  }
+
+  /// Tests only: awaited before a booking status change is written, so a
+  /// test can hold the write in flight or make it fail.
+  @visibleForTesting
+  Future<void> Function()? debugWriteGate;
+
+  // --- Reschedule, cancellation policy, no-show, time off ---
+  // (logic in booking_policy.dart and time_off_service.dart)
+
+  /// Tests only: overrides the clock used for the policy checks.
+  @visibleForTesting
+  DateTime Function()? debugClock;
+
+  DateTime _nowUtc() => (debugClock?.call() ?? DateTime.now()).toUtc();
+
+  /// The clock the policy checks use (screens show the same verdict).
+  DateTime nowUtc() => _nowUtc();
+
+  /// Customers cancel only before the shop's cutoff (staff and admins may
+  /// cancel any time); no-show only after the start.
+  void _checkStatusPolicy(Booking booking, BookingStatus newStatus) {
+    final user = _currentUser;
+    final shop = _cache.shops[booking.shopId];
+    if (newStatus == BookingStatus.cancelled && user?.role == UserRole.customer && shop != null) {
+      policy.assertCustomerCanCancel(booking, shop, _nowUtc());
+    }
+    if (newStatus == BookingStatus.noShow) policy.assertCanMarkNoShow(booking, _nowUtc());
+  }
+
+  /// Staff: marks a pending/confirmed booking whose start has passed as a
+  /// no-show. Its slot locks are kept (they expire on their own).
+  Future<void> markNoShow(String bookingId) => updateBookingStatus(bookingId, BookingStatus.noShow);
+
+  /// Customer: moves their booking to [newStartUtc] (same barber, service
+  /// and duration), enforcing the shop's cutoff and reschedule limit.
+  /// Throws [SlotTakenException] if the new time was just taken.
+  Future<Booking> rescheduleBooking(String bookingId, DateTime newStartUtc) async {
+    final booking = _cache.bookings[bookingId];
+    final user = _currentUser;
+    if (booking == null || user == null || booking.customerId != user.uid) {
+      throw AppStateException(AppErrorCode.bookingNotChangeable);
+    }
+    final now = _nowUtc();
+    final shop = _cache.shops[booking.shopId];
+    if (shop != null) policy.assertCanReschedule(booking, shop, now);
+    if (newStartUtc.toUtc() == booking.startAt) throw AppFormatException(AppErrorCode.rescheduleSameTime);
+    final updated = policy.rescheduledBooking(booking, newStartUtc, now);
+    await _write(_store.rescheduleBooking(booking, updated));
+    return updated;
+  }
+
+  /// Owner: sets the shop's cancellation cutoff and reschedule limit.
+  Future<void> updateShopPolicy(String shopId, {required int cancellationCutoffHours, required int maxReschedules}) async {
+    policy.validatePolicy(cancellationCutoffHours: cancellationCutoffHours, maxReschedules: maxReschedules);
+    if (!_cache.shops.containsKey(shopId)) return;
+    await _write(_store.updateShopPolicy(shopId,
+        cancellationCutoffHours: cancellationCutoffHours, maxReschedules: maxReschedules));
+  }
+
+  /// Live time off of one barber (soonest first).
+  Stream<List<TimeOff>> watchTimeOff(String shopId, String barberId) => _store.watchTimeOff(shopId, barberId);
+
+  /// Whether the signed-in user may add/remove [barber]'s time off.
+  bool canManageTimeOffFor(Barber barber) => canManageTimeOff(_currentUser, barber);
+
+  /// Owner (any barber of their shop) or the barber themself: blocks
+  /// `[startUtc, endUtc)` (one Addis day, 15-minute grid). Throws
+  /// [AppErrorCode.timeOffConflict] if it overlaps a booking or time off.
+  Future<TimeOff> addTimeOff({
+    required String barberId,
+    required DateTime startUtc,
+    required DateTime endUtc,
+    String? reason,
+  }) async {
+    final barber = _cache.barbers[barberId];
+    final user = _currentUser;
+    if (barber == null || user == null || !canManageTimeOff(user, barber)) {
+      throw AppStateException(AppErrorCode.timeOffNotAllowed);
+    }
+    final note = reason?.trim();
+    validateTimeOff(startUtc: startUtc, endUtc: endUtc, reason: note, nowUtc: _nowUtc());
+    final entry = TimeOff(
+      id: _uuid.v4(),
+      shopId: barber.shopId,
+      barberId: barber.id,
+      startAt: startUtc.toUtc(),
+      endAt: endUtc.toUtc(),
+      reason: note == null || note.isEmpty ? null : note,
+      createdBy: user.uid,
+      createdAt: _nowUtc(),
+    );
+    await _write(_store.addTimeOff(entry));
+    return entry;
+  }
+
+  Future<void> deleteTimeOff(TimeOff entry) async {
+    final barber = _cache.barbers[entry.barberId];
+    if (barber == null || !canManageTimeOff(_currentUser, barber)) {
+      throw AppStateException(AppErrorCode.timeOffNotAllowed);
+    }
+    await _write(_store.deleteTimeOff(entry));
+  }
+
+  /// Demo builds: the dataset's sample time off (local mode only).
+  void loadDemoTimeOff(List<TimeOff> entries) {
+    final local = _store;
+    if (local is LocalDataStore) local.loadTimeOff(entries);
+  }
+
+  // --- Reviews (logic in reviews_service.dart) ---
+
+  /// Local mode only (demo builds, tests): sets the shop's and its barbers'
+  /// `rating` / `reviewCount`, as the insights Cloud Function does with
+  /// Firebase. Ignored once Firebase is attached.
+  void applyLocalRatings(String shopId, RatingSummary shop, Map<String, RatingSummary> barbers) {
+    if (_firebaseReady) return;
+    final current = _cache.shops[shopId];
+    if (current != null) _cache.shops[shopId] = current.copyWith(rating: shop.rating, reviewCount: shop.count);
+    barbers.forEach((barberId, summary) {
+      final barber = _cache.barbers[barberId];
+      if (barber != null) _cache.barbers[barberId] = barber.copyWith(rating: summary.rating, reviewCount: summary.count);
+    });
+    notifyListeners();
   }
 
   /// Awaits a store write, then notifies listeners. (With Firestore the

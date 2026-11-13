@@ -42,6 +42,44 @@ void main() {
       expect(formatAddisWhen(DateTime.utc(2026, 11, 13, 22, 0)), 'Sat 14 Nov 2026, 01:00');
     });
 
+    test('Amharic amounts and times (with the Ethiopian clock)', () {
+      expect(formatEtb(1250, language: 'am'), '1,250 ብር');
+      expect(formatAddisWhen(DateTime.utc(2026, 11, 13, 7, 30), language: 'am'), 'ዓርብ 13/11/2026 10:30 (ጠዋት 4:30)');
+      expect(ethiopianClock(18, 0), 'ማታ 12:00');
+      expect(ethiopianClock(0, 15), 'ሌሊት 6:15');
+      expect(ethiopianClock(13, 5), 'ከሰዓት 7:05');
+    });
+
+    test('demo notifications follow the recipient language', () {
+      final booking = Booking(
+        id: 'b1',
+        shopId: 's1',
+        shopName: 'Crown Cuts',
+        barberId: 'br1',
+        barberName: 'Yonas',
+        customerId: 'c1',
+        customerName: 'Liya',
+        customerPhone: '+251911000301',
+        serviceId: 'sv1',
+        serviceName: 'Skin Fade',
+        price: 450,
+        date: DateTime(2026, 11, 13),
+        timeSlot: '',
+        startAt: DateTime.utc(2026, 11, 13, 7, 30),
+        createdAt: DateTime.utc(2026, 11, 1),
+      );
+      final en = renderBookingNotification(NotificationTypes.confirmed, NotificationAudience.customer, booking);
+      expect(en.title, 'Booking confirmed');
+      expect(en.body, contains('Price: 450 ETB.'));
+      final am = renderBookingNotification(NotificationTypes.confirmed, NotificationAudience.customer, booking,
+          language: 'am');
+      expect(am.title, 'ቀጠሮዎ ተረጋግጧል');
+      expect(am.body, 'Crown Cuts ላይ ከYonas ጋር ዓርብ 13/11/2026 10:30 (ጠዋት 4:30) ያለዎት የSkin Fade ቀጠሮ ተረጋግጧል። ዋጋ፦ 450 ብር።');
+      final cancelled = renderBookingNotification(NotificationTypes.cancelled, NotificationAudience.barber, booking,
+          cancelledBy: 'customer', language: 'am');
+      expect(cancelled.body, contains('በደንበኛው ተሰርዟል'));
+    });
+
     test('relative time', () {
       final now = DateTime.utc(2026, 11, 13, 12);
       expect(relativeTime(now, now: now), 'Just now');
@@ -68,6 +106,11 @@ void main() {
     test('push data maps to the inbox doc id', () {
       expect(notificationIdFromPushData({'bookingId': 'b1', 'type': 'confirmed'}), 'b1_confirmed');
       expect(notificationIdFromPushData({'type': 'confirmed'}), isNull);
+      expect(
+        notificationIdFromPushData({'notificationId': 'p1_paymentFailed', 'bookingId': 'b1', 'type': 'paymentFailed'}),
+        'p1_paymentFailed',
+      );
+      expect(notificationIdFromPushData({'notificationId': 'p2_subscriptionPaid', 'type': 'subscriptionPaid'}), 'p2_subscriptionPaid');
     });
   });
 
@@ -109,7 +152,8 @@ void main() {
         expect(inbox.single.read, isFalse);
       }
       expect(service.local.inboxFor('user_cust_1').single.title, 'Your appointment has started');
-      expect(service.local.inboxFor('owner_1').single.title, 'Appointment started');
+      // owner_1 reads Amharic (users/{uid}.language = 'am' in the seed).
+      expect(service.local.inboxFor('owner_1').single.title, 'አገልግሎት ተጀምሯል');
       // The signed-in barber sees it in their own inbox and as a banner.
       expect(service.unreadCount, 1);
       expect(banners.map((n) => n.id), ['book_1_started']);
@@ -127,7 +171,7 @@ void main() {
       final customer = service.local.inboxFor('user_cust_4').single;
       expect(customer.title, 'Booking cancelled');
       expect(customer.body, contains('was cancelled by the shop.'));
-      expect(service.local.inboxFor('barber_user_2').single.body, contains('by the shop'));
+      expect(service.local.inboxFor('barber_user_2').single.body, contains('በፀጉር ቤቱ ተሰርዟል'));
     });
 
     test('mark read and mark all read', () async {
@@ -233,6 +277,7 @@ void main() {
     testWidgets('empty state, then bell badge and tap-to-read', (tester) async {
       repo.switchRole(UserRole.barber, targetBarberId: 'barber_1');
       await tester.pumpWidget(MaterialApp(
+        locale: const Locale('en'),
         home: Scaffold(appBar: AppBar(actions: [NotificationBell(service: service)])),
       ));
       expect(find.byType(Badge), findsOneWidget);
@@ -244,11 +289,12 @@ void main() {
 
       await repo.updateBookingStatus('book_1', BookingStatus.inProgress);
       await tester.pump();
-      expect(find.text('Appointment started'), findsOneWidget);
+      // barber_user_1's language is Amharic, so the message is too.
+      expect(find.text('አገልግሎት ተጀምሯል'), findsOneWidget);
       expect(find.byKey(const ValueKey('unread-dot')), findsOneWidget);
       expect(find.text('Mark all read'), findsOneWidget);
 
-      await tester.tap(find.text('Appointment started'));
+      await tester.tap(find.text('አገልግሎት ተጀምሯል'));
       await tester.pump();
       expect(find.byKey(const ValueKey('unread-dot')), findsNothing);
       expect(service.unreadCount, 0);

@@ -9,6 +9,290 @@ class AppLocalizationsAm extends AppLocalizations {
   AppLocalizationsAm([String locale = 'am']) : super(locale);
 
   @override
+  String get queueTitle => 'ወረፋ';
+
+  @override
+  String queueDashboardSubtitle(int waiting, int serving) {
+    return '$waiting በመጠበቅ ላይ · $serving በአገልግሎት ላይ';
+  }
+
+  @override
+  String queueSummaryWaiting(int count, int minutes) {
+    return '$count ሰው በመጠበቅ ላይ፣ በግምት $minutes ደቂቃ';
+  }
+
+  @override
+  String get queueSummaryEmpty => 'ማንም አይጠብቅም - በቀጥታ ይግቡ';
+
+  @override
+  String get queueJoin => 'ወረፋ ይያዙ';
+
+  @override
+  String get queueLeave => 'ወረፋውን ይልቀቁ';
+
+  @override
+  String queueLeaveConfirm(String shop) {
+    return 'ከ$shop ወረፋ መውጣት ይፈልጋሉ?';
+  }
+
+  @override
+  String queueYourPosition(int position, int minutes) {
+    return 'በወረፋው $positionኛ ነዎት፣ በግምት $minutes ደቂቃ';
+  }
+
+  @override
+  String get queueYouAreNext => 'ቀጣዩ እርስዎ ነዎት! እባክዎ ፀጉር ቤቱ ይገኙ።';
+
+  @override
+  String queueYourTurn(String barber) {
+    return 'ተራዎ ደርሷል - $barber እየጠበቀዎት ነው';
+  }
+
+  @override
+  String get queueYourTurnAnyBarber => 'ተራዎ ደርሷል - እባክዎ ይግቡ';
+
+  @override
+  String get queueJoined => 'ወረፋ ይዘዋል።';
+
+  @override
+  String get queueLeftMessage => 'ወረፋውን ለቀዋል።';
+
+  @override
+  String get queueSignInToJoin => 'ወረፋ ለመያዝ ይግቡ።';
+
+  @override
+  String queueJoinTitle(String shop) {
+    return 'የ$shop ወረፋ ይያዙ';
+  }
+
+  @override
+  String get queueJoinBody => 'ቦታዎን እንይዝልዎታለን፤ ቀጣዩ ሲሆኑ እናሳውቅዎታለን።';
+
+  @override
+  String queueWaitingHeader(int count) {
+    return 'በመጠበቅ ላይ ($count)';
+  }
+
+  @override
+  String queueServingHeader(int count) {
+    return 'በአገልግሎት ላይ ($count)';
+  }
+
+  @override
+  String get queueBarbersHeader => 'ፀጉር አስተካካዮች አሁን';
+
+  @override
+  String get queueEmpty => 'ማንም እየጠበቀ አይደለም።';
+
+  @override
+  String get queueAddWalkIn => 'ቀጥታ የመጣ ደንበኛ ያስገቡ';
+
+  @override
+  String get queueNameLabel => 'የደንበኛ ስም';
+
+  @override
+  String get queuePhoneLabel => 'ስልክ (አማራጭ)';
+
+  @override
+  String get queueServiceLabel => 'አገልግሎት (አማራጭ)';
+
+  @override
+  String get queuePreferredBarberLabel => 'የሚመረጥ ፀጉር አስተካካይ (አማራጭ)';
+
+  @override
+  String get queueAnyBarber => 'ማንኛውም ፀጉር አስተካካይ';
+
+  @override
+  String get queueNoService => 'አልተመረጠም';
+
+  @override
+  String get queueAddButton => 'ወደ ወረፋ አስገባ';
+
+  @override
+  String get queueCallNext => 'ቀጣዩን ጥራ';
+
+  @override
+  String queueCallNextFor(String barber) {
+    return 'ለ$barber ቀጣዩን ጥራ';
+  }
+
+  @override
+  String get queueStart => 'ጀምር';
+
+  @override
+  String get queueFinish => 'ጨርስ';
+
+  @override
+  String get queueMarkLeft => 'ሄዷል';
+
+  @override
+  String queueChooseBarber(String name) {
+    return '$nameን ማን ያስተናግዳል?';
+  }
+
+  @override
+  String queueBarberServing(String name) {
+    return '$nameን እያስተናገደ';
+  }
+
+  @override
+  String get queueBarberFree => 'ነፃ';
+
+  @override
+  String get queueBarberOff => 'ደንበኛ እየተቀበለ አይደለም';
+
+  @override
+  String queueWaitAbout(int minutes) {
+    return 'በግምት $minutes ደቂቃ';
+  }
+
+  @override
+  String get queueNextUp => 'ቀጣይ';
+
+  @override
+  String queuePrefers(String barber) {
+    return '$barberን ይመርጣል';
+  }
+
+  @override
+  String get queueRemoteBadge => 'በመተግበሪያ የገባ';
+
+  @override
+  String queueJoinedAt(String time) {
+    return 'የገባበት $time';
+  }
+
+  @override
+  String queueServingSince(String time) {
+    return 'ከ$time ጀምሮ';
+  }
+
+  @override
+  String queueNobodyForBarber(String barber) {
+    return '$barberን የሚጠብቅ የለም።';
+  }
+
+  @override
+  String queueNowServing(String barber, String name) {
+    return '$barber አሁን $nameን እያስተናገደ ነው።';
+  }
+
+  @override
+  String queueActionFailed(String error) {
+    return 'ወረፋውን ማዘመን አልተቻለም፦ $error';
+  }
+
+  @override
+  String get queueErrNotStaff =>
+      'ወረፋውን ማስተዳደር የሚችሉት የፀጉር ቤቱ ባለቤት እና ፀጉር አስተካካዮች ብቻ ናቸው።';
+
+  @override
+  String get queueErrCustomersOnly => 'ከመተግበሪያው ወረፋ መያዝ የሚችሉት ደንበኞች ብቻ ናቸው።';
+
+  @override
+  String queueErrNameRequired(int max) {
+    return 'ስም ያስገቡ (እስከ $max ፊደላት)።';
+  }
+
+  @override
+  String queueErrBarberBusy(String name) {
+    return '$name ሌላ ደንበኛ እያስተናገደ ነው። መጀመሪያ ያንን ይጨርሱ።';
+  }
+
+  @override
+  String get queueErrNotWaiting => 'ይህ ሰው ከአሁን በኋላ እየጠበቀ አይደለም።';
+
+  @override
+  String get queueErrNotServing => 'ይህ ሰው በአገልግሎት ላይ አይደለም።';
+
+  @override
+  String get reportsTitle => 'ሪፖርቶች';
+
+  @override
+  String get reportsOpenButton => 'ሪፖርቶችና ደንበኞች';
+
+  @override
+  String get reportsOverviewTab => 'አጠቃላይ እይታ';
+
+  @override
+  String get reportsClientsTab => 'ደንበኞች';
+
+  @override
+  String get reportsMonthLabel => 'ወር';
+
+  @override
+  String get reportsBookings => 'ቀጠሮዎች';
+
+  @override
+  String get reportsCompleted => 'የተጠናቀቁ';
+
+  @override
+  String get reportsCancelled => 'የተሰረዙ';
+
+  @override
+  String get reportsNoShows => 'ያልመጡ';
+
+  @override
+  String get reportsRevenue => 'ገቢ';
+
+  @override
+  String get reportsRevenueTrend => 'ገቢ፣ ያለፉት 6 ወራት';
+
+  @override
+  String get reportsTopServices => 'ብዙ የተሰሩ አገልግሎቶች';
+
+  @override
+  String get reportsBarberPerformance => 'የፀጉር አስተካካዮች አፈጻጸም';
+
+  @override
+  String reportsCompletedCount(int count) {
+    return '$count ተጠናቀዋል';
+  }
+
+  @override
+  String get reportsNoBookingsMonth => 'በዚህ ወር ምንም ቀጠሮ የለም።';
+
+  @override
+  String get reportsNoCompletedMonth => 'በዚህ ወር እስካሁን የተጠናቀቀ ቀጠሮ የለም።';
+
+  @override
+  String get reportsNoClients => 'እስካሁን ደንበኛ የለም።';
+
+  @override
+  String reportsClientVisits(int count) {
+    return '$count ጉብኝት';
+  }
+
+  @override
+  String reportsClientNoShows(int count) {
+    return '$count ጊዜ አልመጡም';
+  }
+
+  @override
+  String reportsClientCancelled(int count) {
+    return '$count ተሰርዘዋል';
+  }
+
+  @override
+  String reportsLastVisit(String date) {
+    return 'የመጨረሻ ጉብኝት $date';
+  }
+
+  @override
+  String get reportsNoVisitYet => 'እስካሁን የተጠናቀቀ ጉብኝት የለም';
+
+  @override
+  String get reportsLoadFailed =>
+      'ሪፖርቶችን መጫን አልተቻለም። ግንኙነትዎን አረጋግጠው እንደገና ይሞክሩ።';
+
+  @override
+  String get reportsRetry => 'እንደገና ይሞክሩ';
+
+  @override
+  String get reportsUpdatedNote =>
+      'አሃዞቹ እያንዳንዱ የቀጠሮ ለውጥ ከተደረገ ከጥቂት ሰከንዶች በኋላ ይዘመናሉ።';
+
+  @override
   String get appTitle => 'Crown & Blade - የፀጉር ቤት ቀጠሮ';
 
   @override
@@ -141,6 +425,223 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get statusCancelled => 'ተሰርዟል';
+
+  @override
+  String get statusNoShow => 'አልመጡም';
+
+  @override
+  String get rescheduleAction => 'ቀጠሮ ቀይር';
+
+  @override
+  String get rescheduleTitle => 'አዲስ ሰዓት ይምረጡ';
+
+  @override
+  String rescheduleCurrent(String when) {
+    return 'አሁን ያለው ሰዓት፦ $when';
+  }
+
+  @override
+  String get rescheduleConfirm => 'ቀጠሮውን አዛውር';
+
+  @override
+  String rescheduleDone(String when) {
+    return 'ቀጠሮዎ ወደ $when ተዛውሯል።';
+  }
+
+  @override
+  String rescheduleLeft(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ጊዜ መቀየር ይቻላል',
+      zero: 'ከዚህ በኋላ መቀየር አይቻልም',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rescheduledBadge => 'ተዛውሯል';
+
+  @override
+  String reschedulePolicyNote(int hours) {
+    String _temp0 = intl.Intl.pluralLogic(
+      hours,
+      locale: localeName,
+      other: 'ቀጠሮው ከመጀመሩ $hours ሰዓት በፊት ድረስ',
+      zero: 'ቀጠሮው እስኪጀምር ድረስ',
+    );
+    return '$_temp0 በነፃ መቀየር ወይም መሰረዝ ይችላሉ።';
+  }
+
+  @override
+  String get rescheduleCallShop =>
+      'ይህን ቀጠሮ በመተግበሪያው ለመቀየር ጊዜው አልፏል። እባክዎ ፀጉር ቤቱን ይደውሉ።';
+
+  @override
+  String get rescheduleErrNotChangeable => 'ይህ ቀጠሮ ከአሁን በኋላ ሊቀየር አይችልም።';
+
+  @override
+  String rescheduleErrCancelCutoff(int hours) {
+    return 'ቀጠሮዎን መሰረዝ የሚችሉት ከመጀመሩ $hours ሰዓት በፊት ብቻ ነው። እባክዎ ፀጉር ቤቱን ይደውሉ።';
+  }
+
+  @override
+  String rescheduleErrCutoff(int hours) {
+    return 'ቀጠሮን ማዛወር የሚቻለው ከመጀመሩ $hours ሰዓት በፊት ብቻ ነው። እባክዎ ፀጉር ቤቱን ይደውሉ።';
+  }
+
+  @override
+  String rescheduleErrLimit(int max) {
+    String _temp0 = intl.Intl.pluralLogic(
+      max,
+      locale: localeName,
+      other: 'ይህ ቀጠሮ ፀጉር ቤቱ የሚፈቅደውን ከፍተኛ $max ጊዜ ተዛውሯል።',
+      zero: 'ይህ ፀጉር ቤት ቀጠሮ መቀየር አይፈቅድም።',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rescheduleErrSameTime => 'አሁን ካለዎት ሰዓት የተለየ ሰዓት ይምረጡ።';
+
+  @override
+  String get noShowAction => 'አልመጡም';
+
+  @override
+  String get noShowConfirmTitle => 'እንዳልመጡ ይመዝገብ?';
+
+  @override
+  String noShowConfirmBody(String name) {
+    return '$name ወደዚህ ቀጠሮ አልመጡም። ሰዓቱ እንደተያዘ ይቆያል።';
+  }
+
+  @override
+  String get noShowErrTooEarly =>
+      'እንዳልመጡ መመዝገብ የሚቻለው የቀጠሮው ሰዓት ከደረሰ በኋላ ብቻ ነው።';
+
+  @override
+  String get policySectionTitle => 'የቀጠሮ ደንብ';
+
+  @override
+  String get policyCutoffLabel => 'የመሰረዣ ገደብ';
+
+  @override
+  String get policyCutoffHelp =>
+      'ደንበኞች ቀጠሮው ሊጀምር ይህን ያህል ሰዓት ሲቀረው መሰረዝም ሆነ ማዛወር አይችሉም። እርስዎና ፀጉር አስተካካዮችዎ ግን አሁንም መሰረዝ ይችላሉ።';
+
+  @override
+  String policyHoursValue(int hours) {
+    String _temp0 = intl.Intl.pluralLogic(
+      hours,
+      locale: localeName,
+      other: '$hours ሰዓት በፊት',
+      zero: 'እስከ መጀመሪያው',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get policyMaxReschedulesLabel => 'ለአንድ ቀጠሮ የሚፈቀድ የመቀየር ብዛት';
+
+  @override
+  String policyMaxReschedulesValue(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ጊዜ',
+      one: 'አንድ ጊዜ',
+      zero: 'መቀየር አይቻልም',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get policySave => 'ደንቡን አስቀምጥ';
+
+  @override
+  String get policySaved => 'የቀጠሮ ደንቡ ተቀምጧል።';
+
+  @override
+  String policyErrCutoff(int max) {
+    return 'የመሰረዣ ገደቡ ከ0 እስከ $max ሰዓት መሆን አለበት።';
+  }
+
+  @override
+  String policyErrMaxReschedules(int max) {
+    return 'የሚፈቀደው የመቀየር ብዛት ከ0 እስከ $max መሆን አለበት።';
+  }
+
+  @override
+  String get timeOffTitle => 'እረፍት';
+
+  @override
+  String get timeOffAdd => 'እረፍት ጨምር';
+
+  @override
+  String get timeOffWholeDay => 'ሙሉ ቀን';
+
+  @override
+  String get timeOffHours => 'የተወሰኑ ሰዓታት';
+
+  @override
+  String get timeOffDay => 'ቀን';
+
+  @override
+  String get timeOffFrom => 'ከ';
+
+  @override
+  String get timeOffTo => 'እስከ';
+
+  @override
+  String get timeOffReasonLabel => 'ማስታወሻ (አማራጭ)';
+
+  @override
+  String get timeOffEmpty => 'የታቀደ እረፍት የለም።';
+
+  @override
+  String get timeOffSaved => 'እረፍቱ ተጨምሯል። ደንበኞች እነዚህን ሰዓቶች መያዝ አይችሉም።';
+
+  @override
+  String get timeOffRemove => 'እረፍቱን አስወግድ';
+
+  @override
+  String get timeOffRemoved => 'እረፍቱ ተወግዷል።';
+
+  @override
+  String get timeOffRemoveConfirm =>
+      'ይህ እረፍት ይወገድ? ደንበኞች እነዚህን ሰዓቶች እንደገና መያዝ ይችላሉ።';
+
+  @override
+  String timeOffRange(String day, String from, String to) {
+    return '$day፣ $from - $to';
+  }
+
+  @override
+  String timeOffNotWorking(String name) {
+    return '$name በዚህ ቀን አይሰሩም።';
+  }
+
+  @override
+  String get timeOffSlotLabel => 'እረፍት';
+
+  @override
+  String get timeOffErrRange =>
+      'በአንድ ቀን ውስጥ ያለ፣ ማብቂያው ከመጀመሪያው በኋላ የሆነ ጊዜ ይምረጡ።';
+
+  @override
+  String get timeOffErrPast => 'የእረፍት ጊዜው ወደፊት የሚያበቃ መሆን አለበት።';
+
+  @override
+  String timeOffErrReasonTooLong(int max) {
+    return 'ማስታወሻው ቢበዛ $max ፊደላት ሊሆን ይችላል።';
+  }
+
+  @override
+  String get timeOffErrConflict =>
+      'ይህ ጊዜ ከቀጠሮ ወይም ከሌላ እረፍት ጋር ይጋጫል። መጀመሪያ ያንን ቀጠሮ ያዛውሩ ወይም ይሰርዙ።';
+
+  @override
+  String get timeOffErrNotAllowed => 'እረፍት ማስተዳደር የሚችሉት ለራስዎ መርሐ ግብር ብቻ ነው።';
 
   @override
   String get subTrialing => 'ነፃ ሙከራ';
@@ -1635,4 +2136,453 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get cardMethod => 'ካርድ';
+
+  @override
+  String get errInvalidPhone => 'ትክክለኛ የኢትዮጵያ ሞባይል ቁጥር ያስገቡ (09... ወይም 07...)።';
+
+  @override
+  String get errInvalidOwnerPhone =>
+      'ለባለቤቱ ትክክለኛ የኢትዮጵያ ሞባይል ቁጥር ያስገቡ (09... ወይም 07...)።';
+
+  @override
+  String get errInvalidOtp => 'በኤስኤምኤስ የደረሰዎትን ባለ 6 አሃዝ ኮድ ያስገቡ።';
+
+  @override
+  String errWrongDemoCode(String code) {
+    return 'የተሳሳተ ኮድ። በሙከራ ሁነታ ኮዱ $code ነው።';
+  }
+
+  @override
+  String get errRequestCodeFirst => 'መጀመሪያ ኮድ ይጠይቁ።';
+
+  @override
+  String get errInvalidName => 'ስምዎን ያስገቡ (እስከ 100 ፊደላት)።';
+
+  @override
+  String get errVerifyPhoneFirst => 'መጀመሪያ ስልክ ቁጥርዎን ያረጋግጡ።';
+
+  @override
+  String get errSignInRequired => 'እባክዎ መጀመሪያ ይግቡ።';
+
+  @override
+  String errPhoneAlreadyStaff(String role) {
+    return 'ይህ ስልክ ቁጥር ቀድሞውኑ የ$role መለያ ነው።';
+  }
+
+  @override
+  String get errSignInToBook => 'ቀጠሮ ለመያዝ ይግቡ።';
+
+  @override
+  String get errInvalidTimeSlot => 'ያ ሰዓት ትክክል አይደለም። እባክዎ ሌላ ሰዓት ይምረጡ።';
+
+  @override
+  String errServiceTooLong(int minutes) {
+    return 'አንድ አገልግሎት ቢበዛ $minutes ደቂቃ ሊሆን ይችላል።';
+  }
+
+  @override
+  String get errServerOnly => 'ይህን ለውጥ ማድረግ የሚችለው አገልጋዩ ብቻ ነው።';
+
+  @override
+  String get errSlotTaken => 'ይቅርታ፣ ያ ሰዓት አሁን ተይዟል። እባክዎ ሌላ ሰዓት ይምረጡ።';
+
+  @override
+  String get errBookingFailed =>
+      'ይህን ሰዓት መያዝ አልተቻለም። ግንኙነትዎን አረጋግጠው እንደገና ይሞክሩ።';
+
+  @override
+  String get errNoWorkingDays => 'ቢያንስ አንድ የሥራ ቀን ይምረጡ።';
+
+  @override
+  String get errInvalidWorkingHours => 'የማብቂያ ሰዓቱ ከመጀመሪያ ሰዓቱ በኋላ መሆን አለበት።';
+
+  @override
+  String errPlanIdInvalid(String ids) {
+    return 'የዕቅድ መለያ ከእነዚህ አንዱ መሆን አለበት፦ $ids።';
+  }
+
+  @override
+  String get errPlanNameRequired => 'የዕቅድ ስም ያስፈልጋል።';
+
+  @override
+  String get errPlanPriceNegative => 'ዋጋ 0 ወይም ከዚያ በላይ መሆን አለበት።';
+
+  @override
+  String get errPlanPriceRequired => 'የሚከፈልበት ዕቅድ ከ0 በላይ ዋጋ ያስፈልገዋል።';
+
+  @override
+  String get errPlanMaxBarbers =>
+      'ከፍተኛው የፀጉር አስተካካዮች ቁጥር ቢያንስ 1 (ወይም ላልተገደበ -1) መሆን አለበት።';
+
+  @override
+  String get errPermissionDenied => 'ይህን ለማድረግ ፈቃድ የለዎትም።';
+
+  @override
+  String get errOffline => 'ከአገልጋዩ ጋር መገናኘት አልተቻለም። ግንኙነትዎን አረጋግጠው እንደገና ይሞክሩ።';
+
+  @override
+  String get errGeneric => 'የሆነ ችግር ተፈጥሯል። እባክዎ እንደገና ይሞክሩ።';
+
+  @override
+  String get payErrBookingNotFound => 'ይህ ቀጠሮ አልተገኘም።';
+
+  @override
+  String get payErrBookingCancelled => 'ይህ ቀጠሮ ተሰርዟል።';
+
+  @override
+  String get payErrBookingRefunded => 'የዚህ ቀጠሮ ክፍያ ተመላሽ ተደርጓል።';
+
+  @override
+  String get payErrCannotPayOnline => 'ይህ ቀጠሮ በመስመር ላይ ሊከፈል አይችልም።';
+
+  @override
+  String get payErrNoValidPrice => 'ይህ ትክክለኛ ዋጋ ስለሌለው በመስመር ላይ ሊከፈል አይችልም።';
+
+  @override
+  String get payErrNotYourBooking => 'ይህን ቀጠሮ መክፈል የሚችለው የያዘው ደንበኛ ብቻ ነው።';
+
+  @override
+  String get payErrNotYourPayment => 'ይህ የእርስዎ ክፍያ አይደለም።';
+
+  @override
+  String get payErrNotShopOwner => 'የዚህን ፀጉር ቤት ደንበኝነት መክፈል የሚችለው ባለቤቱ ብቻ ነው።';
+
+  @override
+  String get payErrShopNotFound => 'ይህ ፀጉር ቤት አልተገኘም።';
+
+  @override
+  String get payErrPlanUnavailable => 'ይህ ዕቅድ አይገኝም።';
+
+  @override
+  String get payErrUnknownPlan => 'ያልታወቀ ዕቅድ።';
+
+  @override
+  String payErrPlanTooSmall(int max, int count) {
+    return 'ይህ ዕቅድ $max ፀጉር አስተካካዮችን ብቻ ይፈቅዳል፤ ፀጉር ቤቱ ግን $count አለው። ትልቅ ዕቅድ ይምረጡ ወይም ፀጉር አስተካካዮችን ያስወግዱ።';
+  }
+
+  @override
+  String get payErrBookingChanged =>
+      'ክፍያዎን እያዘጋጀን ሳለ ለውጥ ተፈጥሯል። እባክዎ እንደገና ይሞክሩ።';
+
+  @override
+  String get payErrStillPreparing =>
+      'ክፍያዎ ገና በመዘጋጀት ላይ ነው። እባክዎ ትንሽ ቆይተው እንደገና ይሞክሩ።';
+
+  @override
+  String get payErrLaunchFailed => 'የቻፓ የክፍያ ገጽን መክፈት አልተቻለም። እባክዎ እንደገና ይሞክሩ።';
+
+  @override
+  String get payErrInvalid => 'አንዳንድ የክፍያ መረጃዎች የሉም ወይም ትክክል አይደሉም።';
+
+  @override
+  String get payErrPrecondition => 'ይህ ክፍያ አሁን ሊፈጸም አይችልም።';
+
+  @override
+  String get payErrAdminsOnly => 'ይህን ማድረግ የሚችሉት አስተዳዳሪዎች ብቻ ናቸው።';
+
+  @override
+  String get payErrPaymentNotFound => 'ይህ ክፍያ አልተገኘም።';
+
+  @override
+  String get payErrReviewNotNeeded => 'ይህ ክፍያ ከአሁን በኋላ ግምገማ አይጠብቅም።';
+
+  @override
+  String get payErrReviewNotRefundable =>
+      'ተመላሽ ተብሎ ምልክት ሊደረግበት የሚችለው የተሳካ ክፍያ ብቻ ነው።';
+
+  @override
+  String get viewAction => 'ይመልከቱ';
+
+  @override
+  String get paymentsToReview => 'የሚገመገሙ ክፍያዎች';
+
+  @override
+  String get paymentsToReviewIntro =>
+      'እነዚህ ክፍያዎች ውሳኔ ይፈልጋሉ። መጀመሪያ በቻፓ ዳሽቦርድ ገንዘቡን ለደንበኛው ይመልሱ፣ ከዚያ እዚህ ምልክት ያድርጉ።';
+
+  @override
+  String get noPaymentsToReview => 'ግምገማ የሚያስፈልገው ክፍያ የለም';
+
+  @override
+  String get noPaymentsToReviewHint =>
+      'ለተሰረዙ ቀጠሮዎች የተከፈሉ፣ ሁለት ጊዜ የተከፈሉ እና ሊተገበሩ ያልቻሉ ክፍያዎች እዚህ ይታያሉ።';
+
+  @override
+  String paymentsToReviewLoadFailed(String error) {
+    return 'ክፍያዎችን መጫን አልተቻለም፦ $error';
+  }
+
+  @override
+  String get reviewReasonCancelledBooking => 'ለተሰረዘ ቀጠሮ ተከፍሏል';
+
+  @override
+  String get reviewReasonDoublePayment => 'ቀጠሮው ሁለት ጊዜ ተከፍሏል';
+
+  @override
+  String get reviewReasonMissingBooking => 'ቀጠሮው ከአሁን በኋላ የለም';
+
+  @override
+  String get reviewReasonRefundReported => 'ቻፓ ያሳወቀው ተመላሽ ክፍያ መረጋገጥ አለበት';
+
+  @override
+  String get reviewReasonSubscription => 'የደንበኝነት ክፍያው ሊተገበር አልቻለም';
+
+  @override
+  String get reviewReasonOther => 'በእጅ መረጋገጥ አለበት';
+
+  @override
+  String get paymentTypeBooking => 'የቀጠሮ ክፍያ';
+
+  @override
+  String get paymentTypeSubscription => 'የደንበኝነት ክፍያ';
+
+  @override
+  String get paymentDetailsTitle => 'የክፍያ ዝርዝሮች';
+
+  @override
+  String get detailAmount => 'መጠን';
+
+  @override
+  String get detailStatus => 'ሁኔታ';
+
+  @override
+  String get detailCreated => 'የተፈጠረበት';
+
+  @override
+  String get detailVerified => 'የተረጋገጠበት';
+
+  @override
+  String get detailShop => 'ፀጉር ቤት';
+
+  @override
+  String get detailBooking => 'ቀጠሮ';
+
+  @override
+  String get detailCustomer => 'የከፈለው';
+
+  @override
+  String get detailTxRef => 'የግብይት መለያ';
+
+  @override
+  String get detailChapaReference => 'የቻፓ መለያ';
+
+  @override
+  String get detailMethod => 'የክፍያ ዘዴ';
+
+  @override
+  String get detailPaymentId => 'የክፍያ መለያ';
+
+  @override
+  String get reviewNoteLabel => 'ማስታወሻ (አማራጭ)';
+
+  @override
+  String get reviewNoteHint => 'ለምሳሌ፦ ኅዳር 4 ተመልሷል፣ የቻፓ መለያ ...';
+
+  @override
+  String get markRefundedInChapa => 'በቻፓ ተመላሽ አድርጌያለሁ';
+
+  @override
+  String get markNoAction => 'ምንም እርምጃ አያስፈልግም';
+
+  @override
+  String get confirmRefundTitle => 'ተመላሽ ተደርጓል ብለው ምልክት ያድርጉ?';
+
+  @override
+  String confirmRefundBody(String amount) {
+    return '$amount በቻፓ ዳሽቦርድ አስቀድመው ከመለሱ ብቻ ይቀጥሉ። ክፍያውና ቀጠሮው ተመላሽ እንደተደረጉ ይታያሉ።';
+  }
+
+  @override
+  String get reviewClosedRefunded => 'ተመላሽ ተደርጓል ተብሎ ምልክት ተደርጓል።';
+
+  @override
+  String get reviewClosedNoAction => 'ግምገማው ተዘግቷል።';
+
+  @override
+  String reviewFailed(String error) {
+    return 'ግምገማውን መዝጋት አልተቻለም፦ $error';
+  }
+
+  @override
+  String get editWorkingHours => 'የሥራ ቀናትና ሰዓታት';
+
+  @override
+  String barberHoursTitle(String name) {
+    return '$name፦ የሥራ ሰዓታት';
+  }
+
+  @override
+  String get followShopHours => 'ከፀጉር ቤቱ ጋር አንድ ዓይነት';
+
+  @override
+  String get followShopHoursSubtitle =>
+      'በፀጉር ቤቱ የሥራ ቀናት ከመክፈቻ እስከ መዝጊያ ሰዓት ይሠራል።';
+
+  @override
+  String get workingDaysLabel => 'የሥራ ቀናት';
+
+  @override
+  String get startsAt => 'ይጀምራል';
+
+  @override
+  String get endsAt => 'ያበቃል';
+
+  @override
+  String get workingHoursSaved => 'የሥራ ሰዓታት ተቀምጠዋል።';
+
+  @override
+  String get shopHoursSummary => 'የፀጉር ቤቱ ሰዓታት';
+
+  @override
+  String get errAccountLoadFailed =>
+      'መለያዎን መጫን አልተቻለም። ግንኙነትዎን አረጋግጠው እንደገና ይሞክሩ።';
+
+  @override
+  String get reviewsTitle => 'ግምገማዎች';
+
+  @override
+  String get reviewsRateAction => 'ደረጃ ይስጡ';
+
+  @override
+  String get reviewsYourRating => 'የሰጡት ደረጃ';
+
+  @override
+  String get reviewsRateTitle => 'ጉብኝትዎን ይገምግሙ';
+
+  @override
+  String reviewsRateSubtitle(String service, String barber) {
+    return '$service በ$barber';
+  }
+
+  @override
+  String reviewsStarsLabel(int count) {
+    return '$count ኮከብ';
+  }
+
+  @override
+  String get reviewsPickRating => 'ደረጃ ለመስጠት ኮከብ ይንኩ።';
+
+  @override
+  String get reviewsCommentLabel => 'አስተያየት (ካሉዎት)';
+
+  @override
+  String get reviewsCommentHint => 'ምን ወደዱ? ምን ቢሻሻል ይሻላል?';
+
+  @override
+  String get reviewsSubmit => 'ግምገማውን ላክ';
+
+  @override
+  String get reviewsThanks => 'ስለ ግምገማዎ እናመሰግናለን!';
+
+  @override
+  String reviewsSubmitFailed(String error) {
+    return 'ግምገማዎን መላክ አልተቻለም፦ $error';
+  }
+
+  @override
+  String reviewsCountLabel(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ግምገማዎች',
+      zero: 'እስካሁን ግምገማ የለም',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get reviewsNew => 'አዲስ';
+
+  @override
+  String get reviewsEmpty =>
+      'እስካሁን ግምገማ የለም። ደንበኞች ጉብኝታቸው ከተጠናቀቀ በኋላ ደረጃ መስጠት ይችላሉ።';
+
+  @override
+  String reviewsSeeAll(int count) {
+    return 'ሁሉንም ግምገማዎች ይመልከቱ ($count)';
+  }
+
+  @override
+  String get reviewsLoadMore => 'ተጨማሪ አሳይ';
+
+  @override
+  String get reviewsLoadFailed => 'ግምገማዎቹን መጫን አልተቻለም።';
+
+  @override
+  String get reviewsRetry => 'እንደገና ይሞክሩ';
+
+  @override
+  String get reviewsOwnerReply => 'ከፀጉር ቤቱ የተሰጠ ምላሽ';
+
+  @override
+  String get reviewsReplyAction => 'ምላሽ ይስጡ';
+
+  @override
+  String get reviewsEditReply => 'ምላሹን ያስተካክሉ';
+
+  @override
+  String get reviewsReplyLabel => 'ለሁሉም የሚታይ ምላሽዎ';
+
+  @override
+  String get reviewsReplySave => 'ምላሹን አስቀምጥ';
+
+  @override
+  String get reviewsReplySaved => 'ምላሹ ተቀምጧል።';
+
+  @override
+  String get reviewsAwaitingReply => 'እስካሁን ምላሽ አልተሰጠም';
+
+  @override
+  String get reviewsOpenButton => 'ግምገማዎችና ምላሾች';
+
+  @override
+  String get reviewsMyReviews => 'የእኔ ግምገማዎች';
+
+  @override
+  String reviewsBarberTitle(String name) {
+    return 'የ$name ግምገማዎች';
+  }
+
+  @override
+  String reviewsSummaryLine(String rating, int count) {
+    return 'ከ5 $rating · $count ግምገማዎች';
+  }
+
+  @override
+  String reviewsRatedSemantics(String rating) {
+    return 'ከ5 $rating ደረጃ';
+  }
+
+  @override
+  String get reviewsCustomer => 'ደንበኛ';
+
+  @override
+  String get reviewsErrNotYourBooking => 'ደረጃ መስጠት የሚችሉት ለራስዎ ጉብኝቶች ብቻ ነው።';
+
+  @override
+  String get reviewsErrNotCompleted => 'ጉብኝቱ ከተጠናቀቀ በኋላ ደረጃ መስጠት ይችላሉ።';
+
+  @override
+  String get reviewsErrAlreadyReviewed => 'ለዚህ ጉብኝት አስቀድመው ደረጃ ሰጥተዋል።';
+
+  @override
+  String get reviewsErrInvalidRating => 'ከ1 እስከ 5 ኮከብ ይምረጡ።';
+
+  @override
+  String reviewsErrCommentTooLong(int max) {
+    return 'አስተያየቱ ቢበዛ $max ፊደላት ሊሆን ይችላል።';
+  }
+
+  @override
+  String reviewsErrReplyInvalid(int max) {
+    return 'እስከ $max ፊደላት የሚደርስ ምላሽ ይጻፉ።';
+  }
+
+  @override
+  String get reviewsErrOwnerOnly =>
+      'ለግምገማዎች ምላሽ መስጠት የሚችለው የፀጉር ቤቱ ባለቤት ብቻ ነው።';
+
+  @override
+  String get reviewsErrNotFound => 'ይህ ግምገማ ከእንግዲህ የለም።';
 }

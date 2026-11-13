@@ -132,6 +132,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en'),
         theme: AppTheme.darkTheme,
         home: const AdminDashboardScreen(),
       ),
@@ -158,6 +159,7 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
+        locale: const Locale('en'),
         theme: AppTheme.darkTheme,
         home: CustomizeShopScreen(shop: shop),
       ),

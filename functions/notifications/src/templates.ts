@@ -7,7 +7,7 @@
  * that way. Prices are in Ethiopian Birr.
  */
 
-import type { CancelActor, NotificationType } from './events';
+import { SMS_TYPES, type CancelActor, type NotificationType } from './events';
 import { toAddisParts } from './time';
 
 export type Language = 'en' | 'am';
@@ -21,6 +21,14 @@ export interface TemplateContext {
   price: number | null;
   start: Date | null;
   cancelledBy?: CancelActor;
+  /** Amount paid/refunded/attempted in ETB; payment templates fall back to `price`. */
+  amount?: number | null;
+  /** Subscription plan display name. */
+  planName?: string;
+  /** End of the paid subscription period. */
+  periodEnd?: Date | null;
+  /** Reschedules: the appointment's previous start. */
+  previousStart?: Date | null;
 }
 
 export interface RenderedMessage {
@@ -66,6 +74,14 @@ export function formatWhen(start: Date | null, lang: Language): string {
   return `${EN_WEEKDAYS[p.weekday - 1]} ${p.day} ${EN_MONTHS[p.month - 1]} ${p.year}, ${time}`;
 }
 
+/** Calendar day on the Addis wall clock: "Sun 13 Dec 2026" / "እሁድ 13/12/2026". */
+export function formatDate(day: Date | null, lang: Language): string {
+  if (!day) return '';
+  const p = toAddisParts(day);
+  if (lang === 'am') return `${AM_WEEKDAYS[p.weekday - 1]} ${pad2(p.day)}/${pad2(p.month)}/${p.year}`;
+  return `${EN_WEEKDAYS[p.weekday - 1]} ${p.day} ${EN_MONTHS[p.month - 1]} ${p.year}`;
+}
+
 /** "1,250 ETB" / "1,250 ብር". */
 export function formatPrice(price: number | null, lang: Language): string {
   if (price === null || !Number.isFinite(price)) return '';
@@ -85,6 +101,7 @@ function cancelledByPhrase(actor: CancelActor | undefined, audience: Audience, l
       case 'barber': return ' በፀጉር አስተካካዩ';
       case 'shop': return ' በፀጉር ቤቱ';
       case 'admin': return ' በአስተዳዳሪ';
+      case 'system': return ' በራስ-ሰር';
       default: return '';
     }
   }
@@ -93,6 +110,7 @@ function cancelledByPhrase(actor: CancelActor | undefined, audience: Audience, l
     case 'barber': return ' by the barber';
     case 'shop': return ' by the shop';
     case 'admin': return ' by an administrator';
+    case 'system': return ' automatically';
     default: return '';
   }
 }
@@ -108,11 +126,22 @@ interface Vars {
   service: string;
   when: string;
   price: string;
+  /** Payment amount (falls back to the booking price); '' when unknown. */
+  amount: string;
+  plan: string;
+  /** Subscription period end date; '' when unknown. */
+  until: string;
   by: string;
+  /** Previous appointment time of a reschedule; '' when unknown. */
+  previous: string;
 }
 
 function vars(ctx: TemplateContext, audience: Audience, lang: Language): Vars {
+  const amount = ctx.amount ?? ctx.price;
   return {
+    amount: formatPrice(amount ?? null, lang),
+    plan: ctx.planName || (lang === 'am' ? 'ደንበኝነት' : 'subscription'),
+    until: formatDate(ctx.periodEnd ?? null, lang),
     shop: ctx.shopName || APP_NAME,
     barber: ctx.barberName || (lang === 'am' ? 'ፀጉር አስተካካይ' : 'your barber'),
     customer: ctx.customerName || (lang === 'am' ? 'ደንበኛ' : 'A customer'),
@@ -120,6 +149,7 @@ function vars(ctx: TemplateContext, audience: Audience, lang: Language): Vars {
     when: formatWhen(ctx.start, lang),
     price: formatPrice(ctx.price, lang),
     by: cancelledByPhrase(ctx.cancelledBy, audience, lang),
+    previous: ctx.previousStart ? formatWhen(ctx.previousStart, lang) : '',
   };
 }
 
@@ -200,7 +230,103 @@ const EN: Table = {
       body: `${v.customer} - ${v.service} with ${v.barber} on ${v.when}.`,
     }),
   },
+  slotTaken: {
+    customer: (v) => ({
+      title: 'That time was just taken',
+      body: `Sorry, ${v.when} with ${v.barber} at ${v.shop} was just booked by someone else, so your request was cancelled. Please book another time.`,
+    }),
+    staff: (v) => ({
+      title: 'Booking request withdrawn',
+      body: `${v.customer}'s request for ${v.service} with ${v.barber} on ${v.when} overlapped another booking and was cancelled automatically.`,
+    }),
+  },
+  paymentReceived: {
+    customer: (v) => ({
+      title: 'Payment received',
+      body: `We received your payment${v.amount ? ` of ${v.amount}` : ''} for ${v.service} at ${v.shop} on ${v.when}. Thank you!`,
+    }),
+    staff: (v) => ({
+      title: 'Booking paid',
+      body: `${v.customer} paid${v.amount ? ` ${v.amount}` : ''} for ${v.service} with ${v.barber} on ${v.when}.`,
+    }),
+  },
+  paymentRefunded: {
+    customer: (v) => ({
+      title: 'Payment refunded',
+      body: `Your payment${v.amount ? ` of ${v.amount}` : ''} for ${v.service} at ${v.shop} on ${v.when} has been refunded.`,
+    }),
+    staff: (v) => ({
+      title: 'Payment refunded',
+      body: `${v.customer}'s payment${v.amount ? ` of ${v.amount}` : ''} for ${v.service} on ${v.when} was refunded.`,
+    }),
+  },
+  paymentFailed: {
+    customer: (v) => ({
+      title: 'Payment failed',
+      body: `Your payment${v.amount ? ` of ${v.amount}` : ''} for ${v.service} at ${v.shop} on ${v.when} did not go through. You can try again in the app or pay at the shop.`,
+    }),
+    staff: (v) => ({
+      title: 'Customer payment failed',
+      body: `${v.customer}'s online payment for ${v.service} on ${v.when} did not go through. They may pay at the shop.`,
+    }),
+  },
+  subscriptionPaid: {
+    customer: (v) => subscriptionPaidEn(v),
+    staff: (v) => subscriptionPaidEn(v),
+  },
+  subscriptionFailed: {
+    customer: (v) => subscriptionFailedEn(v),
+    staff: (v) => subscriptionFailedEn(v),
+  },
+  rescheduled: {
+    customer: (v) => ({
+      title: 'Booking moved',
+      body: `Your ${v.service} with ${v.barber} at ${v.shop} is now on ${v.when}.${v.previous ? ` (It was ${v.previous}.)` : ''}`,
+    }),
+    staff: (v) => ({
+      title: 'Booking moved',
+      body: `${v.customer} moved ${v.service} with ${v.barber} to ${v.when}.${v.previous ? ` It was ${v.previous}.` : ''}`,
+    }),
+  },
+  noShow: {
+    customer: (v) => ({
+      title: 'Missed appointment',
+      body: `You were marked as a no-show for your ${v.service} at ${v.shop} on ${v.when}. Please book again when you are ready.`,
+    }),
+    staff: (v) => ({
+      title: 'Customer did not come',
+      body: `${v.customer} did not come to ${v.service} with ${v.barber} on ${v.when}.`,
+    }),
+  },
 };
+
+function subscriptionPaidEn(v: Vars): RenderedMessage {
+  return {
+    title: 'Subscription payment received',
+    body: `${v.shop}: we received${v.amount ? ` ${v.amount}` : ' your payment'} for the ${v.plan} plan.${v.until ? ` Your subscription is active until ${v.until}.` : ''}`,
+  };
+}
+
+function subscriptionFailedEn(v: Vars): RenderedMessage {
+  return {
+    title: 'Subscription payment failed',
+    body: `${v.shop}: your payment${v.amount ? ` of ${v.amount}` : ''} for the ${v.plan} plan did not go through. Please try again from the Subscription page.`,
+  };
+}
+
+function subscriptionPaidAm(v: Vars): RenderedMessage {
+  return {
+    title: 'የደንበኝነት ክፍያ ደርሷል',
+    body: `${v.shop}፦ ለ${v.plan} ዕቅድ የከፈሉት${v.amount ? ` ${v.amount}` : ' ክፍያ'} ደርሶናል።${v.until ? ` የደንበኝነት ምዝገባዎ እስከ ${v.until} ድረስ ንቁ ነው።` : ''}`,
+  };
+}
+
+function subscriptionFailedAm(v: Vars): RenderedMessage {
+  return {
+    title: 'የደንበኝነት ክፍያ አልተሳካም',
+    body: `${v.shop}፦ ለ${v.plan} ዕቅድ ያደረጉት${v.amount ? ` የ${v.amount}` : ''} ክፍያ አልተሳካም። እባክዎ ከደንበኝነት ገጹ እንደገና ይሞክሩ።`,
+  };
+}
 
 const AM: Table = {
   created: {
@@ -273,6 +399,74 @@ const AM: Table = {
       body: `${v.customer} - ${v.service} ከ${v.barber} ጋር ${v.when}።`,
     }),
   },
+  slotTaken: {
+    customer: (v) => ({
+      title: 'ሰዓቱ ተይዟል',
+      body: `ይቅርታ፣ ${v.shop} ላይ ከ${v.barber} ጋር ${v.when} ያለው ሰዓት አሁን በሌላ ሰው ስለተያዘ ጥያቄዎ ተሰርዟል። እባክዎ ሌላ ሰዓት ይያዙ።`,
+    }),
+    staff: (v) => ({
+      title: 'የቀጠሮ ጥያቄ ተሰርዟል',
+      body: `${v.customer} ከ${v.barber} ጋር ${v.when} ለ${v.service} ያቀረቡት ጥያቄ ከሌላ ቀጠሮ ጋር ስለተጋጨ በራስ-ሰር ተሰርዟል።`,
+    }),
+  },
+  paymentReceived: {
+    customer: (v) => ({
+      title: 'ክፍያዎ ደርሷል',
+      body: `${v.shop} ላይ ${v.when} ለ${v.service} የከፈሉት${v.amount ? ` ${v.amount}` : ' ክፍያ'} ደርሶናል። እናመሰግናለን!`,
+    }),
+    staff: (v) => ({
+      title: 'ቀጠሮ ተከፍሏል',
+      body: `${v.customer} ከ${v.barber} ጋር ${v.when} ለ${v.service}${v.amount ? ` ${v.amount}` : ''} ከፍለዋል።`,
+    }),
+  },
+  paymentRefunded: {
+    customer: (v) => ({
+      title: 'ክፍያዎ ተመልሷል',
+      body: `${v.shop} ላይ ${v.when} ለ${v.service} የከፈሉት${v.amount ? ` ${v.amount}` : ' ክፍያ'} ተመላሽ ተደርጓል።`,
+    }),
+    staff: (v) => ({
+      title: 'ክፍያ ተመልሷል',
+      body: `${v.customer} ለ${v.service} (${v.when}) የከፈሉት${v.amount ? ` ${v.amount}` : ' ክፍያ'} ተመላሽ ተደርጓል።`,
+    }),
+  },
+  paymentFailed: {
+    customer: (v) => ({
+      title: 'ክፍያው አልተሳካም',
+      body: `${v.shop} ላይ ${v.when} ለ${v.service} ያደረጉት${v.amount ? ` የ${v.amount}` : ''} ክፍያ አልተሳካም። በመተግበሪያው እንደገና መሞከር ወይም ፀጉር ቤቱ ላይ መክፈል ይችላሉ።`,
+    }),
+    staff: (v) => ({
+      title: 'የደንበኛ ክፍያ አልተሳካም',
+      body: `${v.customer} ለ${v.service} (${v.when}) ያደረጉት የኦንላይን ክፍያ አልተሳካም። ፀጉር ቤቱ ላይ ሊከፍሉ ይችላሉ።`,
+    }),
+  },
+  subscriptionPaid: {
+    customer: (v) => subscriptionPaidAm(v),
+    staff: (v) => subscriptionPaidAm(v),
+  },
+  subscriptionFailed: {
+    customer: (v) => subscriptionFailedAm(v),
+    staff: (v) => subscriptionFailedAm(v),
+  },
+  rescheduled: {
+    customer: (v) => ({
+      title: 'ቀጠሮዎ ተዛውሯል',
+      body: `${v.shop} ላይ ከ${v.barber} ጋር ያለዎት የ${v.service} ቀጠሮ ወደ ${v.when} ተዛውሯል።${v.previous ? ` (የቀድሞው ሰዓት፦ ${v.previous})` : ''}`,
+    }),
+    staff: (v) => ({
+      title: 'ቀጠሮ ተዛውሯል',
+      body: `${v.customer} ከ${v.barber} ጋር ያላቸውን የ${v.service} ቀጠሮ ወደ ${v.when} አዛውረዋል።${v.previous ? ` (የቀድሞው ሰዓት፦ ${v.previous})` : ''}`,
+    }),
+  },
+  noShow: {
+    customer: (v) => ({
+      title: 'ቀጠሮ አምልጦዎታል',
+      body: `${v.shop} ላይ ${v.when} የነበረዎት የ${v.service} ቀጠሮ ላይ እንዳልመጡ ተመዝግቧል። ሲመችዎ እንደገና ቀጠሮ ይያዙ።`,
+    }),
+    staff: (v) => ({
+      title: 'ደንበኛው አልመጡም',
+      body: `${v.customer} ከ${v.barber} ጋር ${v.when} ለነበረው የ${v.service} ቀጠሮ አልመጡም።`,
+    }),
+  },
 };
 
 /** Title and body for push notifications and the in-app inbox. */
@@ -288,13 +482,24 @@ export function renderNotification(
 }
 
 // ---------------------------------------------------------------------------
-// SMS (customer only; kept short because Amharic SMS segments are 70 chars)
+// SMS (kept short because Amharic SMS segments are 70 chars). Customer only,
+// except subscriptionPaid which goes to the shop owner.
 // ---------------------------------------------------------------------------
 
-export type SmsType = 'confirmed' | 'cancelled' | 'reminder24h' | 'reminder2h';
+export type SmsType = Extract<
+  NotificationType,
+  | 'confirmed'
+  | 'cancelled'
+  | 'slotTaken'
+  | 'reminder24h'
+  | 'reminder2h'
+  | 'paymentReceived'
+  | 'subscriptionPaid'
+  | 'rescheduled'
+>;
 
 export function isSmsType(type: NotificationType): type is SmsType {
-  return type === 'confirmed' || type === 'cancelled' || type === 'reminder24h' || type === 'reminder2h';
+  return SMS_TYPES.has(type);
 }
 
 export function renderSms(type: SmsType, lang: Language, ctx: TemplateContext): string {
@@ -310,6 +515,14 @@ export function renderSms(type: SmsType, lang: Language, ctx: TemplateContext): 
         return `${APP_NAME}፦ ማስታወሻ - ${v.shop} ቀጠሮ ${v.when}፣ ${v.barber}።`;
       case 'reminder2h':
         return `${APP_NAME}፦ ቀጠሮዎ በ2 ሰዓት ውስጥ ነው - ${v.shop}፣ ${v.when}።`;
+      case 'slotTaken':
+        return `${APP_NAME}፦ ይቅርታ፣ ${v.shop} ${v.when} ያለው ሰዓት ተይዟል። ጥያቄዎ ተሰርዟል፤ እባክዎ ሌላ ሰዓት ይያዙ።`;
+      case 'paymentReceived':
+        return `${APP_NAME}፦ ${v.shop} ${v.when} ለያዙት ቀጠሮ${v.amount ? ` የ${v.amount}` : ''} ክፍያ ደርሷል። እናመሰግናለን!`;
+      case 'subscriptionPaid':
+        return `${APP_NAME}፦ የ${v.shop} የደንበኝነት ክፍያ${v.amount ? ` ${v.amount}` : ''} ደርሷል።${v.until ? ` እስከ ${v.until} ንቁ ነው።` : ''}`;
+      case 'rescheduled':
+        return `${APP_NAME}፦ ${v.shop} ቀጠሮዎ ወደ ${v.when} ተዛውሯል፣ ${v.barber}።`;
     }
   }
   const price = v.price ? ` ${v.price}.` : '';
@@ -322,5 +535,13 @@ export function renderSms(type: SmsType, lang: Language, ctx: TemplateContext): 
       return `${APP_NAME}: Reminder - ${v.shop}, ${v.when} with ${v.barber}.`;
     case 'reminder2h':
       return `${APP_NAME}: Your appointment at ${v.shop} is in 2 hours (${v.when}).`;
+    case 'slotTaken':
+      return `${APP_NAME}: Sorry, ${v.when} at ${v.shop} was just taken. Your request was cancelled - please book another time.`;
+    case 'paymentReceived':
+      return `${APP_NAME}: Payment${v.amount ? ` of ${v.amount}` : ''} received for ${v.shop}, ${v.when}. Thank you!`;
+    case 'subscriptionPaid':
+      return `${APP_NAME}: ${v.shop} subscription payment${v.amount ? ` of ${v.amount}` : ''} received.${v.until ? ` Active until ${v.until}.` : ''}`;
+    case 'rescheduled':
+      return `${APP_NAME}: Your booking at ${v.shop} was moved to ${v.when} with ${v.barber}.`;
   }
 }

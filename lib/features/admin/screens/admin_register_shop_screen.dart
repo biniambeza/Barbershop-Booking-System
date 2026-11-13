@@ -126,7 +126,7 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.registrationError(context.l10n.authError(e)))),
+          SnackBar(content: Text(context.l10n.registrationError(context.l10n.errorText(e)))),
         );
       }
     } finally {

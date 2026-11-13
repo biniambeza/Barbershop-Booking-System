@@ -179,13 +179,145 @@ function buildDocuments(seed, { now = new Date(), mode = 'users' } = {}) {
           const lockId = `${a.getUTCFullYear()}${pad(a.getUTCMonth() + 1)}${pad(a.getUTCDate())}-${pad(a.getUTCHours())}${pad(a.getUTCMinutes())}`;
           docs.push({
             path: `barbershops/${shop.id}/barbers/${barber.id}/slotLocks/${lockId}`,
-            data: { bookingId: b.id, customerId: customer.uid, startAt: iso(t) },
+            // No customer data (any signed-in user can read locks); expiresAt
+            // = booking end + 1 day, for the cleanupExpiredSlotLocks function.
+            data: { bookingId: b.id, startAt: iso(t), expiresAt: iso(endMs + DAY_MS) },
           });
         }
       }
     }
   }
+  if (mode === 'users') docs.push(...buildTimeOffDocuments(seed, { nowMs, barbers }));
+  if (mode === 'users') docs.push(...buildQueueDocuments(seed, { nowMs, services, barbers }));
+  if (mode === 'users') docs.push(...buildReviewDocuments(seed, { docs }));
   return docs;
+}
+
+/**
+ * Barber time off (users mode only, demo data): one doc
+ * barbershops/{shop}/barbers/{barber}/timeOff/{id} {startAt, endAt, reason?,
+ * createdBy, createdAt} per seed.timeOff entry (dayOffset + startTime/endTime
+ * in Addis time, resolved like timeOffFromSeedJson in
+ * lib/services/time_off_service.dart), plus a slot lock
+ * {timeOffId, startAt, expiresAt: endAt + 1 day} for every 15-minute block,
+ * exactly like the app's time-off batch.
+ */
+function buildTimeOffDocuments(seed, { nowMs, barbers }) {
+  const iso = (ms) => new Date(ms).toISOString();
+  const addisNow = new Date(nowMs + ADDIS_OFFSET_MS);
+  const todayUtcMidnight = Date.UTC(addisNow.getUTCFullYear(), addisNow.getUTCMonth(), addisNow.getUTCDate());
+  const step = 15 * 60 * 1000;
+  const docs = [];
+  for (const t of seed.timeOff || []) {
+    const barber = barbers.get(t.barberId);
+    if (!barber || barber.shopId !== t.shopId) throw new Error(`Time off ${t.id} references missing data`);
+    const day = new Date(todayUtcMidnight + t.dayOffset * DAY_MS);
+    const at = (hhmm) => {
+      const [h, m] = parseTime(hhmm);
+      return Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), h, m) - ADDIS_OFFSET_MS;
+    };
+    const startMs = at(t.startTime);
+    const endMs = at(t.endTime);
+    if (startMs % step !== 0 || endMs % step !== 0 || endMs <= startMs) throw new Error(`Time off ${t.id} is not on the 15-minute grid`);
+    const data = { startAt: iso(startMs), endAt: iso(endMs), createdBy: t.createdBy, createdAt: iso(nowMs - (t.createdHoursAgo || 0) * HOUR_MS) };
+    if (t.reason) data.reason = t.reason;
+    docs.push({ path: `barbershops/${t.shopId}/barbers/${t.barberId}/timeOff/${t.id}`, data });
+    for (let ms = startMs; ms < endMs; ms += step) {
+      const a = new Date(ms + ADDIS_OFFSET_MS);
+      const lockId = `${a.getUTCFullYear()}${pad(a.getUTCMonth() + 1)}${pad(a.getUTCDate())}-${pad(a.getUTCHours())}${pad(a.getUTCMinutes())}`;
+      docs.push({
+        path: `barbershops/${t.shopId}/barbers/${t.barberId}/slotLocks/${lockId}`,
+        data: { timeOffId: t.id, startAt: iso(ms), expiresAt: iso(endMs + DAY_MS) },
+      });
+    }
+  }
+  return docs;
+}
+
+/**
+ * Walk-in queue (users mode only: the entries are fake people):
+ * barbershops/{shop}/queue/{id} from seed.queue (relative times
+ * createdMinutesAgo / servingStartedMinutesAgo, resolved like
+ * LocalQueueStore.loadSeedJson in lib/services/queue_service.dart), plus
+ * barbershops/{shop}/queueSummary/current computed like functions/queue
+ * (logic/estimate.ts): wait = ceil(service minutes of the waiting entries
+ * ahead / available barbers), 30 minutes per entry without a service.
+ */
+function buildQueueDocuments(seed, { nowMs, services, barbers }) {
+  const iso = (ms) => new Date(ms).toISOString();
+  const docs = [];
+  const byShop = new Map();
+  for (const q of seed.queue || []) {
+    const { id, shopId, createdMinutesAgo, servingStartedMinutesAgo, ...rest } = q;
+    const data = { ...rest, createdAt: iso(nowMs - (createdMinutesAgo || 0) * 60 * 1000) };
+    if (servingStartedMinutesAgo !== undefined) data.servingStartedAt = iso(nowMs - servingStartedMinutesAgo * 60 * 1000);
+    docs.push({ path: `barbershops/${shopId}/queue/${id}`, data });
+    if (!byShop.has(shopId)) byShop.set(shopId, []);
+    byShop.get(shopId).push({ id, ...data });
+  }
+  for (const [shopId, entries] of byShop) {
+    const available = [...barbers.values()].filter((b) => b.shopId === shopId && b.isAvailable !== false).length;
+    const perBarber = Math.max(1, available);
+    const waiting = entries
+      .filter((e) => e.status === 'waiting')
+      .sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : a.id < b.id ? -1 : 1));
+    const positions = {};
+    let ahead = 0;
+    waiting.forEach((e, i) => {
+      positions[e.id] = { position: i + 1, waitMinutes: Math.ceil(ahead / perBarber) };
+      const svc = e.serviceId ? services.get(e.serviceId) : undefined;
+      ahead += svc && svc.durationMinutes > 0 ? svc.durationMinutes : 30;
+    });
+    docs.push({
+      path: `barbershops/${shopId}/queueSummary/current`,
+      data: {
+        waitingCount: waiting.length,
+        estimatedWaitMinutes: Math.ceil(ahead / perBarber),
+        positions,
+        updatedAt: iso(nowMs),
+      },
+    });
+  }
+  return docs;
+}
+
+/**
+ * Reviews (users mode only: they belong to the fake customers' bookings):
+ * barbershops/{shop}/reviews/{bookingId} {bookingId, shopId, barberId,
+ * customerId, customerName, rating, comment?, createdAt, reply?, replyAt?}
+ * per seed.reviews entry, resolved from the seeded booking like
+ * reviewsFromSeedJson in lib/services/reviews_service.dart:
+ * createdAt = booking start + hoursAfterVisit, replyAt = booking start +
+ * replyHoursAfterVisit. Entries without a bookingId (comments) are skipped.
+ * The shops' and barbers' rating/reviewCount in the JSON match these reviews.
+ */
+function buildReviewDocuments(seed, { docs }) {
+  const iso = (ms) => new Date(ms).toISOString();
+  const out = [];
+  for (const r of seed.reviews || []) {
+    if (!r.bookingId) continue;
+    const booking = docs.find((d) => d.path === `bookings/${r.bookingId}`)?.data;
+    if (!booking) throw new Error(`Review ${r.bookingId} references a missing booking`);
+    if (booking.status !== 'completed') throw new Error(`Review ${r.bookingId}: the booking is not completed`);
+    const startMs = Date.parse(booking.startAt);
+    const at = (hours) => iso(startMs + Math.round((hours || 0) * 60) * 60 * 1000);
+    const data = {
+      bookingId: r.bookingId,
+      shopId: booking.shopId,
+      barberId: booking.barberId,
+      customerId: booking.customerId,
+      customerName: booking.customerName,
+      rating: r.rating,
+      createdAt: at(r.hoursAfterVisit),
+    };
+    if (r.comment && r.comment.trim()) data.comment = r.comment.trim();
+    if (r.reply && r.reply.trim()) {
+      data.reply = r.reply.trim();
+      data.replyAt = at(r.replyHoursAfterVisit);
+    }
+    out.push({ path: `barbershops/${booking.shopId}/reviews/${r.bookingId}`, data });
+  }
+  return out;
 }
 
 function summarize(docs) {

@@ -11,12 +11,48 @@ abstract final class NotificationTypes {
   static const reminder24h = 'reminder24h';
   static const reminder2h = 'reminder2h';
 
-  static const all = [created, confirmed, cancelled, started, completed, reminder24h, reminder2h];
+  /// The booking was cancelled by the server because its slot was taken.
+  static const slotTaken = 'slotTaken';
+  static const paymentReceived = 'paymentReceived';
+  static const paymentRefunded = 'paymentRefunded';
+  static const paymentFailed = 'paymentFailed';
+  static const subscriptionPaid = 'subscriptionPaid';
+  static const subscriptionFailed = 'subscriptionFailed';
+
+  /// The customer moved the booking to a new time.
+  static const rescheduled = 'rescheduled';
+
+  /// Staff marked the customer as a no-show (customer only).
+  static const noShow = 'noShow';
+
+  /// Walk-in queue: a remote customer is next in line (functions/queue).
+  /// Carries shopId and queueEntryId instead of a bookingId.
+  static const queueNext = 'queueNext';
+
+  static const all = [
+    created,
+    confirmed,
+    cancelled,
+    started,
+    completed,
+    reminder24h,
+    reminder2h,
+    slotTaken,
+    paymentReceived,
+    paymentRefunded,
+    paymentFailed,
+    subscriptionPaid,
+    subscriptionFailed,
+    rescheduled,
+    noShow,
+    queueNext,
+  ];
 }
 
 /// One entry of a user's in-app inbox: `users/{uid}/notifications/{id}`.
 ///
-/// Cloud Functions create these (id `{bookingId}_{type}`); the user may only
+/// Cloud Functions create these (id `{bookingId}_{type}`, or `{paymentId}_{type}`
+/// for paymentFailed and subscription events); the user may only
 /// read them and set [read] to true.
 class AppNotification {
   final String id;

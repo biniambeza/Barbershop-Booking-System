@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:barbershop_booking/core/utils/phone_utils.dart';
 import 'package:barbershop_booking/core/theme/app_theme.dart';
 import 'package:barbershop_booking/features/admin/screens/admin_dashboard_screen.dart';
+import 'package:barbershop_booking/features/admin/screens/admin_payment_review_screen.dart';
 import 'package:barbershop_booking/features/admin/screens/admin_register_shop_screen.dart';
 import 'package:barbershop_booking/features/admin/screens/admin_subscriptions_screen.dart';
 import 'package:barbershop_booking/features/auth/screens/auth_screen.dart';
@@ -204,6 +205,8 @@ void main() {
       expect(find.text('የመድረክ ሲስተም አስተዳደር'), findsOneWidget);
       await pumpAm(tester, const AdminRegisterShopScreen());
       await pumpAm(tester, AdminSubscriptionsScreen(clock: () => _now));
+      await pumpAm(tester, const AdminPaymentReviewScreen());
+      expect(find.text('ግምገማ የሚያስፈልገው ክፍያ የለም'), findsOneWidget);
     });
 
     testWidgets('owner', (tester) async {
@@ -214,6 +217,11 @@ void main() {
       await pumpAm(tester, CustomizeShopScreen(shop: shop));
       await pumpAm(tester, const ManageServicesScreen(shopId: 'shop_1'));
       await pumpAm(tester, const ManageBarbersScreen(shopId: 'shop_1'));
+      await pumpAm(
+        tester,
+        Scaffold(body: BarberScheduleDialog(barber: repo.getBarberById('barber_1')!.copyWith(startHour: 10, endHour: 16), shop: shop)),
+      );
+      expect(find.text('የሥራ ቀናት'), findsOneWidget);
       await pumpAm(tester, OwnerSubscriptionScreen(shopId: 'shop_1', clock: () => _now));
     });
 

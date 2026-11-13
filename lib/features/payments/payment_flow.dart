@@ -68,7 +68,7 @@ Future<PaymentVerification?> _runCheckout(
     checkout = await _withProgress(context, create(), l10n.preparingCheckout);
   } on PaymentException catch (e) {
     if (e.code == 'already-exists') {
-      messenger?.showSnackBar(SnackBar(content: Text(l10n.paymentError(e.code, e.message)), backgroundColor: Colors.green.shade700));
+      messenger?.showSnackBar(SnackBar(content: Text(l10n.paymentError(e)), backgroundColor: Colors.green.shade700));
     } else if (context.mounted) {
       await showPaymentError(context, e);
     }
@@ -148,7 +148,7 @@ Future<void> showPaymentError(BuildContext context, PaymentException error) {
       backgroundColor: AppTheme.darkCard,
       icon: const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 40),
       title: Text(context.l10n.paymentProblem),
-      content: Text(context.l10n.paymentError(error.code, error.message)),
+      content: Text(context.l10n.paymentError(error)),
       actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(context.l10n.ok))],
     ),
   );
@@ -321,7 +321,7 @@ class _PaymentWaitingDialogState extends State<PaymentWaitingDialog> with Widget
       }
       setState(() => _message = context.l10n.chapaNotConfirmedYet);
     } on PaymentException catch (e) {
-      if (mounted) setState(() => _message = context.l10n.paymentError(e.code, e.message));
+      if (mounted) setState(() => _message = context.l10n.paymentError(e));
     } finally {
       if (mounted) setState(() => _checking = false);
     }
@@ -331,7 +331,7 @@ class _PaymentWaitingDialogState extends State<PaymentWaitingDialog> with Widget
     try {
       await widget.service.openCheckout(widget.checkout);
     } on PaymentException catch (e) {
-      if (mounted) setState(() => _message = context.l10n.paymentError(e.code, e.message));
+      if (mounted) setState(() => _message = context.l10n.paymentError(e));
     }
   }
 
@@ -402,7 +402,7 @@ class _PaymentReturnScreenState extends State<PaymentReturnScreen> {
       final r = await (widget.service ?? PaymentService.instance).verifyUntilSettled(widget.paymentId);
       if (mounted) setState(() => _result = r);
     } on PaymentException catch (e) {
-      if (mounted) setState(() => _error = context.l10n.paymentError(e.code, e.message));
+      if (mounted) setState(() => _error = context.l10n.paymentError(e));
     }
   }
 

@@ -394,7 +394,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         const Icon(Icons.star, size: 14, color: AppTheme.primaryGold),
                         const SizedBox(width: 4),
                         Text(
-                          '${shop.rating.toStringAsFixed(1)} (${shop.reviewCount})',
+                          shop.reviewCount == 0 ? context.l10n.reviewsNew : '${shop.rating.toStringAsFixed(1)} (${shop.reviewCount})',
                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
                       ],

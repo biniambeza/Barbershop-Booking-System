@@ -1,0 +1,23 @@
+{
+  "name": "crown-blade-insights",
+  "private": true,
+  "description": "Owner reports for Crown & Blade: monthly shop stats, client history and review ratings, maintained from bookings and reviews.",
+  "main": "lib/index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "tsc -p tsconfig.test.json && node --test build-test/test/time.test.js build-test/test/stats.test.js build-test/test/aggregate.test.js build-test/test/ratings.test.js build-test/test/backfill.test.js",
+    "serve": "npm run build && firebase emulators:start --only functions,firestore",
+    "deploy": "firebase deploy --only functions:insights"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.6.0"
+  }
+}

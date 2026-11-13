@@ -33,6 +33,14 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
   late List<int> _workingDays;
   bool _isSaving = false;
 
+  /// Booking policy (saved with its own write, see AppRepository.updateShopPolicy).
+  late int _cutoffHours;
+  late int _maxReschedules;
+
+  /// Cutoff choices (hours before the start); the current value is kept
+  /// even if it is not one of them.
+  static const List<int> _cutoffChoices = [0, 1, 2, 3, 4, 6, 12, 24, 48, 72];
+
   final List<Map<String, String>> _themePresets = [
     {
       'title': 'Royal Gold & Noir',
@@ -68,6 +76,8 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
     _openingHour = s.openingHour;
     _closingHour = s.closingHour;
     _workingDays = List<int>.from(s.workingDays);
+    _cutoffHours = s.cancellationCutoffHours;
+    _maxReschedules = s.maxReschedules;
   }
 
   @override
@@ -109,10 +119,13 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
       city: _cityCtrl.text.trim(),
       subCity: _subCity,
       landmark: landmark.isEmpty ? null : landmark,
+      clearLandmark: landmark.isEmpty,
       imageUrl: _imageCtrl.text.trim(),
       openingHour: _openingHour,
       closingHour: _closingHour,
       workingDays: _workingDays,
+      cancellationCutoffHours: _cutoffHours,
+      maxReschedules: _maxReschedules,
     );
   }
 
@@ -125,9 +138,16 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
     final updated = _edited();
     try {
       await AppRepository.instance.updateShop(updated);
+      if (_cutoffHours != widget.shop.cancellationCutoffHours || _maxReschedules != widget.shop.maxReschedules) {
+        await AppRepository.instance.updateShopPolicy(
+          widget.shop.id,
+          cancellationCutoffHours: _cutoffHours,
+          maxReschedules: _maxReschedules,
+        );
+      }
     } catch (e) {
       if (mounted) setState(() => _isSaving = false);
-      messenger.showSnackBar(SnackBar(content: Text(l.saveFailed('$e'))));
+      messenger.showSnackBar(SnackBar(content: Text(l.saveFailed(l.errorText(e)))));
       return;
     }
 
@@ -371,6 +391,38 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
                 children: [
                   for (var d = 1; d <= 7; d++) _buildDayToggle(d, fmt.weekdayName(d)),
                 ],
+              ),
+              const SizedBox(height: 28),
+
+              // Section 4: Booking policy (cancellation cutoff, reschedules)
+              _buildSectionTitle(l.policySectionTitle, Icons.policy_outlined),
+              const SizedBox(height: 8),
+              Text(l.policyCutoffHelp, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                key: const ValueKey('policy-cutoff'),
+                isExpanded: true,
+                initialValue: _cutoffHours,
+                decoration: InputDecoration(labelText: l.policyCutoffLabel, prefixIcon: const Icon(Icons.timer_outlined)),
+                dropdownColor: AppTheme.darkCard,
+                items: [
+                  for (final h in {..._cutoffChoices, _cutoffHours}.toList()..sort())
+                    DropdownMenuItem(value: h, child: Text(l.policyHoursValue(h))),
+                ],
+                onChanged: (val) => setState(() => _cutoffHours = val ?? _cutoffHours),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<int>(
+                key: const ValueKey('policy-max-reschedules'),
+                isExpanded: true,
+                initialValue: _maxReschedules,
+                decoration: InputDecoration(labelText: l.policyMaxReschedulesLabel, prefixIcon: const Icon(Icons.update)),
+                dropdownColor: AppTheme.darkCard,
+                items: [
+                  for (var n = 0; n <= kMaxMaxReschedules; n++)
+                    DropdownMenuItem(value: n, child: Text(l.policyMaxReschedulesValue(n))),
+                ],
+                onChanged: (val) => setState(() => _maxReschedules = val ?? _maxReschedules),
               ),
               const SizedBox(height: 60),
             ],

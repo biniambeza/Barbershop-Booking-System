@@ -87,6 +87,7 @@ class Barber {
     List<int>? workingDays,
     int? startHour,
     int? endHour,
+    bool clearSchedule = false,
   }) {
     return Barber(
       id: id ?? this.id,
@@ -100,9 +101,9 @@ class Barber {
       email: email ?? this.email,
       phone: phone ?? this.phone,
       specialties: specialties ?? this.specialties,
-      workingDays: workingDays ?? this.workingDays,
-      startHour: startHour ?? this.startHour,
-      endHour: endHour ?? this.endHour,
+      workingDays: clearSchedule ? null : (workingDays ?? this.workingDays),
+      startHour: clearSchedule ? null : (startHour ?? this.startHour),
+      endHour: clearSchedule ? null : (endHour ?? this.endHour),
     );
   }
 

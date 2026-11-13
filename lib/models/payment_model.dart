@@ -10,11 +10,14 @@ enum PaymentType {
       value == 'subscription' ? PaymentType.subscription : PaymentType.booking;
 }
 
-/// Status of one Chapa charge ('pending' | 'success' | 'failed').
+/// Status of one Chapa charge ('pending' | 'success' | 'failed' |
+/// 'refunded'). 'refunded' is set by an admin through resolvePaymentReview
+/// after refunding the money in the Chapa dashboard.
 enum PaymentRecordStatus {
   pending,
   success,
-  failed;
+  failed,
+  refunded;
 
   static PaymentRecordStatus fromString(String? value) {
     switch (value) {
@@ -22,6 +25,8 @@ enum PaymentRecordStatus {
         return PaymentRecordStatus.success;
       case 'failed':
         return PaymentRecordStatus.failed;
+      case 'refunded':
+        return PaymentRecordStatus.refunded;
       default:
         return PaymentRecordStatus.pending;
     }
@@ -35,7 +40,29 @@ enum PaymentRecordStatus {
         return 'Paid';
       case PaymentRecordStatus.failed:
         return 'Failed';
+      case PaymentRecordStatus.refunded:
+        return 'Refunded';
     }
+  }
+}
+
+/// How an admin closed a payment flagged needsReview
+/// (resolvePaymentReview callable).
+enum PaymentReviewResolution {
+  /// The admin refunded the money in the Chapa dashboard.
+  refundedInChapa('refunded_in_chapa'),
+
+  /// Nothing to do.
+  noAction('no_action');
+
+  const PaymentReviewResolution(this.value);
+  final String value;
+
+  static PaymentReviewResolution? fromString(String? value) {
+    for (final r in values) {
+      if (r.value == value) return r;
+    }
+    return null;
   }
 }
 
@@ -66,6 +93,20 @@ class PaymentRecord {
   final DateTime? periodEndsAt;
   final DateTime? refundedAt;
 
+  /// Chapa's own reference and payment method, once verified.
+  final String? chapaReference;
+  final String? chapaMethod;
+
+  /// Flagged by the functions for an admin (paid for a cancelled or missing
+  /// booking, paid twice, unconfirmed refund, subscription not applied).
+  final bool needsReview;
+
+  /// Set when an admin closes the review.
+  final PaymentReviewResolution? resolution;
+  final String? resolutionNote;
+  final String? resolvedBy;
+  final DateTime? resolvedAt;
+
   const PaymentRecord({
     required this.id,
     required this.type,
@@ -84,15 +125,28 @@ class PaymentRecord {
     this.failureReason,
     this.periodEndsAt,
     this.refundedAt,
+    this.chapaReference,
+    this.chapaMethod,
+    this.needsReview = false,
+    this.resolution,
+    this.resolutionNote,
+    this.resolvedBy,
+    this.resolvedAt,
   });
 
-  bool get isRefunded => refundedAt != null;
+  bool get isRefunded => refundedAt != null || status == PaymentRecordStatus.refunded;
 
   PaymentRecord copyWith({
     PaymentRecordStatus? status,
     DateTime? verifiedAt,
     String? failureReason,
     DateTime? periodEndsAt,
+    DateTime? refundedAt,
+    bool? needsReview,
+    PaymentReviewResolution? resolution,
+    String? resolutionNote,
+    String? resolvedBy,
+    DateTime? resolvedAt,
   }) {
     return PaymentRecord(
       id: id,
@@ -111,7 +165,14 @@ class PaymentRecord {
       verifiedAt: verifiedAt ?? this.verifiedAt,
       failureReason: failureReason ?? this.failureReason,
       periodEndsAt: periodEndsAt ?? this.periodEndsAt,
-      refundedAt: refundedAt,
+      refundedAt: refundedAt ?? this.refundedAt,
+      chapaReference: chapaReference,
+      chapaMethod: chapaMethod,
+      needsReview: needsReview ?? this.needsReview,
+      resolution: resolution ?? this.resolution,
+      resolutionNote: resolutionNote ?? this.resolutionNote,
+      resolvedBy: resolvedBy ?? this.resolvedBy,
+      resolvedAt: resolvedAt ?? this.resolvedAt,
     );
   }
 
@@ -133,6 +194,13 @@ class PaymentRecord {
       if (failureReason != null) 'failureReason': failureReason,
       if (periodEndsAt != null) 'periodEndsAt': periodEndsAt!.toUtc().toIso8601String(),
       if (refundedAt != null) 'refundedAt': refundedAt!.toUtc().toIso8601String(),
+      if (chapaReference != null) 'chapaReference': chapaReference,
+      if (chapaMethod != null) 'chapaMethod': chapaMethod,
+      if (needsReview) 'needsReview': true,
+      if (resolution != null) 'resolution': resolution!.value,
+      if (resolutionNote != null) 'resolutionNote': resolutionNote,
+      if (resolvedBy != null) 'resolvedBy': resolvedBy,
+      if (resolvedAt != null) 'resolvedAt': resolvedAt!.toUtc().toIso8601String(),
     };
   }
 
@@ -155,6 +223,42 @@ class PaymentRecord {
       failureReason: map['failureReason'] as String?,
       periodEndsAt: parsePaymentDate(map['periodEndsAt']),
       refundedAt: parsePaymentDate(map['refundedAt']),
+      chapaReference: map['chapaReference'] as String?,
+      chapaMethod: map['chapaMethod'] as String?,
+      needsReview: map['needsReview'] == true,
+      resolution: PaymentReviewResolution.fromString(map['resolution'] as String?),
+      resolutionNote: map['resolutionNote'] as String?,
+      resolvedBy: map['resolvedBy'] as String?,
+      resolvedAt: parsePaymentDate(map['resolvedAt']),
+    );
+  }
+}
+
+/// Response of the resolvePaymentReview callable.
+class PaymentReviewResult {
+  final String paymentId;
+  final PaymentReviewResolution resolution;
+  final PaymentRecordStatus status;
+
+  /// The booking's paymentStatus afterwards (booking payments only).
+  final String? bookingPaymentStatus;
+  final DateTime? resolvedAt;
+
+  const PaymentReviewResult({
+    required this.paymentId,
+    required this.resolution,
+    required this.status,
+    this.bookingPaymentStatus,
+    this.resolvedAt,
+  });
+
+  factory PaymentReviewResult.fromMap(Map<String, dynamic> map) {
+    return PaymentReviewResult(
+      paymentId: (map['paymentId'] as String?) ?? '',
+      resolution: PaymentReviewResolution.fromString(map['resolution'] as String?) ?? PaymentReviewResolution.noAction,
+      status: PaymentRecordStatus.fromString(map['status'] as String?),
+      bookingPaymentStatus: map['bookingPaymentStatus'] as String?,
+      resolvedAt: parsePaymentDate(map['resolvedAt']),
     );
   }
 }

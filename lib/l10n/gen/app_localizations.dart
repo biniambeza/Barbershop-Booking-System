@@ -98,6 +98,468 @@ abstract class AppLocalizations {
     Locale('en')
   ];
 
+  /// No description provided for @queueTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Walk-in queue'**
+  String get queueTitle;
+
+  /// No description provided for @queueDashboardSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{waiting} waiting · {serving} in the chair'**
+  String queueDashboardSubtitle(int waiting, int serving);
+
+  /// No description provided for @queueSummaryWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} waiting, about {minutes} min'**
+  String queueSummaryWaiting(int count, int minutes);
+
+  /// No description provided for @queueSummaryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No one waiting - walk right in'**
+  String get queueSummaryEmpty;
+
+  /// No description provided for @queueJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Join queue'**
+  String get queueJoin;
+
+  /// No description provided for @queueLeave.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave queue'**
+  String get queueLeave;
+
+  /// No description provided for @queueLeaveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave the queue at {shop}?'**
+  String queueLeaveConfirm(String shop);
+
+  /// No description provided for @queueYourPosition.
+  ///
+  /// In en, this message translates to:
+  /// **'You are number {position} in line, about {minutes} min'**
+  String queueYourPosition(int position, int minutes);
+
+  /// No description provided for @queueYouAreNext.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re next! Please be at the shop.'**
+  String get queueYouAreNext;
+
+  /// No description provided for @queueYourTurn.
+  ///
+  /// In en, this message translates to:
+  /// **'It\'s your turn - {barber} is ready for you'**
+  String queueYourTurn(String barber);
+
+  /// No description provided for @queueYourTurnAnyBarber.
+  ///
+  /// In en, this message translates to:
+  /// **'It\'s your turn - please come in'**
+  String get queueYourTurnAnyBarber;
+
+  /// No description provided for @queueJoined.
+  ///
+  /// In en, this message translates to:
+  /// **'You joined the queue.'**
+  String get queueJoined;
+
+  /// No description provided for @queueLeftMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You left the queue.'**
+  String get queueLeftMessage;
+
+  /// No description provided for @queueSignInToJoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to join the queue.'**
+  String get queueSignInToJoin;
+
+  /// No description provided for @queueJoinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Join the queue at {shop}'**
+  String queueJoinTitle(String shop);
+
+  /// No description provided for @queueJoinBody.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'ll hold your place in line and tell you when you\'re next.'**
+  String get queueJoinBody;
+
+  /// No description provided for @queueWaitingHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting ({count})'**
+  String queueWaitingHeader(int count);
+
+  /// No description provided for @queueServingHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'In the chair ({count})'**
+  String queueServingHeader(int count);
+
+  /// No description provided for @queueBarbersHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Barbers right now'**
+  String get queueBarbersHeader;
+
+  /// No description provided for @queueEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No one is waiting.'**
+  String get queueEmpty;
+
+  /// No description provided for @queueAddWalkIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Add walk-in'**
+  String get queueAddWalkIn;
+
+  /// No description provided for @queueNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer name'**
+  String get queueNameLabel;
+
+  /// No description provided for @queuePhoneLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone (optional)'**
+  String get queuePhoneLabel;
+
+  /// No description provided for @queueServiceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Service (optional)'**
+  String get queueServiceLabel;
+
+  /// No description provided for @queuePreferredBarberLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferred barber (optional)'**
+  String get queuePreferredBarberLabel;
+
+  /// No description provided for @queueAnyBarber.
+  ///
+  /// In en, this message translates to:
+  /// **'Any barber'**
+  String get queueAnyBarber;
+
+  /// No description provided for @queueNoService.
+  ///
+  /// In en, this message translates to:
+  /// **'Not chosen'**
+  String get queueNoService;
+
+  /// No description provided for @queueAddButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to queue'**
+  String get queueAddButton;
+
+  /// No description provided for @queueCallNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Call next'**
+  String get queueCallNext;
+
+  /// No description provided for @queueCallNextFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Call next for {barber}'**
+  String queueCallNextFor(String barber);
+
+  /// No description provided for @queueStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start'**
+  String get queueStart;
+
+  /// No description provided for @queueFinish.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish'**
+  String get queueFinish;
+
+  /// No description provided for @queueMarkLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Left'**
+  String get queueMarkLeft;
+
+  /// No description provided for @queueChooseBarber.
+  ///
+  /// In en, this message translates to:
+  /// **'Who will serve {name}?'**
+  String queueChooseBarber(String name);
+
+  /// No description provided for @queueBarberServing.
+  ///
+  /// In en, this message translates to:
+  /// **'Serving {name}'**
+  String queueBarberServing(String name);
+
+  /// No description provided for @queueBarberFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Free'**
+  String get queueBarberFree;
+
+  /// No description provided for @queueBarberOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Not taking customers'**
+  String get queueBarberOff;
+
+  /// No description provided for @queueWaitAbout.
+  ///
+  /// In en, this message translates to:
+  /// **'about {minutes} min'**
+  String queueWaitAbout(int minutes);
+
+  /// No description provided for @queueNextUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get queueNextUp;
+
+  /// No description provided for @queuePrefers.
+  ///
+  /// In en, this message translates to:
+  /// **'Prefers {barber}'**
+  String queuePrefers(String barber);
+
+  /// No description provided for @queueRemoteBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Joined in app'**
+  String get queueRemoteBadge;
+
+  /// No description provided for @queueJoinedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Joined {time}'**
+  String queueJoinedAt(String time);
+
+  /// No description provided for @queueServingSince.
+  ///
+  /// In en, this message translates to:
+  /// **'Since {time}'**
+  String queueServingSince(String time);
+
+  /// No description provided for @queueNobodyForBarber.
+  ///
+  /// In en, this message translates to:
+  /// **'No one is waiting for {barber}.'**
+  String queueNobodyForBarber(String barber);
+
+  /// No description provided for @queueNowServing.
+  ///
+  /// In en, this message translates to:
+  /// **'{barber} is now serving {name}.'**
+  String queueNowServing(String barber, String name);
+
+  /// No description provided for @queueActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update the queue: {error}'**
+  String queueActionFailed(String error);
+
+  /// No description provided for @queueErrNotStaff.
+  ///
+  /// In en, this message translates to:
+  /// **'Only this shop\'s owner and barbers can manage its queue.'**
+  String get queueErrNotStaff;
+
+  /// No description provided for @queueErrCustomersOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only customers can join the queue from the app.'**
+  String get queueErrCustomersOnly;
+
+  /// No description provided for @queueErrNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a name (up to {max} characters).'**
+  String queueErrNameRequired(int max);
+
+  /// No description provided for @queueErrBarberBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is already serving someone. Finish that first.'**
+  String queueErrBarberBusy(String name);
+
+  /// No description provided for @queueErrNotWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'This person is no longer waiting.'**
+  String get queueErrNotWaiting;
+
+  /// No description provided for @queueErrNotServing.
+  ///
+  /// In en, this message translates to:
+  /// **'This person is not being served.'**
+  String get queueErrNotServing;
+
+  /// No description provided for @reportsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports'**
+  String get reportsTitle;
+
+  /// No description provided for @reportsOpenButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports & clients'**
+  String get reportsOpenButton;
+
+  /// No description provided for @reportsOverviewTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Overview'**
+  String get reportsOverviewTab;
+
+  /// No description provided for @reportsClientsTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Clients'**
+  String get reportsClientsTab;
+
+  /// No description provided for @reportsMonthLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get reportsMonthLabel;
+
+  /// No description provided for @reportsBookings.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookings'**
+  String get reportsBookings;
+
+  /// No description provided for @reportsCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get reportsCompleted;
+
+  /// No description provided for @reportsCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get reportsCancelled;
+
+  /// No description provided for @reportsNoShows.
+  ///
+  /// In en, this message translates to:
+  /// **'No-shows'**
+  String get reportsNoShows;
+
+  /// No description provided for @reportsRevenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Revenue'**
+  String get reportsRevenue;
+
+  /// No description provided for @reportsRevenueTrend.
+  ///
+  /// In en, this message translates to:
+  /// **'Revenue, last 6 months'**
+  String get reportsRevenueTrend;
+
+  /// No description provided for @reportsTopServices.
+  ///
+  /// In en, this message translates to:
+  /// **'Top services'**
+  String get reportsTopServices;
+
+  /// No description provided for @reportsBarberPerformance.
+  ///
+  /// In en, this message translates to:
+  /// **'Barber performance'**
+  String get reportsBarberPerformance;
+
+  /// No description provided for @reportsCompletedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} completed'**
+  String reportsCompletedCount(int count);
+
+  /// No description provided for @reportsNoBookingsMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'No bookings in this month.'**
+  String get reportsNoBookingsMonth;
+
+  /// No description provided for @reportsNoCompletedMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'No completed bookings in this month yet.'**
+  String get reportsNoCompletedMonth;
+
+  /// No description provided for @reportsNoClients.
+  ///
+  /// In en, this message translates to:
+  /// **'No clients yet.'**
+  String get reportsNoClients;
+
+  /// No description provided for @reportsClientVisits.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 visit} other{{count} visits}}'**
+  String reportsClientVisits(int count);
+
+  /// No description provided for @reportsClientNoShows.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 no-show} other{{count} no-shows}}'**
+  String reportsClientNoShows(int count);
+
+  /// No description provided for @reportsClientCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} cancelled'**
+  String reportsClientCancelled(int count);
+
+  /// No description provided for @reportsLastVisit.
+  ///
+  /// In en, this message translates to:
+  /// **'Last visit {date}'**
+  String reportsLastVisit(String date);
+
+  /// No description provided for @reportsNoVisitYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No completed visit yet'**
+  String get reportsNoVisitYet;
+
+  /// No description provided for @reportsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load reports. Check your connection and try again.'**
+  String get reportsLoadFailed;
+
+  /// No description provided for @reportsRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get reportsRetry;
+
+  /// No description provided for @reportsUpdatedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Figures update a few seconds after each booking change.'**
+  String get reportsUpdatedNote;
+
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
@@ -325,6 +787,306 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancelled'**
   String get statusCancelled;
+
+  /// No description provided for @statusNoShow.
+  ///
+  /// In en, this message translates to:
+  /// **'No-show'**
+  String get statusNoShow;
+
+  /// No description provided for @rescheduleAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Reschedule'**
+  String get rescheduleAction;
+
+  /// No description provided for @rescheduleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a new time'**
+  String get rescheduleTitle;
+
+  /// No description provided for @rescheduleCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Current time: {when}'**
+  String rescheduleCurrent(String when);
+
+  /// No description provided for @rescheduleConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Move booking'**
+  String get rescheduleConfirm;
+
+  /// No description provided for @rescheduleDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Your booking was moved to {when}.'**
+  String rescheduleDone(String when);
+
+  /// No description provided for @rescheduleLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No more changes allowed} =1{1 change left} other{{count} changes left}}'**
+  String rescheduleLeft(int count);
+
+  /// No description provided for @rescheduledBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Rescheduled'**
+  String get rescheduledBadge;
+
+  /// No description provided for @reschedulePolicyNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Free changes and cancellation until {hours, plural, =0{the start time} =1{1 hour before} other{{hours} hours before}}.'**
+  String reschedulePolicyNote(int hours);
+
+  /// No description provided for @rescheduleCallShop.
+  ///
+  /// In en, this message translates to:
+  /// **'Too late to change this booking in the app. Please call the shop.'**
+  String get rescheduleCallShop;
+
+  /// No description provided for @rescheduleErrNotChangeable.
+  ///
+  /// In en, this message translates to:
+  /// **'This booking can no longer be changed.'**
+  String get rescheduleErrNotChangeable;
+
+  /// No description provided for @rescheduleErrCancelCutoff.
+  ///
+  /// In en, this message translates to:
+  /// **'You can cancel up to {hours, plural, =1{1 hour} other{{hours} hours}} before your appointment. Please call the shop.'**
+  String rescheduleErrCancelCutoff(int hours);
+
+  /// No description provided for @rescheduleErrCutoff.
+  ///
+  /// In en, this message translates to:
+  /// **'You can move a booking up to {hours, plural, =1{1 hour} other{{hours} hours}} before it starts. Please call the shop.'**
+  String rescheduleErrCutoff(int hours);
+
+  /// No description provided for @rescheduleErrLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'This booking has already been moved {max, plural, =0{- this shop does not allow changes} =1{once, the most this shop allows} other{{max} times, the most this shop allows}}.'**
+  String rescheduleErrLimit(int max);
+
+  /// No description provided for @rescheduleErrSameTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a time different from your current one.'**
+  String get rescheduleErrSameTime;
+
+  /// No description provided for @noShowAction.
+  ///
+  /// In en, this message translates to:
+  /// **'No-show'**
+  String get noShowAction;
+
+  /// No description provided for @noShowConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as no-show?'**
+  String get noShowConfirmTitle;
+
+  /// No description provided for @noShowConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} did not come to this appointment. The time stays blocked.'**
+  String noShowConfirmBody(String name);
+
+  /// No description provided for @noShowErrTooEarly.
+  ///
+  /// In en, this message translates to:
+  /// **'You can mark a no-show only after the appointment start time.'**
+  String get noShowErrTooEarly;
+
+  /// No description provided for @policySectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking policy'**
+  String get policySectionTitle;
+
+  /// No description provided for @policyCutoffLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancellation cutoff'**
+  String get policyCutoffLabel;
+
+  /// No description provided for @policyCutoffHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Customers cannot cancel or move a booking within this many hours of the start. You and your barbers can still cancel.'**
+  String get policyCutoffHelp;
+
+  /// No description provided for @policyHoursValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours, plural, =0{Until the start} =1{1 hour before} other{{hours} hours before}}'**
+  String policyHoursValue(int hours);
+
+  /// No description provided for @policyMaxReschedulesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes allowed per booking'**
+  String get policyMaxReschedulesLabel;
+
+  /// No description provided for @policyMaxReschedulesValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No changes} =1{Once} other{{count} times}}'**
+  String policyMaxReschedulesValue(int count);
+
+  /// No description provided for @policySave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save policy'**
+  String get policySave;
+
+  /// No description provided for @policySaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking policy saved.'**
+  String get policySaved;
+
+  /// No description provided for @policyErrCutoff.
+  ///
+  /// In en, this message translates to:
+  /// **'The cancellation cutoff must be between 0 and {max} hours.'**
+  String policyErrCutoff(int max);
+
+  /// No description provided for @policyErrMaxReschedules.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes allowed must be between 0 and {max}.'**
+  String policyErrMaxReschedules(int max);
+
+  /// No description provided for @timeOffTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Time off'**
+  String get timeOffTitle;
+
+  /// No description provided for @timeOffAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add time off'**
+  String get timeOffAdd;
+
+  /// No description provided for @timeOffWholeDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Whole day'**
+  String get timeOffWholeDay;
+
+  /// No description provided for @timeOffHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Some hours'**
+  String get timeOffHours;
+
+  /// No description provided for @timeOffDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Day'**
+  String get timeOffDay;
+
+  /// No description provided for @timeOffFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get timeOffFrom;
+
+  /// No description provided for @timeOffTo.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get timeOffTo;
+
+  /// No description provided for @timeOffReasonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Note (optional)'**
+  String get timeOffReasonLabel;
+
+  /// No description provided for @timeOffEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No time off planned.'**
+  String get timeOffEmpty;
+
+  /// No description provided for @timeOffSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Time off added. Customers can no longer book these times.'**
+  String get timeOffSaved;
+
+  /// No description provided for @timeOffRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove time off'**
+  String get timeOffRemove;
+
+  /// No description provided for @timeOffRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'Time off removed.'**
+  String get timeOffRemoved;
+
+  /// No description provided for @timeOffRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this time off? Customers can book these times again.'**
+  String get timeOffRemoveConfirm;
+
+  /// No description provided for @timeOffRange.
+  ///
+  /// In en, this message translates to:
+  /// **'{day}, {from} - {to}'**
+  String timeOffRange(String day, String from, String to);
+
+  /// No description provided for @timeOffNotWorking.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} does not work on this day.'**
+  String timeOffNotWorking(String name);
+
+  /// No description provided for @timeOffSlotLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Time off'**
+  String get timeOffSlotLabel;
+
+  /// No description provided for @timeOffErrRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a range within one day, ending after it starts.'**
+  String get timeOffErrRange;
+
+  /// No description provided for @timeOffErrPast.
+  ///
+  /// In en, this message translates to:
+  /// **'Time off must end in the future.'**
+  String get timeOffErrPast;
+
+  /// No description provided for @timeOffErrReasonTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'The note can be at most {max} characters.'**
+  String timeOffErrReasonTooLong(int max);
+
+  /// No description provided for @timeOffErrConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'This time overlaps a booking or other time off. Move or cancel that booking first.'**
+  String get timeOffErrConflict;
+
+  /// No description provided for @timeOffErrNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'You can only manage time off for your own schedule.'**
+  String get timeOffErrNotAllowed;
 
   /// No description provided for @subTrialing.
   ///
@@ -2851,6 +3613,792 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Card'**
   String get cardMethod;
+
+  /// No description provided for @errInvalidPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid Ethiopian mobile number (09... or 07...).'**
+  String get errInvalidPhone;
+
+  /// No description provided for @errInvalidOwnerPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid Ethiopian mobile number for the owner (09... or 07...).'**
+  String get errInvalidOwnerPhone;
+
+  /// No description provided for @errInvalidOtp.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the 6-digit code from the SMS.'**
+  String get errInvalidOtp;
+
+  /// No description provided for @errWrongDemoCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong code. In demo mode the code is {code}.'**
+  String errWrongDemoCode(String code);
+
+  /// No description provided for @errRequestCodeFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Request a code first.'**
+  String get errRequestCodeFirst;
+
+  /// No description provided for @errInvalidName.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your name (up to 100 characters).'**
+  String get errInvalidName;
+
+  /// No description provided for @errVerifyPhoneFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify your phone number first.'**
+  String get errVerifyPhoneFirst;
+
+  /// No description provided for @errSignInRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please sign in first.'**
+  String get errSignInRequired;
+
+  /// No description provided for @errPhoneAlreadyStaff.
+  ///
+  /// In en, this message translates to:
+  /// **'This phone number already belongs to a {role} account.'**
+  String errPhoneAlreadyStaff(String role);
+
+  /// No description provided for @errSignInToBook.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to book an appointment.'**
+  String get errSignInToBook;
+
+  /// No description provided for @errInvalidTimeSlot.
+  ///
+  /// In en, this message translates to:
+  /// **'That time is not valid. Please pick another time.'**
+  String get errInvalidTimeSlot;
+
+  /// No description provided for @errServiceTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'A service can be at most {minutes} minutes long.'**
+  String errServiceTooLong(int minutes);
+
+  /// No description provided for @errServerOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the server can make this change.'**
+  String get errServerOnly;
+
+  /// No description provided for @errSlotTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'Sorry, that time was just taken. Please pick another slot.'**
+  String get errSlotTaken;
+
+  /// No description provided for @errBookingFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not book this time. Check your connection and try again.'**
+  String get errBookingFailed;
+
+  /// No description provided for @errNoWorkingDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick at least one working day.'**
+  String get errNoWorkingDays;
+
+  /// No description provided for @errInvalidWorkingHours.
+  ///
+  /// In en, this message translates to:
+  /// **'The end time must be after the start time.'**
+  String get errInvalidWorkingHours;
+
+  /// No description provided for @errPlanIdInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan id must be one of {ids}.'**
+  String errPlanIdInvalid(String ids);
+
+  /// No description provided for @errPlanNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan name is required.'**
+  String get errPlanNameRequired;
+
+  /// No description provided for @errPlanPriceNegative.
+  ///
+  /// In en, this message translates to:
+  /// **'Price must be 0 or more.'**
+  String get errPlanPriceNegative;
+
+  /// No description provided for @errPlanPriceRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'A paid plan needs a price above 0.'**
+  String get errPlanPriceRequired;
+
+  /// No description provided for @errPlanMaxBarbers.
+  ///
+  /// In en, this message translates to:
+  /// **'Max barbers must be at least 1 (or -1 for unlimited).'**
+  String get errPlanMaxBarbers;
+
+  /// No description provided for @errPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'You do not have permission to do this.'**
+  String get errPermissionDenied;
+
+  /// No description provided for @errOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach the server. Check your connection and try again.'**
+  String get errOffline;
+
+  /// No description provided for @errGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again.'**
+  String get errGeneric;
+
+  /// No description provided for @payErrBookingNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This booking could not be found.'**
+  String get payErrBookingNotFound;
+
+  /// No description provided for @payErrBookingCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'This booking was cancelled.'**
+  String get payErrBookingCancelled;
+
+  /// No description provided for @payErrBookingRefunded.
+  ///
+  /// In en, this message translates to:
+  /// **'This booking was refunded.'**
+  String get payErrBookingRefunded;
+
+  /// No description provided for @payErrCannotPayOnline.
+  ///
+  /// In en, this message translates to:
+  /// **'This booking cannot be paid online.'**
+  String get payErrCannotPayOnline;
+
+  /// No description provided for @payErrNoValidPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'This has no valid price, so it cannot be paid online.'**
+  String get payErrNoValidPrice;
+
+  /// No description provided for @payErrNotYourBooking.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the customer who made this booking can pay for it.'**
+  String get payErrNotYourBooking;
+
+  /// No description provided for @payErrNotYourPayment.
+  ///
+  /// In en, this message translates to:
+  /// **'This is not your payment.'**
+  String get payErrNotYourPayment;
+
+  /// No description provided for @payErrNotShopOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the owner of this shop can pay its subscription.'**
+  String get payErrNotShopOwner;
+
+  /// No description provided for @payErrShopNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This barbershop could not be found.'**
+  String get payErrShopNotFound;
+
+  /// No description provided for @payErrPlanUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This plan is not available.'**
+  String get payErrPlanUnavailable;
+
+  /// No description provided for @payErrUnknownPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown plan.'**
+  String get payErrUnknownPlan;
+
+  /// No description provided for @payErrPlanTooSmall.
+  ///
+  /// In en, this message translates to:
+  /// **'This plan allows {max} barbers but the shop has {count}. Choose a bigger plan or remove barbers.'**
+  String payErrPlanTooSmall(int max, int count);
+
+  /// No description provided for @payErrBookingChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Something changed while we prepared your payment. Please try again.'**
+  String get payErrBookingChanged;
+
+  /// No description provided for @payErrStillPreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Your payment is still being prepared. Please try again in a moment.'**
+  String get payErrStillPreparing;
+
+  /// No description provided for @payErrLaunchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the Chapa checkout page. Please try again.'**
+  String get payErrLaunchFailed;
+
+  /// No description provided for @payErrInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Some payment details are missing or invalid.'**
+  String get payErrInvalid;
+
+  /// No description provided for @payErrPrecondition.
+  ///
+  /// In en, this message translates to:
+  /// **'This payment cannot be made right now.'**
+  String get payErrPrecondition;
+
+  /// No description provided for @payErrAdminsOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only administrators can do this.'**
+  String get payErrAdminsOnly;
+
+  /// No description provided for @payErrPaymentNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This payment could not be found.'**
+  String get payErrPaymentNotFound;
+
+  /// No description provided for @payErrReviewNotNeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'This payment is no longer waiting for review.'**
+  String get payErrReviewNotNeeded;
+
+  /// No description provided for @payErrReviewNotRefundable.
+  ///
+  /// In en, this message translates to:
+  /// **'Only a successful payment can be marked as refunded.'**
+  String get payErrReviewNotRefundable;
+
+  /// No description provided for @viewAction.
+  ///
+  /// In en, this message translates to:
+  /// **'View'**
+  String get viewAction;
+
+  /// No description provided for @paymentsToReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Payments to review'**
+  String get paymentsToReview;
+
+  /// No description provided for @paymentsToReviewIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'These payments need a decision. Refund the customer in the Chapa dashboard first, then mark the payment here.'**
+  String get paymentsToReviewIntro;
+
+  /// No description provided for @noPaymentsToReview.
+  ///
+  /// In en, this message translates to:
+  /// **'No payments need review'**
+  String get noPaymentsToReview;
+
+  /// No description provided for @noPaymentsToReviewHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Payments for cancelled bookings, double payments and payments that could not be applied show up here.'**
+  String get noPaymentsToReviewHint;
+
+  /// No description provided for @paymentsToReviewLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load payments: {error}'**
+  String paymentsToReviewLoadFailed(String error);
+
+  /// No description provided for @reviewReasonCancelledBooking.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid for a cancelled booking'**
+  String get reviewReasonCancelledBooking;
+
+  /// No description provided for @reviewReasonDoublePayment.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking was paid twice'**
+  String get reviewReasonDoublePayment;
+
+  /// No description provided for @reviewReasonMissingBooking.
+  ///
+  /// In en, this message translates to:
+  /// **'The booking no longer exists'**
+  String get reviewReasonMissingBooking;
+
+  /// No description provided for @reviewReasonRefundReported.
+  ///
+  /// In en, this message translates to:
+  /// **'Chapa reported a refund that needs checking'**
+  String get reviewReasonRefundReported;
+
+  /// No description provided for @reviewReasonSubscription.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription payment could not be applied'**
+  String get reviewReasonSubscription;
+
+  /// No description provided for @reviewReasonOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs a manual check'**
+  String get reviewReasonOther;
+
+  /// No description provided for @paymentTypeBooking.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking payment'**
+  String get paymentTypeBooking;
+
+  /// No description provided for @paymentTypeSubscription.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription payment'**
+  String get paymentTypeSubscription;
+
+  /// No description provided for @paymentDetailsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment details'**
+  String get paymentDetailsTitle;
+
+  /// No description provided for @detailAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount'**
+  String get detailAmount;
+
+  /// No description provided for @detailStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get detailStatus;
+
+  /// No description provided for @detailCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Created'**
+  String get detailCreated;
+
+  /// No description provided for @detailVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified'**
+  String get detailVerified;
+
+  /// No description provided for @detailShop.
+  ///
+  /// In en, this message translates to:
+  /// **'Shop'**
+  String get detailShop;
+
+  /// No description provided for @detailBooking.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking'**
+  String get detailBooking;
+
+  /// No description provided for @detailCustomer.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid by'**
+  String get detailCustomer;
+
+  /// No description provided for @detailTxRef.
+  ///
+  /// In en, this message translates to:
+  /// **'Transaction reference'**
+  String get detailTxRef;
+
+  /// No description provided for @detailChapaReference.
+  ///
+  /// In en, this message translates to:
+  /// **'Chapa reference'**
+  String get detailChapaReference;
+
+  /// No description provided for @detailMethod.
+  ///
+  /// In en, this message translates to:
+  /// **'Method'**
+  String get detailMethod;
+
+  /// No description provided for @detailPaymentId.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment ID'**
+  String get detailPaymentId;
+
+  /// No description provided for @reviewNoteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Note (optional)'**
+  String get reviewNoteLabel;
+
+  /// No description provided for @reviewNoteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Refunded on 13 Nov, Chapa ref ...'**
+  String get reviewNoteHint;
+
+  /// No description provided for @markRefundedInChapa.
+  ///
+  /// In en, this message translates to:
+  /// **'I refunded it in Chapa'**
+  String get markRefundedInChapa;
+
+  /// No description provided for @markNoAction.
+  ///
+  /// In en, this message translates to:
+  /// **'No action needed'**
+  String get markNoAction;
+
+  /// No description provided for @confirmRefundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark as refunded?'**
+  String get confirmRefundTitle;
+
+  /// No description provided for @confirmRefundBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Only continue if you already refunded {amount} in the Chapa dashboard. The payment and its booking will show as refunded.'**
+  String confirmRefundBody(String amount);
+
+  /// No description provided for @reviewClosedRefunded.
+  ///
+  /// In en, this message translates to:
+  /// **'Marked as refunded.'**
+  String get reviewClosedRefunded;
+
+  /// No description provided for @reviewClosedNoAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Review closed.'**
+  String get reviewClosedNoAction;
+
+  /// No description provided for @reviewFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not close the review: {error}'**
+  String reviewFailed(String error);
+
+  /// No description provided for @editWorkingHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Working days and hours'**
+  String get editWorkingHours;
+
+  /// No description provided for @barberHoursTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}: working hours'**
+  String barberHoursTitle(String name);
+
+  /// No description provided for @followShopHours.
+  ///
+  /// In en, this message translates to:
+  /// **'Same as the shop'**
+  String get followShopHours;
+
+  /// No description provided for @followShopHoursSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Works on the shop\'s days, from opening to closing time.'**
+  String get followShopHoursSubtitle;
+
+  /// No description provided for @workingDaysLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Working days'**
+  String get workingDaysLabel;
+
+  /// No description provided for @startsAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts'**
+  String get startsAt;
+
+  /// No description provided for @endsAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Ends'**
+  String get endsAt;
+
+  /// No description provided for @workingHoursSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Working hours saved.'**
+  String get workingHoursSaved;
+
+  /// No description provided for @shopHoursSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Shop hours'**
+  String get shopHoursSummary;
+
+  /// No description provided for @errAccountLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load your account. Check your connection and try again.'**
+  String get errAccountLoadFailed;
+
+  /// No description provided for @reviewsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviews'**
+  String get reviewsTitle;
+
+  /// No description provided for @reviewsRateAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate visit'**
+  String get reviewsRateAction;
+
+  /// No description provided for @reviewsYourRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Your rating'**
+  String get reviewsYourRating;
+
+  /// No description provided for @reviewsRateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate your visit'**
+  String get reviewsRateTitle;
+
+  /// No description provided for @reviewsRateSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{service} with {barber}'**
+  String reviewsRateSubtitle(String service, String barber);
+
+  /// No description provided for @reviewsStarsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 star} other{{count} stars}}'**
+  String reviewsStarsLabel(int count);
+
+  /// No description provided for @reviewsPickRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a star to rate.'**
+  String get reviewsPickRating;
+
+  /// No description provided for @reviewsCommentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment (optional)'**
+  String get reviewsCommentLabel;
+
+  /// No description provided for @reviewsCommentHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What did you like? What could be better?'**
+  String get reviewsCommentHint;
+
+  /// No description provided for @reviewsSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Send review'**
+  String get reviewsSubmit;
+
+  /// No description provided for @reviewsThanks.
+  ///
+  /// In en, this message translates to:
+  /// **'Thank you for your review!'**
+  String get reviewsThanks;
+
+  /// No description provided for @reviewsSubmitFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not send your review: {error}'**
+  String reviewsSubmitFailed(String error);
+
+  /// No description provided for @reviewsCountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No reviews yet} =1{1 review} other{{count} reviews}}'**
+  String reviewsCountLabel(int count);
+
+  /// No description provided for @reviewsNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get reviewsNew;
+
+  /// No description provided for @reviewsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No reviews yet. Customers can rate their visit after it is completed.'**
+  String get reviewsEmpty;
+
+  /// No description provided for @reviewsSeeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'See all reviews ({count})'**
+  String reviewsSeeAll(int count);
+
+  /// No description provided for @reviewsLoadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Show more'**
+  String get reviewsLoadMore;
+
+  /// No description provided for @reviewsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the reviews.'**
+  String get reviewsLoadFailed;
+
+  /// No description provided for @reviewsRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get reviewsRetry;
+
+  /// No description provided for @reviewsOwnerReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply from the shop'**
+  String get reviewsOwnerReply;
+
+  /// No description provided for @reviewsReplyAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply'**
+  String get reviewsReplyAction;
+
+  /// No description provided for @reviewsEditReply.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit reply'**
+  String get reviewsEditReply;
+
+  /// No description provided for @reviewsReplyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Your public reply'**
+  String get reviewsReplyLabel;
+
+  /// No description provided for @reviewsReplySave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save reply'**
+  String get reviewsReplySave;
+
+  /// No description provided for @reviewsReplySaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply saved.'**
+  String get reviewsReplySaved;
+
+  /// No description provided for @reviewsAwaitingReply.
+  ///
+  /// In en, this message translates to:
+  /// **'No reply yet'**
+  String get reviewsAwaitingReply;
+
+  /// No description provided for @reviewsOpenButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviews & replies'**
+  String get reviewsOpenButton;
+
+  /// No description provided for @reviewsMyReviews.
+  ///
+  /// In en, this message translates to:
+  /// **'My reviews'**
+  String get reviewsMyReviews;
+
+  /// No description provided for @reviewsBarberTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviews for {name}'**
+  String reviewsBarberTitle(String name);
+
+  /// No description provided for @reviewsSummaryLine.
+  ///
+  /// In en, this message translates to:
+  /// **'{rating} out of 5 · {count, plural, =1{1 review} other{{count} reviews}}'**
+  String reviewsSummaryLine(String rating, int count);
+
+  /// No description provided for @reviewsRatedSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Rated {rating} out of 5'**
+  String reviewsRatedSemantics(String rating);
+
+  /// No description provided for @reviewsCustomer.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer'**
+  String get reviewsCustomer;
+
+  /// No description provided for @reviewsErrNotYourBooking.
+  ///
+  /// In en, this message translates to:
+  /// **'You can only rate your own visits.'**
+  String get reviewsErrNotYourBooking;
+
+  /// No description provided for @reviewsErrNotCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'You can rate a visit once it is completed.'**
+  String get reviewsErrNotCompleted;
+
+  /// No description provided for @reviewsErrAlreadyReviewed.
+  ///
+  /// In en, this message translates to:
+  /// **'You have already rated this visit.'**
+  String get reviewsErrAlreadyReviewed;
+
+  /// No description provided for @reviewsErrInvalidRating.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from 1 to 5 stars.'**
+  String get reviewsErrInvalidRating;
+
+  /// No description provided for @reviewsErrCommentTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'The comment can be at most {max} characters.'**
+  String reviewsErrCommentTooLong(int max);
+
+  /// No description provided for @reviewsErrReplyInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a reply of up to {max} characters.'**
+  String reviewsErrReplyInvalid(int max);
+
+  /// No description provided for @reviewsErrOwnerOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the shop owner can reply to reviews.'**
+  String get reviewsErrOwnerOnly;
+
+  /// No description provided for @reviewsErrNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This review no longer exists.'**
+  String get reviewsErrNotFound;
 }
 
 class _AppLocalizationsDelegate

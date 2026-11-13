@@ -5,6 +5,8 @@ import '../../../l10n/l10n.dart';
 import '../../../models/booking_model.dart';
 import '../../../models/user_model.dart';
 import '../../../services/app_repository.dart';
+import '../../../services/booking_policy.dart' show canMarkNoShow;
+import '../../shared/widgets/no_show_dialog.dart';
 import '../../notifications/widgets/notification_bell.dart';
 import '../../shared/widgets/language_toggle.dart';
 import '../../shared/widgets/persona_switcher.dart';
@@ -14,6 +16,9 @@ import 'customize_shop_screen.dart';
 import 'owner_subscription_screen.dart';
 import '../../payments/widgets/payment_status_badge.dart';
 import '../../payments/widgets/subscription_banner.dart';
+import '../../queue/queue_dashboard_card.dart';
+import '../../reports/screens/owner_reports_screen.dart';
+import '../../reviews/widgets/reviews_dashboard_entries.dart';
 
 class OwnerDashboardScreen extends StatefulWidget {
   const OwnerDashboardScreen({super.key});
@@ -103,6 +108,9 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
           children: [
             // Subscription warning (past due / suspended / ending soon)
             SubscriptionBanner(shop: shop, onManage: () => _openSubscription(shop.id)),
+
+            // Walk-in queue
+            QueueDashboardCard(shopId: shop.id),
 
             // Customize Barbershop Banner
             Container(
@@ -205,6 +213,29 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               ],
             ),
             const SizedBox(height: 14),
+
+            // Reports (functions/insights stats; computed locally in demo mode)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const ValueKey('open-reports'),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => OwnerReportsScreen(shopId: shop.id)),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primaryGold,
+                  side: BorderSide(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                icon: const Icon(Icons.insights_rounded, size: 18),
+                label: Text(l.reportsOpenButton, style: const TextStyle(fontSize: 13)),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // Reviews and owner replies
+            OwnerReviewsButton(shopId: shop.id),
 
             // Platform subscription
             SizedBox(
@@ -402,16 +433,22 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     );
   }
 
+  /// Bookings with a status change in flight (their buttons are disabled).
+  final Set<String> _busy = {};
+
   /// Runs a status change and reports a failure (e.g. a rules rejection).
   Future<void> _setStatus(Booking booking, BookingStatus status) async {
+    if (_busy.contains(booking.id)) return;
     final messenger = ScaffoldMessenger.of(context);
     final l = context.l10n;
+    setState(() => _busy.add(booking.id));
     try {
       await AppRepository.instance.updateBookingStatus(booking.id, status);
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(l.statusUpdateFailed('$e'))));
+      messenger.showSnackBar(SnackBar(content: Text(l.statusUpdateFailed(l.errorText(e)))));
+    } finally {
+      if (mounted) setState(() => _busy.remove(booking.id));
     }
-    if (mounted) setState(() {});
   }
 
   Widget _buildAppointmentAdminCard(BuildContext context, Booking booking) {
@@ -433,6 +470,9 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
         break;
       case BookingStatus.cancelled:
         statusColor = Colors.red;
+        break;
+      case BookingStatus.noShow:
+        statusColor = Colors.deepOrangeAccent;
         break;
     }
 
@@ -499,7 +539,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => _setStatus(booking, BookingStatus.completed),
+                    onPressed: _busy.contains(booking.id) ? null : () => _setStatus(booking, BookingStatus.completed),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       backgroundColor: Colors.green.shade800,
@@ -511,7 +551,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _setStatus(booking, BookingStatus.cancelled),
+                    onPressed: _busy.contains(booking.id) ? null : () => _setStatus(booking, BookingStatus.cancelled),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       foregroundColor: Colors.redAccent,
@@ -520,6 +560,28 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                     child: Text(l.cancelSlot, style: const TextStyle(fontSize: 12)),
                   ),
                 ),
+                // No-show: only once the appointment time has come.
+                if (canMarkNoShow(booking, AppRepository.instance.nowUtc())) ...[
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton(
+                      key: ValueKey('owner-no-show-${booking.id}'),
+                      onPressed: _busy.contains(booking.id)
+                          ? null
+                          : () async {
+                              if (await confirmNoShow(context, booking) && mounted) {
+                                await _setStatus(booking, BookingStatus.noShow);
+                              }
+                            },
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        foregroundColor: Colors.deepOrangeAccent,
+                        side: const BorderSide(color: Colors.deepOrangeAccent),
+                      ),
+                      child: Text(l.noShowAction, style: const TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                ],
               ],
             ),
         ],

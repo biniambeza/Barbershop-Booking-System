@@ -24,6 +24,7 @@ void main() {
     addTearDown(tester.view.reset);
     final shop = repo.getShopById('shop_1')!;
     await tester.pumpWidget(MaterialApp(
+      locale: const Locale('en'),
       home: BookingFlowScreen(
         shop: shop,
         initialService: repo.getServiceById('srv_1_1')!,
@@ -91,7 +92,7 @@ void main() {
     addTearDown(tester.view.reset);
     repo.switchRole(UserRole.barber);
     final barber = repo.getBarberForCurrentUser()!;
-    await tester.pumpWidget(MaterialApp(home: BarberScheduleScreen(barber: barber, clock: () => _now)));
+    await tester.pumpWidget(MaterialApp(locale: const Locale('en'), home: BarberScheduleScreen(barber: barber, clock: () => _now)));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Working hours'), findsOneWidget);

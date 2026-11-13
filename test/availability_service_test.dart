@@ -86,13 +86,24 @@ void main() {
       expect(slotLockIdsFor(_at(_friday, 23, 45), _at(_friday, 24, 15)), ['20261120-2345', '20261121-0000']);
     });
 
-    test('slotLocksForBooking carries booking and customer ids', () {
+    test('slotLocksForBooking carries the booking id and expiry, but no customer data', () {
       final locks = slotLocksForBooking(_booking('bk', _at(_friday, 11), 30));
       expect(locks.map((l) => l.id), ['20261120-1100', '20261120-1115']);
-      expect(locks.first.toMap(), {'bookingId': 'bk', 'customerId': 'c1', 'startAt': '2026-11-20T08:00:00.000Z'});
+      // expiresAt = booking end (11:30 Addis = 08:30Z) + 1 day, on every lock.
+      expect(locks.first.toMap(), {
+        'bookingId': 'bk',
+        'startAt': '2026-11-20T08:00:00.000Z',
+        'expiresAt': '2026-11-21T08:30:00.000Z',
+      });
+      expect(locks.last.toMap()['expiresAt'], '2026-11-21T08:30:00.000Z');
+      expect(locks.every((l) => !l.toMap().containsKey('customerId')), true);
       final back = SlotLock.fromMap(locks.last.toMap(), locks.last.id);
       expect(back.startAt, _at(_friday, 11, 15));
+      expect(back.expiresAt, _at(_friday, 11, 30).add(const Duration(days: 1)));
       expect(back.interval.end, _at(_friday, 11, 30));
+      // Legacy locks without expiresAt (and with the old customerId field).
+      final legacy = SlotLock.fromMap({'bookingId': 'bk', 'customerId': 'c1', 'startAt': '2026-11-20T08:00:00.000Z'}, '20261120-1100');
+      expect(legacy.expiresAt, DateTime.utc(2026, 11, 21, 8));
     });
   });
 
@@ -312,7 +323,11 @@ void main() {
       expect((await db.collection('bookings').doc('bk1').get()).exists, true);
       expect(await lockIds(), ['20261121-1100', '20261121-1115', '20261121-1130']);
       final lock = await db.doc('barbershops/s1/barbers/b1/slotLocks/20261121-1115').get();
-      expect(lock.data(), {'bookingId': 'bk1', 'customerId': 'c1', 'startAt': '2026-11-21T08:15:00.000Z'});
+      expect(lock.data(), {
+        'bookingId': 'bk1',
+        'startAt': '2026-11-21T08:15:00.000Z',
+        'expiresAt': '2026-11-22T08:45:00.000Z',
+      });
 
       final clash = _booking('bk2', _at(_saturday, 11, 30), 30, customerId: 'c2');
       await expectLater(store.createBooking(clash), throwsA(isA<SlotTakenException>()));

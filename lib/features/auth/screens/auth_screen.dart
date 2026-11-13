@@ -154,7 +154,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   if (_error != null || sessionError != null) ...[
                     const SizedBox(height: 14),
                     Text(
-                      _error ?? sessionError!,
+                      _error ?? l.errorText(sessionError!),
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: Colors.redAccent, fontSize: 13),
                     ),

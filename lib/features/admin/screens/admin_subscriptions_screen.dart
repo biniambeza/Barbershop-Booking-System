@@ -465,7 +465,7 @@ class _PlanDialogState extends State<_PlanDialog> {
     );
     final error = validatePlan(plan);
     if (error != null) {
-      setState(() => _error = error);
+      setState(() => _error = context.l10n.errorText(error));
       return;
     }
     Navigator.of(context).pop(plan);

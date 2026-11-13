@@ -1,5 +1,137 @@
 {
   "@@locale": "en",
+  "queueTitle": "Walk-in queue",
+  "queueDashboardSubtitle": "{waiting} waiting · {serving} in the chair",
+  "@queueDashboardSubtitle": { "placeholders": { "waiting": { "type": "int" }, "serving": { "type": "int" } } },
+  "queueSummaryWaiting": "{count} waiting, about {minutes} min",
+  "@queueSummaryWaiting": { "placeholders": { "count": { "type": "int" }, "minutes": { "type": "int" } } },
+  "queueSummaryEmpty": "No one waiting - walk right in",
+  "queueJoin": "Join queue",
+  "queueLeave": "Leave queue",
+  "queueLeaveConfirm": "Leave the queue at {shop}?",
+  "@queueLeaveConfirm": { "placeholders": { "shop": { "type": "String" } } },
+  "queueYourPosition": "You are number {position} in line, about {minutes} min",
+  "@queueYourPosition": { "placeholders": { "position": { "type": "int" }, "minutes": { "type": "int" } } },
+  "queueYouAreNext": "You're next! Please be at the shop.",
+  "queueYourTurn": "It's your turn - {barber} is ready for you",
+  "@queueYourTurn": { "placeholders": { "barber": { "type": "String" } } },
+  "queueYourTurnAnyBarber": "It's your turn - please come in",
+  "queueJoined": "You joined the queue.",
+  "queueLeftMessage": "You left the queue.",
+  "queueSignInToJoin": "Sign in to join the queue.",
+  "queueJoinTitle": "Join the queue at {shop}",
+  "@queueJoinTitle": { "placeholders": { "shop": { "type": "String" } } },
+  "queueJoinBody": "We'll hold your place in line and tell you when you're next.",
+  "queueWaitingHeader": "Waiting ({count})",
+  "@queueWaitingHeader": { "placeholders": { "count": { "type": "int" } } },
+  "queueServingHeader": "In the chair ({count})",
+  "@queueServingHeader": { "placeholders": { "count": { "type": "int" } } },
+  "queueBarbersHeader": "Barbers right now",
+  "queueEmpty": "No one is waiting.",
+  "queueAddWalkIn": "Add walk-in",
+  "queueNameLabel": "Customer name",
+  "queuePhoneLabel": "Phone (optional)",
+  "queueServiceLabel": "Service (optional)",
+  "queuePreferredBarberLabel": "Preferred barber (optional)",
+  "queueAnyBarber": "Any barber",
+  "queueNoService": "Not chosen",
+  "queueAddButton": "Add to queue",
+  "queueCallNext": "Call next",
+  "queueCallNextFor": "Call next for {barber}",
+  "@queueCallNextFor": { "placeholders": { "barber": { "type": "String" } } },
+  "queueStart": "Start",
+  "queueFinish": "Finish",
+  "queueMarkLeft": "Left",
+  "queueChooseBarber": "Who will serve {name}?",
+  "@queueChooseBarber": { "placeholders": { "name": { "type": "String" } } },
+  "queueBarberServing": "Serving {name}",
+  "@queueBarberServing": { "placeholders": { "name": { "type": "String" } } },
+  "queueBarberFree": "Free",
+  "queueBarberOff": "Not taking customers",
+  "queueWaitAbout": "about {minutes} min",
+  "@queueWaitAbout": { "placeholders": { "minutes": { "type": "int" } } },
+  "queueNextUp": "Next",
+  "queuePrefers": "Prefers {barber}",
+  "@queuePrefers": { "placeholders": { "barber": { "type": "String" } } },
+  "queueRemoteBadge": "Joined in app",
+  "queueJoinedAt": "Joined {time}",
+  "@queueJoinedAt": { "placeholders": { "time": { "type": "String" } } },
+  "queueServingSince": "Since {time}",
+  "@queueServingSince": { "placeholders": { "time": { "type": "String" } } },
+  "queueNobodyForBarber": "No one is waiting for {barber}.",
+  "@queueNobodyForBarber": { "placeholders": { "barber": { "type": "String" } } },
+  "queueNowServing": "{barber} is now serving {name}.",
+  "@queueNowServing": { "placeholders": { "barber": { "type": "String" }, "name": { "type": "String" } } },
+  "queueActionFailed": "Could not update the queue: {error}",
+  "@queueActionFailed": { "placeholders": { "error": { "type": "String" } } },
+  "queueErrNotStaff": "Only this shop's owner and barbers can manage its queue.",
+  "queueErrCustomersOnly": "Only customers can join the queue from the app.",
+  "queueErrNameRequired": "Enter a name (up to {max} characters).",
+  "@queueErrNameRequired": { "placeholders": { "max": { "type": "int" } } },
+  "queueErrBarberBusy": "{name} is already serving someone. Finish that first.",
+  "@queueErrBarberBusy": { "placeholders": { "name": { "type": "String" } } },
+  "queueErrNotWaiting": "This person is no longer waiting.",
+  "queueErrNotServing": "This person is not being served.",
+  "reportsTitle": "Reports",
+  "reportsOpenButton": "Reports & clients",
+  "reportsOverviewTab": "Overview",
+  "reportsClientsTab": "Clients",
+  "reportsMonthLabel": "Month",
+  "reportsBookings": "Bookings",
+  "reportsCompleted": "Completed",
+  "reportsCancelled": "Cancelled",
+  "reportsNoShows": "No-shows",
+  "reportsRevenue": "Revenue",
+  "reportsRevenueTrend": "Revenue, last 6 months",
+  "reportsTopServices": "Top services",
+  "reportsBarberPerformance": "Barber performance",
+  "reportsCompletedCount": "{count} completed",
+  "@reportsCompletedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reportsNoBookingsMonth": "No bookings in this month.",
+  "reportsNoCompletedMonth": "No completed bookings in this month yet.",
+  "reportsNoClients": "No clients yet.",
+  "reportsClientVisits": "{count, plural, =1{1 visit} other{{count} visits}}",
+  "@reportsClientVisits": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reportsClientNoShows": "{count, plural, =1{1 no-show} other{{count} no-shows}}",
+  "@reportsClientNoShows": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reportsClientCancelled": "{count} cancelled",
+  "@reportsClientCancelled": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reportsLastVisit": "Last visit {date}",
+  "@reportsLastVisit": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "reportsNoVisitYet": "No completed visit yet",
+  "reportsLoadFailed": "Could not load reports. Check your connection and try again.",
+  "reportsRetry": "Try again",
+  "reportsUpdatedNote": "Figures update a few seconds after each booking change.",
   "appTitle": "Crown & Blade - Barbershop Booking",
   "brandUpper": "CROWN & BLADE",
   "cancel": "Cancel",
@@ -110,6 +242,167 @@
   "statusInProgress": "In Progress",
   "statusCompleted": "Completed",
   "statusCancelled": "Cancelled",
+  "statusNoShow": "No-show",
+  "rescheduleAction": "Reschedule",
+  "rescheduleTitle": "Pick a new time",
+  "rescheduleCurrent": "Current time: {when}",
+  "@rescheduleCurrent": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "rescheduleConfirm": "Move booking",
+  "rescheduleDone": "Your booking was moved to {when}.",
+  "@rescheduleDone": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "rescheduleLeft": "{count, plural, =0{No more changes allowed} =1{1 change left} other{{count} changes left}}",
+  "@rescheduleLeft": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rescheduledBadge": "Rescheduled",
+  "reschedulePolicyNote": "Free changes and cancellation until {hours, plural, =0{the start time} =1{1 hour before} other{{hours} hours before}}.",
+  "@reschedulePolicyNote": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "rescheduleCallShop": "Too late to change this booking in the app. Please call the shop.",
+  "rescheduleErrNotChangeable": "This booking can no longer be changed.",
+  "rescheduleErrCancelCutoff": "You can cancel up to {hours, plural, =1{1 hour} other{{hours} hours}} before your appointment. Please call the shop.",
+  "@rescheduleErrCancelCutoff": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "rescheduleErrCutoff": "You can move a booking up to {hours, plural, =1{1 hour} other{{hours} hours}} before it starts. Please call the shop.",
+  "@rescheduleErrCutoff": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "rescheduleErrLimit": "This booking has already been moved {max, plural, =0{- this shop does not allow changes} =1{once, the most this shop allows} other{{max} times, the most this shop allows}}.",
+  "@rescheduleErrLimit": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "rescheduleErrSameTime": "Pick a time different from your current one.",
+  "noShowAction": "No-show",
+  "noShowConfirmTitle": "Mark as no-show?",
+  "noShowConfirmBody": "{name} did not come to this appointment. The time stays blocked.",
+  "@noShowConfirmBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noShowErrTooEarly": "You can mark a no-show only after the appointment start time.",
+  "policySectionTitle": "Booking policy",
+  "policyCutoffLabel": "Cancellation cutoff",
+  "policyCutoffHelp": "Customers cannot cancel or move a booking within this many hours of the start. You and your barbers can still cancel.",
+  "policyHoursValue": "{hours, plural, =0{Until the start} =1{1 hour before} other{{hours} hours before}}",
+  "@policyHoursValue": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "policyMaxReschedulesLabel": "Changes allowed per booking",
+  "policyMaxReschedulesValue": "{count, plural, =0{No changes} =1{Once} other{{count} times}}",
+  "@policyMaxReschedulesValue": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "policySave": "Save policy",
+  "policySaved": "Booking policy saved.",
+  "policyErrCutoff": "The cancellation cutoff must be between 0 and {max} hours.",
+  "@policyErrCutoff": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "policyErrMaxReschedules": "Changes allowed must be between 0 and {max}.",
+  "@policyErrMaxReschedules": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "timeOffTitle": "Time off",
+  "timeOffAdd": "Add time off",
+  "timeOffWholeDay": "Whole day",
+  "timeOffHours": "Some hours",
+  "timeOffDay": "Day",
+  "timeOffFrom": "From",
+  "timeOffTo": "To",
+  "timeOffReasonLabel": "Note (optional)",
+  "timeOffEmpty": "No time off planned.",
+  "timeOffSaved": "Time off added. Customers can no longer book these times.",
+  "timeOffRemove": "Remove time off",
+  "timeOffRemoved": "Time off removed.",
+  "timeOffRemoveConfirm": "Remove this time off? Customers can book these times again.",
+  "timeOffRange": "{day}, {from} - {to}",
+  "@timeOffRange": {
+    "placeholders": {
+      "day": {
+        "type": "String"
+      },
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "timeOffNotWorking": "{name} does not work on this day.",
+  "@timeOffNotWorking": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "timeOffSlotLabel": "Time off",
+  "timeOffErrRange": "Pick a range within one day, ending after it starts.",
+  "timeOffErrPast": "Time off must end in the future.",
+  "timeOffErrReasonTooLong": "The note can be at most {max} characters.",
+  "@timeOffErrReasonTooLong": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "timeOffErrConflict": "This time overlaps a booking or other time off. Move or cancel that booking first.",
+  "timeOffErrNotAllowed": "You can only manage time off for your own schedule.",
   "subTrialing": "Free trial",
   "subActive": "Active",
   "subPastDue": "Payment overdue",
@@ -1194,5 +1487,278 @@
     }
   },
   "reactivate": "Reactivate",
-  "cardMethod": "Card"
+  "cardMethod": "Card",
+  "errInvalidPhone": "Enter a valid Ethiopian mobile number (09... or 07...).",
+  "errInvalidOwnerPhone": "Enter a valid Ethiopian mobile number for the owner (09... or 07...).",
+  "errInvalidOtp": "Enter the 6-digit code from the SMS.",
+  "errWrongDemoCode": "Wrong code. In demo mode the code is {code}.",
+  "@errWrongDemoCode": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "errRequestCodeFirst": "Request a code first.",
+  "errInvalidName": "Enter your name (up to 100 characters).",
+  "errVerifyPhoneFirst": "Verify your phone number first.",
+  "errSignInRequired": "Please sign in first.",
+  "errPhoneAlreadyStaff": "This phone number already belongs to a {role} account.",
+  "@errPhoneAlreadyStaff": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "errSignInToBook": "Sign in to book an appointment.",
+  "errInvalidTimeSlot": "That time is not valid. Please pick another time.",
+  "errServiceTooLong": "A service can be at most {minutes} minutes long.",
+  "@errServiceTooLong": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "errServerOnly": "Only the server can make this change.",
+  "errSlotTaken": "Sorry, that time was just taken. Please pick another slot.",
+  "errBookingFailed": "Could not book this time. Check your connection and try again.",
+  "errNoWorkingDays": "Pick at least one working day.",
+  "errInvalidWorkingHours": "The end time must be after the start time.",
+  "errPlanIdInvalid": "Plan id must be one of {ids}.",
+  "@errPlanIdInvalid": {
+    "placeholders": {
+      "ids": {
+        "type": "String"
+      }
+    }
+  },
+  "errPlanNameRequired": "Plan name is required.",
+  "errPlanPriceNegative": "Price must be 0 or more.",
+  "errPlanPriceRequired": "A paid plan needs a price above 0.",
+  "errPlanMaxBarbers": "Max barbers must be at least 1 (or -1 for unlimited).",
+  "errPermissionDenied": "You do not have permission to do this.",
+  "errOffline": "Could not reach the server. Check your connection and try again.",
+  "errGeneric": "Something went wrong. Please try again.",
+  "payErrBookingNotFound": "This booking could not be found.",
+  "payErrBookingCancelled": "This booking was cancelled.",
+  "payErrBookingRefunded": "This booking was refunded.",
+  "payErrCannotPayOnline": "This booking cannot be paid online.",
+  "payErrNoValidPrice": "This has no valid price, so it cannot be paid online.",
+  "payErrNotYourBooking": "Only the customer who made this booking can pay for it.",
+  "payErrNotYourPayment": "This is not your payment.",
+  "payErrNotShopOwner": "Only the owner of this shop can pay its subscription.",
+  "payErrShopNotFound": "This barbershop could not be found.",
+  "payErrPlanUnavailable": "This plan is not available.",
+  "payErrUnknownPlan": "Unknown plan.",
+  "payErrPlanTooSmall": "This plan allows {max} barbers but the shop has {count}. Choose a bigger plan or remove barbers.",
+  "@payErrPlanTooSmall": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "payErrBookingChanged": "Something changed while we prepared your payment. Please try again.",
+  "payErrStillPreparing": "Your payment is still being prepared. Please try again in a moment.",
+  "payErrLaunchFailed": "Could not open the Chapa checkout page. Please try again.",
+  "payErrInvalid": "Some payment details are missing or invalid.",
+  "payErrPrecondition": "This payment cannot be made right now.",
+  "payErrAdminsOnly": "Only administrators can do this.",
+  "payErrPaymentNotFound": "This payment could not be found.",
+  "payErrReviewNotNeeded": "This payment is no longer waiting for review.",
+  "payErrReviewNotRefundable": "Only a successful payment can be marked as refunded.",
+  "viewAction": "View",
+  "paymentsToReview": "Payments to review",
+  "paymentsToReviewIntro": "These payments need a decision. Refund the customer in the Chapa dashboard first, then mark the payment here.",
+  "noPaymentsToReview": "No payments need review",
+  "noPaymentsToReviewHint": "Payments for cancelled bookings, double payments and payments that could not be applied show up here.",
+  "paymentsToReviewLoadFailed": "Could not load payments: {error}",
+  "@paymentsToReviewLoadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "reviewReasonCancelledBooking": "Paid for a cancelled booking",
+  "reviewReasonDoublePayment": "Booking was paid twice",
+  "reviewReasonMissingBooking": "The booking no longer exists",
+  "reviewReasonRefundReported": "Chapa reported a refund that needs checking",
+  "reviewReasonSubscription": "Subscription payment could not be applied",
+  "reviewReasonOther": "Needs a manual check",
+  "paymentTypeBooking": "Booking payment",
+  "paymentTypeSubscription": "Subscription payment",
+  "paymentDetailsTitle": "Payment details",
+  "detailAmount": "Amount",
+  "detailStatus": "Status",
+  "detailCreated": "Created",
+  "detailVerified": "Verified",
+  "detailShop": "Shop",
+  "detailBooking": "Booking",
+  "detailCustomer": "Paid by",
+  "detailTxRef": "Transaction reference",
+  "detailChapaReference": "Chapa reference",
+  "detailMethod": "Method",
+  "detailPaymentId": "Payment ID",
+  "reviewNoteLabel": "Note (optional)",
+  "reviewNoteHint": "e.g. Refunded on 13 Nov, Chapa ref ...",
+  "markRefundedInChapa": "I refunded it in Chapa",
+  "markNoAction": "No action needed",
+  "confirmRefundTitle": "Mark as refunded?",
+  "confirmRefundBody": "Only continue if you already refunded {amount} in the Chapa dashboard. The payment and its booking will show as refunded.",
+  "@confirmRefundBody": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "reviewClosedRefunded": "Marked as refunded.",
+  "reviewClosedNoAction": "Review closed.",
+  "reviewFailed": "Could not close the review: {error}",
+  "@reviewFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "editWorkingHours": "Working days and hours",
+  "barberHoursTitle": "{name}: working hours",
+  "@barberHoursTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "followShopHours": "Same as the shop",
+  "followShopHoursSubtitle": "Works on the shop's days, from opening to closing time.",
+  "workingDaysLabel": "Working days",
+  "startsAt": "Starts",
+  "endsAt": "Ends",
+  "workingHoursSaved": "Working hours saved.",
+  "shopHoursSummary": "Shop hours",
+  "errAccountLoadFailed": "Could not load your account. Check your connection and try again.",
+  "reviewsTitle": "Reviews",
+  "reviewsRateAction": "Rate visit",
+  "reviewsYourRating": "Your rating",
+  "reviewsRateTitle": "Rate your visit",
+  "reviewsRateSubtitle": "{service} with {barber}",
+  "@reviewsRateSubtitle": {
+    "placeholders": {
+      "service": {
+        "type": "String"
+      },
+      "barber": {
+        "type": "String"
+      }
+    }
+  },
+  "reviewsStarsLabel": "{count, plural, =1{1 star} other{{count} stars}}",
+  "@reviewsStarsLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewsPickRating": "Tap a star to rate.",
+  "reviewsCommentLabel": "Comment (optional)",
+  "reviewsCommentHint": "What did you like? What could be better?",
+  "reviewsSubmit": "Send review",
+  "reviewsThanks": "Thank you for your review!",
+  "reviewsSubmitFailed": "Could not send your review: {error}",
+  "@reviewsSubmitFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "reviewsCountLabel": "{count, plural, =0{No reviews yet} =1{1 review} other{{count} reviews}}",
+  "@reviewsCountLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewsNew": "New",
+  "reviewsEmpty": "No reviews yet. Customers can rate their visit after it is completed.",
+  "reviewsSeeAll": "See all reviews ({count})",
+  "@reviewsSeeAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewsLoadMore": "Show more",
+  "reviewsLoadFailed": "Could not load the reviews.",
+  "reviewsRetry": "Try again",
+  "reviewsOwnerReply": "Reply from the shop",
+  "reviewsReplyAction": "Reply",
+  "reviewsEditReply": "Edit reply",
+  "reviewsReplyLabel": "Your public reply",
+  "reviewsReplySave": "Save reply",
+  "reviewsReplySaved": "Reply saved.",
+  "reviewsAwaitingReply": "No reply yet",
+  "reviewsOpenButton": "Reviews & replies",
+  "reviewsMyReviews": "My reviews",
+  "reviewsBarberTitle": "Reviews for {name}",
+  "@reviewsBarberTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "reviewsSummaryLine": "{rating} out of 5 · {count, plural, =1{1 review} other{{count} reviews}}",
+  "@reviewsSummaryLine": {
+    "placeholders": {
+      "rating": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewsRatedSemantics": "Rated {rating} out of 5",
+  "@reviewsRatedSemantics": {
+    "placeholders": {
+      "rating": {
+        "type": "String"
+      }
+    }
+  },
+  "reviewsCustomer": "Customer",
+  "reviewsErrNotYourBooking": "You can only rate your own visits.",
+  "reviewsErrNotCompleted": "You can rate a visit once it is completed.",
+  "reviewsErrAlreadyReviewed": "You have already rated this visit.",
+  "reviewsErrInvalidRating": "Choose from 1 to 5 stars.",
+  "reviewsErrCommentTooLong": "The comment can be at most {max} characters.",
+  "@reviewsErrCommentTooLong": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewsErrReplyInvalid": "Write a reply of up to {max} characters.",
+  "@reviewsErrReplyInvalid": {
+    "placeholders": {
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewsErrOwnerOnly": "Only the shop owner can reply to reviews.",
+  "reviewsErrNotFound": "This review no longer exists."
 }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+import '../data/addis_time.dart';
 import '../models/barber_model.dart';
 import '../models/barbershop_model.dart';
 import '../models/booking_model.dart';
@@ -10,9 +11,11 @@ import '../models/invite_model.dart';
 import '../models/plan_model.dart';
 import '../models/service_model.dart';
 import '../models/user_model.dart';
+import '../models/app_exception.dart';
 import 'availability_service.dart';
 import 'data_cache.dart';
 import 'data_store.dart';
+import 'time_off_service.dart';
 
 /// Firestore-backed [DataStore].
 ///
@@ -25,22 +28,34 @@ import 'data_store.dart';
 ///  * everyone:  doc users/{uid}
 ///  * customer:  barbershops where subscriptionStatus in [trialing, active, past_due];
 ///               collectionGroup services; collectionGroup barbers;
-///               bookings where customerId == uid
+///               bookings where customerId == uid (bounded, see below)
 ///  * owner:     doc barbershops/{shopId}; its services and barbers subcollections;
-///               bookings where shopId == shopId;
+///               bookings where shopId == shopId (bounded);
 ///               invites where shopId == shopId and role == 'barber';
 ///               users where shopId == shopId; plans
 ///  * barber:    doc barbershops/{shopId}; its services and barbers subcollections;
-///               bookings where shopId == shopId and barberId == barberId
+///               bookings where shopId == shopId and barberId == barberId (bounded)
 ///  * admin:     barbershops; collectionGroup services; collectionGroup barbers;
 ///               bookings orderBy createdAt desc limit 500; users; invites; plans
+///
+/// Booking listeners of customers, owners and barbers are bounded by two
+/// queries on `startAt` (needs the composite indexes in
+/// firestore.indexes.json), split at the minute [start] runs:
+///  * upcoming: `startAt >= now`, orderBy startAt, no limit. Complete: the
+///    rules only accept bookings up to 31 days ahead.
+///  * history:  `now - [bookingHistoryDays] <= startAt < now`, orderBy
+///    startAt desc, limited to the newest [customerHistoryLimit] /
+///    [staffHistoryLimit].
+/// Legacy bookings without `startAt` match neither query.
 class FirestoreDataStore implements DataStore {
   FirestoreDataStore({
     required this.cache,
     required this.onChanged,
     required this.onCurrentUserChanged,
     FirebaseFirestore? firestore,
-  }) : _db = firestore ?? FirebaseFirestore.instance;
+    DateTime Function()? clock,
+  })  : _db = firestore ?? FirebaseFirestore.instance,
+        _clock = clock ?? DateTime.now;
 
   final DataCache cache;
   final FirebaseFirestore _db;
@@ -53,6 +68,17 @@ class FirestoreDataStore implements DataStore {
   final void Function(AppUser? user) onCurrentUserChanged;
 
   static const int adminBookingLimit = 500;
+
+  /// How far back the customer/owner/barber booking listeners reach.
+  static const int bookingHistoryDays = 90;
+
+  /// Most past bookings a customer listener keeps (newest first).
+  static const int customerHistoryLimit = 200;
+
+  /// Most past bookings an owner or barber listener keeps (newest first).
+  static const int staffHistoryLimit = 1000;
+
+  final DateTime Function() _clock;
 
   final List<StreamSubscription<dynamic>> _subs = [];
   String? _scopeKey;
@@ -117,6 +143,35 @@ class FirestoreDataStore implements DataStore {
       });
     }
 
+    // Mirrors the full result set of [query] into [target]: documents that
+    // left the result (deleted, or pushed out by the limit) are removed.
+    // Used where a query has a limit, instead of docChanges.
+    void listenQueryResults<M>(Query<Map<String, dynamic>> query, Map<String, M> target, M Function(Map<String, dynamic>, String) parse) {
+      final held = <String>{};
+      listen<QuerySnapshot<Map<String, dynamic>>>(query.snapshots(), (snap) {
+        final ids = <String>{};
+        for (final doc in snap.docs) {
+          ids.add(doc.id);
+          target[doc.id] = parse(doc.data(), doc.id);
+        }
+        for (final id in held.difference(ids)) {
+          target.remove(id);
+        }
+        held
+          ..clear()
+          ..addAll(ids);
+      });
+    }
+
+    // Upcoming bookings in full plus recent history (see the class doc).
+    // The two ranges are disjoint, so a removal from one never drops a
+    // document the other still matches.
+    void listenBookings(Query<Map<String, dynamic>> base, int historyLimit) {
+      final now = _clock();
+      listenQuery(upcomingBookingsQuery(base, now), cache.bookings, Booking.fromMap);
+      listenQueryResults(historyBookingsQuery(base, now, historyLimit), cache.bookings, Booking.fromMap);
+    }
+
     // Own profile (role changes, removal of a barber's access, ...).
     listen<DocumentSnapshot<Map<String, dynamic>>>(_users.doc(user.uid).snapshots(), (snap) {
       final data = snap.data();
@@ -134,14 +189,14 @@ class FirestoreDataStore implements DataStore {
         );
         listenQuery(_db.collectionGroup('services'), cache.services, BarbershopService.fromMap);
         listenQuery(_db.collectionGroup('barbers'), cache.barbers, Barber.fromMap);
-        listenQuery(_bookings.where('customerId', isEqualTo: user.uid), cache.bookings, Booking.fromMap);
+        listenBookings(_bookings.where('customerId', isEqualTo: user.uid), customerHistoryLimit);
       case UserRole.barbershopOwner:
         final shopId = user.shopId;
         if (shopId != null) {
           listenDoc(_shops.doc(shopId), cache.shops, Barbershop.fromMap);
           listenQuery(_servicesOf(shopId), cache.services, BarbershopService.fromMap);
           listenQuery(_barbersOf(shopId), cache.barbers, Barber.fromMap);
-          listenQuery(_bookings.where('shopId', isEqualTo: shopId), cache.bookings, Booking.fromMap);
+          listenBookings(_bookings.where('shopId', isEqualTo: shopId), staffHistoryLimit);
           listenQuery(
             _invites.where('shopId', isEqualTo: shopId).where('role', isEqualTo: UserRole.barber.name),
             cache.invites,
@@ -157,10 +212,9 @@ class FirestoreDataStore implements DataStore {
           listenDoc(_shops.doc(shopId), cache.shops, Barbershop.fromMap);
           listenQuery(_servicesOf(shopId), cache.services, BarbershopService.fromMap);
           listenQuery(_barbersOf(shopId), cache.barbers, Barber.fromMap);
-          listenQuery(
+          listenBookings(
             _bookings.where('shopId', isEqualTo: shopId).where('barberId', isEqualTo: barberId),
-            cache.bookings,
-            Booking.fromMap,
+            staffHistoryLimit,
           );
         }
       case UserRole.admin:
@@ -178,6 +232,36 @@ class FirestoreDataStore implements DataStore {
     }
 
     await Future.wait(firstSnapshots).timeout(timeout, onTimeout: () => const []);
+  }
+
+  /// The `startAt` bounds of the booking listeners for [now]: `(nowIso,
+  /// cutoffIso)`, both whole UTC minutes in the stored ISO format, with
+  /// cutoff [bookingHistoryDays] before now.
+  static (String, String) bookingWindowBounds(DateTime now) {
+    final t = now.toUtc();
+    final minute = DateTime.utc(t.year, t.month, t.day, t.hour, t.minute);
+    return (
+      minute.toIso8601String(),
+      minute.subtract(const Duration(days: bookingHistoryDays)).toIso8601String(),
+    );
+  }
+
+  /// Bookings of [base] starting at or after the minute of [now], soonest
+  /// first (no limit: bookings are at most 31 days ahead).
+  static Query<Map<String, dynamic>> upcomingBookingsQuery(Query<Map<String, dynamic>> base, DateTime now) {
+    final (nowIso, _) = bookingWindowBounds(now);
+    return base.where('startAt', isGreaterThanOrEqualTo: nowIso).orderBy('startAt');
+  }
+
+  /// The newest [limit] bookings of [base] that started in the
+  /// [bookingHistoryDays] before the minute of [now].
+  static Query<Map<String, dynamic>> historyBookingsQuery(Query<Map<String, dynamic>> base, DateTime now, int limit) {
+    final (nowIso, cutoffIso) = bookingWindowBounds(now);
+    return base
+        .where('startAt', isGreaterThanOrEqualTo: cutoffIso)
+        .where('startAt', isLessThan: nowIso)
+        .orderBy('startAt', descending: true)
+        .limit(limit);
   }
 
   /// Cancels every listener and empties the cache (sign-out).
@@ -322,7 +406,11 @@ class FirestoreDataStore implements DataStore {
   ///  1. read `slotLocks/{id}` for every 15-minute block the booking covers;
   ///  2. if any exists, abort with [SlotTakenException];
   ///  3. otherwise create `bookings/{id}` and every lock
-  ///     `{bookingId, customerId, startAt}`.
+  ///     `{bookingId, startAt, expiresAt}` (no customer data: any signed-in
+  ///     user can read locks; the rules tie each lock to its booking).
+  /// The rules check the first four and the last lock; the `verifyBookingLocks`
+  /// trigger (functions/bookings) checks all of them and cancels a booking
+  /// with `cancelReason: 'slot_conflict'` if one is missing.
   /// Two customers racing for the same block: Firestore retries the loser's
   /// transaction, which then sees the winner's lock. (The rules also only
   /// allow *creating* locks, so an overwrite is rejected server-side.)
@@ -411,5 +499,162 @@ class FirestoreDataStore implements DataStore {
       if (name != null) 'name': name,
       if (language != null) 'language': language,
     });
+  }
+
+  // --- Reschedule, policy, time off ---
+
+  /// The reschedule transaction (customer, same barber and service):
+  ///  1. read the booking (it must still be pending/confirmed) and every
+  ///     lock of the old and the new interval;
+  ///  2. abort with [SlotTakenException] if a new block is held by anyone
+  ///     else (another booking, or time off: `timeOffId`, no bookingId);
+  ///  3. `update` the booking with exactly `startAt, endAt, date, timeSlot,
+  ///     rescheduleCount (stored + 1), rescheduledAt`;
+  ///  4. `delete` each old lock with `bookingId == booking.id` whose block
+  ///     is not in the new interval;
+  ///  5. `set` (create) `{bookingId, startAt, expiresAt: newEnd + 1 day}`
+  ///     for each new block that has no lock yet. Blocks in both intervals
+  ///     keep their existing lock untouched.
+  /// The `verifyBookingLocks` function re-checks every new block after the
+  /// write and cancels the booking (`slot_conflict`) if one is missing.
+  @override
+  Future<void> rescheduleBooking(Booking original, Booking updated) async {
+    final bookingRef = _bookings.doc(original.id);
+    final locksRef = _slotLocksOf(original.shopId, original.barberId);
+    final newLocks = slotLocksForBooking(updated);
+    final newIds = {for (final l in newLocks) l.id};
+    try {
+      await _db.runTransaction<void>((tx) async {
+        final snap = await tx.get(bookingRef);
+        final data = snap.data();
+        if (data == null) throw AppStateException(AppErrorCode.bookingNotChangeable);
+        final fresh = Booking.fromMap(data, snap.id);
+        if (fresh.status != BookingStatus.pending && fresh.status != BookingStatus.confirmed) {
+          throw AppStateException(AppErrorCode.bookingNotChangeable);
+        }
+        final oldIds = slotLockIdsFor(fresh.startAt, fresh.endAt);
+
+        final releasable = <DocumentReference<Map<String, dynamic>>>[];
+        for (final id in oldIds) {
+          if (newIds.contains(id)) continue;
+          final lock = await tx.get(locksRef.doc(id));
+          if (lock.exists && lock.data()?['bookingId'] == original.id) releasable.add(lock.reference);
+        }
+        final toCreate = <SlotLock>[];
+        for (final lock in newLocks) {
+          final existing = await tx.get(locksRef.doc(lock.id));
+          if (!existing.exists) {
+            toCreate.add(lock);
+          } else if (existing.data()?['bookingId'] != original.id) {
+            throw const SlotTakenException();
+          }
+        }
+
+        tx.update(bookingRef, {
+          ...updated.rescheduleFields(),
+          'rescheduleCount': fresh.rescheduleCount + 1,
+        });
+        for (final ref in releasable) {
+          tx.delete(ref);
+        }
+        for (final lock in toCreate) {
+          tx.set(locksRef.doc(lock.id), lock.toMap());
+        }
+      });
+    } on SlotTakenException {
+      rethrow;
+    } on AppException {
+      rethrow;
+    } on FirebaseException {
+      // A lost race can surface as a rules rejection (the lock now exists,
+      // so the create became an update).
+      final oldIds = slotLockIdsFor(original.startAt, original.endAt).toSet();
+      final added = newLocks.where((l) => !oldIds.contains(l.id)).toList();
+      if (await _anyLockExists(locksRef, added)) throw const SlotTakenException();
+      rethrow;
+    }
+  }
+
+  /// Only the two policy fields (the rules let the owner change them).
+  @override
+  Future<void> updateShopPolicy(String shopId, {required int cancellationCutoffHours, required int maxReschedules}) {
+    return _shops.doc(shopId).update({
+      'cancellationCutoffHours': cancellationCutoffHours,
+      'maxReschedules': maxReschedules,
+    });
+  }
+
+  CollectionReference<Map<String, dynamic>> _timeOffOf(String shopId, String barberId) =>
+      _barbersOf(shopId).doc(barberId).collection('timeOff');
+
+  /// How far back the time-off listener reaches (by `endAt`).
+  static const Duration timeOffHistory = Duration(days: 7);
+
+  /// Time off ending in the last [timeOffHistory] or later: a single-field
+  /// range on `endAt` (no composite index), sorted by start on the client.
+  @override
+  Stream<List<TimeOff>> watchTimeOff(String shopId, String barberId) {
+    final since = _clock().toUtc().subtract(timeOffHistory).toIso8601String();
+    return _timeOffOf(shopId, barberId)
+        .where('endAt', isGreaterThanOrEqualTo: since)
+        .orderBy('endAt')
+        .snapshots()
+        .map((snap) => [
+              for (final d in snap.docs) TimeOff.fromMap(d.data(), d.id, shopId: shopId, barberId: barberId),
+            ]..sort((a, b) => a.startAt.compareTo(b.startAt)));
+  }
+
+  /// One batch: `set` the time-off doc `{startAt, endAt, reason?, createdBy,
+  /// createdAt}` and `set` a lock `{timeOffId, startAt, expiresAt}` for each
+  /// block. The day's locks are read first so a clash is reported as
+  /// [AppErrorCode.timeOffConflict]; a lock created in between makes the
+  /// batch fail in the rules (locks are never updated), reported the same.
+  @override
+  Future<void> addTimeOff(TimeOff timeOff) async {
+    final locksRef = _slotLocksOf(timeOff.shopId, timeOff.barberId);
+    final day = toAddisWallClock(timeOff.startAt);
+    Future<List<SlotLock>> dayLocks() async {
+      final (dayStart, dayEnd) = addisDayBoundsUtc(DateTime(day.year, day.month, day.day));
+      final snap = await locksRef
+          .where('startAt', isGreaterThanOrEqualTo: dayStart.toIso8601String())
+          .where('startAt', isLessThan: dayEnd.toIso8601String())
+          .get();
+      return [for (final d in snap.docs) SlotLock.fromMap(d.data(), d.id)];
+    }
+
+    if (timeOffConflicts(timeOff, bookings: cache.bookings.values, locks: await dayLocks())) {
+      throw AppStateException(AppErrorCode.timeOffConflict);
+    }
+    final batch = _db.batch();
+    batch.set(_timeOffOf(timeOff.shopId, timeOff.barberId).doc(timeOff.id), timeOff.toMap());
+    for (final lock in slotLocksForTimeOff(timeOff)) {
+      batch.set(locksRef.doc(lock.id), lock.toMap());
+    }
+    try {
+      await batch.commit();
+    } on FirebaseException {
+      var locks = const <SlotLock>[];
+      try {
+        locks = await dayLocks();
+      } catch (_) {
+        // Report the original error.
+      }
+      if (timeOffConflicts(timeOff, locks: locks)) throw AppStateException(AppErrorCode.timeOffConflict);
+      rethrow;
+    }
+  }
+
+  /// One batch: delete the time-off doc and every lock with
+  /// `timeOffId == timeOff.id` (an equality query on the barber's
+  /// slotLocks; the automatic single-field index serves it).
+  @override
+  Future<void> deleteTimeOff(TimeOff timeOff) async {
+    final locks = await _slotLocksOf(timeOff.shopId, timeOff.barberId).where('timeOffId', isEqualTo: timeOff.id).get();
+    final batch = _db.batch();
+    for (final d in locks.docs) {
+      batch.delete(d.reference);
+    }
+    batch.delete(_timeOffOf(timeOff.shopId, timeOff.barberId).doc(timeOff.id));
+    await batch.commit();
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../l10n/l10n.dart';
+import '../../reviews/reviews_l10n.dart';
 import '../../../models/barber_model.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../services/app_repository.dart';
@@ -222,7 +223,7 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                           const Icon(Icons.star, color: AppTheme.primaryGold, size: 14),
                           const SizedBox(width: 4),
                           Text(
-                            context.l10n.reviewsCount(barber.rating.toStringAsFixed(1), barber.reviewCount),
+                            context.l10n.reviewsRatingShort(barber.rating, barber.reviewCount),
                             style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                           ),
                         ],

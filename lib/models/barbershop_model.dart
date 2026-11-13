@@ -26,6 +26,13 @@ enum SubscriptionStatus {
   static const List<String> customerVisibleValues = ['trialing', 'active', 'past_due'];
 }
 
+/// Defaults and limits of the shop booking policy (owner-editable; the
+/// rules enforce the same ranges).
+const int kDefaultCancellationCutoffHours = 2;
+const int kMaxCancellationCutoffHours = 72;
+const int kDefaultMaxReschedules = 2;
+const int kMaxMaxReschedules = 5;
+
 class Barbershop {
   final String id;
   final String ownerId;
@@ -55,6 +62,13 @@ class Barbershop {
   /// End of the current trial / paid period (UTC).
   final DateTime? subscriptionEndsAt;
 
+  /// Customers cannot cancel or reschedule within this many hours of the
+  /// appointment start (0..72).
+  final int cancellationCutoffHours;
+
+  /// How many times a customer may move one booking (0..5).
+  final int maxReschedules;
+
   Barbershop({
     required this.id,
     required this.ownerId,
@@ -75,6 +89,8 @@ class Barbershop {
     this.subscriptionPlan = 'trial',
     this.subscriptionStatus = SubscriptionStatus.trialing,
     this.subscriptionEndsAt,
+    this.cancellationCutoffHours = kDefaultCancellationCutoffHours,
+    this.maxReschedules = kDefaultMaxReschedules,
   });
 
   String get fullAddress {
@@ -103,8 +119,16 @@ class Barbershop {
       'subscriptionPlan': subscriptionPlan,
       'subscriptionStatus': subscriptionStatus.value,
       if (subscriptionEndsAt != null) 'subscriptionEndsAt': subscriptionEndsAt!.toUtc().toIso8601String(),
+      ...toPolicyMap(),
     };
   }
+
+  /// The booking policy fields (owner-editable, written on their own by
+  /// `DataStore.updateShopPolicy`).
+  Map<String, dynamic> toPolicyMap() => {
+        'cancellationCutoffHours': cancellationCutoffHours,
+        'maxReschedules': maxReschedules,
+      };
 
   /// The fields a shop owner may edit. Used for profile updates so an owner's
   /// write never touches ownership, verification, ratings or subscription.
@@ -144,6 +168,9 @@ class Barbershop {
     String? subscriptionPlan,
     SubscriptionStatus? subscriptionStatus,
     DateTime? subscriptionEndsAt,
+    int? cancellationCutoffHours,
+    int? maxReschedules,
+    bool clearLandmark = false,
   }) {
     return Barbershop(
       id: id ?? this.id,
@@ -153,7 +180,7 @@ class Barbershop {
       address: address ?? this.address,
       city: city ?? this.city,
       subCity: subCity ?? this.subCity,
-      landmark: landmark ?? this.landmark,
+      landmark: clearLandmark ? null : (landmark ?? this.landmark),
       phone: phone ?? this.phone,
       imageUrl: imageUrl ?? this.imageUrl,
       rating: rating ?? this.rating,
@@ -165,6 +192,8 @@ class Barbershop {
       subscriptionPlan: subscriptionPlan ?? this.subscriptionPlan,
       subscriptionStatus: subscriptionStatus ?? this.subscriptionStatus,
       subscriptionEndsAt: subscriptionEndsAt ?? this.subscriptionEndsAt,
+      cancellationCutoffHours: cancellationCutoffHours ?? this.cancellationCutoffHours,
+      maxReschedules: maxReschedules ?? this.maxReschedules,
     );
   }
 
@@ -190,8 +219,18 @@ class Barbershop {
       subscriptionPlan: map['subscriptionPlan'] ?? 'trial',
       subscriptionStatus: SubscriptionStatus.fromString(map['subscriptionStatus']),
       subscriptionEndsAt: _parseDate(map['subscriptionEndsAt']),
+      cancellationCutoffHours: _intIn(map['cancellationCutoffHours'], 0, kMaxCancellationCutoffHours) ??
+          kDefaultCancellationCutoffHours,
+      maxReschedules: _intIn(map['maxReschedules'], 0, kMaxMaxReschedules) ?? kDefaultMaxReschedules,
     );
   }
+}
+
+/// A whole number within [min, max], or null.
+int? _intIn(dynamic value, int min, int max) {
+  if (value is! num) return null;
+  final v = value.toInt();
+  return v < min || v > max ? null : v;
 }
 
 /// Accepts an ISO-8601 string or a Firestore Timestamp (anything with

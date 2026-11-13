@@ -57,8 +57,8 @@
       "landmark": "Near Edna Mall",
       "phone": "+251911223301",
       "imageUrl": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800",
-      "rating": 4.9,
-      "reviewCount": 142,
+      "rating": 4.2,
+      "reviewCount": 5,
       "openingHour": 8,
       "closingHour": 20,
       "workingDays": [1, 2, 3, 4, 5, 6, 7],
@@ -66,6 +66,8 @@
       "subscriptionPlan": "pro",
       "subscriptionStatus": "active",
       "subscriptionEndsInDays": 25,
+      "cancellationCutoffHours": 2,
+      "maxReschedules": 2,
       "services": [
         { "id": "srv_1_1", "name": "Signature Skin Fade", "description": "Precision skin fade with clipper and scissor blend, finished with styling.", "price": 450, "durationMinutes": 45 },
         { "id": "srv_1_2", "name": "Beard Sculpt & Razor Line-up", "description": "Beard shaping, steam towel, straight-razor edges and beard oil.", "price": 300, "durationMinutes": 30 },
@@ -73,9 +75,9 @@
         { "id": "srv_1_4", "name": "Kids Cut (under 12)", "description": "Gentle, quick cut for children.", "price": 250, "durationMinutes": 30 }
       ],
       "barbers": [
-        { "id": "barber_1", "name": "Yonas Tadesse", "title": "Master Barber / Fade Specialist", "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400", "rating": 4.9, "reviewCount": 88, "phone": "+251911000201", "specialties": ["Skin Fade", "Beard Sculpting", "Hot Razor Shave"] },
-        { "id": "barber_2", "name": "Kaleab Mekonnen", "title": "Senior Stylist & Shave Artist", "avatarUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400", "rating": 4.8, "reviewCount": 54, "phone": "+251911000202", "specialties": ["Scissor Cut", "Hot Towel Shave", "Kids Cuts"] },
-        { "id": "barber_1_3", "name": "Biniyam Hailu", "title": "Barber", "avatarUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400", "rating": 4.7, "reviewCount": 21, "phone": "+251912450013", "specialties": ["Low Taper", "Line-up"], "workingDays": [2, 3, 4, 5, 6, 7], "startHour": 12, "endHour": 20 }
+        { "id": "barber_1", "name": "Yonas Tadesse", "title": "Master Barber / Fade Specialist", "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400", "rating": 5.0, "reviewCount": 2, "phone": "+251911000201", "specialties": ["Skin Fade", "Beard Sculpting", "Hot Razor Shave"] },
+        { "id": "barber_2", "name": "Kaleab Mekonnen", "title": "Senior Stylist & Shave Artist", "avatarUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400", "rating": 3.5, "reviewCount": 2, "phone": "+251911000202", "specialties": ["Scissor Cut", "Hot Towel Shave", "Kids Cuts"] },
+        { "id": "barber_1_3", "name": "Biniyam Hailu", "title": "Barber", "avatarUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400", "rating": 4.0, "reviewCount": 1, "phone": "+251912450013", "specialties": ["Low Taper", "Line-up"], "workingDays": [2, 3, 4, 5, 6, 7], "startHour": 12, "endHour": 20 }
       ]
     },
     {
@@ -89,8 +91,8 @@
       "landmark": "Behind the Intercontinental Hotel",
       "phone": "+251911223302",
       "imageUrl": "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800",
-      "rating": 4.7,
-      "reviewCount": 98,
+      "rating": 4.5,
+      "reviewCount": 2,
       "openingHour": 8,
       "closingHour": 19,
       "workingDays": [1, 2, 3, 4, 5, 6],
@@ -98,14 +100,16 @@
       "subscriptionPlan": "basic",
       "subscriptionStatus": "active",
       "subscriptionEndsInDays": 12,
+      "cancellationCutoffHours": 24,
+      "maxReschedules": 1,
       "services": [
         { "id": "srv_2_1", "name": "Classic Scissor Cut", "description": "Shears cut with tapered neckline and hot-lather edge clean-up.", "price": 350, "durationMinutes": 40 },
         { "id": "srv_2_2", "name": "Straight-Razor Hot Shave", "description": "Pre-shave oil, hot towels, brush lather and soothing balm.", "price": 250, "durationMinutes": 35 },
         { "id": "srv_2_3", "name": "Executive Cut & Shave", "description": "Classic cut plus full hot-towel shave.", "price": 550, "durationMinutes": 70 }
       ],
       "barbers": [
-        { "id": "barber_2_1", "name": "Tewodros Alemu", "title": "Head Barber", "avatarUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400", "rating": 4.8, "reviewCount": 62, "phone": "+251911000102", "specialties": ["Scissor Cut", "Beard Trim"] },
-        { "id": "barber_2_2", "name": "Dagim Worku", "title": "Barber", "avatarUrl": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400", "rating": 4.6, "reviewCount": 30, "phone": "+251912450022", "specialties": ["Hot Shave", "Afro Shape-up"] }
+        { "id": "barber_2_1", "name": "Tewodros Alemu", "title": "Head Barber", "avatarUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400", "rating": 5.0, "reviewCount": 1, "phone": "+251911000102", "specialties": ["Scissor Cut", "Beard Trim"] },
+        { "id": "barber_2_2", "name": "Dagim Worku", "title": "Barber", "avatarUrl": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400", "rating": 4.0, "reviewCount": 1, "phone": "+251912450022", "specialties": ["Hot Shave", "Afro Shape-up"] }
       ]
     },
     {
@@ -119,8 +123,8 @@
       "landmark": "Near Taitu Hotel",
       "phone": "+251911223303",
       "imageUrl": "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=800",
-      "rating": 4.8,
-      "reviewCount": 210,
+      "rating": 5.0,
+      "reviewCount": 2,
       "openingHour": 7,
       "closingHour": 19,
       "workingDays": [1, 2, 3, 4, 5, 6],
@@ -128,13 +132,15 @@
       "subscriptionPlan": "basic",
       "subscriptionStatus": "active",
       "subscriptionEndsInDays": 5,
+      "cancellationCutoffHours": 2,
+      "maxReschedules": 2,
       "services": [
         { "id": "srv_3_1", "name": "Afro Shape-up & Cut", "description": "Afro shaping, sponge twist finish and sharp line-up.", "price": 300, "durationMinutes": 40 },
         { "id": "srv_3_2", "name": "Clean Shave", "description": "Straight-razor shave with hot towel.", "price": 150, "durationMinutes": 25 },
         { "id": "srv_3_3", "name": "Cut & Beard Combo", "description": "Haircut plus beard trim and line-up.", "price": 400, "durationMinutes": 50 }
       ],
       "barbers": [
-        { "id": "barber_3_1", "name": "Mulugeta Bekele", "title": "Master Barber", "avatarUrl": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400", "rating": 5.0, "reviewCount": 140, "phone": "+251911000103", "specialties": ["Afro Shape-up", "Straight Razor"] }
+        { "id": "barber_3_1", "name": "Mulugeta Bekele", "title": "Master Barber", "avatarUrl": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400", "rating": 5.0, "reviewCount": 2, "phone": "+251911000103", "specialties": ["Afro Shape-up", "Straight Razor"] }
       ]
     },
     {
@@ -148,8 +154,8 @@
       "landmark": "Sarbet roundabout",
       "phone": "+251911223304",
       "imageUrl": "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=800",
-      "rating": 4.8,
-      "reviewCount": 37,
+      "rating": 5.0,
+      "reviewCount": 1,
       "openingHour": 9,
       "closingHour": 20,
       "workingDays": [1, 2, 3, 4, 5, 6, 7],
@@ -157,13 +163,15 @@
       "subscriptionPlan": "trial",
       "subscriptionStatus": "trialing",
       "subscriptionEndsInDays": 20,
+      "cancellationCutoffHours": 2,
+      "maxReschedules": 2,
       "services": [
         { "id": "srv_4_1", "name": "Textured Crop & Low Fade", "description": "Modern crop with texture powder and clean tapers.", "price": 500, "durationMinutes": 45 },
         { "id": "srv_4_2", "name": "Hair Design / Part", "description": "Freehand razor design or hard part.", "price": 200, "durationMinutes": 20 },
         { "id": "srv_4_3", "name": "Beard Trim & Hydration Mask", "description": "Conditioning treatment, shaping and razor edge.", "price": 350, "durationMinutes": 30 }
       ],
       "barbers": [
-        { "id": "barber_4_1", "name": "Henok Girma", "title": "Fade & Design Specialist", "avatarUrl": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400", "rating": 4.9, "reviewCount": 37, "phone": "+251911000104", "specialties": ["Textured Crop", "Low Taper Fade", "Hair Design"] }
+        { "id": "barber_4_1", "name": "Henok Girma", "title": "Fade & Design Specialist", "avatarUrl": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400", "rating": 5.0, "reviewCount": 1, "phone": "+251911000104", "specialties": ["Textured Crop", "Low Taper Fade", "Hair Design"] }
       ]
     },
     {
@@ -177,8 +185,8 @@
       "landmark": "Near St. Michael Church, CMC",
       "phone": "+251911223305",
       "imageUrl": "https://images.unsplash.com/photo-1512690459411-b9245aed614b?w=800",
-      "rating": 4.9,
-      "reviewCount": 168,
+      "rating": 4.5,
+      "reviewCount": 2,
       "openingHour": 9,
       "closingHour": 21,
       "workingDays": [1, 2, 3, 4, 5, 6, 7],
@@ -186,14 +194,16 @@
       "subscriptionPlan": "basic",
       "subscriptionStatus": "past_due",
       "subscriptionEndsInDays": -2,
+      "cancellationCutoffHours": 2,
+      "maxReschedules": 2,
       "services": [
         { "id": "srv_5_1", "name": "Executive Cut", "description": "Consultation, precision cut, wash and style.", "price": 800, "durationMinutes": 45 },
         { "id": "srv_5_2", "name": "Royal Hot-Towel Shave", "description": "Double hot towels, straight-razor shave and cold-stone finish.", "price": 400, "durationMinutes": 40 },
         { "id": "srv_5_3", "name": "Groom's Wedding Package", "description": "Cut, shave, facial and styling for your big day.", "price": 1500, "durationMinutes": 120 }
       ],
       "barbers": [
-        { "id": "barber_5_1", "name": "Samuel Tesfaye", "title": "Senior Barber", "avatarUrl": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400", "rating": 4.9, "reviewCount": 92, "phone": "+251911000105", "specialties": ["Executive Styling", "Hot Shave"] },
-        { "id": "barber_5_2", "name": "Abel Negash", "title": "Stylist", "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400", "rating": 4.7, "reviewCount": 40, "phone": "+251912450052", "specialties": ["Scissor Cut", "Facials"], "startHour": 13, "endHour": 21 }
+        { "id": "barber_5_1", "name": "Samuel Tesfaye", "title": "Senior Barber", "avatarUrl": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400", "rating": 5.0, "reviewCount": 1, "phone": "+251911000105", "specialties": ["Executive Styling", "Hot Shave"] },
+        { "id": "barber_5_2", "name": "Abel Negash", "title": "Stylist", "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400", "rating": 4.0, "reviewCount": 1, "phone": "+251912450052", "specialties": ["Scissor Cut", "Facials"], "startHour": 13, "endHour": 21 }
       ]
     },
     {
@@ -207,8 +217,8 @@
       "landmark": "Next to Zefmesh Mall",
       "phone": "+251911223306",
       "imageUrl": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800",
-      "rating": 4.5,
-      "reviewCount": 76,
+      "rating": 4.0,
+      "reviewCount": 1,
       "openingHour": 7,
       "closingHour": 21,
       "workingDays": [1, 2, 3, 4, 5, 6, 7],
@@ -216,12 +226,14 @@
       "subscriptionPlan": "trial",
       "subscriptionStatus": "suspended",
       "subscriptionEndsInDays": -10,
+      "cancellationCutoffHours": 2,
+      "maxReschedules": 2,
       "services": [
         { "id": "srv_6_1", "name": "Quick Cut", "description": "Clipper cut in under 30 minutes.", "price": 200, "durationMinutes": 25 },
         { "id": "srv_6_2", "name": "Quick Shave", "description": "Clean shave.", "price": 150, "durationMinutes": 15 }
       ],
       "barbers": [
-        { "id": "barber_6_1", "name": "Bereket Wolde", "title": "Barber", "avatarUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400", "rating": 4.5, "reviewCount": 50, "phone": "+251911000106", "specialties": ["Clipper Cut"] }
+        { "id": "barber_6_1", "name": "Bereket Wolde", "title": "Barber", "avatarUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400", "rating": 4.0, "reviewCount": 1, "phone": "+251911000106", "specialties": ["Clipper Cut"] }
       ]
     }
   ],
@@ -233,7 +245,44 @@
     { "id": "book_5", "shopId": "shop_2", "barberId": "barber_2_1", "customerId": "user_cust_1", "serviceId": "srv_2_1", "dayOffset": -7, "startTime": "13:30", "status": "completed", "paymentStatus": "paid", "paymentMethod": "chapa", "createdHoursAgo": 192 },
     { "id": "book_6", "shopId": "shop_3", "barberId": "barber_3_1", "customerId": "user_cust_2", "serviceId": "srv_3_2", "dayOffset": 2, "startTime": "09:45", "status": "pending", "paymentStatus": "unpaid", "paymentMethod": "cash", "createdHoursAgo": 5 },
     { "id": "book_7", "shopId": "shop_1", "barberId": "barber_1", "customerId": "user_cust_1", "serviceId": "srv_1_2", "dayOffset": -14, "startTime": "12:00", "status": "cancelled", "paymentStatus": "unpaid", "paymentMethod": "cash", "createdHoursAgo": 360 },
-    { "id": "book_8", "shopId": "shop_5", "barberId": "barber_5_1", "customerId": "user_cust_4", "serviceId": "srv_5_1", "dayOffset": 3, "startTime": "15:00", "status": "confirmed", "paymentStatus": "pending", "paymentMethod": "chapa", "createdHoursAgo": 2 }
+    { "id": "book_8", "shopId": "shop_5", "barberId": "barber_5_1", "customerId": "user_cust_4", "serviceId": "srv_5_1", "dayOffset": 3, "startTime": "15:00", "status": "confirmed", "paymentStatus": "pending", "paymentMethod": "chapa", "createdHoursAgo": 2 },
+    { "id": "book_9", "shopId": "shop_1", "barberId": "barber_1", "customerId": "user_cust_1", "serviceId": "srv_1_1", "dayOffset": -96, "startTime": "10:00", "status": "completed", "paymentStatus": "paid", "paymentMethod": "cash", "createdHoursAgo": 2334 },
+    { "id": "book_10", "shopId": "shop_1", "barberId": "barber_2", "customerId": "user_cust_2", "serviceId": "srv_1_2", "dayOffset": -101, "startTime": "15:30", "status": "completed", "paymentStatus": "paid", "paymentMethod": "cash", "createdHoursAgo": 2454 },
+    { "id": "book_11", "shopId": "shop_1", "barberId": "barber_1_3", "customerId": "user_cust_4", "serviceId": "srv_1_4", "dayOffset": -110, "startTime": "13:00", "status": "completed", "paymentStatus": "paid", "paymentMethod": "cash", "createdHoursAgo": 2670 },
+    { "id": "book_12", "shopId": "shop_1", "barberId": "barber_2", "customerId": "user_cust_3", "serviceId": "srv_1_3", "dayOffset": -125, "startTime": "09:00", "status": "completed", "paymentStatus": "paid", "paymentMethod": "cash", "createdHoursAgo": 3030 },
+    { "id": "book_13", "shopId": "shop_2", "barberId": "barber_2_1", "customerId": "user_cust_2", "serviceId": "srv_2_1", "dayOffset": -98, "startTime": "11:00", "status": "completed", "paymentStatus": "paid", "paymentMethod": "cash", "createdHoursAgo": 2382 },
+    { "id": "book_14", "shopId": "shop_2", "barberId": "barber_2_2", "customerId": "user_cust_4", "serviceId": "srv_2_2", "dayOffset": -130, "startTime": "16:00", "status": "completed", "paymentStatus": "paid", "paymentMethod": "cash", "createdHoursAgo": 3150 },
+    { "id": "book_15", "shopId": "shop_3", "barberId": "barber_3_1", "customerId": "user_cust_3", "serviceId": "srv_3_1", "dayOffset": -105, "startTime": "10:00", "status": "completed", "paymentStatus": "paid", "paymentMethod": "cash", "createdHoursAgo": 2550 },
+    { "id": "book_16", "shopId": "shop_3", "barberId": "barber_3_1", "customerId": "user_cust_1", "serviceId": "srv_3_3", "dayOffset": -140, "startTime": "14:00", "status": "completed", "paymentStatus": "paid", "paymentMethod": "cash", "createdHoursAgo": 3390 },
+    { "id": "book_17", "shopId": "shop_4", "barberId": "barber_4_1", "customerId": "user_cust_4", "serviceId": "srv_4_1", "dayOffset": -115, "startTime": "17:00", "status": "completed", "paymentStatus": "paid", "paymentMethod": "cash", "createdHoursAgo": 2790 },
+    { "id": "book_18", "shopId": "shop_5", "barberId": "barber_5_1", "customerId": "user_cust_1", "serviceId": "srv_5_1", "dayOffset": -100, "startTime": "12:00", "status": "completed", "paymentStatus": "paid", "paymentMethod": "cash", "createdHoursAgo": 2430 },
+    { "id": "book_19", "shopId": "shop_5", "barberId": "barber_5_2", "customerId": "user_cust_2", "serviceId": "srv_5_2", "dayOffset": -150, "startTime": "18:00", "status": "completed", "paymentStatus": "paid", "paymentMethod": "cash", "createdHoursAgo": 3630 },
+    { "id": "book_20", "shopId": "shop_6", "barberId": "barber_6_1", "customerId": "user_cust_4", "serviceId": "srv_6_1", "dayOffset": -120, "startTime": "08:30", "status": "completed", "paymentStatus": "paid", "paymentMethod": "cash", "createdHoursAgo": 2910 }
+  ],
+  "timeOff": [
+    { "_comment": "barbershops/{shopId}/barbers/{barberId}/timeOff/{id}; dayOffset + startTime/endTime in Addis local time. Both loaders also block the matching 15-minute slot locks ({timeOffId, startAt, expiresAt}).", "id": "timeoff_1", "shopId": "shop_1", "barberId": "barber_2", "dayOffset": 1, "startTime": "13:00", "endTime": "15:00", "reason": "Family event", "createdBy": "owner_1", "createdHoursAgo": 6 }
+  ],
+  "queue": [
+    { "id": "queue_1_1", "shopId": "shop_1", "name": "Abel Tesfaye", "phone": "+251911000401", "serviceId": "srv_1_1", "barberId": "barber_1", "status": "serving", "createdMinutesAgo": 40, "servingStartedMinutesAgo": 15, "addedBy": "owner_1", "source": "walkIn" },
+    { "id": "queue_1_2", "shopId": "shop_1", "name": "Dawit Bekele", "serviceId": "srv_1_2", "status": "waiting", "createdMinutesAgo": 25, "addedBy": "barber_user_1", "source": "walkIn" },
+    { "id": "queue_1_3", "shopId": "shop_1", "name": "Liya Getachew", "phone": "+251911000301", "serviceId": "srv_1_1", "status": "waiting", "createdMinutesAgo": 12, "addedBy": "user_cust_1", "source": "remote" },
+    { "id": "queue_1_4", "shopId": "shop_1", "name": "Samuel Girma", "barberId": "barber_2", "status": "waiting", "createdMinutesAgo": 5, "addedBy": "owner_1", "source": "walkIn" }
+  ],
+  "reviews": [
+    { "_comment": "barbershops/{shopId}/reviews/{bookingId}. shopId, barberId, customerId and customerName come from the booking; createdAt = booking start + hoursAfterVisit, replyAt = booking start + replyHoursAfterVisit. Shop and barber rating/reviewCount above match these reviews (average to one decimal)." },
+    { "bookingId": "book_3", "rating": 5, "comment": "ዮናስ በጣም ጎበዝ ነው። ሙሉ የፀጉርና የጺም አገልግሎቱ ድንቅ ነበር፤ ቦታውም ንፁህ ነው።", "hoursAfterVisit": 5, "reply": "ስለ ደግ ቃላትዎ እናመሰግናለን! በቅርቡ እንደገና እንጠብቅዎታለን።", "replyHoursAfterVisit": 20 },
+    { "bookingId": "book_9", "rating": 5, "comment": "Cleanest skin fade I've had in Addis. Yonas took his time and the hot towel at the end was a nice touch.", "hoursAfterVisit": 8 },
+    { "bookingId": "book_10", "rating": 4, "comment": "ጺሜን በጥሩ ሁኔታ አስተካክሎልኛል። ትንሽ ቆይቶ ነው የተጀመረው እንጂ አገልግሎቱ ጥሩ ነው።", "hoursAfterVisit": 3, "reply": "ስለ አስተያየትዎ እናመሰግናለን። የመጠበቂያ ጊዜውን ለማሳጠር እየሠራን ነው።", "replyHoursAfterVisit": 26 },
+    { "bookingId": "book_11", "rating": 4, "comment": "Biniyam was patient with my son and the cut came out great. Parking near Edna Mall is the only hassle.", "hoursAfterVisit": 6, "reply": "Thanks for coming in! Glad your son enjoyed it. See you both next time.", "replyHoursAfterVisit": 30 },
+    { "bookingId": "book_12", "rating": 3, "comment": "አገልግሎቱ ጥሩ ነበር፤ ግን ቀጠሮዬ በሰዓቱ አልተጀመረም፣ ከ20 ደቂቃ በላይ ጠብቄያለሁ።", "hoursAfterVisit": 4, "reply": "ስለ መዘግየቱ ይቅርታ እንጠይቃለን። ቀጠሮዎች በሰዓታቸው እንዲጀምሩ አሠራራችንን አሻሽለናል።", "replyHoursAfterVisit": 22 },
+    { "bookingId": "book_13", "rating": 5, "comment": "እውነተኛ ክላሲክ ፀጉር ቤት። ቴዎድሮስ በመቀስ ብቻ ያማረ አቆራረጥ ሠራልኝ።", "hoursAfterVisit": 10 },
+    { "bookingId": "book_14", "rating": 4, "comment": "Smooth straight-razor shave and friendly staff. A bit pricey, but worth it.", "hoursAfterVisit": 2 },
+    { "bookingId": "book_15", "rating": 5, "comment": "ፒያሳ ውስጥ ካሉት ምርጥ ፀጉር ቤቶች አንዱ! ሙሉጌታ ልምድ ያለው ባለሙያ ነው።", "hoursAfterVisit": 7, "reply": "እናመሰግናለን! ሁሌም እንኳን ደህና መጡ።", "replyHoursAfterVisit": 48 },
+    { "bookingId": "book_16", "rating": 5, "comment": "Old-school service with real skill. Mulugeta's straight-razor line-up is perfect.", "hoursAfterVisit": 5 },
+    { "bookingId": "book_17", "rating": 5, "comment": "Henok nailed the textured crop exactly like the photo I showed him.", "hoursAfterVisit": 3 },
+    { "bookingId": "book_18", "rating": 5, "comment": "Calm, premium place near CMC. Booked online, started on time, great result.", "hoursAfterVisit": 9, "reply": "Thank you! We look forward to your next visit.", "replyHoursAfterVisit": 28 },
+    { "bookingId": "book_19", "rating": 4, "comment": "ምቹ ቦታ ነው፤ የሙቅ ፎጣ ላጨቱ ዘና አድርጎኛል።", "hoursAfterVisit": 12 },
+    { "bookingId": "book_20", "rating": 4, "hoursAfterVisit": 1 }
   ],
   "favorites": {
     "_comment": "Demo-only favorites of the signed-in customer (favorites are kept on the device).",

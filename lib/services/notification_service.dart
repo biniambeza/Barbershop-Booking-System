@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../data/addis_time.dart';
+import '../l10n/gen/app_localizations.dart';
+import '../l10n/locale_controller.dart';
 import '../models/app_notification.dart';
 import '../models/barbershop_model.dart';
 import '../models/booking_model.dart';
@@ -183,8 +185,15 @@ class NotificationService extends ChangeNotifier {
       ),
       behavior: SnackBarBehavior.floating,
       duration: const Duration(seconds: 5),
-      action: SnackBarAction(label: 'View', onPressed: openInbox),
+      action: SnackBarAction(label: _viewLabel(), onPressed: openInbox),
     ));
+  }
+
+  /// 'View' in the app's language (the snack bar has no BuildContext of its own).
+  String _viewLabel() {
+    final ctx = messengerKey.currentContext ?? navigatorKey.currentContext;
+    final l = ctx == null ? null : Localizations.of<AppLocalizations>(ctx, AppLocalizations);
+    return (l ?? lookupAppLocalizations(Locale(LocaleController.instance.languageCode))).viewAction;
   }
 
   /// A push notification was tapped (app in background or terminated).
@@ -335,6 +344,10 @@ Map<String, dynamic> deviceDocument(String token, String platform, DateTime nowU
 
 /// Inbox id of a push, from its data payload {type, bookingId}.
 String? notificationIdFromPushData(Map<String, dynamic> data) {
+  // Every push from functions/notifications carries the inbox doc id; payment
+  // and subscription notifications are keyed by paymentId, not bookingId.
+  final notificationId = data['notificationId'];
+  if (notificationId is String && notificationId.isNotEmpty) return notificationId;
   final bookingId = data['bookingId'];
   final type = data['type'];
   if (bookingId is! String || type is! String || bookingId.isEmpty || type.isEmpty) return null;
@@ -450,12 +463,16 @@ class LocalNotificationInbox {
   /// Last seen status of every booking; null until the first [observe].
   Map<String, BookingStatus>? _known;
 
+  /// Last seen reschedule count of every booking (reschedule notifications).
+  final Map<String, int> _knownReschedules = {};
+
   /// Newest first.
   List<AppNotification> inboxFor(String uid) => List.unmodifiable(_inboxes[uid] ?? const []);
 
   void clear() {
     _inboxes.clear();
     _known = null;
+    _knownReschedules.clear();
   }
 
   void markRead(String uid, String id) {
@@ -472,10 +489,27 @@ class LocalNotificationInbox {
     final bookings = repo.getAllBookings();
     final previous = _known;
     _known = {for (final b in bookings) b.id: b.status};
+    final previousReschedules = Map.of(_knownReschedules);
+    _knownReschedules
+      ..clear()
+      ..addAll({for (final b in bookings) b.id: b.rescheduleCount});
     if (previous == null || actor == null) return const [];
 
     final delivered = <DeliveredNotification>[];
     for (final booking in bookings) {
+      final before = previousReschedules[booking.id];
+      if (before != null && booking.rescheduleCount > before && booking.status != BookingStatus.cancelled) {
+        // One notification per reschedule (functions: {bookingId}_r{count}).
+        delivered.addAll(deliver(
+          booking,
+          NotificationTypes.rescheduled,
+          users: repo.getAllUsers(),
+          shop: repo.getShopById(booking.shopId),
+          actor: actor,
+          now: now,
+          entityId: '${booking.id}_r${booking.rescheduleCount}',
+        ));
+      }
       final type = bookingEventType(previous[booking.id], booking.status, isNew: !previous.containsKey(booking.id));
       if (type == null) continue;
       delivered.addAll(deliver(
@@ -499,19 +533,27 @@ class LocalNotificationInbox {
     required Barbershop? shop,
     required AppUser? actor,
     DateTime? now,
+    String? entityId,
   }) {
-    final recipients = bookingRecipients(booking, users: users, shop: shop);
+    var recipients = bookingRecipients(booking, users: users, shop: shop);
+    // No-show: the customer only (inbox/push, no SMS).
+    if (type == NotificationTypes.noShow) {
+      recipients = recipients.where((r) => r.audience == NotificationAudience.customer).toList();
+    }
     final cancelActor = type == NotificationTypes.cancelled && actor != null
         ? cancelActorFor(actor, booking, recipients)
         : null;
 
     final delivered = <DeliveredNotification>[];
     for (final r in recipients) {
-      if (type == NotificationTypes.cancelled && r.uid == actor?.uid) continue;
-      final id = '${booking.id}_$type';
+      if ((type == NotificationTypes.cancelled || type == NotificationTypes.rescheduled) && r.uid == actor?.uid) {
+        continue;
+      }
+      final id = '${entityId ?? booking.id}_$type';
       final inbox = _inboxes.putIfAbsent(r.uid, () => []);
       if (inbox.any((n) => n.id == id)) continue;
-      final text = renderBookingNotification(type, r.audience, booking, cancelledBy: cancelActor);
+      final language = users.where((u) => u.uid == r.uid).firstOrNull?.language;
+      final text = renderBookingNotification(type, r.audience, booking, cancelledBy: cancelActor, language: language);
       final n = AppNotification(
         id: id,
         title: text.title,
@@ -549,6 +591,8 @@ String? bookingEventType(BookingStatus? before, BookingStatus after, {required b
       return NotificationTypes.started;
     case BookingStatus.completed:
       return NotificationTypes.completed;
+    case BookingStatus.noShow:
+      return NotificationTypes.noShow;
     case BookingStatus.pending:
       return null;
   }
@@ -594,13 +638,16 @@ String? cancelActorFor(AppUser actor, Booking booking, List<NotificationRecipien
   return null;
 }
 
-/// English copy matching functions/notifications/src/templates.ts.
+/// Copy matching functions/notifications/src/templates.ts, in the
+/// recipient's language ('en' or 'am'; anything else is English).
 ({String title, String body}) renderBookingNotification(
   String type,
   NotificationAudience audience,
   Booking b, {
   String? cancelledBy,
+  String? language,
 }) {
+  if (language == 'am') return _renderAmharic(type, audience, b, cancelledBy: cancelledBy);
   final customer = audience == NotificationAudience.customer;
   final shop = b.shopName.isEmpty ? 'Crown & Blade' : b.shopName;
   final barber = b.barberName.isEmpty ? 'your barber' : b.barberName;
@@ -643,27 +690,117 @@ String? cancelActorFor(AppUser actor, Booking booking, List<NotificationRecipien
               body: 'Your $service at $shop is complete.$price We hope to see you again!'
             )
           : (title: 'Appointment completed', body: '$barber completed $service for $client.$price');
+    case NotificationTypes.rescheduled:
+      return customer
+          ? (title: 'Booking moved', body: 'Your $service with $barber at $shop is now on $when.')
+          : (title: 'Booking moved', body: '$client moved $service with $barber to $when.');
+    case NotificationTypes.noShow:
+      return (
+        title: 'Missed appointment',
+        body: 'You were marked as a no-show for your $service at $shop on $when. Please book again when you are ready.'
+      );
     default:
       return (title: 'Booking update', body: '$service with $barber on $when.');
   }
 }
 
-const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+({String title, String body}) _renderAmharic(
+  String type,
+  NotificationAudience audience,
+  Booking b, {
+  String? cancelledBy,
+}) {
+  final customer = audience == NotificationAudience.customer;
+  final shop = b.shopName.isEmpty ? 'Crown & Blade' : b.shopName;
+  final barber = b.barberName.isEmpty ? 'ፀጉር አስተካካይ' : b.barberName;
+  final client = b.customerName.isEmpty ? 'ደንበኛ' : b.customerName;
+  final service = b.serviceName.isEmpty ? 'አገልግሎት' : b.serviceName;
+  final when = formatAddisWhen(b.startAt, language: 'am');
+  final price = ' ዋጋ፦ ${formatEtb(b.price, language: 'am')}።';
+  final by = switch (cancelledBy) {
+    'customer' => customer ? ' በእርስዎ' : ' በደንበኛው',
+    'barber' => ' በፀጉር አስተካካዩ',
+    'shop' => ' በፀጉር ቤቱ',
+    'admin' => ' በአስተዳዳሪ',
+    _ => '',
+  };
 
-/// 'Fri 13 Nov 2026, 10:30' on the Addis Ababa wall clock.
-String formatAddisWhen(DateTime instant) {
-  final t = toAddisWallClock(instant);
-  String two(int n) => n.toString().padLeft(2, '0');
-  return '${_weekdays[t.weekday - 1]} ${t.day} ${_months[t.month - 1]} ${t.year}, ${two(t.hour)}:${two(t.minute)}';
+  switch (type) {
+    case NotificationTypes.created:
+      return customer
+          ? (
+              title: 'የቀጠሮ ጥያቄዎ ደርሷል',
+              body: '$shop ላይ ከ$barber ጋር $when ለ$service ያቀረቡት ጥያቄ ማረጋገጫ በመጠባበቅ ላይ ነው።$price'
+            )
+          : (title: 'አዲስ የቀጠሮ ጥያቄ', body: '$client ከ$barber ጋር $when ለ$service ቀጠሮ ጠይቀዋል።');
+    case NotificationTypes.confirmed:
+      return customer
+          ? (title: 'ቀጠሮዎ ተረጋግጧል', body: '$shop ላይ ከ$barber ጋር $when ያለዎት የ$service ቀጠሮ ተረጋግጧል።$price')
+          : (title: 'ቀጠሮ ተረጋግጧል', body: '$client - $service ከ$barber ጋር $when።');
+    case NotificationTypes.cancelled:
+      return customer
+          ? (title: 'ቀጠሮዎ ተሰርዟል', body: '$shop ላይ $when የነበረዎት የ$service ቀጠሮ$by ተሰርዟል።')
+          : (title: 'ቀጠሮ ተሰርዟል', body: '$client፦ የ$service ቀጠሮ ($barber፣ $when)$by ተሰርዟል።');
+    case NotificationTypes.started:
+      return customer
+          ? (title: 'አገልግሎትዎ ተጀምሯል', body: '$barber $shop ላይ የ$service አገልግሎትዎን ጀምረዋል።')
+          : (title: 'አገልግሎት ተጀምሯል', body: '$barber ለ$client የ$service አገልግሎት ጀምረዋል።');
+    case NotificationTypes.completed:
+      return customer
+          ? (title: 'ስለመጡ እናመሰግናለን', body: '$shop ላይ የ$service አገልግሎትዎ ተጠናቋል።$price በድጋሚ እንጠብቅዎታለን!')
+          : (title: 'አገልግሎት ተጠናቋል', body: '$barber ለ$client የ$service አገልግሎት አጠናቀዋል።$price');
+    case NotificationTypes.rescheduled:
+      return customer
+          ? (title: 'ቀጠሮዎ ተዛውሯል', body: '$shop ላይ ከ$barber ጋር ያለዎት የ$service ቀጠሮ ወደ $when ተዛውሯል።')
+          : (title: 'ቀጠሮ ተዛውሯል', body: '$client ከ$barber ጋር ያላቸውን የ$service ቀጠሮ ወደ $when አዛውረዋል።');
+    case NotificationTypes.noShow:
+      return (
+        title: 'ቀጠሮ አምልጦዎታል',
+        body: '$shop ላይ $when የነበረዎት የ$service ቀጠሮ ላይ እንዳልመጡ ተመዝግቧል። ሲመችዎ እንደገና ቀጠሮ ይያዙ።'
+      );
+    default:
+      return (title: 'የቀጠሮ ለውጥ', body: '$service ከ$barber ጋር $when።');
+  }
 }
 
-/// '1,250 ETB'.
-String formatEtb(double amount) {
+const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const _weekdaysAm = ['ሰኞ', 'ማክሰኞ', 'ረቡዕ', 'ሐሙስ', 'ዓርብ', 'ቅዳሜ', 'እሁድ'];
+const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+String _two(int n) => n.toString().padLeft(2, '0');
+
+/// Traditional Ethiopian clock reading (the day starts at 6:00): 10:30 is
+/// 'ጠዋት 4:30'.
+String ethiopianClock(int hour, int minute) {
+  final ethHour = (hour + 6) % 12 == 0 ? 12 : (hour + 6) % 12;
+  final period = hour < 6
+      ? 'ሌሊት'
+      : hour < 12
+          ? 'ጠዋት'
+          : hour < 18
+              ? 'ከሰዓት'
+              : 'ማታ';
+  return '$period $ethHour:${_two(minute)}';
+}
+
+/// 'Fri 13 Nov 2026, 10:30' on the Addis Ababa wall clock; in Amharic
+/// 'ዓርብ 13/11/2026 10:30 (ጠዋት 4:30)'.
+String formatAddisWhen(DateTime instant, {String? language}) {
+  final t = toAddisWallClock(instant);
+  final time = '${_two(t.hour)}:${_two(t.minute)}';
+  if (language == 'am') {
+    return '${_weekdaysAm[t.weekday - 1]} ${_two(t.day)}/${_two(t.month)}/${t.year} $time (${ethiopianClock(t.hour, t.minute)})';
+  }
+  return '${_weekdays[t.weekday - 1]} ${t.day} ${_months[t.month - 1]} ${t.year}, $time';
+}
+
+/// '1,250 ETB' (Amharic: '1,250 ብር').
+String formatEtb(double amount, {String? language}) {
   final rounded = (amount * 100).round() / 100;
   final isWhole = rounded == rounded.roundToDouble();
   final fixed = rounded.toStringAsFixed(isWhole ? 0 : 2);
   final parts = fixed.split('.');
   final grouped = parts[0].replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
-  return '${parts.length > 1 ? '$grouped.${parts[1]}' : grouped} ETB';
+  final number = parts.length > 1 ? '$grouped.${parts[1]}' : grouped;
+  return language == 'am' ? '$number ብር' : '$number ETB';
 }

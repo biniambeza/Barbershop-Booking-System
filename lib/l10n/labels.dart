@@ -1,10 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
 
+import '../models/app_exception.dart';
 import '../models/barbershop_model.dart';
 import '../models/booking_model.dart';
 import '../models/payment_model.dart';
 import '../models/plan_model.dart';
 import '../models/user_model.dart';
+import '../services/availability_service.dart' show SlotTakenException;
+import '../services/payment_service.dart' show PaymentErrorReason, PaymentException;
 import '../services/phone_auth_service.dart';
 import 'gen/app_localizations.dart';
 
@@ -69,6 +72,8 @@ extension AppLabels on AppLocalizations {
         return statusCompleted;
       case BookingStatus.cancelled:
         return statusCancelled;
+      case BookingStatus.noShow:
+        return statusNoShow;
     }
   }
 
@@ -106,6 +111,8 @@ extension AppLabels on AppLocalizations {
         return payPaid;
       case PaymentRecordStatus.failed:
         return recordFailed;
+      case PaymentRecordStatus.refunded:
+        return payRefunded;
     }
   }
 
@@ -128,12 +135,130 @@ extension AppLabels on AppLocalizations {
   String barberLimit(SubscriptionPlan plan) =>
       plan.isUnlimited ? planUnlimitedBarbers : planUpToBarbers(plan.maxBarbers);
 
-  /// User-facing text for a payments error code (PaymentException.code).
-  /// English keeps the backend's own message.
-  String paymentError(String code, String englishMessage) {
-    if (!isAmharic) return englishMessage;
-    if (englishMessage.contains('Online payments are not set up')) return payErrNotSetUp;
+  /// User-facing text for any error a service throws, in the active
+  /// language: [AppException] codes, slot conflicts, payment errors, Firebase
+  /// errors; anything else becomes a generic message.
+  String errorText(Object error) {
+    if (error is AppException) return appError(error.code, error.args);
+    if (error is SlotTakenException) return errSlotTaken;
+    if (error is PaymentException) return paymentError(error);
+    if (error is FirebaseAuthException) return authError(error);
+    if (error is FirebaseException) {
+      switch (error.code) {
+        case 'permission-denied':
+        case 'unauthenticated':
+          return errPermissionDenied;
+        case 'unavailable':
+        case 'deadline-exceeded':
+        case 'network-request-failed':
+          return errOffline;
+      }
+      return errGeneric;
+    }
+    // Booking writes that failed for another reason (FirestoreDataStore).
+    if (error is StateError && error.message.startsWith('Could not book')) return errBookingFailed;
+    return errGeneric;
+  }
+
+  /// Text for an [AppErrorCode] with its [args].
+  String appError(AppErrorCode code, [List<Object?> args = const []]) {
+    Object? arg(int i) => i < args.length ? args[i] : null;
     switch (code) {
+      case AppErrorCode.invalidPhone:
+        return errInvalidPhone;
+      case AppErrorCode.invalidOwnerPhone:
+        return errInvalidOwnerPhone;
+      case AppErrorCode.invalidOtpCode:
+        return errInvalidOtp;
+      case AppErrorCode.wrongDemoCode:
+        return errWrongDemoCode('${arg(0) ?? ''}');
+      case AppErrorCode.requestCodeFirst:
+        return errRequestCodeFirst;
+      case AppErrorCode.invalidName:
+        return errInvalidName;
+      case AppErrorCode.verifyPhoneFirst:
+        return errVerifyPhoneFirst;
+      case AppErrorCode.signInRequired:
+        return errSignInRequired;
+      case AppErrorCode.accountLoadFailed:
+        return errAccountLoadFailed;
+      case AppErrorCode.phoneAlreadyStaff:
+        final role = arg(0);
+        return errPhoneAlreadyStaff(role is UserRole ? roleName(role) : '${role ?? ''}');
+      case AppErrorCode.signInToBook:
+        return errSignInToBook;
+      case AppErrorCode.shopNotTakingBookings:
+        return shopNotTakingBookings;
+      case AppErrorCode.barberNotTakingBookings:
+        return barberNotTakingBookings('${arg(0) ?? ''}');
+      case AppErrorCode.invalidTimeSlot:
+        return errInvalidTimeSlot;
+      case AppErrorCode.serviceTooLong:
+        final max = arg(0);
+        return errServiceTooLong(max is int ? max : 0);
+      case AppErrorCode.invalidService:
+        return invalidServiceValues;
+      case AppErrorCode.serverOnly:
+        return errServerOnly;
+      case AppErrorCode.noWorkingDays:
+        return errNoWorkingDays;
+      case AppErrorCode.invalidWorkingHours:
+        return errInvalidWorkingHours;
+      case AppErrorCode.bookingNotChangeable:
+        return rescheduleErrNotChangeable;
+      case AppErrorCode.cancellationCutoffPassed:
+        final hours = arg(0);
+        return rescheduleErrCancelCutoff(hours is int ? hours : 0);
+      case AppErrorCode.rescheduleCutoffPassed:
+        final hours = arg(0);
+        return rescheduleErrCutoff(hours is int ? hours : 0);
+      case AppErrorCode.rescheduleLimitReached:
+        final max = arg(0);
+        return rescheduleErrLimit(max is int ? max : 0);
+      case AppErrorCode.rescheduleSameTime:
+        return rescheduleErrSameTime;
+      case AppErrorCode.noShowTooEarly:
+        return noShowErrTooEarly;
+      case AppErrorCode.policyCutoffInvalid:
+        final max = arg(0);
+        return policyErrCutoff(max is int ? max : 0);
+      case AppErrorCode.policyMaxReschedulesInvalid:
+        final max = arg(0);
+        return policyErrMaxReschedules(max is int ? max : 0);
+      case AppErrorCode.timeOffInvalidRange:
+        return timeOffErrRange;
+      case AppErrorCode.timeOffInPast:
+        return timeOffErrPast;
+      case AppErrorCode.timeOffReasonTooLong:
+        final max = arg(0);
+        return timeOffErrReasonTooLong(max is int ? max : 0);
+      case AppErrorCode.timeOffConflict:
+        return timeOffErrConflict;
+      case AppErrorCode.timeOffNotAllowed:
+        return timeOffErrNotAllowed;
+      case AppErrorCode.planIdInvalid:
+        return errPlanIdInvalid('${arg(0) ?? ''}');
+      case AppErrorCode.planNameRequired:
+        return errPlanNameRequired;
+      case AppErrorCode.planPriceNegative:
+        return errPlanPriceNegative;
+      case AppErrorCode.planPriceRequired:
+        return errPlanPriceRequired;
+      case AppErrorCode.planMaxBarbersInvalid:
+        return errPlanMaxBarbers;
+    }
+  }
+
+  /// User-facing text for a [PaymentException]: its typed cause or
+  /// recognised reason first, then the callable error code. In English an
+  /// unrecognised backend message is shown as written.
+  String paymentError(PaymentException error) {
+    final cause = error.cause;
+    if (cause != null) return appError(cause.code, cause.args);
+    final reason = error.reason;
+    if (reason != null) return paymentReason(reason, error.args);
+    if (!isAmharic) return error.message;
+    switch (error.code) {
       case 'unauthenticated':
         return payErrSignIn;
       case 'permission-denied':
@@ -145,14 +270,67 @@ extension AppLabels on AppLocalizations {
       case 'unavailable':
       case 'deadline-exceeded':
         return payErrNetwork;
+      case 'failed-precondition':
+        return payErrPrecondition;
+      case 'invalid-argument':
+        return payErrInvalid;
+      case 'aborted':
+        return payErrBookingChanged;
+      case 'launch-failed':
+        return payErrLaunchFailed;
       default:
         return payErrGeneric;
+    }
+  }
+
+  String paymentReason(PaymentErrorReason reason, [List<Object?> args = const []]) {
+    int intArg(int i) => i < args.length && args[i] is int ? args[i] as int : 0;
+    switch (reason) {
+      case PaymentErrorReason.notSetUp:
+        return payErrNotSetUp;
+      case PaymentErrorReason.bookingNotFound:
+        return payErrBookingNotFound;
+      case PaymentErrorReason.bookingCancelled:
+        return payErrBookingCancelled;
+      case PaymentErrorReason.bookingRefunded:
+        return payErrBookingRefunded;
+      case PaymentErrorReason.cannotPayOnline:
+        return payErrCannotPayOnline;
+      case PaymentErrorReason.noValidPrice:
+        return payErrNoValidPrice;
+      case PaymentErrorReason.notYourBooking:
+        return payErrNotYourBooking;
+      case PaymentErrorReason.notYourPayment:
+        return payErrNotYourPayment;
+      case PaymentErrorReason.notShopOwner:
+        return payErrNotShopOwner;
+      case PaymentErrorReason.shopNotFound:
+        return payErrShopNotFound;
+      case PaymentErrorReason.planUnavailable:
+        return payErrPlanUnavailable;
+      case PaymentErrorReason.unknownPlan:
+        return payErrUnknownPlan;
+      case PaymentErrorReason.planTooSmall:
+        return payErrPlanTooSmall(intArg(0), intArg(1));
+      case PaymentErrorReason.bookingChanged:
+        return payErrBookingChanged;
+      case PaymentErrorReason.stillPreparing:
+        return payErrStillPreparing;
+      case PaymentErrorReason.adminsOnly:
+        return payErrAdminsOnly;
+      case PaymentErrorReason.paymentNotFound:
+        return payErrPaymentNotFound;
+      case PaymentErrorReason.reviewNotNeeded:
+        return payErrReviewNotNeeded;
+      case PaymentErrorReason.reviewNotRefundable:
+        return payErrReviewNotRefundable;
     }
   }
 
   /// Sign-in error text. English keeps describeAuthError's wording; Amharic
   /// translates the Firebase Auth error codes (other errors stay as given).
   String authError(Object error) {
+    if (error is AppException) return appError(error.code, error.args);
     if (!isAmharic) return describeAuthError(error);
     if (error is FirebaseAuthException) {
       switch (error.code) {

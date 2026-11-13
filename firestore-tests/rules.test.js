@@ -14,6 +14,7 @@ import {
   deleteDoc,
   deleteField,
   doc,
+  getCountFromServer,
   getDoc,
   getDocs,
   limit,
@@ -58,6 +59,7 @@ function blocks(startAt, minutes) {
 
 // Default appointment: 3 days ahead, 10:00 Addis, 40 minutes (srv1).
 const START = addisSlot(3, 10, 0);
+const BK1_END = plusMinutes(START, 40);
 
 const PHONES = {
   admin: '+251911000001',
@@ -125,11 +127,7 @@ beforeEach(async () => {
     // bk1: customer's confirmed booking holding its slot locks.
     await setDoc(doc(db, 'bookings', 'bk1'), booking({ status: 'confirmed' }));
     for (const b of blocks(START, 40)) {
-      await setDoc(doc(db, 'barbershops/shop1/barbers/b1/slotLocks', lockId(b)), {
-        bookingId: 'bk1',
-        customerId: 'customer',
-        startAt: b,
-      });
+      await setDoc(doc(db, 'barbershops/shop1/barbers/b1/slotLocks', lockId(b)), lockDoc('bk1', b, BK1_END));
     }
   });
 });
@@ -214,8 +212,11 @@ function newBooking(startAt, overrides = {}) {
   return booking({ startAt, endAt: plusMinutes(startAt, minutes), durationMinutes: minutes, ...overrides });
 }
 
-function lockDoc(bookingId, startAt, customerId = 'customer') {
-  return { bookingId, customerId, startAt };
+// A slot lock as the app writes it: no customer data, and expiresAt one
+// day after the booking's end (bookingEndAt; the block start when the test
+// booking has no endAt).
+function lockDoc(bookingId, startAt, bookingEndAt) {
+  return { bookingId, startAt, expiresAt: plusMinutes(bookingEndAt ?? startAt, 24 * 60) };
 }
 
 const locksOf = (db, shopId = 'shop1', barberId = 'b1') =>
@@ -233,7 +234,7 @@ function bookTx(db, id, data, lockStarts) {
     }
     tx.set(doc(db, 'bookings', id), data);
     for (const s of starts) {
-      tx.set(doc(locksOf(db, data.shopId, data.barberId), lockId(s)), lockDoc(id, s, data.customerId));
+      tx.set(doc(locksOf(db, data.shopId, data.barberId), lockId(s)), lockDoc(id, s, data.endAt));
     }
   });
 }
@@ -245,7 +246,7 @@ function bookBatch(db, id, data, lockStarts) {
   const batch = writeBatch(db);
   batch.set(doc(db, 'bookings', id), data);
   for (const s of starts) {
-    batch.set(doc(locksOf(db, data.shopId, data.barberId), lockId(s)), lockDoc(id, s, data.customerId));
+    batch.set(doc(locksOf(db, data.shopId, data.barberId), lockId(s)), lockDoc(id, s, data.endAt));
   }
   return batch.commit();
 }
@@ -537,7 +538,7 @@ describe('barbershops', () => {
   });
 
   test('only admins can register shops', async () => {
-    await assertSucceeds(setDoc(doc(as('admin', PHONES.admin), 'barbershops', 'new'), shop('')));
+    await assertSucceeds(setDoc(doc(as('admin', PHONES.admin), 'barbershops', 'new'), { ...shop(''), reviewCount: 0 }));
     await assertFails(setDoc(doc(as('owner1', PHONES.owner1), 'barbershops', 'new2'), shop('owner1')));
     await assertFails(setDoc(doc(as('customer', PHONES.customer), 'barbershops', 'new3'), shop('customer')));
   });
@@ -574,6 +575,18 @@ describe('barbershops', () => {
     await assertSucceeds(updateDoc(doc(as('admin', PHONES.admin), 'barbershops', 'shop2'), { isVerified: false }));
     await assertFails(deleteDoc(doc(as('owner1', PHONES.owner1), 'barbershops', 'shop1')));
     await assertSucceeds(deleteDoc(doc(as('admin', PHONES.admin), 'barbershops', 'shop2')));
+  });
+
+  test('service duration is 5 to 120 minutes', async () => {
+    const db = as('owner1', PHONES.owner1);
+    const service = (durationMinutes) => ({ shopId: 'shop1', name: 'Svc', description: 'Svc', price: 300, durationMinutes });
+    await assertSucceeds(setDoc(doc(db, 'barbershops/shop1/services', 'd120'), service(120)));
+    await assertSucceeds(setDoc(doc(db, 'barbershops/shop1/services', 'd5'), service(5)));
+    await assertFails(setDoc(doc(db, 'barbershops/shop1/services', 'd121'), service(121)));
+    await assertFails(setDoc(doc(db, 'barbershops/shop1/services', 'd180'), service(180)));
+    await assertFails(setDoc(doc(db, 'barbershops/shop1/services', 'd4'), service(4)));
+    await assertFails(updateDoc(doc(db, 'barbershops/shop1/services', 'srv1'), { durationMinutes: 240 }));
+    await assertFails(setDoc(doc(as('admin', PHONES.admin), 'barbershops/shop1/services', 'a480'), service(480)));
   });
 
   test('owner manages services of their own shop only', async () => {
@@ -741,6 +754,35 @@ describe('double-booking prevention (slot locks)', () => {
     await assertSucceeds(bookBatch(cust(), 'l4', newBooking(at)));
   });
 
+  test('a 120-minute booking (the longest service) needs all eight locks', async () => {
+    await seed('barbershops/shop1/services', 'srvMax', {
+      shopId: 'shop1',
+      name: 'Wedding Package',
+      description: 'Everything',
+      price: 1500,
+      durationMinutes: 120,
+    });
+    const at = addisSlot(7, 15);
+    const max = { serviceId: 'srvMax', serviceName: 'Wedding Package', price: 1500, durationMinutes: 120 };
+    // The rules check blocks 1-4 and the last; the middle ones are left to
+    // the verifyBookingLocks function.
+    await assertFails(bookBatch(cust(), 'max1', newBooking(at, max), blocks(at, 105)));
+    await assertSucceeds(bookTx(cust(), 'max2', newBooking(at, max)));
+  });
+
+  test('bookings longer than 120 minutes are rejected even for a legacy longer service', async () => {
+    await seed('barbershops/shop1/services', 'srvLegacyLong', {
+      shopId: 'shop1',
+      name: 'Old long service',
+      description: 'Written before the cap',
+      price: 2000,
+      durationMinutes: 135,
+    });
+    const at = addisSlot(7, 9);
+    const long = { serviceId: 'srvLegacyLong', serviceName: 'Old long service', price: 2000, durationMinutes: 135 };
+    await assertFails(bookBatch(cust(), 'tooLong', newBooking(at, long)));
+  });
+
   test('a 90-minute booking with all six locks succeeds; skipping the last fails', async () => {
     const at = addisSlot(7, 13);
     const long = { serviceId: 'srvLong', serviceName: 'Full Grooming Package', price: 1200, durationMinutes: 90 };
@@ -780,36 +822,94 @@ describe('double-booking prevention (slot locks)', () => {
     const db2 = cust2();
     const later = plusMinutes(START, 60);
     // A lock for someone else's booking.
-    await assertFails(setDoc(doc(locksOf(db2), lockId(later)), lockDoc('bk1', later, 'customer2')));
-    await assertFails(setDoc(doc(locksOf(db), lockId(later)), lockDoc('bk1', later, 'customer2')));
+    await assertFails(setDoc(doc(locksOf(db2), lockId(later)), lockDoc('bk1', later, BK1_END)));
     // Outside the booking's interval.
-    await assertFails(setDoc(doc(locksOf(db), lockId(later)), lockDoc('bk1', later)));
+    await assertFails(setDoc(doc(locksOf(db), lockId(later)), lockDoc('bk1', later, BK1_END)));
     // Lock id does not match startAt (the booking itself is valid).
     const batch = writeBatch(db);
     batch.set(doc(db, 'bookings', 'm1'), data);
-    for (const s of blocks(at, 40)) batch.set(doc(locksOf(db), lockId(s)), lockDoc('m1', s));
-    batch.set(doc(locksOf(db), lockId(plusMinutes(at, 120))), lockDoc('m1', at));
+    for (const s of blocks(at, 40)) batch.set(doc(locksOf(db), lockId(s)), lockDoc('m1', s, data.endAt));
+    batch.set(doc(locksOf(db), lockId(plusMinutes(at, 120))), lockDoc('m1', at, data.endAt));
     await assertFails(batch.commit());
     // Under another barber.
     const batch2 = writeBatch(db);
     batch2.set(doc(db, 'bookings', 'm2'), data);
-    for (const s of blocks(at, 40)) batch2.set(doc(locksOf(db), lockId(s)), lockDoc('m2', s));
-    batch2.set(doc(locksOf(db, 'shop1', 'b2'), lockId(at)), lockDoc('m2', at));
+    for (const s of blocks(at, 40)) batch2.set(doc(locksOf(db), lockId(s)), lockDoc('m2', s, data.endAt));
+    batch2.set(doc(locksOf(db, 'shop1', 'b2'), lockId(at)), lockDoc('m2', at, data.endAt));
     await assertFails(batch2.commit());
     // Extra fields.
     const batch3 = writeBatch(db);
     batch3.set(doc(db, 'bookings', 'm3'), data);
-    for (const s of blocks(at, 40)) batch3.set(doc(locksOf(db), lockId(s)), { ...lockDoc('m3', s), name: 'x' });
+    for (const s of blocks(at, 40)) batch3.set(doc(locksOf(db), lockId(s)), { ...lockDoc('m3', s, data.endAt), name: 'x' });
     await assertFails(batch3.commit());
     // The same booking with correct locks is fine.
     await assertSucceeds(bookBatch(db, 'm4', data));
   });
 
+  test('locks carry no customer data: customerId is rejected', async () => {
+    const at = addisSlot(8, 15);
+    const data = newBooking(at);
+    const db = cust();
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'bookings', 'priv1'), data);
+    for (const s of blocks(at, 40)) {
+      batch.set(doc(locksOf(db), lockId(s)), { ...lockDoc('priv1', s, data.endAt), customerId: 'customer' });
+    }
+    await assertFails(batch.commit());
+    // The same booking without customerId is fine, and the locks a second
+    // customer reads hold no uid.
+    await assertSucceeds(bookBatch(db, 'priv2', data));
+    const snap = await assertSucceeds(getDoc(doc(locksOf(cust2()), lockId(at))));
+    assert.deepEqual(Object.keys(snap.data()).sort(), ['bookingId', 'expiresAt', 'startAt']);
+  });
+
+  test("a lock is bound to the caller's booking through the booking itself", async () => {
+    // customer2 cannot attach a lock to customer's new booking in their own
+    // write, even with a valid shape.
+    const at = addisSlot(8, 17);
+    const data = newBooking(at);
+    await assertSucceeds(bookBatch(cust(), 'bind1', data));
+    const extra = plusMinutes(at, 45);
+    await assertFails(setDoc(doc(locksOf(cust2()), lockId(extra)), lockDoc('bind1', extra, data.endAt)));
+    // A lock pointing at a booking that does not exist.
+    await assertFails(setDoc(doc(locksOf(cust()), lockId(addisSlot(9, 9))), lockDoc('ghost', addisSlot(9, 9), addisSlot(9, 10))));
+  });
+
+  test('expiresAt must be exactly the booking end plus one day', async () => {
+    const at = addisSlot(8, 19);
+    const data = newBooking(at);
+    for (const [name, expiresAt] of [
+      ['missing', undefined],
+      ['end', data.endAt],
+      ['end+2d', plusMinutes(data.endAt, 2 * 24 * 60)],
+      ['end+1d+1m', plusMinutes(data.endAt, 24 * 60 + 1)],
+      ['no millis', plusMinutes(data.endAt, 24 * 60).replace('.000Z', 'Z')],
+      ['timestamp-like number', 1234],
+    ]) {
+      const db = cust();
+      const batch = writeBatch(db);
+      batch.set(doc(db, 'bookings', `exp-${name}`), data);
+      for (const s of blocks(at, 40)) {
+        const lock = { ...lockDoc(`exp-${name}`, s, data.endAt), expiresAt };
+        if (expiresAt === undefined) delete lock.expiresAt;
+        batch.set(doc(locksOf(db), lockId(s)), lock);
+      }
+      await assertFails(batch.commit(), name);
+    }
+    await assertSucceeds(bookBatch(cust(), 'exp-ok', data));
+  });
+
   test('locks can never be overwritten', async () => {
     const ref = (db) => doc(locksOf(db), lockId(START));
-    await assertFails(setDoc(ref(cust()), lockDoc('bk1', START)));
+    await assertFails(setDoc(ref(cust()), lockDoc('bk1', START, BK1_END)));
     await assertFails(updateDoc(ref(cust()), { bookingId: 'other' }));
     await assertFails(updateDoc(ref(as('admin', PHONES.admin)), { bookingId: 'other' }));
+  });
+
+  test('clients cannot run the cleanup collection-group query on slotLocks', async () => {
+    const q = (db) => query(collectionGroup(db, 'slotLocks'), where('expiresAt', '<', new Date().toISOString()));
+    await assertFails(getDocs(q(cust())));
+    await assertFails(getDocs(q(as('admin', PHONES.admin))));
   });
 
   test('any signed-in user can read a day of locks; anonymous cannot', async () => {
@@ -847,7 +947,7 @@ describe('double-booking prevention (slot locks)', () => {
     await assertSucceeds(cancelTx(as('barber1', PHONES.barber1), 'bk1', START, 40, { cancelledBy: 'barber1' }));
     await env.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), 'bookings', 'bk1'), booking());
-      for (const b of blocks(START, 40)) await setDoc(doc(locksOf(ctx.firestore()), lockId(b)), lockDoc('bk1', b));
+      for (const b of blocks(START, 40)) await setDoc(doc(locksOf(ctx.firestore()), lockId(b)), lockDoc('bk1', b, BK1_END));
     });
     await assertSucceeds(cancelTx(as('owner1', PHONES.owner1), 'bk1', START, 40));
   });
@@ -903,6 +1003,24 @@ describe('bookings: status updates, cancelledBy and function-owned fields', () =
     await assertSucceeds(updateDoc(doc(as('barber1', PHONES.barber1), 'bookings', 'bk1'), { status: 'inProgress' }));
   });
 
+  test('cancelReason is written by functions only; such bookings still update', async () => {
+    for (const [uid, phone] of [
+      ['customer', PHONES.customer],
+      ['owner1', PHONES.owner1],
+      ['admin', PHONES.admin],
+    ]) {
+      await assertFails(updateDoc(doc(as(uid, phone), 'bookings', 'bk1'), { status: 'cancelled', cancelReason: 'slot_conflict' }));
+    }
+    await assertFails(bookBatch(as('customer', PHONES.customer), 'cr1', newBooking(addisSlot(6, 13), { cancelReason: 'x' })));
+    // verifyBookingLocks cancelled it (Admin SDK).
+    await env.withSecurityRulesDisabled((ctx) =>
+      updateDoc(doc(ctx.firestore(), 'bookings', 'bk1'), { status: 'cancelled', cancelledBy: 'system', cancelReason: 'slot_conflict' }),
+    );
+    await assertSucceeds(getDoc(doc(as('customer', PHONES.customer), 'bookings', 'bk1')));
+    await assertSucceeds(updateDoc(doc(as('admin', PHONES.admin), 'bookings', 'bk1'), { paymentStatus: 'refunded' }));
+    await assertFails(updateDoc(doc(as('owner1', PHONES.owner1), 'bookings', 'bk1'), { cancelReason: 'other' }));
+  });
+
   test('legacy bookings without startAt can still change status', async () => {
     const legacy = booking();
     for (const k of ['startAt', 'endAt', 'durationMinutes', 'paymentStatus', 'paymentMethod']) delete legacy[k];
@@ -951,6 +1069,45 @@ describe('booking listeners (list queries)', () => {
     await assertFails(getDocs(query(bookings(db), where('shopId', '==', 'shop1'), where('barberId', '==', 'b2'))));
   });
 
+  // FirestoreDataStore.upcomingBookingsQuery / historyBookingsQuery.
+  const windowed = (base) => {
+    const now = new Date();
+    now.setUTCSeconds(0, 0);
+    const nowIso = now.toISOString();
+    const cutoffIso = new Date(now.getTime() - 90 * 24 * 3600 * 1000).toISOString();
+    return [
+      query(base, where('startAt', '>=', nowIso), orderBy('startAt')),
+      query(base, where('startAt', '>=', cutoffIso), where('startAt', '<', nowIso), orderBy('startAt', 'desc'), limit(200)),
+    ];
+  };
+
+  test('bounded listeners: upcoming + 90 days of history for customer, owner and barber', async () => {
+    await seed('bookings', 'bkPast', booking({ startAt: addisSlot(-10, 10), endAt: plusMinutes(addisSlot(-10, 10), 40) }));
+    await seed('bookings', 'bkAncient', booking({ startAt: addisSlot(-120, 10), endAt: plusMinutes(addisSlot(-120, 10), 40) }));
+    const cases = [
+      [as('customer', PHONES.customer), [where('customerId', '==', 'customer')], ['bk1'], ['bkPast']],
+      [as('owner1', PHONES.owner1), [where('shopId', '==', 'shop1')], ['bk1', 'bkOther'], ['bkPast']],
+      [as('barber1', PHONES.barber1), [where('shopId', '==', 'shop1'), where('barberId', '==', 'b1')], ['bk1'], ['bkPast']],
+    ];
+    for (const [db, filters, upcoming, history] of cases) {
+      const [up, past] = windowed(query(collection(db, 'bookings'), ...filters));
+      const upSnap = await assertSucceeds(getDocs(up));
+      assert.deepEqual(upSnap.docs.map((d) => d.id).sort(), upcoming);
+      const pastSnap = await assertSucceeds(getDocs(past));
+      assert.deepEqual(pastSnap.docs.map((d) => d.id), history);
+    }
+    // The same windows without the role filter are still denied.
+    for (const q of windowed(collection(as('customer', PHONES.customer), 'bookings'))) await assertFails(getDocs(q));
+    for (const q of windowed(query(collection(as('owner2', PHONES.owner2), 'bookings'), where('shopId', '==', 'shop1')))) {
+      await assertFails(getDocs(q));
+    }
+    for (const q of windowed(
+      query(collection(as('barber1', PHONES.barber1), 'bookings'), where('shopId', '==', 'shop1'), where('barberId', '==', 'b2')),
+    )) {
+      await assertFails(getDocs(q));
+    }
+  });
+
   test('admin: orderBy createdAt desc limit 500', async () => {
     const db = as('admin', PHONES.admin);
     const snap = await assertSucceeds(getDocs(query(bookings(db), orderBy('createdAt', 'desc'), limit(500))));
@@ -965,6 +1122,23 @@ describe('users: language, profile edits and staff listener', () => {
     await assertSucceeds(updateDoc(ref, { language: 'am' }));
     await assertSucceeds(updateDoc(ref, { name: 'Liya', language: 'en' }));
     await assertFails(updateDoc(ref, { language: 'fr' }));
+  });
+
+  test('owners, barbers and admins can set their language too, nothing else changes', async () => {
+    for (const [uid, phone] of [
+      ['owner1', PHONES.owner1],
+      ['barber1', PHONES.barber1],
+      ['admin', PHONES.admin],
+    ]) {
+      const ref = doc(as(uid, phone), 'users', uid);
+      await assertSucceeds(updateDoc(ref, { language: 'am' }), uid);
+      await assertSucceeds(updateDoc(ref, { language: 'en' }), uid);
+      await assertFails(updateDoc(ref, { language: 'AM' }), uid);
+      await assertFails(updateDoc(ref, { language: 3 }), uid);
+    }
+    // Not someone else's.
+    await assertFails(updateDoc(doc(as('customer', PHONES.customer), 'users', 'customer2'), { language: 'en' }));
+    await assertFails(updateDoc(doc(as('barber1', PHONES.barber1), 'users', 'barber1'), { language: 'en', role: 'admin' }));
   });
 
   test('a new profile may carry a language', async () => {
@@ -1146,6 +1320,23 @@ describe('barbershops: Addis location and subscriptions', () => {
     );
   });
 
+  test('shop phone: an Ethiopian mobile or fixed line in +251 form', async () => {
+    const admin = as('admin', PHONES.admin);
+    const ok = ['+251911223344', '+251711223344', '+251115512345', '+251221112233', '+251331112233', '+251461112233', '+251581112233'];
+    for (const [i, phone] of ok.entries()) {
+      await assertSucceeds(setDoc(doc(admin, 'barbershops', `ph${i}`), newShop('', { phone })), phone);
+    }
+    const bad = ['+251611223344', '+251811223344', '+25111551234', '+2511155123456', '0115512345', '+251 11 551 2345', '', '+1115512345'];
+    for (const [i, phone] of bad.entries()) {
+      await assertFails(setDoc(doc(admin, 'barbershops', `bad${i}`), newShop('', { phone })), phone);
+    }
+    // Owners can switch their shop to a landline, but not to junk.
+    await seed('barbershops', 'shop1', newShop('owner1'));
+    const owner = as('owner1', PHONES.owner1);
+    await assertSucceeds(updateDoc(doc(owner, 'barbershops', 'shop1'), { phone: '+251115512345' }));
+    await assertFails(updateDoc(doc(owner, 'barbershops', 'shop1'), { phone: 'call us' }));
+  });
+
   test('owners cannot change subscription fields', async () => {
     await seed('barbershops', 'shop1', newShop('owner1'));
     const ref = doc(as('owner1', PHONES.owner1), 'barbershops', 'shop1');
@@ -1314,4 +1505,919 @@ describe('payments (Cloud Functions only)', () => {
 
 test('unknown collections are closed', async () => {
   await assertFails(setDoc(doc(as('admin', PHONES.admin), 'anything', 'x'), { a: 1 }));
+});
+
+// =====================================================================
+// Wave 2: reschedule, cancellation policy, no-show, time off, walk-in
+// queue, reviews, insights aggregates.
+// =====================================================================
+
+// Addis calendar day of an instant as Dart's DateTime(y, m, d).toIso8601String().
+function addisDate(iso) {
+  const a = new Date(Date.parse(iso) + ADDIS_MS);
+  return `${a.getUTCFullYear()}-${pad(a.getUTCMonth() + 1)}-${pad(a.getUTCDate())}T00:00:00.000`;
+}
+
+// 'hh:mm AM/PM' in Addis.
+function addisTimeSlot(iso) {
+  const a = new Date(Date.parse(iso) + ADDIS_MS);
+  const h = a.getUTCHours();
+  return `${pad(h % 12 === 0 ? 12 : h % 12)}:${pad(a.getUTCMinutes())} ${h < 12 ? 'AM' : 'PM'}`;
+}
+
+// FirestoreDataStore.rescheduleBooking: one transaction that reads the
+// booking, the old locks the new interval no longer covers and every new
+// lock, then updates the booking, deletes the released locks and creates
+// the missing ones. Options let tests drop or alter parts of it.
+function rescheduleTx(db, id, newStart, opts = {}) {
+  const { ignoreTaken = false, skipDelete = false, skipCreate = false, patch = {}, shopId = 'shop1', barberId = 'b1' } = opts;
+  const locks = locksOf(db, shopId, barberId);
+  return runTransaction(db, async (tx) => {
+    const ref = doc(db, 'bookings', id);
+    const b = (await tx.get(ref)).data();
+    const minutes = b.durationMinutes;
+    const newEnd = plusMinutes(newStart, minutes);
+    const newBlocks = blocks(newStart, minutes);
+    const newIds = newBlocks.map(lockId);
+    const releasable = [];
+    for (const s of blocks(b.startAt, minutes)) {
+      if (newIds.includes(lockId(s))) continue;
+      const snap = await tx.get(doc(locks, lockId(s)));
+      if (snap.exists() && snap.data().bookingId === id) releasable.push(snap.ref);
+    }
+    const toCreate = [];
+    for (const s of newBlocks) {
+      const snap = await tx.get(doc(locks, lockId(s)));
+      if (!snap.exists()) toCreate.push(s);
+      else if (snap.data().bookingId !== id && !ignoreTaken) throw new Error('slot taken');
+    }
+    tx.update(ref, {
+      startAt: newStart,
+      endAt: newEnd,
+      date: addisDate(newStart),
+      timeSlot: addisTimeSlot(newStart),
+      rescheduleCount: (b.rescheduleCount ?? 0) + 1,
+      rescheduledAt: new Date().toISOString(),
+      ...patch,
+    });
+    if (!skipDelete) for (const r of releasable) tx.delete(r);
+    if (!skipCreate) for (const s of toCreate) tx.set(doc(locks, lockId(s)), lockDoc(id, s, newEnd));
+  });
+}
+
+async function seedBookingWithLocks(id, data) {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    await setDoc(doc(db, 'bookings', id), data);
+    for (const s of blocks(data.startAt, data.durationMinutes)) {
+      await setDoc(doc(locksOf(db, data.shopId, data.barberId), lockId(s)), lockDoc(id, s, data.endAt));
+    }
+  });
+}
+
+async function setShopFields(fields, shopId = 'shop1') {
+  await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'barbershops', shopId), fields));
+}
+
+describe('reschedule (customer transaction)', () => {
+  const cust = () => as('customer', PHONES.customer);
+  // withSecurityRulesDisabled does not return the callback's result.
+  async function adminGet(path, id) {
+    let snap;
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      snap = await getDoc(doc(ctx.firestore(), path, id));
+    });
+    return snap;
+  }
+  const lockSnap = (iso, barberId = 'b1') => adminGet(`barbershops/shop1/barbers/${barberId}/slotLocks`, lockId(iso));
+
+  test('moves to a free slot: booking updated, old locks released, new locks created', async () => {
+    const to = addisSlot(4, 14);
+    await assertSucceeds(rescheduleTx(cust(), 'bk1', to));
+    const b = await adminGet('bookings', 'bk1');
+    assert.equal(b.data().startAt, to);
+    assert.equal(b.data().rescheduleCount, 1);
+    for (const s of blocks(START, 40)) assert.equal((await lockSnap(s)).exists(), false);
+    for (const s of blocks(to, 40)) assert.equal((await lockSnap(s)).data().bookingId, 'bk1');
+    // The old time is free for someone else now.
+    await assertSucceeds(bookTx(as('customer2', PHONES.customer2), 'took', newBooking(START, { customerId: 'customer2' })));
+  });
+
+  test('moves into an overlapping interval, keeping the shared locks', async () => {
+    await assertSucceeds(rescheduleTx(cust(), 'bk1', plusMinutes(START, 15)));
+    await assertSucceeds(rescheduleTx(cust(), 'bk1', plusMinutes(START, -15)));
+  });
+
+  test('a 120-minute booking moved to a disjoint interval (8 deletes + 8 creates)', async () => {
+    await seed('barbershops/shop1/services', 'srvMax', {
+      shopId: 'shop1',
+      name: 'Wedding Package',
+      description: 'Everything',
+      price: 1500,
+      durationMinutes: 120,
+    });
+    const at = addisSlot(5, 9);
+    await seedBookingWithLocks(
+      'bkMax',
+      newBooking(at, { serviceId: 'srvMax', serviceName: 'Wedding Package', price: 1500, durationMinutes: 120 }),
+    );
+    await assertSucceeds(rescheduleTx(cust(), 'bkMax', addisSlot(6, 15)));
+    // Worst case for the expression budget: both intervals between 00:00
+    // and 03:00 Addis, where every lock id needs timestamp arithmetic.
+    const night = addisSlot(8, 0, 15);
+    await seedBookingWithLocks(
+      'bkNight',
+      newBooking(night, { serviceId: 'srvMax', serviceName: 'Wedding Package', price: 1500, durationMinutes: 120 }),
+    );
+    await assertSucceeds(rescheduleTx(cust(), 'bkNight', addisSlot(9, 0, 30)));
+  });
+
+  test('up to the shop maxReschedules (default 2)', async () => {
+    await assertSucceeds(rescheduleTx(cust(), 'bk1', addisSlot(4, 9)));
+    await assertSucceeds(rescheduleTx(cust(), 'bk1', addisSlot(4, 11)));
+    await assertFails(rescheduleTx(cust(), 'bk1', addisSlot(4, 13)));
+    await setShopFields({ maxReschedules: 3 });
+    await assertSucceeds(rescheduleTx(cust(), 'bk1', addisSlot(4, 13)));
+  });
+
+  test('maxReschedules 0 blocks every reschedule; an out-of-range value reads as 2', async () => {
+    await setShopFields({ maxReschedules: 0 });
+    await assertFails(rescheduleTx(cust(), 'bk1', addisSlot(4, 9)));
+    await setShopFields({ maxReschedules: 99 });
+    await assertSucceeds(rescheduleTx(cust(), 'bk1', addisSlot(4, 9)));
+    await assertSucceeds(rescheduleTx(cust(), 'bk1', addisSlot(4, 11)));
+    await assertFails(rescheduleTx(cust(), 'bk1', addisSlot(4, 13)));
+  });
+
+  test('rescheduleCount must go up by exactly one; rescheduledAt is required', async () => {
+    await assertFails(rescheduleTx(cust(), 'bk1', addisSlot(4, 9), { patch: { rescheduleCount: 2 } }));
+    await assertFails(rescheduleTx(cust(), 'bk1', addisSlot(4, 9), { patch: { rescheduleCount: 0 } }));
+    await assertFails(rescheduleTx(cust(), 'bk1', addisSlot(4, 9), { patch: { rescheduleCount: deleteField() } }));
+    await assertFails(rescheduleTx(cust(), 'bk1', addisSlot(4, 9), { patch: { rescheduledAt: deleteField() } }));
+    await assertFails(rescheduleTx(cust(), 'bk1', addisSlot(4, 9), { patch: { rescheduledAt: 'yesterday' } }));
+  });
+
+  test('inside the cancellation cutoff the customer cannot reschedule', async () => {
+    const at = addisSlot(1, 10); // 10 to 34 hours from now
+    await seedBookingWithLocks('bkSoon', newBooking(at));
+    await setShopFields({ cancellationCutoffHours: 48 });
+    await assertFails(rescheduleTx(cust(), 'bkSoon', addisSlot(4, 9)));
+    await setShopFields({ cancellationCutoffHours: 0 });
+    await assertSucceeds(rescheduleTx(cust(), 'bkSoon', addisSlot(4, 9)));
+  });
+
+  test('only the booking customer, and only the reschedule fields', async () => {
+    await assertFails(rescheduleTx(as('customer2', PHONES.customer2), 'bk1', addisSlot(4, 9)));
+    await assertFails(rescheduleTx(as('owner1', PHONES.owner1), 'bk1', addisSlot(4, 9)));
+    await assertFails(rescheduleTx(as('barber1', PHONES.barber1), 'bk1', addisSlot(4, 9)));
+    await assertFails(rescheduleTx(as('admin', PHONES.admin), 'bk1', addisSlot(4, 9)));
+    for (const patch of [
+      { price: 1 },
+      { status: 'pending' },
+      { serviceId: 'srvLong' },
+      { durationMinutes: 15, endAt: plusMinutes(addisSlot(4, 9), 15) },
+      { customerName: 'Someone' },
+      { paymentStatus: 'paid' },
+      { cancelledBy: 'customer' },
+    ]) {
+      await assertFails(rescheduleTx(cust(), 'bk1', addisSlot(4, 9), { patch }), JSON.stringify(patch));
+    }
+  });
+
+  test('a cancelled, started, completed or no-show booking cannot be moved', async () => {
+    for (const status of ['cancelled', 'completed', 'noShow', 'inProgress']) {
+      await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'bookings', 'bk1'), { status }));
+      await assertFails(rescheduleTx(cust(), 'bk1', addisSlot(4, 9)), status);
+    }
+  });
+
+  test('the new interval must be valid as on create', async () => {
+    // Not on the grid, in the past, too far ahead, past Addis midnight.
+    for (const to of [addisSlot(4, 9, 10), addisSlot(-1, 9), addisSlot(40, 9), addisSlot(4, 23, 45)]) {
+      await assertFails(rescheduleTx(cust(), 'bk1', to), to);
+    }
+    // endAt not start + duration.
+    await assertFails(rescheduleTx(cust(), 'bk1', addisSlot(4, 9), { patch: { endAt: plusMinutes(addisSlot(4, 9), 60) } }));
+    // Not Dart's ISO format.
+    await assertFails(rescheduleTx(cust(), 'bk1', addisSlot(4, 9), { patch: { startAt: addisSlot(4, 9).replace('.000Z', 'Z') } }));
+  });
+
+  test('the new interval must hold its locks', async () => {
+    await assertFails(rescheduleTx(cust(), 'bk1', addisSlot(4, 9), { skipCreate: true }));
+  });
+
+  test('a slot held by another booking or by time off cannot be taken', async () => {
+    const other = addisSlot(4, 9);
+    await seedBookingWithLocks('bkOther', newBooking(other, { customerId: 'customer2' }));
+    await assertFails(rescheduleTx(cust(), 'bk1', other, { ignoreTaken: true }));
+    await assertFails(rescheduleTx(cust(), 'bk1', plusMinutes(other, 30), { ignoreTaken: true }));
+    await assert.rejects(rescheduleTx(cust(), 'bk1', other), /slot taken/);
+    // A time-off lock.
+    const off = addisSlot(4, 14);
+    await seed('barbershops/shop1/barbers/b1/timeOff', 'to1', { startAt: off, endAt: plusMinutes(off, 60), createdBy: 'barber1', createdAt: NOW });
+    for (const s of blocks(off, 60)) {
+      await seed('barbershops/shop1/barbers/b1/slotLocks', lockId(s), { timeOffId: 'to1', startAt: s, expiresAt: plusMinutes(off, 60 + 24 * 60) });
+    }
+    await assertFails(rescheduleTx(cust(), 'bk1', off, { ignoreTaken: true }));
+  });
+
+  test('old locks are released only once the booking no longer covers them', async () => {
+    const db = cust();
+    // Standalone delete of a live booking's lock (inside its interval).
+    await assertFails(deleteDoc(doc(locksOf(db), lockId(START))));
+    // Deleting the old locks without moving the booking.
+    const batch = writeBatch(db);
+    for (const s of blocks(START, 40)) batch.delete(doc(locksOf(db), lockId(s)));
+    await assertFails(batch.commit());
+    // Another customer or the barber cannot release locks the move left behind.
+    await assertSucceeds(rescheduleTx(db, 'bk1', addisSlot(4, 9), { skipDelete: true }));
+    await assertFails(deleteDoc(doc(locksOf(as('customer2', PHONES.customer2)), lockId(START))));
+    await assertFails(deleteDoc(doc(locksOf(as('barber1', PHONES.barber1)), lockId(START))));
+    // The booking's customer can (the block is outside the new interval).
+    await assertSucceeds(deleteDoc(doc(locksOf(db), lockId(START))));
+    // But not a lock of the new interval.
+    await assertFails(deleteDoc(doc(locksOf(db), lockId(addisSlot(4, 9)))));
+  });
+
+  test('clients cannot write rescheduleCount or rescheduledAt on create', async () => {
+    await assertFails(bookBatch(cust(), 'rc1', newBooking(addisSlot(6, 9), { rescheduleCount: 0 })));
+    await assertFails(bookBatch(cust(), 'rc2', newBooking(addisSlot(6, 9), { rescheduledAt: NOW })));
+  });
+});
+
+describe('cancellation cutoff', () => {
+  const at = addisSlot(1, 10); // 10 to 34 hours from now
+
+  beforeEach(async () => {
+    await seedBookingWithLocks('bkSoon', newBooking(at));
+  });
+
+  test('default cutoff (2 h) lets the customer cancel a booking a day ahead', async () => {
+    await assertSucceeds(cancelTx(as('customer', PHONES.customer), 'bkSoon', at, 40, { cancelledBy: 'customer' }));
+  });
+
+  test('inside the cutoff the customer cannot cancel', async () => {
+    await setShopFields({ cancellationCutoffHours: 48 });
+    await assertFails(cancelTx(as('customer', PHONES.customer), 'bkSoon', at, 40, { cancelledBy: 'customer' }));
+    await assertFails(updateDoc(doc(as('customer', PHONES.customer), 'bookings', 'bkSoon'), { status: 'cancelled' }));
+  });
+
+  test('the owner, the assigned barber and the admin still can', async () => {
+    await setShopFields({ cancellationCutoffHours: 72 });
+    await assertSucceeds(cancelTx(as('barber1', PHONES.barber1), 'bkSoon', at, 40, { cancelledBy: 'barber1' }));
+    await seedBookingWithLocks('bkSoon', newBooking(at));
+    await assertSucceeds(cancelTx(as('owner1', PHONES.owner1), 'bkSoon', at, 40, { cancelledBy: 'owner1' }));
+    await seedBookingWithLocks('bkSoon', newBooking(at));
+    await assertSucceeds(updateDoc(doc(as('admin', PHONES.admin), 'bookings', 'bkSoon'), { status: 'cancelled', cancelledBy: 'admin' }));
+  });
+
+  test('an out-of-range cutoff reads as the default', async () => {
+    await setShopFields({ cancellationCutoffHours: 500 });
+    await assertSucceeds(cancelTx(as('customer', PHONES.customer), 'bkSoon', at, 40));
+  });
+});
+
+describe('no-show', () => {
+  const past = addisSlot(-1, 10);
+
+  beforeEach(async () => {
+    await seedBookingWithLocks('bkPast', newBooking(past));
+  });
+
+  test('the assigned barber, the owner or an admin marks it after the start', async () => {
+    for (const [uid, phone] of [
+      ['barber1', PHONES.barber1],
+      ['owner1', PHONES.owner1],
+      ['admin', PHONES.admin],
+    ]) {
+      await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'bookings', 'bkPast'), { status: 'confirmed' }));
+      await assertSucceeds(updateDoc(doc(as(uid, phone), 'bookings', 'bkPast'), { status: 'noShow' }), uid);
+    }
+    // From pending too.
+    await seedBookingWithLocks('bkPast2', newBooking(past, { status: 'pending' }));
+    await assertSucceeds(updateDoc(doc(as('barber1', PHONES.barber1), 'bookings', 'bkPast2'), { status: 'noShow' }));
+  });
+
+  test('nobody else, and never before the start', async () => {
+    for (const [uid, phone] of [
+      ['customer', PHONES.customer],
+      ['customer2', PHONES.customer2],
+      ['barber2', PHONES.barber2],
+      ['owner2', PHONES.owner2],
+    ]) {
+      await assertFails(updateDoc(doc(as(uid, phone), 'bookings', 'bkPast'), { status: 'noShow' }), uid);
+    }
+    for (const [uid, phone] of [
+      ['barber1', PHONES.barber1],
+      ['owner1', PHONES.owner1],
+      ['admin', PHONES.admin],
+    ]) {
+      await assertFails(updateDoc(doc(as(uid, phone), 'bookings', 'bk1'), { status: 'noShow' }), uid);
+    }
+  });
+
+  test('only from pending or confirmed, only the status, and it is final', async () => {
+    const barber = doc(as('barber1', PHONES.barber1), 'bookings', 'bkPast');
+    for (const status of ['completed', 'inProgress', 'cancelled']) {
+      await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'bookings', 'bkPast'), { status }));
+      await assertFails(updateDoc(barber, { status: 'noShow' }), status);
+    }
+    await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'bookings', 'bkPast'), { status: 'confirmed' }));
+    await assertFails(updateDoc(barber, { status: 'noShow', cancelledBy: 'barber1' }));
+    await assertSucceeds(updateDoc(barber, { status: 'noShow' }));
+    await assertFails(updateDoc(barber, { status: 'completed' }));
+    await assertFails(updateDoc(doc(as('owner1', PHONES.owner1), 'bookings', 'bkPast'), { status: 'cancelled' }));
+    await assertFails(updateDoc(doc(as('admin', PHONES.admin), 'bookings', 'bkPast'), { status: 'confirmed' }));
+    // The admin's payment correction still works on a no-show booking.
+    await assertSucceeds(updateDoc(doc(as('admin', PHONES.admin), 'bookings', 'bkPast'), { paymentStatus: 'refunded' }));
+    // Its locks are kept and are not released by the customer.
+    await assertFails(deleteDoc(doc(locksOf(as('customer', PHONES.customer)), lockId(past))));
+  });
+
+  test('existing status updates are unchanged (inProgress / completed)', async () => {
+    await assertSucceeds(updateDoc(doc(as('barber1', PHONES.barber1), 'bookings', 'bkPast'), { status: 'inProgress' }));
+    await assertSucceeds(updateDoc(doc(as('owner1', PHONES.owner1), 'bookings', 'bkPast'), { status: 'completed' }));
+  });
+});
+
+describe('shop booking policy', () => {
+  const policy = (cancellationCutoffHours, maxReschedules) => ({ cancellationCutoffHours, maxReschedules });
+
+  test('the owner and the admin set cutoff (0..72) and max reschedules (0..5)', async () => {
+    const owner = doc(as('owner1', PHONES.owner1), 'barbershops', 'shop1');
+    await assertSucceeds(updateDoc(owner, policy(24, 1)));
+    await assertSucceeds(updateDoc(owner, policy(0, 0)));
+    await assertSucceeds(updateDoc(owner, policy(72, 5)));
+    await assertSucceeds(updateDoc(doc(as('admin', PHONES.admin), 'barbershops', 'shop1'), policy(2, 2)));
+  });
+
+  test('out-of-range or non-integer values are rejected', async () => {
+    const owner = doc(as('owner1', PHONES.owner1), 'barbershops', 'shop1');
+    for (const [c, m] of [[73, 2], [-1, 2], [2, 6], [2, -1], ['2', 2], [2.5, 2], [2, 1.5]]) {
+      await assertFails(updateDoc(owner, policy(c, m)), `${c}/${m}`);
+    }
+  });
+
+  test('other owners, barbers and customers cannot change it', async () => {
+    await assertFails(updateDoc(doc(as('owner2', PHONES.owner2), 'barbershops', 'shop1'), policy(0, 5)));
+    await assertFails(updateDoc(doc(as('barber1', PHONES.barber1), 'barbershops', 'shop1'), policy(0, 5)));
+    await assertFails(updateDoc(doc(as('customer', PHONES.customer), 'barbershops', 'shop1'), policy(0, 5)));
+  });
+
+  test('admin createShop (toMap) carries the policy fields', async () => {
+    const admin = as('admin', PHONES.admin);
+    await assertSucceeds(setDoc(doc(admin, 'barbershops', 'pol1'), newShop('', policy(2, 2))));
+    await assertFails(setDoc(doc(admin, 'barbershops', 'pol2'), newShop('', policy(100, 2))));
+    await assertFails(setDoc(doc(admin, 'barbershops', 'pol3'), newShop('', policy(2, 9))));
+  });
+});
+
+describe('rating and reviewCount are written by functions only', () => {
+  test('no client changes shop or barber ratings, admin included', async () => {
+    for (const [uid, phone] of [
+      ['admin', PHONES.admin],
+      ['owner1', PHONES.owner1],
+    ]) {
+      const db = as(uid, phone);
+      await assertFails(updateDoc(doc(db, 'barbershops', 'shop1'), { rating: 1 }), uid);
+      await assertFails(updateDoc(doc(db, 'barbershops', 'shop1'), { reviewCount: 99 }), uid);
+      await assertFails(updateDoc(doc(db, 'barbershops/shop1/barbers', 'b1'), { rating: 1 }), uid);
+      await assertFails(updateDoc(doc(db, 'barbershops/shop1/barbers', 'b1'), { reviewCount: 99 }), uid);
+    }
+    await assertFails(updateDoc(doc(as('barber1', PHONES.barber1), 'barbershops/shop1/barbers', 'b1'), { rating: 1 }));
+  });
+
+  test('new shops and barbers start with no reviews', async () => {
+    await assertFails(setDoc(doc(as('admin', PHONES.admin), 'barbershops', 'fake'), newShop('', { reviewCount: 500 })));
+    await assertFails(setDoc(doc(as('owner1', PHONES.owner1), 'barbershops/shop1/barbers', 'b9'), { ...barber('shop1', 'New'), reviewCount: 40 }));
+    await assertSucceeds(setDoc(doc(as('owner1', PHONES.owner1), 'barbershops/shop1/barbers', 'b9'), barber('shop1', 'New')));
+  });
+});
+
+describe('barber time off', () => {
+  const OFF = addisSlot(1, 13);
+  const OFF_END = addisSlot(1, 15);
+
+  // FirestoreDataStore.addTimeOff: one batch with the doc and its locks.
+  function timeOffBatch(db, uid, opts = {}) {
+    const {
+      id = 'to1',
+      barberId = 'b1',
+      startAt = OFF,
+      endAt = OFF_END,
+      data = {},
+      lockStarts,
+      lockPatch = {},
+      skipDoc = false,
+    } = opts;
+    const batch = writeBatch(db);
+    if (!skipDoc) {
+      batch.set(doc(db, `barbershops/shop1/barbers/${barberId}/timeOff`, id), {
+        startAt,
+        endAt,
+        createdBy: uid,
+        createdAt: new Date().toISOString(),
+        ...data,
+      });
+    }
+    const minutes = Math.max(0, (Date.parse(endAt) - Date.parse(startAt)) / 60000);
+    for (const s of lockStarts ?? blocks(startAt, minutes)) {
+      batch.set(doc(locksOf(db, 'shop1', barberId), lockId(s)), {
+        timeOffId: id,
+        startAt: s,
+        expiresAt: plusMinutes(endAt, 24 * 60),
+        ...lockPatch,
+      });
+    }
+    return batch.commit();
+  }
+
+  const barber1 = () => as('barber1', PHONES.barber1);
+  const owner1 = () => as('owner1', PHONES.owner1);
+
+  test('the barber adds their own time off; customers can no longer book it', async () => {
+    await assertSucceeds(timeOffBatch(barber1(), 'barber1', { data: { reason: 'Doctor' } }));
+    await assertFails(bookBatch(as('customer', PHONES.customer), 'inOff', newBooking(OFF)));
+    await assertFails(bookBatch(as('customer', PHONES.customer), 'inOff2', newBooking(plusMinutes(OFF, -30))));
+    await assertSucceeds(bookBatch(as('customer', PHONES.customer), 'afterOff', newBooking(OFF_END)));
+  });
+
+  test('the owner adds time off for any barber of the shop', async () => {
+    await assertSucceeds(timeOffBatch(owner1(), 'owner1', { barberId: 'b2' }));
+  });
+
+  test('a whole Addis day (96 locks, across the UTC date change) fits in one batch', async () => {
+    await assertSucceeds(timeOffBatch(barber1(), 'barber1', { id: 'day', startAt: addisSlot(2, 0), endAt: addisSlot(3, 0) }));
+  });
+
+  test('other barbers, other owners, customers and admins cannot add it', async () => {
+    await assertFails(timeOffBatch(as('barber2', PHONES.barber2), 'barber2'));
+    await assertFails(timeOffBatch(as('owner2', PHONES.owner2), 'owner2'));
+    await assertFails(timeOffBatch(as('customer', PHONES.customer), 'customer'));
+    await assertFails(timeOffBatch(as('admin', PHONES.admin), 'admin'));
+  });
+
+  test('the doc and its locks go together', async () => {
+    // Doc without locks, or without its last or first lock.
+    await assertFails(timeOffBatch(barber1(), 'barber1', { lockStarts: [] }));
+    await assertFails(timeOffBatch(barber1(), 'barber1', { lockStarts: blocks(OFF, 105) }));
+    await assertFails(timeOffBatch(barber1(), 'barber1', { lockStarts: blocks(plusMinutes(OFF, 15), 105) }));
+    // Locks without the doc.
+    await assertFails(timeOffBatch(barber1(), 'barber1', { skipDoc: true }));
+  });
+
+  test('locks must match the range, id, expiry and shape', async () => {
+    // A lock outside the range.
+    await assertFails(timeOffBatch(barber1(), 'barber1', { lockStarts: [...blocks(OFF, 120), OFF_END] }));
+    // Wrong expiresAt.
+    await assertFails(timeOffBatch(barber1(), 'barber1', { lockPatch: { expiresAt: plusMinutes(OFF_END, 48 * 60) } }));
+    // Extra fields: a bookingId or customer data.
+    await assertFails(timeOffBatch(barber1(), 'barber1', { lockPatch: { bookingId: 'bk1' } }));
+    await assertFails(timeOffBatch(barber1(), 'barber1', { lockPatch: { customerId: 'customer' } }));
+    // Under another barber than the time off.
+    const db = barber1();
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'barbershops/shop1/barbers/b1/timeOff', 'x1'), { startAt: OFF, endAt: OFF_END, createdBy: 'barber1', createdAt: NOW });
+    for (const s of blocks(OFF, 120)) {
+      batch.set(doc(locksOf(db), lockId(s)), { timeOffId: 'x1', startAt: s, expiresAt: plusMinutes(OFF_END, 24 * 60) });
+    }
+    batch.set(doc(locksOf(db, 'shop1', 'b2'), lockId(OFF)), { timeOffId: 'x1', startAt: OFF, expiresAt: plusMinutes(OFF_END, 24 * 60) });
+    await assertFails(batch.commit());
+  });
+
+  test('the time-off doc is validated', async () => {
+    const b = barber1();
+    // createdBy someone else; a reason over 200; an empty reason; unknown keys.
+    await assertFails(timeOffBatch(b, 'barber1', { data: { createdBy: 'owner1' } }));
+    await assertFails(timeOffBatch(b, 'barber1', { data: { reason: 'x'.repeat(201) } }));
+    await assertFails(timeOffBatch(b, 'barber1', { data: { reason: '' } }));
+    await assertFails(timeOffBatch(b, 'barber1', { data: { shopId: 'shop1' } }));
+    await assertSucceeds(timeOffBatch(b, 'barber1', { data: { reason: 'x'.repeat(200) } }));
+  });
+
+  test('the range is on the grid, ends after it starts, within one Addis day and not over', async () => {
+    const b = barber1();
+    // Off the grid.
+    await assertFails(timeOffBatch(b, 'barber1', { startAt: addisSlot(1, 13, 10), endAt: addisSlot(1, 15), lockStarts: [] }));
+    // End before start.
+    await assertFails(timeOffBatch(b, 'barber1', { startAt: OFF_END, endAt: OFF, lockStarts: [OFF] }));
+    // Past Addis midnight (22:00 to 02:00).
+    await assertFails(timeOffBatch(b, 'barber1', { startAt: addisSlot(1, 22), endAt: addisSlot(2, 2) }));
+    // Already over.
+    await assertFails(timeOffBatch(b, 'barber1', { startAt: addisSlot(-1, 9), endAt: addisSlot(-1, 11) }));
+    // Up to midnight is fine.
+    await assertSucceeds(timeOffBatch(b, 'barber1', { id: 'eve', startAt: addisSlot(1, 22), endAt: addisSlot(2, 0) }));
+  });
+
+  test('time off cannot overlap a booking or other time off (the lock ids collide)', async () => {
+    await assertFails(timeOffBatch(barber1(), 'barber1', { startAt: plusMinutes(START, -30), endAt: plusMinutes(START, 30) }));
+    await assertSucceeds(timeOffBatch(barber1(), 'barber1', { startAt: plusMinutes(START, 45), endAt: plusMinutes(START, 105) }));
+    await assertFails(timeOffBatch(barber1(), 'barber1', { id: 'to2', startAt: plusMinutes(START, 90), endAt: plusMinutes(START, 120) }));
+  });
+
+  test('time off docs are never updated', async () => {
+    await assertSucceeds(timeOffBatch(barber1(), 'barber1'));
+    await assertFails(updateDoc(doc(barber1(), 'barbershops/shop1/barbers/b1/timeOff', 'to1'), { endAt: addisSlot(1, 18) }));
+    await assertFails(updateDoc(doc(owner1(), 'barbershops/shop1/barbers/b1/timeOff', 'to1'), { reason: 'x' }));
+  });
+
+  test('read: the owner and that barber (listener on endAt), nobody else', async () => {
+    await assertSucceeds(timeOffBatch(barber1(), 'barber1'));
+    const since = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+    const q = (db) => query(collection(db, 'barbershops/shop1/barbers/b1/timeOff'), where('endAt', '>=', since), orderBy('endAt'));
+    assert.equal((await assertSucceeds(getDocs(q(barber1())))).size, 1);
+    assert.equal((await assertSucceeds(getDocs(q(owner1())))).size, 1);
+    for (const [uid, phone] of [
+      ['barber2', PHONES.barber2],
+      ['owner2', PHONES.owner2],
+      ['customer', PHONES.customer],
+      ['admin', PHONES.admin],
+    ]) {
+      await assertFails(getDocs(q(as(uid, phone))), uid);
+    }
+    await assertFails(getDocs(q(anon())));
+    // Customers still see the locks (busy times), which carry no reason.
+    const locks = await assertSucceeds(getDocs(query(locksOf(as('customer', PHONES.customer)), where('timeOffId', '==', 'to1'))));
+    assert.equal(locks.size, 8);
+  });
+
+  // FirestoreDataStore.deleteTimeOff: query its locks, delete them and the doc in one batch.
+  async function deleteTimeOffBatch(db, id = 'to1', { keepDoc = false, keepLocks = false } = {}) {
+    const locks = await getDocs(query(locksOf(db), where('timeOffId', '==', id)));
+    const batch = writeBatch(db);
+    if (!keepLocks) for (const d of locks.docs) batch.delete(d.ref);
+    if (!keepDoc) batch.delete(doc(db, 'barbershops/shop1/barbers/b1/timeOff', id));
+    return batch.commit();
+  }
+
+  test('the barber or the owner deletes the doc and its locks together', async () => {
+    await assertSucceeds(timeOffBatch(barber1(), 'barber1'));
+    await assertSucceeds(deleteTimeOffBatch(barber1()));
+    await assertSucceeds(bookBatch(as('customer', PHONES.customer), 'freed', newBooking(OFF)));
+    await assertSucceeds(timeOffBatch(owner1(), 'owner1', { id: 'to3', startAt: addisSlot(2, 9), endAt: addisSlot(2, 12) }));
+    await assertSucceeds(deleteTimeOffBatch(owner1(), 'to3'));
+  });
+
+  test('a whole-day time off (96 locks) is deleted in one batch', async () => {
+    await assertSucceeds(timeOffBatch(barber1(), 'barber1', { id: 'day', startAt: addisSlot(2, 0), endAt: addisSlot(3, 0) }));
+    await assertSucceeds(deleteTimeOffBatch(barber1(), 'day'));
+    await assertSucceeds(timeOffBatch(owner1(), 'owner1', { id: 'day2', startAt: addisSlot(2, 0), endAt: addisSlot(3, 0) }));
+    await assertSucceeds(deleteTimeOffBatch(owner1(), 'day2'));
+  });
+
+  test('not separately (barber), and not by anyone else', async () => {
+    await assertSucceeds(timeOffBatch(barber1(), 'barber1'));
+    await assertFails(deleteTimeOffBatch(barber1(), 'to1', { keepLocks: true }));
+    await assertFails(deleteTimeOffBatch(barber1(), 'to1', { keepDoc: true }));
+    await assertFails(deleteDoc(doc(locksOf(barber1()), lockId(OFF))));
+    for (const [uid, phone] of [
+      ['barber2', PHONES.barber2],
+      ['owner2', PHONES.owner2],
+      ['customer', PHONES.customer],
+    ]) {
+      await assertFails(deleteTimeOffBatch(as(uid, phone)), uid);
+      await assertFails(deleteDoc(doc(locksOf(as(uid, phone)), lockId(OFF))), uid);
+    }
+  });
+});
+
+describe('walk-in queue', () => {
+  const queue = (db, shopId = 'shop1') => collection(db, `barbershops/${shopId}/queue`);
+  const entry = (overrides = {}) => ({
+    name: 'Dawit',
+    status: 'waiting',
+    createdAt: new Date().toISOString(),
+    addedBy: 'owner1',
+    source: 'walkIn',
+    ...overrides,
+  });
+
+  beforeEach(async () => {
+    await seed('barbershops/shop1/queue', 'w1', entry({ phone: '+251911555555', serviceId: 'srv1' }));
+    await seed('barbershops/shop1/queue', 's1', entry({ status: 'serving', barberId: 'b2', servingStartedAt: NOW, addedBy: 'barber2' }));
+    await seed('barbershops/shop1/queue', 'r1', entry({ name: 'customer', phone: PHONES.customer, addedBy: 'customer', source: 'remote' }));
+    await seed('barbershops/shop1/queue', 'r2', entry({ name: 'customer2', phone: PHONES.customer2, addedBy: 'customer2', source: 'remote' }));
+  });
+
+  const activeQuery = (db) =>
+    query(queue(db), where('status', 'in', ['waiting', 'serving']), orderBy('createdAt'), limit(200));
+  const ownQuery = (db, uid) => query(queue(db), where('addedBy', '==', uid), orderBy('createdAt', 'desc'), limit(1));
+
+  test('staff list every active entry of their shop', async () => {
+    assert.equal((await assertSucceeds(getDocs(activeQuery(as('owner1', PHONES.owner1))))).size, 4);
+    assert.equal((await assertSucceeds(getDocs(activeQuery(as('barber1', PHONES.barber1))))).size, 4);
+    await assertFails(getDocs(activeQuery(as('owner2', PHONES.owner2))));
+    await assertFails(getDocs(activeQuery(as('customer', PHONES.customer))));
+    await assertFails(getDocs(activeQuery(as('admin', PHONES.admin))));
+    await assertFails(getDocs(activeQuery(anon())));
+  });
+
+  test('a removed barber profile loses access', async () => {
+    await env.withSecurityRulesDisabled((ctx) => deleteDoc(doc(ctx.firestore(), 'barbershops/shop1/barbers', 'b1')));
+    await assertFails(getDocs(activeQuery(as('barber1', PHONES.barber1))));
+  });
+
+  test('customers read only their own entry', async () => {
+    const db = as('customer', PHONES.customer);
+    const snap = await assertSucceeds(getDocs(ownQuery(db, 'customer')));
+    assert.deepEqual(snap.docs.map((d) => d.id), ['r1']);
+    await assertSucceeds(getDoc(doc(queue(db), 'r1')));
+    await assertFails(getDoc(doc(queue(db), 'r2')));
+    await assertFails(getDoc(doc(queue(db), 'w1')));
+    await assertFails(getDocs(ownQuery(db, 'customer2')));
+  });
+
+  test('staff add walk-ins', async () => {
+    await assertSucceeds(setDoc(doc(queue(as('owner1', PHONES.owner1)), 'n1'), entry({ phone: '+251712345678', serviceId: 'srv1', barberId: 'b1' })));
+    await assertSucceeds(setDoc(doc(queue(as('barber1', PHONES.barber1)), 'n2'), entry({ addedBy: 'barber1' })));
+    await assertFails(setDoc(doc(queue(as('owner2', PHONES.owner2)), 'n3'), entry({ addedBy: 'owner2' })));
+    await assertFails(setDoc(doc(queue(as('admin', PHONES.admin)), 'n4'), entry({ addedBy: 'admin' })));
+  });
+
+  test('walk-in entries are validated', async () => {
+    const db = as('owner1', PHONES.owner1);
+    for (const [name, overrides] of [
+      ['long name', { name: 'x'.repeat(61) }],
+      ['empty name', { name: '' }],
+      ['bad phone', { phone: '0911223344' }],
+      ['landline', { phone: '+251115512345' }],
+      ['serving', { status: 'serving' }],
+      ['servingStartedAt', { servingStartedAt: NOW }],
+      ['finishedAt', { finishedAt: NOW }],
+      ['addedBy', { addedBy: 'barber1' }],
+      ['source', { source: 'web' }],
+      ['unknown barber', { barberId: 'b3' }],
+      ['unknown service', { serviceId: 'nope' }],
+      ['extra', { shopId: 'shop1' }],
+      ['createdAt', { createdAt: 'now' }],
+    ]) {
+      await assertFails(setDoc(doc(queue(db), `bad-${name.replace(' ', '-')}`), entry(overrides)), name);
+    }
+  });
+
+  test('a signed-in customer joins remotely with their own phone', async () => {
+    const db = as('customer2', PHONES.customer2);
+    const mine = entry({ name: 'Liya', phone: PHONES.customer2, addedBy: 'customer2', source: 'remote', serviceId: 'srv1', barberId: 'b1' });
+    await assertSucceeds(setDoc(doc(queue(db), 'j1'), mine));
+    const noPhone = { ...mine };
+    delete noPhone.phone;
+    await assertSucceeds(setDoc(doc(queue(db), 'j2'), noPhone));
+    // Someone else's phone, someone else's uid, a walk-in, or already serving.
+    await assertFails(setDoc(doc(queue(db), 'j3'), { ...mine, phone: PHONES.customer }));
+    await assertFails(setDoc(doc(queue(db), 'j4'), { ...mine, addedBy: 'customer' }));
+    await assertFails(setDoc(doc(queue(db), 'j5'), { ...mine, source: 'walkIn' }));
+    await assertFails(setDoc(doc(queue(db), 'j6'), { ...mine, status: 'serving' }));
+    // Staff cannot join as remote customers; anonymous users cannot join.
+    await assertFails(setDoc(doc(queue(as('barber1', PHONES.barber1)), 'j7'), { ...mine, addedBy: 'barber1', phone: PHONES.barber1 }));
+    await assertFails(setDoc(doc(queue(anon()), 'j8'), mine));
+  });
+
+  test('customers cannot join the queue of a suspended shop', async () => {
+    await setShopFields({ subscriptionStatus: 'suspended' });
+    const mine = entry({ name: 'Liya', phone: PHONES.customer2, addedBy: 'customer2', source: 'remote' });
+    await assertFails(setDoc(doc(queue(as('customer2', PHONES.customer2)), 'j1'), mine));
+  });
+
+  test('staff start serving, finish and mark left', async () => {
+    const barber = queue(as('barber1', PHONES.barber1));
+    const later = new Date().toISOString();
+    await assertSucceeds(updateDoc(doc(barber, 'w1'), { status: 'serving', barberId: 'b1', servingStartedAt: later }));
+    await assertSucceeds(updateDoc(doc(barber, 'w1'), { status: 'done', finishedAt: later }));
+    const owner = queue(as('owner1', PHONES.owner1));
+    await assertSucceeds(updateDoc(doc(owner, 's1'), { status: 'done', finishedAt: later }));
+    await assertSucceeds(updateDoc(doc(owner, 'r2'), { status: 'left', finishedAt: later }));
+  });
+
+  test('staff updates follow the status flow and touch nothing else', async () => {
+    const owner = queue(as('owner1', PHONES.owner1));
+    const later = new Date().toISOString();
+    // Serving with a barber of another shop or none.
+    await assertFails(updateDoc(doc(owner, 'w1'), { status: 'serving', barberId: 'b3', servingStartedAt: later }));
+    await assertFails(updateDoc(doc(owner, 'w1'), { status: 'serving', servingStartedAt: later }));
+    // Wrong transitions.
+    await assertFails(updateDoc(doc(owner, 'w1'), { status: 'done', finishedAt: later }));
+    await assertFails(updateDoc(doc(owner, 's1'), { status: 'left', finishedAt: later }));
+    await assertFails(updateDoc(doc(owner, 's1'), { status: 'waiting' }));
+    // Other fields.
+    await assertFails(updateDoc(doc(owner, 'w1'), { name: 'Renamed' }));
+    await assertFails(updateDoc(doc(owner, 'w1'), { status: 'left', finishedAt: later, addedBy: 'x' }));
+    await assertFails(updateDoc(doc(owner, 'w1'), { status: 'left' }));
+    // Another shop's staff.
+    await assertFails(updateDoc(doc(queue(as('owner2', PHONES.owner2)), 'w1'), { status: 'left', finishedAt: later }));
+  });
+
+  test('a customer leaves only their own waiting remote entry', async () => {
+    const db = queue(as('customer', PHONES.customer));
+    const later = new Date().toISOString();
+    await assertFails(updateDoc(doc(db, 'r1'), { status: 'serving', barberId: 'b1', servingStartedAt: later }));
+    await assertFails(updateDoc(doc(db, 'r1'), { status: 'done', finishedAt: later }));
+    await assertFails(updateDoc(doc(db, 'r1'), { status: 'left', finishedAt: later, name: 'x' }));
+    await assertFails(updateDoc(doc(db, 'r2'), { status: 'left', finishedAt: later }));
+    await assertFails(updateDoc(doc(db, 'w1'), { status: 'left', finishedAt: later }));
+    await assertSucceeds(updateDoc(doc(db, 'r1'), { status: 'left', finishedAt: later }));
+    // Not back again.
+    await assertFails(updateDoc(doc(db, 'r1'), { status: 'waiting' }));
+  });
+
+  test('nobody deletes queue entries', async () => {
+    for (const [uid, phone] of [
+      ['owner1', PHONES.owner1],
+      ['barber1', PHONES.barber1],
+      ['customer', PHONES.customer],
+      ['admin', PHONES.admin],
+    ]) {
+      await assertFails(deleteDoc(doc(queue(as(uid, phone)), 'r1')), uid);
+    }
+  });
+
+  test('queueSummary/current: public read, functions-only writes', async () => {
+    await seed('barbershops/shop1/queueSummary', 'current', { waitingCount: 3, estimatedWaitMinutes: 35, updatedAt: NOW, positions: {} });
+    await assertSucceeds(getDoc(doc(anon(), 'barbershops/shop1/queueSummary', 'current')));
+    await assertSucceeds(getDoc(doc(as('customer', PHONES.customer), 'barbershops/shop1/queueSummary', 'current')));
+    for (const [uid, phone] of [
+      ['owner1', PHONES.owner1],
+      ['barber1', PHONES.barber1],
+      ['customer', PHONES.customer],
+      ['admin', PHONES.admin],
+    ]) {
+      const ref = doc(as(uid, phone), 'barbershops/shop1/queueSummary', 'current');
+      await assertFails(setDoc(ref, { waitingCount: 0, estimatedWaitMinutes: 0, updatedAt: NOW }), uid);
+      await assertFails(updateDoc(ref, { waitingCount: 0 }), uid);
+      await assertFails(deleteDoc(ref), uid);
+    }
+  });
+
+  test('queueNext inbox entries: read and mark read like other notifications', async () => {
+    const id = 'queue_r1-1700000000000_queueNext';
+    await seed('users/customer/notifications', id, { title: 'You are next', body: 'Come in', type: 'queueNext', shopId: 'shop1', queueEntryId: 'r1', read: false, createdAt: NOW });
+    const db = as('customer', PHONES.customer);
+    await assertSucceeds(getDoc(doc(db, 'users/customer/notifications', id)));
+    await assertSucceeds(updateDoc(doc(db, 'users/customer/notifications', id), { read: true }));
+    await assertFails(setDoc(doc(db, 'users/customer/notifications', 'queue_x_queueNext'), { title: 'x', body: 'x', type: 'queueNext', read: false, createdAt: NOW }));
+  });
+});
+
+describe('reviews', () => {
+  const reviews = (db, shopId = 'shop1') => collection(db, `barbershops/${shopId}/reviews`);
+  const review = (overrides = {}) => ({
+    bookingId: 'bkDone',
+    shopId: 'shop1',
+    barberId: 'b1',
+    customerId: 'customer',
+    customerName: 'customer',
+    rating: 5,
+    comment: 'Great fade',
+    createdAt: new Date().toISOString(),
+    ...overrides,
+  });
+
+  beforeEach(async () => {
+    await seed('bookings', 'bkDone', booking({ status: 'completed', startAt: addisSlot(-2, 10), endAt: plusMinutes(addisSlot(-2, 10), 40) }));
+    await seed('bookings', 'bkDone2', booking({ customerId: 'customer2', customerName: 'Liya', status: 'completed', barberId: 'b2', barberName: 'Biruk' }));
+    await seed('barbershops/shop1/reviews', 'bkDone2', review({ bookingId: 'bkDone2', customerId: 'customer2', customerName: 'Liya', barberId: 'b2', rating: 3 }));
+  });
+
+  // ReviewsService.submitReview: a transaction that aborts if the review exists.
+  function createReviewTx(db, data, id = data.bookingId) {
+    return runTransaction(db, async (tx) => {
+      const ref = doc(reviews(db, 'shop1'), id);
+      if ((await tx.get(ref)).exists()) throw new Error('already reviewed');
+      tx.set(ref, data);
+    });
+  }
+
+  test('the customer reviews a completed booking once', async () => {
+    const db = as('customer', PHONES.customer);
+    await assertSucceeds(createReviewTx(db, review()));
+    await assert.rejects(createReviewTx(db, review()), /already reviewed/);
+    // A blind second write is an update, which customers cannot make.
+    await assertFails(setDoc(doc(reviews(db), 'bkDone'), review({ rating: 1 })));
+    await assertFails(updateDoc(doc(reviews(db), 'bkDone'), { rating: 1 }));
+    await assertFails(updateDoc(doc(reviews(db), 'bkDone'), { comment: 'Edited' }));
+    await assertFails(deleteDoc(doc(reviews(db), 'bkDone')));
+  });
+
+  test('without a comment', async () => {
+    const data = review();
+    delete data.comment;
+    await assertSucceeds(createReviewTx(as('customer', PHONES.customer), data));
+  });
+
+  test('only for their own completed booking, matching the booking', async () => {
+    const cust = as('customer', PHONES.customer);
+    await assertFails(createReviewTx(as('customer2', PHONES.customer2), review({ customerId: 'customer2' })));
+    await assertFails(createReviewTx(as('owner1', PHONES.owner1), review({ customerId: 'owner1' })));
+    await assertFails(createReviewTx(cust, review({ bookingId: 'bk1' })));
+    await assertFails(createReviewTx(cust, review({ bookingId: 'nope' })));
+    await assertFails(createReviewTx(cust, review(), 'other-id'));
+    await assertFails(createReviewTx(cust, review({ barberId: 'b2' })));
+    await assertFails(createReviewTx(cust, review({ customerName: 'Fake Name' })));
+    await assertFails(createReviewTx(cust, review({ shopId: 'shop2' })));
+    await assertFails(createReviewTx(anon(), review()));
+  });
+
+  test('rating is an integer 1..5; comment 1..500; no extra or reply fields', async () => {
+    const cust = as('customer', PHONES.customer);
+    for (const [name, overrides] of [
+      ['0', { rating: 0 }],
+      ['6', { rating: 6 }],
+      ['4.5', { rating: 4.5 }],
+      ['string', { rating: '5' }],
+      ['empty comment', { comment: '' }],
+      ['long comment', { comment: 'x'.repeat(501) }],
+      ['reply', { reply: 'Thanks', replyAt: NOW }],
+      ['extra', { photo: 'x' }],
+      ['createdAt', { createdAt: 12 }],
+    ]) {
+      await assertFails(createReviewTx(cust, review(overrides)), name);
+    }
+    await assertSucceeds(createReviewTx(cust, review({ rating: 1, comment: 'x'.repeat(500) })));
+  });
+
+  test('public read: anyone lists, pages and counts reviews', async () => {
+    for (const db of [anon(), as('customer', PHONES.customer), as('barber1', PHONES.barber1)]) {
+      await assertSucceeds(getDocs(query(reviews(db), orderBy('createdAt', 'desc'), limit(4))));
+      await assertSucceeds(getDocs(query(reviews(db), where('barberId', '==', 'b2'), orderBy('createdAt', 'desc'), limit(11))));
+      await assertSucceeds(getDoc(doc(reviews(db), 'bkDone2')));
+      await assertSucceeds(getDoc(doc(reviews(db), 'missing')));
+      const count = await assertSucceeds(getCountFromServer(query(reviews(db), where('rating', '==', 3))));
+      assert.equal(count.data().count, 1);
+    }
+  });
+
+  test('the owner adds and edits a reply, nothing else', async () => {
+    const ref = doc(reviews(as('owner1', PHONES.owner1)), 'bkDone2');
+    await assertSucceeds(updateDoc(ref, { reply: 'Thank you!', replyAt: NOW }));
+    await assertSucceeds(updateDoc(ref, { reply: 'Edited reply', replyAt: new Date().toISOString() }));
+    await assertFails(updateDoc(ref, { reply: '', replyAt: NOW }));
+    await assertFails(updateDoc(ref, { reply: 'x'.repeat(501), replyAt: NOW }));
+    await assertFails(updateDoc(ref, { reply: 'No date', replyAt: deleteField() }));
+    await assertFails(updateDoc(ref, { rating: 5 }));
+    await assertFails(updateDoc(ref, { reply: 'Hi', replyAt: NOW, comment: 'Changed' }));
+    await assertFails(deleteDoc(ref));
+  });
+
+  test('nobody else replies or deletes', async () => {
+    for (const [uid, phone] of [
+      ['owner2', PHONES.owner2],
+      ['barber2', PHONES.barber2],
+      ['customer2', PHONES.customer2],
+      ['admin', PHONES.admin],
+    ]) {
+      const ref = doc(reviews(as(uid, phone)), 'bkDone2');
+      await assertFails(updateDoc(ref, { reply: 'Hi', replyAt: NOW }), uid);
+      await assertFails(deleteDoc(ref), uid);
+    }
+  });
+});
+
+describe('insights aggregates (functions only)', () => {
+  beforeEach(async () => {
+    await seed('barbershops/shop1/stats', '2026-11', { month: '2026-11', bookings: 3, completed: 2, cancelled: 1, noShows: 0, revenueEtb: 900, byService: {}, byBarber: {}, updatedAt: NOW });
+    await seed('barbershops/shop1/clients', 'customer', { customerId: 'customer', name: 'customer', phone: PHONES.customer, completedCount: 2, noShowCount: 0, cancelledCount: 1, lastVisitAt: NOW });
+    await seed('insightsApplied', 'bk1', { shopId: 'shop1', updatedAt: NOW, contribution: {} });
+  });
+
+  test('the owner and the admin read stats and clients', async () => {
+    for (const [uid, phone] of [
+      ['owner1', PHONES.owner1],
+      ['admin', PHONES.admin],
+    ]) {
+      const db = as(uid, phone);
+      await assertSucceeds(getDoc(doc(db, 'barbershops/shop1/stats', '2026-11')), uid);
+      await assertSucceeds(getDoc(doc(db, 'barbershops/shop1/stats', '2026-10')), uid);
+      await assertSucceeds(getDocs(query(collection(db, 'barbershops/shop1/clients'), orderBy('completedCount', 'desc'), limit(100))), uid);
+    }
+  });
+
+  test('barbers, customers, other owners and anonymous users read nothing', async () => {
+    for (const [uid, phone] of [
+      ['barber1', PHONES.barber1],
+      ['customer', PHONES.customer],
+      ['owner2', PHONES.owner2],
+    ]) {
+      const db = as(uid, phone);
+      await assertFails(getDoc(doc(db, 'barbershops/shop1/stats', '2026-11')), uid);
+      await assertFails(getDoc(doc(db, 'barbershops/shop1/clients', 'customer')), uid);
+      await assertFails(getDocs(collection(db, 'barbershops/shop1/clients')), uid);
+    }
+    await assertFails(getDoc(doc(anon(), 'barbershops/shop1/stats', '2026-11')));
+  });
+
+  test('no client writes stats, clients or insightsApplied', async () => {
+    for (const [uid, phone] of [
+      ['owner1', PHONES.owner1],
+      ['admin', PHONES.admin],
+      ['customer', PHONES.customer],
+    ]) {
+      const db = as(uid, phone);
+      await assertFails(setDoc(doc(db, 'barbershops/shop1/stats', '2026-12'), { month: '2026-12' }), uid);
+      await assertFails(updateDoc(doc(db, 'barbershops/shop1/stats', '2026-11'), { revenueEtb: 1 }), uid);
+      await assertFails(deleteDoc(doc(db, 'barbershops/shop1/stats', '2026-11')), uid);
+      await assertFails(updateDoc(doc(db, 'barbershops/shop1/clients', 'customer'), { noShowCount: 0 }), uid);
+      await assertFails(deleteDoc(doc(db, 'barbershops/shop1/clients', 'customer')), uid);
+      await assertFails(getDoc(doc(db, 'insightsApplied', 'bk1')), uid);
+      await assertFails(setDoc(doc(db, 'insightsApplied', 'bk2'), { shopId: 'shop1' }), uid);
+    }
+  });
 });

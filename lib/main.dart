@@ -46,7 +46,9 @@ Future<void> main() async {
     PaymentReturnHandler.start(uri: Uri.base, navigatorKey: NotificationService.navigatorKey);
   }
 
-  // App language: device default, then the signed-in user's users/{uid}.language.
+  // App language: the choice saved on this device (or the device language),
+  // then the signed-in user's users/{uid}.language.
+  await LocaleController.instance.loadSaved();
   LocaleController.instance.start();
 
   runApp(BarbershopApp(firebaseError: firebaseError));

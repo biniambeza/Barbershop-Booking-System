@@ -124,7 +124,16 @@ class _NotificationTile extends StatelessWidget {
     case NotificationTypes.confirmed:
       return (Icons.event_available_rounded, Colors.greenAccent);
     case NotificationTypes.cancelled:
+    case NotificationTypes.slotTaken:
       return (Icons.event_busy_rounded, Colors.redAccent);
+    case NotificationTypes.paymentReceived:
+    case NotificationTypes.subscriptionPaid:
+      return (Icons.payments_rounded, Colors.greenAccent);
+    case NotificationTypes.paymentRefunded:
+      return (Icons.currency_exchange_rounded, Colors.lightBlueAccent);
+    case NotificationTypes.paymentFailed:
+    case NotificationTypes.subscriptionFailed:
+      return (Icons.money_off_rounded, Colors.redAccent);
     case NotificationTypes.started:
       return (Icons.content_cut_rounded, Colors.tealAccent);
     case NotificationTypes.completed:
@@ -132,6 +141,12 @@ class _NotificationTile extends StatelessWidget {
     case NotificationTypes.reminder24h:
     case NotificationTypes.reminder2h:
       return (Icons.alarm_rounded, Colors.orangeAccent);
+    case NotificationTypes.rescheduled:
+      return (Icons.update_rounded, Colors.lightBlueAccent);
+    case NotificationTypes.noShow:
+      return (Icons.person_off_rounded, Colors.redAccent);
+    case NotificationTypes.queueNext:
+      return (Icons.groups_rounded, Colors.greenAccent);
     default:
       return (Icons.notifications_rounded, AppTheme.textSecondary);
   }

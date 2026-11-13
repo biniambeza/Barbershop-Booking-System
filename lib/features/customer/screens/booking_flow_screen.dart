@@ -20,6 +20,11 @@ import '../../payments/payment_flow.dart';
 /// ([AppRepository.watchBarberBusyTimes]: visible bookings + slot locks).
 /// The server transaction is the final word: if someone else took the slot
 /// first, [SlotTakenException] is shown and the slots refresh.
+///
+/// With [rescheduling] set, the same slot picker moves that booking: the
+/// barber and service are fixed, the booking's own blocks count as free,
+/// its current time is not offered, and confirming calls
+/// [AppRepository.rescheduleBooking] (the screen pops with `true`).
 class BookingFlowScreen extends StatefulWidget {
   final Barbershop shop;
   final BarbershopService initialService;
@@ -28,12 +33,16 @@ class BookingFlowScreen extends StatefulWidget {
   /// Overrides the clock (tests).
   final DateTime Function()? clock;
 
+  /// The customer's booking being moved, or null for a new booking.
+  final Booking? rescheduling;
+
   const BookingFlowScreen({
     super.key,
     required this.shop,
     required this.initialService,
     required this.initialBarber,
     this.clock,
+    this.rescheduling,
   });
 
   @override
@@ -68,7 +77,13 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     _now = _readClock();
     _serviceId = widget.initialService.id;
     _barberId = widget.initialBarber.id;
-    _date = _firstBookableDate(_currentShop, _currentBarber) ?? addisToday(_now);
+    final moving = widget.rescheduling;
+    final currentDay = moving == null ? null : toAddisWallClock(moving.startAt);
+    final currentDate = currentDay == null ? null : DateTime(currentDay.year, currentDay.month, currentDay.day);
+    _date = currentDate != null &&
+            isBookableDate(shop: _currentShop, barber: _currentBarber, addisDate: currentDate, nowUtc: _now)
+        ? currentDate
+        : _firstBookableDate(_currentShop, _currentBarber) ?? addisToday(_now);
     _subscribeBusy();
     // Past slots disappear as time goes by.
     _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -98,7 +113,9 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
   void _subscribeBusy() {
     _busySub?.cancel();
     _busyLoaded = false;
-    _busySub = _repo.watchBarberBusyTimes(widget.shop.id, _barberId, _date).listen((busy) {
+    _busySub = _repo
+        .watchBarberBusyTimes(widget.shop.id, _barberId, _date, excludeBookingId: widget.rescheduling?.id)
+        .listen((busy) {
       if (!mounted) return;
       setState(() {
         _busy = busy;
@@ -129,14 +146,22 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     _subscribeBusy();
   }
 
-  List<DateTime> _slots(Barbershop shop, Barber barber, BarbershopService service) => availableSlotStarts(
-        shop: shop,
-        barber: barber,
-        durationMinutes: service.durationMinutes,
-        addisDate: _date,
-        busy: _busy,
-        nowUtc: _now,
-      );
+  bool get _isRescheduling => widget.rescheduling != null;
+
+  /// Free starts; when rescheduling, for the booking's own duration and
+  /// without its current start.
+  List<DateTime> _slots(Barbershop shop, Barber barber, BarbershopService service) {
+    final moving = widget.rescheduling;
+    final slots = availableSlotStarts(
+      shop: shop,
+      barber: barber,
+      durationMinutes: moving?.durationMinutes ?? service.durationMinutes,
+      addisDate: _date,
+      busy: _busy,
+      nowUtc: _now,
+    );
+    return moving == null ? slots : slots.where((s) => s != moving.startAt).toList();
+  }
 
   /// The stored display slot (always English 12-hour form, e.g. '02:30 PM').
   static String _slotLabel(DateTime startUtc) {
@@ -165,6 +190,12 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
 
     setState(() => _isSubmitting = true);
 
+    final moving = widget.rescheduling;
+    if (moving != null) {
+      await _submitReschedule(moving, start);
+      return;
+    }
+
     try {
       final booking = await _repo.createBooking(
         shopId: shop.id,
@@ -185,29 +216,53 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
           booking: booking);
     } on SlotTakenException {
       if (!mounted) return;
-      setState(() => _selectedStart = null);
-      _subscribeBusy(); // refresh the busy times
-      await showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: AppTheme.darkCard,
-          icon: const Icon(Icons.event_busy_rounded, color: AppTheme.primaryGold, size: 40),
-          title: Text(context.l10n.slotJustTaken),
-          content: Text(context.l10n.slotJustTakenBody),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(context.l10n.pickAnotherTime)),
-          ],
-        ),
-      );
+      await _showSlotTaken();
     } catch (e) {
       if (mounted) {
-        final message = e is StateError ? e.message : e is FormatException ? e.message : '$e';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.l10n.errorText(e))));
       }
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
       }
+    }
+  }
+
+  /// The slot went to someone else: refresh the busy times and say so.
+  Future<void> _showSlotTaken() async {
+    setState(() => _selectedStart = null);
+    _subscribeBusy(); // refresh the busy times
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.darkCard,
+        icon: const Icon(Icons.event_busy_rounded, color: AppTheme.primaryGold, size: 40),
+        title: Text(context.l10n.slotJustTaken),
+        content: Text(context.l10n.slotJustTakenBody),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(context.l10n.pickAnotherTime)),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _submitReschedule(Booking moving, DateTime start) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+    final l = context.l10n;
+    final fmt = context.fmt;
+    try {
+      final moved = await _repo.rescheduleBooking(moving.id, start);
+      final local = toAddisWallClock(moved.startAt);
+      final when = l.dateAtTime(fmt.dayShort(DateTime(local.year, local.month, local.day)), fmt.addisTime(moved.startAt));
+      messenger.showSnackBar(SnackBar(content: Text(l.rescheduleDone(when))));
+      if (mounted) navigator.pop(true);
+    } on SlotTakenException {
+      if (mounted) await _showSlotTaken();
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(l.errorText(e))));
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -333,8 +388,10 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
         final selected = slots.contains(_selectedStart) ? _selectedStart : null;
         final l = context.l10n;
 
+        final moving = widget.rescheduling;
+
         return Scaffold(
-          appBar: AppBar(title: Text(l.confirmAppointment)),
+          appBar: AppBar(title: Text(moving == null ? l.confirmAppointment : l.rescheduleTitle)),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -342,14 +399,19 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               children: [
                 _buildShopSummary(shop),
                 const SizedBox(height: 24),
-                _sectionTitle(context, l.stepChooseBarber),
-                const SizedBox(height: 12),
-                _buildBarberPicker(allBarbers.isEmpty ? [barber] : allBarbers),
-                const SizedBox(height: 24),
-                _sectionTitle(context, l.stepSelectedService),
-                const SizedBox(height: 12),
-                _buildServicePicker(allServices.isEmpty ? [service] : allServices),
-                const SizedBox(height: 24),
+                if (moving != null) ...[
+                  _buildRescheduleSummary(moving),
+                  const SizedBox(height: 24),
+                ] else ...[
+                  _sectionTitle(context, l.stepChooseBarber),
+                  const SizedBox(height: 12),
+                  _buildBarberPicker(allBarbers.isEmpty ? [barber] : allBarbers),
+                  const SizedBox(height: 24),
+                  _sectionTitle(context, l.stepSelectedService),
+                  const SizedBox(height: 12),
+                  _buildServicePicker(allServices.isEmpty ? [service] : allServices),
+                  const SizedBox(height: 24),
+                ],
                 _sectionTitle(context, l.stepSelectDate),
                 const SizedBox(height: 12),
                 _buildDatePicker(shop, barber),
@@ -357,7 +419,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                 _sectionTitle(context, l.stepAvailableTimes),
                 const SizedBox(height: 4),
                 Text(
-                  l.durationAddisTime(service.durationMinutes),
+                  l.durationAddisTime(moving?.durationMinutes ?? service.durationMinutes),
                   style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                 ),
                 const SizedBox(height: 12),
@@ -370,6 +432,35 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
           ),
         );
       },
+    );
+  }
+
+  /// Reschedule mode: the fixed barber and service and the current time.
+  Widget _buildRescheduleSummary(Booking moving) {
+    final l = context.l10n;
+    final fmt = context.fmt;
+    final local = toAddisWallClock(moving.startAt);
+    final when = l.dateAtTime(fmt.dayShort(DateTime(local.year, local.month, local.day)), fmt.addisTime(moving.startAt));
+    return Container(
+      key: const ValueKey('reschedule-summary'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.darkCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l.serviceAndPrice(moving.serviceName, fmt.birr(moving.price)),
+              style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryGold)),
+          const SizedBox(height: 4),
+          Text(l.barberLabel(moving.barberName), style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+          const SizedBox(height: 4),
+          Text(l.rescheduleCurrent(when), style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13)),
+        ],
+      ),
     );
   }
 
@@ -674,8 +765,10 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               ),
             ),
           ],
-          const SizedBox(height: 12),
-          _buildPaymentChoice(),
+          if (!_isRescheduling) ...[
+            const SizedBox(height: 12),
+            _buildPaymentChoice(),
+          ],
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
@@ -688,7 +781,11 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                       width: 20,
                       child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
                     )
-                  : Text(selected == null ? l.selectATime : l.confirmAppointment),
+                  : Text(selected == null
+                      ? l.selectATime
+                      : _isRescheduling
+                          ? l.rescheduleConfirm
+                          : l.confirmAppointment),
             ),
           ),
         ],

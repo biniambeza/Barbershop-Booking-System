@@ -22,12 +22,15 @@ import {
   REGION,
 } from './config';
 import { ChapaError, initializeTransaction } from './chapa';
+import { createBookingCheckout } from './logic/bookingCheckout';
 import { appendQuery, buildTxRef, firstNameOf, sanitizeCheckoutText, toChapaPhone } from './logic/checkout';
-import { checkBookingPayable, checkPlanFitsShop, checkShopOwner, Denial } from './logic/eligibility';
+import { FlowError } from './logic/docstore';
+import { checkPlanFitsShop, checkShopOwner, Denial } from './logic/eligibility';
 import { normalizeAmount, toChapaAmount } from './logic/money';
 import { buildManualChange, computeScheduledUpdate, isPlan } from './logic/subscription';
 import { verifyChapaSignature } from './logic/signature';
-import { db, findPaymentByTxRef, markRefunded, PaymentDoc, reverifyPayment } from './store';
+import { parseReviewRequest, resolvePaymentReview as resolveReview } from './logic/review';
+import { db, findPaymentByTxRef, firestoreDocStore, markRefunded, PaymentDoc, reverifyPayment } from './store';
 
 initializeApp();
 setGlobalOptions({ region: REGION, maxInstances: 10 });
@@ -88,6 +91,12 @@ function returnUrl(paymentId: string, txRef: string): string {
   }
 }
 
+/** FlowError (logic/) -> HttpsError; HttpsErrors pass through. */
+function toHttpsError(err: unknown): unknown {
+  if (err instanceof FlowError) return new HttpsError(err.code, err.message);
+  return err;
+}
+
 function chapaFailure(err: unknown): HttpsError {
   if (err instanceof HttpsError) return err;
   logger.error('Chapa call failed', err instanceof ChapaError ? { status: err.httpStatus, body: err.body } : err);
@@ -132,77 +141,48 @@ async function startCheckout(opts: {
 /**
  * createBookingPayment({bookingId}) -> {checkoutUrl, paymentId, txRef}
  * Caller must be the booking's customer; booking not cancelled, not paid.
+ * Concurrent calls share one checkout: a pending payment of the same
+ * booking created in the last PENDING_REUSE_MINUTES is reused (see
+ * logic/bookingCheckout.ts).
  */
 export const createBookingPayment = onCall({ secrets: [CHAPA_SECRET_KEY] }, async (req): Promise<CheckoutResult> => {
   const uid = requireAuth(req);
   const bookingId = requireString(req.data, 'bookingId');
-  const bookingRef = db().collection('bookings').doc(bookingId);
-  const booking = (await bookingRef.get()).data();
-  deny(checkBookingPayable(booking, uid));
-
-  // Reuse a fresh pending checkout; settle it first if it was in fact paid.
-  if (booking!.paymentStatus === 'pending' && typeof booking!.paymentId === 'string') {
-    const prevRef = db().collection('payments').doc(booking!.paymentId);
-    const prev = (await prevRef.get()).data() as PaymentDoc | undefined;
-    if (prev && prev.status === 'pending') {
-      let status;
-      try {
-        status = await reverifyPayment(CHAPA_SECRET_KEY.value(), prevRef);
-      } catch (err) {
-        throw chapaFailure(err);
-      }
-      if (status === 'success') throw new HttpsError('already-exists', 'This booking is already paid.');
-      const ageMs = Date.now() - new Date(prev.createdAt).getTime();
-      if (status === 'pending' && ageMs < PENDING_REUSE_MINUTES * 60_000 && prev.checkoutUrl) {
-        return { checkoutUrl: prev.checkoutUrl, paymentId: prevRef.id, txRef: prev.txRef };
-      }
-    }
-  }
-
-  const amount = normalizeAmount(booking!.price);
-  if (amount === null) throw new HttpsError('failed-precondition', 'This booking has no valid price.');
-  const user = await getUser(uid);
-
-  const paymentRef = db().collection('payments').doc();
-  let checkout: { txRef: string; checkoutUrl: string };
+  const secret = CHAPA_SECRET_KEY.value();
   try {
-    checkout = await startCheckout({
-      paymentId: paymentRef.id,
-      amount,
-      name: user?.name ?? booking!.customerName,
-      phone: user?.phone ?? booking!.customerPhone,
-      description: `${booking!.serviceName ?? 'Booking'} ${booking!.shopName ?? ''}`,
-      meta: { paymentId: paymentRef.id, bookingId, type: 'booking' },
+    return await createBookingCheckout({
+      store: firestoreDocStore(),
+      uid,
+      bookingId,
+      currency: CURRENCY,
+      reuseMinutes: PENDING_REUSE_MINUTES,
+      reverify: async (paymentId) => {
+        try {
+          return await reverifyPayment(secret, db().collection('payments').doc(paymentId));
+        } catch (err) {
+          throw chapaFailure(err);
+        }
+      },
+      initCheckout: async ({ paymentId, amount, booking }) => {
+        const user = await getUser(uid);
+        try {
+          const checkout = await startCheckout({
+            paymentId,
+            amount,
+            name: user?.name ?? booking.customerName,
+            phone: user?.phone ?? booking.customerPhone,
+            description: `${booking.serviceName ?? 'Booking'} ${booking.shopName ?? ''}`,
+            meta: { paymentId, bookingId, type: 'booking' },
+          });
+          return checkout.checkoutUrl;
+        } catch (err) {
+          throw chapaFailure(err);
+        }
+      },
     });
   } catch (err) {
-    throw chapaFailure(err);
+    throw toHttpsError(err);
   }
-
-  const payment: PaymentDoc = {
-    type: 'booking',
-    bookingId,
-    shopId: String(booking!.shopId ?? ''),
-    userId: uid,
-    amount,
-    currency: CURRENCY,
-    provider: 'chapa',
-    txRef: checkout.txRef,
-    status: 'pending',
-    checkoutUrl: checkout.checkoutUrl,
-    createdAt: new Date().toISOString(),
-  };
-
-  await db().runTransaction(async (tx) => {
-    const fresh = (await tx.get(bookingRef)).data();
-    deny(checkBookingPayable(fresh, uid));
-    if (normalizeAmount(fresh!.price) !== amount) {
-      throw new HttpsError('aborted', 'The booking changed. Please try again.');
-    }
-    tx.create(paymentRef, payment);
-    tx.update(bookingRef, { paymentStatus: 'pending', paymentMethod: 'chapa', paymentId: paymentRef.id });
-  });
-
-  return { checkoutUrl: checkout.checkoutUrl, paymentId: paymentRef.id, txRef: checkout.txRef };
 });
 
 /**
@@ -285,7 +265,7 @@ export const verifyPayment = onCall({ secrets: [CHAPA_SECRET_KEY] }, async (req)
     if (user?.role !== 'admin' && !isOwner) throw new HttpsError('permission-denied', 'Not your payment.');
   }
 
-  if (payment.status !== 'success') {
+  if (payment.status === 'pending' || payment.status === 'failed') {
     try {
       await reverifyPayment(CHAPA_SECRET_KEY.value(), ref);
     } catch (err) {
@@ -359,6 +339,24 @@ export const seedDefaultPlans = onCall(async (req) => {
     written.push(id);
   }
   return { written, skipped };
+});
+
+/**
+ * resolvePaymentReview({paymentId, resolution: 'refunded_in_chapa' | 'no_action', note?})
+ *   -> {paymentId, resolution, status, bookingPaymentStatus, resolvedAt}
+ * Admin only. Closes a payment flagged needsReview (see logic/review.ts).
+ */
+export const resolvePaymentReview = onCall(async (req) => {
+  const uid = requireAuth(req);
+  await requireAdmin(uid);
+  try {
+    const request = parseReviewRequest(req.data);
+    const result = await resolveReview(firestoreDocStore(), request, uid);
+    logger.info('Payment review resolved', { ...result, by: uid });
+    return result;
+  } catch (err) {
+    throw toHttpsError(err);
+  }
 });
 
 // ---------------------------------------------------------------- webhook

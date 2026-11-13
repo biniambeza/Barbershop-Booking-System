@@ -1,0 +1,23 @@
+{
+  "name": "crown-blade-bookings",
+  "private": true,
+  "description": "Booking integrity for Crown & Blade: verifies every slot lock of a new or rescheduled booking and cleans up expired slot locks.",
+  "main": "lib/index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "tsc -p tsconfig.test.json && node --test build-test/test/lockIds.test.js build-test/test/verify.test.js build-test/test/reschedule.test.js build-test/test/cleanup.test.js",
+    "serve": "npm run build && firebase emulators:start --only functions,firestore",
+    "deploy": "firebase deploy --only functions:bookings"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.6.0"
+  }
+}

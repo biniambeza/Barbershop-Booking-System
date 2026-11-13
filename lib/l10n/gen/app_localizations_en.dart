@@ -9,6 +9,305 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get queueTitle => 'Walk-in queue';
+
+  @override
+  String queueDashboardSubtitle(int waiting, int serving) {
+    return '$waiting waiting · $serving in the chair';
+  }
+
+  @override
+  String queueSummaryWaiting(int count, int minutes) {
+    return '$count waiting, about $minutes min';
+  }
+
+  @override
+  String get queueSummaryEmpty => 'No one waiting - walk right in';
+
+  @override
+  String get queueJoin => 'Join queue';
+
+  @override
+  String get queueLeave => 'Leave queue';
+
+  @override
+  String queueLeaveConfirm(String shop) {
+    return 'Leave the queue at $shop?';
+  }
+
+  @override
+  String queueYourPosition(int position, int minutes) {
+    return 'You are number $position in line, about $minutes min';
+  }
+
+  @override
+  String get queueYouAreNext => 'You\'re next! Please be at the shop.';
+
+  @override
+  String queueYourTurn(String barber) {
+    return 'It\'s your turn - $barber is ready for you';
+  }
+
+  @override
+  String get queueYourTurnAnyBarber => 'It\'s your turn - please come in';
+
+  @override
+  String get queueJoined => 'You joined the queue.';
+
+  @override
+  String get queueLeftMessage => 'You left the queue.';
+
+  @override
+  String get queueSignInToJoin => 'Sign in to join the queue.';
+
+  @override
+  String queueJoinTitle(String shop) {
+    return 'Join the queue at $shop';
+  }
+
+  @override
+  String get queueJoinBody =>
+      'We\'ll hold your place in line and tell you when you\'re next.';
+
+  @override
+  String queueWaitingHeader(int count) {
+    return 'Waiting ($count)';
+  }
+
+  @override
+  String queueServingHeader(int count) {
+    return 'In the chair ($count)';
+  }
+
+  @override
+  String get queueBarbersHeader => 'Barbers right now';
+
+  @override
+  String get queueEmpty => 'No one is waiting.';
+
+  @override
+  String get queueAddWalkIn => 'Add walk-in';
+
+  @override
+  String get queueNameLabel => 'Customer name';
+
+  @override
+  String get queuePhoneLabel => 'Phone (optional)';
+
+  @override
+  String get queueServiceLabel => 'Service (optional)';
+
+  @override
+  String get queuePreferredBarberLabel => 'Preferred barber (optional)';
+
+  @override
+  String get queueAnyBarber => 'Any barber';
+
+  @override
+  String get queueNoService => 'Not chosen';
+
+  @override
+  String get queueAddButton => 'Add to queue';
+
+  @override
+  String get queueCallNext => 'Call next';
+
+  @override
+  String queueCallNextFor(String barber) {
+    return 'Call next for $barber';
+  }
+
+  @override
+  String get queueStart => 'Start';
+
+  @override
+  String get queueFinish => 'Finish';
+
+  @override
+  String get queueMarkLeft => 'Left';
+
+  @override
+  String queueChooseBarber(String name) {
+    return 'Who will serve $name?';
+  }
+
+  @override
+  String queueBarberServing(String name) {
+    return 'Serving $name';
+  }
+
+  @override
+  String get queueBarberFree => 'Free';
+
+  @override
+  String get queueBarberOff => 'Not taking customers';
+
+  @override
+  String queueWaitAbout(int minutes) {
+    return 'about $minutes min';
+  }
+
+  @override
+  String get queueNextUp => 'Next';
+
+  @override
+  String queuePrefers(String barber) {
+    return 'Prefers $barber';
+  }
+
+  @override
+  String get queueRemoteBadge => 'Joined in app';
+
+  @override
+  String queueJoinedAt(String time) {
+    return 'Joined $time';
+  }
+
+  @override
+  String queueServingSince(String time) {
+    return 'Since $time';
+  }
+
+  @override
+  String queueNobodyForBarber(String barber) {
+    return 'No one is waiting for $barber.';
+  }
+
+  @override
+  String queueNowServing(String barber, String name) {
+    return '$barber is now serving $name.';
+  }
+
+  @override
+  String queueActionFailed(String error) {
+    return 'Could not update the queue: $error';
+  }
+
+  @override
+  String get queueErrNotStaff =>
+      'Only this shop\'s owner and barbers can manage its queue.';
+
+  @override
+  String get queueErrCustomersOnly =>
+      'Only customers can join the queue from the app.';
+
+  @override
+  String queueErrNameRequired(int max) {
+    return 'Enter a name (up to $max characters).';
+  }
+
+  @override
+  String queueErrBarberBusy(String name) {
+    return '$name is already serving someone. Finish that first.';
+  }
+
+  @override
+  String get queueErrNotWaiting => 'This person is no longer waiting.';
+
+  @override
+  String get queueErrNotServing => 'This person is not being served.';
+
+  @override
+  String get reportsTitle => 'Reports';
+
+  @override
+  String get reportsOpenButton => 'Reports & clients';
+
+  @override
+  String get reportsOverviewTab => 'Overview';
+
+  @override
+  String get reportsClientsTab => 'Clients';
+
+  @override
+  String get reportsMonthLabel => 'Month';
+
+  @override
+  String get reportsBookings => 'Bookings';
+
+  @override
+  String get reportsCompleted => 'Completed';
+
+  @override
+  String get reportsCancelled => 'Cancelled';
+
+  @override
+  String get reportsNoShows => 'No-shows';
+
+  @override
+  String get reportsRevenue => 'Revenue';
+
+  @override
+  String get reportsRevenueTrend => 'Revenue, last 6 months';
+
+  @override
+  String get reportsTopServices => 'Top services';
+
+  @override
+  String get reportsBarberPerformance => 'Barber performance';
+
+  @override
+  String reportsCompletedCount(int count) {
+    return '$count completed';
+  }
+
+  @override
+  String get reportsNoBookingsMonth => 'No bookings in this month.';
+
+  @override
+  String get reportsNoCompletedMonth =>
+      'No completed bookings in this month yet.';
+
+  @override
+  String get reportsNoClients => 'No clients yet.';
+
+  @override
+  String reportsClientVisits(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count visits',
+      one: '1 visit',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String reportsClientNoShows(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count no-shows',
+      one: '1 no-show',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String reportsClientCancelled(int count) {
+    return '$count cancelled';
+  }
+
+  @override
+  String reportsLastVisit(String date) {
+    return 'Last visit $date';
+  }
+
+  @override
+  String get reportsNoVisitYet => 'No completed visit yet';
+
+  @override
+  String get reportsLoadFailed =>
+      'Could not load reports. Check your connection and try again.';
+
+  @override
+  String get reportsRetry => 'Try again';
+
+  @override
+  String get reportsUpdatedNote =>
+      'Figures update a few seconds after each booking change.';
+
+  @override
   String get appTitle => 'Crown & Blade - Barbershop Booking';
 
   @override
@@ -141,6 +440,243 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statusCancelled => 'Cancelled';
+
+  @override
+  String get statusNoShow => 'No-show';
+
+  @override
+  String get rescheduleAction => 'Reschedule';
+
+  @override
+  String get rescheduleTitle => 'Pick a new time';
+
+  @override
+  String rescheduleCurrent(String when) {
+    return 'Current time: $when';
+  }
+
+  @override
+  String get rescheduleConfirm => 'Move booking';
+
+  @override
+  String rescheduleDone(String when) {
+    return 'Your booking was moved to $when.';
+  }
+
+  @override
+  String rescheduleLeft(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count changes left',
+      one: '1 change left',
+      zero: 'No more changes allowed',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rescheduledBadge => 'Rescheduled';
+
+  @override
+  String reschedulePolicyNote(int hours) {
+    String _temp0 = intl.Intl.pluralLogic(
+      hours,
+      locale: localeName,
+      other: '$hours hours before',
+      one: '1 hour before',
+      zero: 'the start time',
+    );
+    return 'Free changes and cancellation until $_temp0.';
+  }
+
+  @override
+  String get rescheduleCallShop =>
+      'Too late to change this booking in the app. Please call the shop.';
+
+  @override
+  String get rescheduleErrNotChangeable =>
+      'This booking can no longer be changed.';
+
+  @override
+  String rescheduleErrCancelCutoff(int hours) {
+    String _temp0 = intl.Intl.pluralLogic(
+      hours,
+      locale: localeName,
+      other: '$hours hours',
+      one: '1 hour',
+    );
+    return 'You can cancel up to $_temp0 before your appointment. Please call the shop.';
+  }
+
+  @override
+  String rescheduleErrCutoff(int hours) {
+    String _temp0 = intl.Intl.pluralLogic(
+      hours,
+      locale: localeName,
+      other: '$hours hours',
+      one: '1 hour',
+    );
+    return 'You can move a booking up to $_temp0 before it starts. Please call the shop.';
+  }
+
+  @override
+  String rescheduleErrLimit(int max) {
+    String _temp0 = intl.Intl.pluralLogic(
+      max,
+      locale: localeName,
+      other: '$max times, the most this shop allows',
+      one: 'once, the most this shop allows',
+      zero: '- this shop does not allow changes',
+    );
+    return 'This booking has already been moved $_temp0.';
+  }
+
+  @override
+  String get rescheduleErrSameTime =>
+      'Pick a time different from your current one.';
+
+  @override
+  String get noShowAction => 'No-show';
+
+  @override
+  String get noShowConfirmTitle => 'Mark as no-show?';
+
+  @override
+  String noShowConfirmBody(String name) {
+    return '$name did not come to this appointment. The time stays blocked.';
+  }
+
+  @override
+  String get noShowErrTooEarly =>
+      'You can mark a no-show only after the appointment start time.';
+
+  @override
+  String get policySectionTitle => 'Booking policy';
+
+  @override
+  String get policyCutoffLabel => 'Cancellation cutoff';
+
+  @override
+  String get policyCutoffHelp =>
+      'Customers cannot cancel or move a booking within this many hours of the start. You and your barbers can still cancel.';
+
+  @override
+  String policyHoursValue(int hours) {
+    String _temp0 = intl.Intl.pluralLogic(
+      hours,
+      locale: localeName,
+      other: '$hours hours before',
+      one: '1 hour before',
+      zero: 'Until the start',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get policyMaxReschedulesLabel => 'Changes allowed per booking';
+
+  @override
+  String policyMaxReschedulesValue(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count times',
+      one: 'Once',
+      zero: 'No changes',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get policySave => 'Save policy';
+
+  @override
+  String get policySaved => 'Booking policy saved.';
+
+  @override
+  String policyErrCutoff(int max) {
+    return 'The cancellation cutoff must be between 0 and $max hours.';
+  }
+
+  @override
+  String policyErrMaxReschedules(int max) {
+    return 'Changes allowed must be between 0 and $max.';
+  }
+
+  @override
+  String get timeOffTitle => 'Time off';
+
+  @override
+  String get timeOffAdd => 'Add time off';
+
+  @override
+  String get timeOffWholeDay => 'Whole day';
+
+  @override
+  String get timeOffHours => 'Some hours';
+
+  @override
+  String get timeOffDay => 'Day';
+
+  @override
+  String get timeOffFrom => 'From';
+
+  @override
+  String get timeOffTo => 'To';
+
+  @override
+  String get timeOffReasonLabel => 'Note (optional)';
+
+  @override
+  String get timeOffEmpty => 'No time off planned.';
+
+  @override
+  String get timeOffSaved =>
+      'Time off added. Customers can no longer book these times.';
+
+  @override
+  String get timeOffRemove => 'Remove time off';
+
+  @override
+  String get timeOffRemoved => 'Time off removed.';
+
+  @override
+  String get timeOffRemoveConfirm =>
+      'Remove this time off? Customers can book these times again.';
+
+  @override
+  String timeOffRange(String day, String from, String to) {
+    return '$day, $from - $to';
+  }
+
+  @override
+  String timeOffNotWorking(String name) {
+    return '$name does not work on this day.';
+  }
+
+  @override
+  String get timeOffSlotLabel => 'Time off';
+
+  @override
+  String get timeOffErrRange =>
+      'Pick a range within one day, ending after it starts.';
+
+  @override
+  String get timeOffErrPast => 'Time off must end in the future.';
+
+  @override
+  String timeOffErrReasonTooLong(int max) {
+    return 'The note can be at most $max characters.';
+  }
+
+  @override
+  String get timeOffErrConflict =>
+      'This time overlaps a booking or other time off. Move or cancel that booking first.';
+
+  @override
+  String get timeOffErrNotAllowed =>
+      'You can only manage time off for your own schedule.';
 
   @override
   String get subTrialing => 'Free trial';
@@ -1674,4 +2210,478 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cardMethod => 'Card';
+
+  @override
+  String get errInvalidPhone =>
+      'Enter a valid Ethiopian mobile number (09... or 07...).';
+
+  @override
+  String get errInvalidOwnerPhone =>
+      'Enter a valid Ethiopian mobile number for the owner (09... or 07...).';
+
+  @override
+  String get errInvalidOtp => 'Enter the 6-digit code from the SMS.';
+
+  @override
+  String errWrongDemoCode(String code) {
+    return 'Wrong code. In demo mode the code is $code.';
+  }
+
+  @override
+  String get errRequestCodeFirst => 'Request a code first.';
+
+  @override
+  String get errInvalidName => 'Enter your name (up to 100 characters).';
+
+  @override
+  String get errVerifyPhoneFirst => 'Verify your phone number first.';
+
+  @override
+  String get errSignInRequired => 'Please sign in first.';
+
+  @override
+  String errPhoneAlreadyStaff(String role) {
+    return 'This phone number already belongs to a $role account.';
+  }
+
+  @override
+  String get errSignInToBook => 'Sign in to book an appointment.';
+
+  @override
+  String get errInvalidTimeSlot =>
+      'That time is not valid. Please pick another time.';
+
+  @override
+  String errServiceTooLong(int minutes) {
+    return 'A service can be at most $minutes minutes long.';
+  }
+
+  @override
+  String get errServerOnly => 'Only the server can make this change.';
+
+  @override
+  String get errSlotTaken =>
+      'Sorry, that time was just taken. Please pick another slot.';
+
+  @override
+  String get errBookingFailed =>
+      'Could not book this time. Check your connection and try again.';
+
+  @override
+  String get errNoWorkingDays => 'Pick at least one working day.';
+
+  @override
+  String get errInvalidWorkingHours =>
+      'The end time must be after the start time.';
+
+  @override
+  String errPlanIdInvalid(String ids) {
+    return 'Plan id must be one of $ids.';
+  }
+
+  @override
+  String get errPlanNameRequired => 'Plan name is required.';
+
+  @override
+  String get errPlanPriceNegative => 'Price must be 0 or more.';
+
+  @override
+  String get errPlanPriceRequired => 'A paid plan needs a price above 0.';
+
+  @override
+  String get errPlanMaxBarbers =>
+      'Max barbers must be at least 1 (or -1 for unlimited).';
+
+  @override
+  String get errPermissionDenied => 'You do not have permission to do this.';
+
+  @override
+  String get errOffline =>
+      'Could not reach the server. Check your connection and try again.';
+
+  @override
+  String get errGeneric => 'Something went wrong. Please try again.';
+
+  @override
+  String get payErrBookingNotFound => 'This booking could not be found.';
+
+  @override
+  String get payErrBookingCancelled => 'This booking was cancelled.';
+
+  @override
+  String get payErrBookingRefunded => 'This booking was refunded.';
+
+  @override
+  String get payErrCannotPayOnline => 'This booking cannot be paid online.';
+
+  @override
+  String get payErrNoValidPrice =>
+      'This has no valid price, so it cannot be paid online.';
+
+  @override
+  String get payErrNotYourBooking =>
+      'Only the customer who made this booking can pay for it.';
+
+  @override
+  String get payErrNotYourPayment => 'This is not your payment.';
+
+  @override
+  String get payErrNotShopOwner =>
+      'Only the owner of this shop can pay its subscription.';
+
+  @override
+  String get payErrShopNotFound => 'This barbershop could not be found.';
+
+  @override
+  String get payErrPlanUnavailable => 'This plan is not available.';
+
+  @override
+  String get payErrUnknownPlan => 'Unknown plan.';
+
+  @override
+  String payErrPlanTooSmall(int max, int count) {
+    return 'This plan allows $max barbers but the shop has $count. Choose a bigger plan or remove barbers.';
+  }
+
+  @override
+  String get payErrBookingChanged =>
+      'Something changed while we prepared your payment. Please try again.';
+
+  @override
+  String get payErrStillPreparing =>
+      'Your payment is still being prepared. Please try again in a moment.';
+
+  @override
+  String get payErrLaunchFailed =>
+      'Could not open the Chapa checkout page. Please try again.';
+
+  @override
+  String get payErrInvalid => 'Some payment details are missing or invalid.';
+
+  @override
+  String get payErrPrecondition => 'This payment cannot be made right now.';
+
+  @override
+  String get payErrAdminsOnly => 'Only administrators can do this.';
+
+  @override
+  String get payErrPaymentNotFound => 'This payment could not be found.';
+
+  @override
+  String get payErrReviewNotNeeded =>
+      'This payment is no longer waiting for review.';
+
+  @override
+  String get payErrReviewNotRefundable =>
+      'Only a successful payment can be marked as refunded.';
+
+  @override
+  String get viewAction => 'View';
+
+  @override
+  String get paymentsToReview => 'Payments to review';
+
+  @override
+  String get paymentsToReviewIntro =>
+      'These payments need a decision. Refund the customer in the Chapa dashboard first, then mark the payment here.';
+
+  @override
+  String get noPaymentsToReview => 'No payments need review';
+
+  @override
+  String get noPaymentsToReviewHint =>
+      'Payments for cancelled bookings, double payments and payments that could not be applied show up here.';
+
+  @override
+  String paymentsToReviewLoadFailed(String error) {
+    return 'Could not load payments: $error';
+  }
+
+  @override
+  String get reviewReasonCancelledBooking => 'Paid for a cancelled booking';
+
+  @override
+  String get reviewReasonDoublePayment => 'Booking was paid twice';
+
+  @override
+  String get reviewReasonMissingBooking => 'The booking no longer exists';
+
+  @override
+  String get reviewReasonRefundReported =>
+      'Chapa reported a refund that needs checking';
+
+  @override
+  String get reviewReasonSubscription =>
+      'Subscription payment could not be applied';
+
+  @override
+  String get reviewReasonOther => 'Needs a manual check';
+
+  @override
+  String get paymentTypeBooking => 'Booking payment';
+
+  @override
+  String get paymentTypeSubscription => 'Subscription payment';
+
+  @override
+  String get paymentDetailsTitle => 'Payment details';
+
+  @override
+  String get detailAmount => 'Amount';
+
+  @override
+  String get detailStatus => 'Status';
+
+  @override
+  String get detailCreated => 'Created';
+
+  @override
+  String get detailVerified => 'Verified';
+
+  @override
+  String get detailShop => 'Shop';
+
+  @override
+  String get detailBooking => 'Booking';
+
+  @override
+  String get detailCustomer => 'Paid by';
+
+  @override
+  String get detailTxRef => 'Transaction reference';
+
+  @override
+  String get detailChapaReference => 'Chapa reference';
+
+  @override
+  String get detailMethod => 'Method';
+
+  @override
+  String get detailPaymentId => 'Payment ID';
+
+  @override
+  String get reviewNoteLabel => 'Note (optional)';
+
+  @override
+  String get reviewNoteHint => 'e.g. Refunded on 13 Nov, Chapa ref ...';
+
+  @override
+  String get markRefundedInChapa => 'I refunded it in Chapa';
+
+  @override
+  String get markNoAction => 'No action needed';
+
+  @override
+  String get confirmRefundTitle => 'Mark as refunded?';
+
+  @override
+  String confirmRefundBody(String amount) {
+    return 'Only continue if you already refunded $amount in the Chapa dashboard. The payment and its booking will show as refunded.';
+  }
+
+  @override
+  String get reviewClosedRefunded => 'Marked as refunded.';
+
+  @override
+  String get reviewClosedNoAction => 'Review closed.';
+
+  @override
+  String reviewFailed(String error) {
+    return 'Could not close the review: $error';
+  }
+
+  @override
+  String get editWorkingHours => 'Working days and hours';
+
+  @override
+  String barberHoursTitle(String name) {
+    return '$name: working hours';
+  }
+
+  @override
+  String get followShopHours => 'Same as the shop';
+
+  @override
+  String get followShopHoursSubtitle =>
+      'Works on the shop\'s days, from opening to closing time.';
+
+  @override
+  String get workingDaysLabel => 'Working days';
+
+  @override
+  String get startsAt => 'Starts';
+
+  @override
+  String get endsAt => 'Ends';
+
+  @override
+  String get workingHoursSaved => 'Working hours saved.';
+
+  @override
+  String get shopHoursSummary => 'Shop hours';
+
+  @override
+  String get errAccountLoadFailed =>
+      'Could not load your account. Check your connection and try again.';
+
+  @override
+  String get reviewsTitle => 'Reviews';
+
+  @override
+  String get reviewsRateAction => 'Rate visit';
+
+  @override
+  String get reviewsYourRating => 'Your rating';
+
+  @override
+  String get reviewsRateTitle => 'Rate your visit';
+
+  @override
+  String reviewsRateSubtitle(String service, String barber) {
+    return '$service with $barber';
+  }
+
+  @override
+  String reviewsStarsLabel(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count stars',
+      one: '1 star',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get reviewsPickRating => 'Tap a star to rate.';
+
+  @override
+  String get reviewsCommentLabel => 'Comment (optional)';
+
+  @override
+  String get reviewsCommentHint => 'What did you like? What could be better?';
+
+  @override
+  String get reviewsSubmit => 'Send review';
+
+  @override
+  String get reviewsThanks => 'Thank you for your review!';
+
+  @override
+  String reviewsSubmitFailed(String error) {
+    return 'Could not send your review: $error';
+  }
+
+  @override
+  String reviewsCountLabel(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count reviews',
+      one: '1 review',
+      zero: 'No reviews yet',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get reviewsNew => 'New';
+
+  @override
+  String get reviewsEmpty =>
+      'No reviews yet. Customers can rate their visit after it is completed.';
+
+  @override
+  String reviewsSeeAll(int count) {
+    return 'See all reviews ($count)';
+  }
+
+  @override
+  String get reviewsLoadMore => 'Show more';
+
+  @override
+  String get reviewsLoadFailed => 'Could not load the reviews.';
+
+  @override
+  String get reviewsRetry => 'Try again';
+
+  @override
+  String get reviewsOwnerReply => 'Reply from the shop';
+
+  @override
+  String get reviewsReplyAction => 'Reply';
+
+  @override
+  String get reviewsEditReply => 'Edit reply';
+
+  @override
+  String get reviewsReplyLabel => 'Your public reply';
+
+  @override
+  String get reviewsReplySave => 'Save reply';
+
+  @override
+  String get reviewsReplySaved => 'Reply saved.';
+
+  @override
+  String get reviewsAwaitingReply => 'No reply yet';
+
+  @override
+  String get reviewsOpenButton => 'Reviews & replies';
+
+  @override
+  String get reviewsMyReviews => 'My reviews';
+
+  @override
+  String reviewsBarberTitle(String name) {
+    return 'Reviews for $name';
+  }
+
+  @override
+  String reviewsSummaryLine(String rating, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count reviews',
+      one: '1 review',
+    );
+    return '$rating out of 5 · $_temp0';
+  }
+
+  @override
+  String reviewsRatedSemantics(String rating) {
+    return 'Rated $rating out of 5';
+  }
+
+  @override
+  String get reviewsCustomer => 'Customer';
+
+  @override
+  String get reviewsErrNotYourBooking => 'You can only rate your own visits.';
+
+  @override
+  String get reviewsErrNotCompleted =>
+      'You can rate a visit once it is completed.';
+
+  @override
+  String get reviewsErrAlreadyReviewed => 'You have already rated this visit.';
+
+  @override
+  String get reviewsErrInvalidRating => 'Choose from 1 to 5 stars.';
+
+  @override
+  String reviewsErrCommentTooLong(int max) {
+    return 'The comment can be at most $max characters.';
+  }
+
+  @override
+  String reviewsErrReplyInvalid(int max) {
+    return 'Write a reply of up to $max characters.';
+  }
+
+  @override
+  String get reviewsErrOwnerOnly => 'Only the shop owner can reply to reviews.';
+
+  @override
+  String get reviewsErrNotFound => 'This review no longer exists.';
 }

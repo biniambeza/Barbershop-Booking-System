@@ -1,0 +1,23 @@
+{
+  "name": "crown-blade-queue",
+  "private": true,
+  "description": "Walk-in queue for Crown & Blade: keeps the public queue summary (waiting count, estimated wait, positions) up to date and tells remote customers when they are next.",
+  "main": "lib/index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "tsc -p tsconfig.test.json && node --test build-test/test/estimate.test.js build-test/test/recompute.test.js build-test/test/templates.test.js",
+    "serve": "npm run build && firebase emulators:start --only functions,firestore",
+    "deploy": "firebase deploy --only functions:queue"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.6.0"
+  }
+}

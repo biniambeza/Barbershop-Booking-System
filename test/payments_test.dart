@@ -255,6 +255,7 @@ void main() {
       repo.switchRole(UserRole.customer);
       final shop = repo.getShopById('shop_1')!;
       await tester.pumpWidget(MaterialApp(
+        locale: const Locale('en'),
         home: Builder(
           builder: (context) => Scaffold(
             body: Center(
@@ -300,7 +301,7 @@ void main() {
     testWidgets('customer bookings: Pay now, badge updates to Paid', (tester) async {
       bigView(tester);
       repo.switchRole(UserRole.customer);
-      await tester.pumpWidget(const MaterialApp(home: CustomerBookingsScreen()));
+      await tester.pumpWidget(const MaterialApp(locale: Locale('en'), home: CustomerBookingsScreen()));
       expect(find.byKey(const ValueKey('pay-booking-book_1')), findsOneWidget);
       expect(find.byKey(const ValueKey('pay-booking-book_7')), findsNothing); // cancelled
       expect(find.text('Pay at shop'), findsWidgets);
@@ -317,7 +318,7 @@ void main() {
     testWidgets('owner subscription screen pays a plan', (tester) async {
       bigView(tester);
       repo.switchRole(UserRole.barbershopOwner, targetShopId: 'shop_5'); // past due
-      await tester.pumpWidget(MaterialApp(home: OwnerSubscriptionScreen(shopId: 'shop_5', clock: () => _now)));
+      await tester.pumpWidget(MaterialApp(locale: const Locale('en'), home: OwnerSubscriptionScreen(shopId: 'shop_5', clock: () => _now)));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('subscription-banner')), findsOneWidget);
       expect(find.text('Payment overdue'), findsOneWidget);
@@ -339,7 +340,7 @@ void main() {
     testWidgets('admin extends a suspended shop and toggles a plan', (tester) async {
       bigView(tester);
       repo.switchRole(UserRole.admin);
-      await tester.pumpWidget(MaterialApp(home: AdminSubscriptionsScreen(clock: () => _now)));
+      await tester.pumpWidget(MaterialApp(locale: const Locale('en'), home: AdminSubscriptionsScreen(clock: () => _now)));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('admin-sub-shop_6')), findsOneWidget); // suspended still listed
 

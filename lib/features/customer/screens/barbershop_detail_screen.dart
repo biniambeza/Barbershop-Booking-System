@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/phone_utils.dart';
 import '../../../l10n/l10n.dart';
+import '../../reviews/reviews_l10n.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../models/service_model.dart';
 import '../../../models/barber_model.dart';
 import '../../../services/app_repository.dart';
 import 'booking_flow_screen.dart';
+import '../../queue/queue_status_card.dart';
+import '../../reviews/widgets/shop_reviews_section.dart';
 
 class BarbershopDetailScreen extends StatefulWidget {
   final Barbershop shop;
@@ -111,7 +114,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                       Flexible(
                         flex: 3,
                         child: Text(
-                          l.reviewsCount(widget.shop.rating.toStringAsFixed(1), widget.shop.reviewCount),
+                          l.reviewsRatingShort(widget.shop.rating, widget.shop.reviewCount),
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.end,
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
@@ -213,6 +216,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                       ],
                     ),
                   ),
+                  QueueStatusCard(shop: widget.shop),
                   const Divider(height: 32, color: AppTheme.accentSlate),
 
                   // Barbers Team Section
@@ -266,18 +270,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(Icons.star, size: 12, color: AppTheme.primaryGold),
-                                    const SizedBox(width: 2),
-                                    Text(
-                                      barber.rating.toStringAsFixed(1),
-                                      style: const TextStyle(
-                                          fontSize: 11, color: AppTheme.primaryGold, fontWeight: FontWeight.w600),
-                                    ),
-                                  ],
-                                ),
+                                BarberRatingInline(barber: barber),
                               ],
                             ),
                           ),
@@ -370,6 +363,12 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                 childCount: services.length,
               ),
             ),
+          ),
+
+          // Ratings & reviews
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverToBoxAdapter(child: ShopReviewsSection(shop: widget.shop)),
           ),
 
           const SliverToBoxAdapter(child: SizedBox(height: 100)),

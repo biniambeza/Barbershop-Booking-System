@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/phone_utils.dart';
 import '../../../data/addis_time.dart';
 import '../../../l10n/l10n.dart';
+import '../../reviews/reviews_l10n.dart';
 import '../../../models/user_model.dart';
 import '../../../models/booking_model.dart';
 import '../../../models/barber_model.dart';
@@ -14,6 +15,10 @@ import '../../shared/widgets/language_toggle.dart';
 import '../../shared/widgets/persona_switcher.dart';
 import '../../payments/widgets/payment_status_badge.dart';
 import 'barber_schedule_screen.dart';
+import '../../queue/queue_dashboard_card.dart';
+import '../../reviews/widgets/reviews_dashboard_entries.dart';
+import '../../../services/booking_policy.dart';
+import '../../shared/widgets/no_show_dialog.dart';
 
 class BarberDashboardScreen extends StatefulWidget {
   const BarberDashboardScreen({super.key});
@@ -37,14 +42,21 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
     super.dispose();
   }
 
+  /// Bookings with a status change in flight (their buttons are disabled).
+  final Set<String> _busy = {};
+
   /// Runs a booking status change and reports a failure (e.g. a rules rejection).
   Future<void> _setStatus(AppRepository repo, String bookingId, BookingStatus status) async {
+    if (_busy.contains(bookingId)) return;
     final messenger = ScaffoldMessenger.of(context);
     final l = context.l10n;
+    setState(() => _busy.add(bookingId));
     try {
       await repo.updateBookingStatus(bookingId, status);
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(l.statusUpdateFailed('$e'))));
+      messenger.showSnackBar(SnackBar(content: Text(l.statusUpdateFailed(l.errorText(e)))));
+    } finally {
+      if (mounted) setState(() => _busy.remove(bookingId));
     }
   }
 
@@ -122,6 +134,8 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                               const SizedBox(height: 16),
                               _buildScheduleQuickAction(context, barber),
                               const SizedBox(height: 12),
+                              QueueDashboardCard(shopId: barber.shopId),
+                              BarberReviewsCard(barber: barber),
                             ],
                           ),
                         ),
@@ -223,7 +237,7 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                     const Icon(Icons.star, color: AppTheme.primaryGold, size: 15),
                     const SizedBox(width: 4),
                     Text(
-                      barber.rating.toStringAsFixed(1),
+                      context.l10n.reviewsRatingValue(barber.rating, barber.reviewCount),
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                   ],
@@ -444,6 +458,10 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
         statusColor = Colors.redAccent;
         statusLabel = l.statusCancelled;
         break;
+      case BookingStatus.noShow:
+        statusColor = Colors.deepOrangeAccent;
+        statusLabel = l.statusNoShow;
+        break;
       case BookingStatus.pending:
         statusColor = Colors.amber;
         statusLabel = l.statusPending;
@@ -543,11 +561,19 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                     side: const BorderSide(color: Colors.redAccent),
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   ),
-                  icon: const Icon(Icons.close, size: 15),
-                  label: Text(l.noShow, style: const TextStyle(fontSize: 11)),
-                  onPressed: () {
-                    _setStatus(repo, booking.id, BookingStatus.cancelled);
-                  },
+                  icon: Icon(canMarkNoShow(booking, repo.nowUtc()) ? Icons.person_off_rounded : Icons.close, size: 15),
+                  label: Text(canMarkNoShow(booking, repo.nowUtc()) ? l.noShowAction : l.cancelBooking,
+                      style: const TextStyle(fontSize: 11)),
+                  key: ValueKey('barber-no-show-${booking.id}'),
+                  onPressed: _busy.contains(booking.id)
+                      ? null
+                      : () async {
+                          if (!canMarkNoShow(booking, repo.nowUtc())) {
+                            await _setStatus(repo, booking.id, BookingStatus.cancelled);
+                          } else if (await confirmNoShow(context, booking) && mounted) {
+                            await _setStatus(repo, booking.id, BookingStatus.noShow);
+                          }
+                        },
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton.icon(
@@ -558,9 +584,7 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                   ),
                   icon: const Icon(Icons.chair, size: 16),
                   label: Text(l.startService, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  onPressed: () {
-                    _setStatus(repo, booking.id, BookingStatus.inProgress);
-                  },
+                  onPressed: _busy.contains(booking.id) ? null : () => _setStatus(repo, booking.id, BookingStatus.inProgress),
                 ),
               ] else if (booking.status == BookingStatus.inProgress) ...[
                 ElevatedButton.icon(
@@ -571,9 +595,7 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                   ),
                   icon: const Icon(Icons.check_circle, size: 16),
                   label: Text(l.markCompleted, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  onPressed: () {
-                    _setStatus(repo, booking.id, BookingStatus.completed);
-                  },
+                  onPressed: _busy.contains(booking.id) ? null : () => _setStatus(repo, booking.id, BookingStatus.completed),
                 ),
               ] else if (booking.status == BookingStatus.completed) ...[
                 Row(
@@ -584,6 +606,8 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                         style: const TextStyle(fontSize: 11, color: Colors.greenAccent, fontWeight: FontWeight.bold)),
                   ],
                 ),
+              ] else if (booking.status == BookingStatus.noShow) ...[
+                Text(l.statusNoShow, style: const TextStyle(fontSize: 11, color: Colors.deepOrangeAccent)),
               ] else ...[
                 Text(l.appointmentCancelled, style: const TextStyle(fontSize: 11, color: Colors.redAccent)),
               ],

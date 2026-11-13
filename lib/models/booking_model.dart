@@ -5,7 +5,11 @@ enum BookingStatus {
   confirmed,
   inProgress,
   completed,
-  cancelled;
+  cancelled,
+
+  /// The customer did not show up (set by the assigned barber, the owner or
+  /// an admin, only after startAt). Its slot locks are kept until expiry.
+  noShow;
 
   static BookingStatus fromString(String? status) {
     switch (status) {
@@ -17,6 +21,8 @@ enum BookingStatus {
         return BookingStatus.completed;
       case 'cancelled':
         return BookingStatus.cancelled;
+      case 'noShow':
+        return BookingStatus.noShow;
       default:
         return BookingStatus.pending;
     }
@@ -34,6 +40,8 @@ enum BookingStatus {
         return 'Completed';
       case BookingStatus.cancelled:
         return 'Cancelled';
+      case BookingStatus.noShow:
+        return 'No-show';
     }
   }
 }
@@ -94,6 +102,21 @@ class Booking {
   final PaymentStatus paymentStatus;
   final PaymentMethod paymentMethod;
 
+  /// The booking's current Chapa payment (`payments/{paymentId}`). Written
+  /// only by the payments functions, so it is never part of [toMap].
+  final String? paymentId;
+
+  /// How many times the customer has moved this booking (0 when never;
+  /// absent in Firestore until the first reschedule).
+  final int rescheduleCount;
+
+  /// When the booking was last rescheduled (UTC), if ever.
+  final DateTime? rescheduledAt;
+
+  /// Machine reason of a system cancel, e.g. 'slot_conflict' (written by
+  /// Cloud Functions only, so never part of [toMap]).
+  final String? cancelReason;
+
   /// If [startAt] is omitted it is derived from [date] + [timeSlot] (Addis
   /// local time); [endAt] defaults to [startAt] + [durationMinutes].
   Booking({
@@ -117,6 +140,10 @@ class Booking {
     this.durationMinutes = 30,
     this.paymentStatus = PaymentStatus.unpaid,
     this.paymentMethod = PaymentMethod.cash,
+    this.paymentId,
+    this.rescheduleCount = 0,
+    this.rescheduledAt,
+    this.cancelReason,
   })  : startAt = (startAt ?? appointmentStartUtc(date, timeSlot) ?? addisLocalToUtc(date.year, date.month, date.day)).toUtc(),
         endAt = (endAt ??
                 (startAt ?? appointmentStartUtc(date, timeSlot) ?? addisLocalToUtc(date.year, date.month, date.day))
@@ -147,6 +174,10 @@ class Booking {
     int? durationMinutes,
     PaymentStatus? paymentStatus,
     PaymentMethod? paymentMethod,
+    String? paymentId,
+    int? rescheduleCount,
+    DateTime? rescheduledAt,
+    String? cancelReason,
   }) {
     return Booking(
       id: id ?? this.id,
@@ -169,9 +200,17 @@ class Booking {
       durationMinutes: durationMinutes ?? this.durationMinutes,
       paymentStatus: paymentStatus ?? this.paymentStatus,
       paymentMethod: paymentMethod ?? this.paymentMethod,
+      paymentId: paymentId ?? this.paymentId,
+      rescheduleCount: rescheduleCount ?? this.rescheduleCount,
+      rescheduledAt: rescheduledAt ?? this.rescheduledAt,
+      cancelReason: cancelReason ?? this.cancelReason,
     );
   }
 
+  /// The document a new booking is created with. [rescheduleCount] and
+  /// [rescheduledAt] are left out (absent means 0 / never) so the create
+  /// shape stays the 19 fields the rules expect; the reschedule transaction
+  /// writes them ([rescheduleFields]).
   Map<String, dynamic> toMap() {
     return {
       'shopId': shopId,
@@ -193,6 +232,19 @@ class Booking {
       'durationMinutes': durationMinutes,
       'paymentStatus': paymentStatus.name,
       'paymentMethod': paymentMethod.name,
+    };
+  }
+
+  /// The fields a reschedule changes (and nothing else): the new interval,
+  /// the display date and slot, the incremented count and its time.
+  Map<String, dynamic> rescheduleFields() {
+    return {
+      'startAt': startAt.toUtc().toIso8601String(),
+      'endAt': endAt.toUtc().toIso8601String(),
+      'date': date.toIso8601String(),
+      'timeSlot': timeSlot,
+      'rescheduleCount': rescheduleCount,
+      'rescheduledAt': (rescheduledAt ?? DateTime.now()).toUtc().toIso8601String(),
     };
   }
 
@@ -220,6 +272,10 @@ class Booking {
       durationMinutes: duration,
       paymentStatus: PaymentStatus.fromString(map['paymentStatus']),
       paymentMethod: PaymentMethod.fromString(map['paymentMethod']),
+      paymentId: map['paymentId'] as String?,
+      rescheduleCount: (map['rescheduleCount'] as num?)?.toInt() ?? 0,
+      rescheduledAt: _parseDate(map['rescheduledAt'])?.toUtc(),
+      cancelReason: map['cancelReason'] as String?,
     );
   }
 }
