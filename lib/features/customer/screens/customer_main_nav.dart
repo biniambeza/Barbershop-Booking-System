@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../l10n/l10n.dart';
+import '../../shared/widgets/ui_kit.dart';
 import 'customer_home_screen.dart';
 import 'find_barbers_screen.dart';
 import 'customer_bookings_screen.dart';
@@ -28,29 +28,28 @@ class _CustomerMainNavState extends State<CustomerMainNav> {
     ];
 
     return Scaffold(
+      extendBody: true,
       body: IndexedStack(
         index: _currentIndex,
         children: screens,
       ),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: FloatingPillNavBar(
         selectedIndex: _currentIndex,
-        onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
-        backgroundColor: AppTheme.darkSurface,
-        indicatorColor: AppTheme.primaryGold,
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.storefront_outlined),
-            selectedIcon: const Icon(Icons.storefront, color: Colors.black),
+        onSelected: (idx) => setState(() => _currentIndex = idx),
+        items: [
+          PillNavItem(
+            icon: Icons.storefront_outlined,
+            selectedIcon: Icons.storefront,
             label: context.l10n.navBarbershops,
           ),
-          NavigationDestination(
-            icon: const Icon(Icons.content_cut_outlined),
-            selectedIcon: const Icon(Icons.content_cut, color: Colors.black),
+          PillNavItem(
+            icon: Icons.content_cut_outlined,
+            selectedIcon: Icons.content_cut,
             label: context.l10n.findBarbers,
           ),
-          NavigationDestination(
-            icon: const Icon(Icons.calendar_month_outlined),
-            selectedIcon: const Icon(Icons.calendar_month, color: Colors.black),
+          PillNavItem(
+            icon: Icons.calendar_month_outlined,
+            selectedIcon: Icons.calendar_month,
             label: context.l10n.navAppointments,
           ),
         ],

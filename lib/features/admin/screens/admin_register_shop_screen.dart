@@ -115,10 +115,10 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            backgroundColor: Colors.green.shade800,
+            backgroundColor: AppTheme.success,
             content: Text(
               context.l10n.registeredShopSnack(_shopNameCtrl.text.trim(), normalizeEmail(_ownerEmailCtrl.text)),
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+              style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
             ),
           ),
         );
@@ -152,39 +152,29 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
             children: [
               // SaaS Registration Banner
               Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppTheme.primaryGold.withValues(alpha: 0.2),
-                      AppTheme.darkCard,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
-                ),
+                padding: const EdgeInsets.all(18),
+                decoration: AppTheme.heroDecoration,
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      backgroundColor: AppTheme.primaryGold,
-                      radius: 20,
-                      child: Icon(Icons.admin_panel_settings, color: Colors.black, size: 22),
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: const BoxDecoration(shape: BoxShape.circle, gradient: AppTheme.metallicGradient),
+                      child: const Icon(Icons.admin_panel_settings, color: AppTheme.ink, size: 22),
                     ),
-                    SizedBox(width: 14),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             l.onboardingTitle,
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: AppTheme.onInk),
                           ),
-                          SizedBox(height: 2),
+                          const SizedBox(height: 3),
                           Text(
                             l.onboardingSubtitle,
-                            style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                            style: const TextStyle(fontSize: 12.5, color: AppTheme.onInkMuted),
                           ),
                         ],
                       ),
@@ -283,11 +273,7 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.darkCard,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white12),
-                ),
+                decoration: AppTheme.cardDecoration(),
                 child: Column(
                   children: [
                     TextFormField(
@@ -346,7 +332,7 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
                       isExpanded: true,
                       initialValue: _openingHour,
                       decoration: InputDecoration(labelText: l.openingTime),
-                      dropdownColor: AppTheme.darkCard,
+                      dropdownColor: AppTheme.card,
                       items: List.generate(6, (i) => i + 6).map((h) {
                         return DropdownMenuItem(
                           value: h,
@@ -364,7 +350,7 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
                       isExpanded: true,
                       initialValue: _closingHour,
                       decoration: InputDecoration(labelText: l.closingTime),
-                      dropdownColor: AppTheme.darkCard,
+                      dropdownColor: AppTheme.card,
                       items: List.generate(8, (i) => i + 16).map((h) {
                         return DropdownMenuItem(
                           value: h,
@@ -381,10 +367,10 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
               const SizedBox(height: 14),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text(l.markVerifiedPartner, style: const TextStyle(fontWeight: FontWeight.bold)),
+                title: Text(l.markVerifiedPartner, style: const TextStyle(fontWeight: FontWeight.w600)),
                 subtitle: Text(l.markVerifiedPartnerSubtitle),
                 value: _isVerified,
-                activeThumbColor: AppTheme.primaryGold,
+                activeThumbColor: Colors.white,
                 onChanged: (val) => setState(() => _isVerified = val),
               ),
               const SizedBox(height: 28),
@@ -392,19 +378,19 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
               // Submit Button
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: 56,
                 child: ElevatedButton.icon(
                   onPressed: _isSubmitting ? null : _submitForm,
                   icon: _isSubmitting
                       ? const SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.onInk),
                         )
                       : const Icon(Icons.check_circle_outline),
                   label: Text(
                     _isSubmitting ? l.registeringBarbershop : l.registerIntoNetwork,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
                   ),
                 ),
               ),
@@ -419,12 +405,21 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
   Widget _buildSectionHeader(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, color: AppTheme.primaryGold, size: 20),
-        const SizedBox(width: 8),
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: AppTheme.card,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppTheme.hairline),
+          ),
+          child: Icon(icon, color: AppTheme.ink, size: 18),
+        ),
+        const SizedBox(width: 10),
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
           ),
         ),
       ],

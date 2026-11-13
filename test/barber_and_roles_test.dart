@@ -119,10 +119,10 @@ void main() {
     await tester.pump();
 
     expect(find.byType(CustomerMainNav), findsOneWidget);
-    expect(find.widgetWithText(NavigationDestination, 'Find Barbers'), findsOneWidget);
+    expect(find.byTooltip('Find Barbers'), findsOneWidget);
 
     // Tap Find Barbers tab
-    await tester.tap(find.widgetWithText(NavigationDestination, 'Find Barbers'));
+    await tester.tap(find.byTooltip('Find Barbers'));
     await tester.pumpAndSettle();
 
     expect(find.byType(FindBarbersScreen), findsOneWidget);

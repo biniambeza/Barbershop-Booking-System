@@ -25,81 +25,80 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-        backgroundColor: AppTheme.darkCard,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(l.addNewService, style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameCtrl,
-                decoration: InputDecoration(labelText: l.serviceNameHint),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: descCtrl,
-                decoration: InputDecoration(labelText: l.description),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: priceCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: InputDecoration(labelText: l.priceEtb, suffixText: l.currencyEtb),
+          backgroundColor: AppTheme.card,
+          title: Text(l.addNewService, style: const TextStyle(fontWeight: FontWeight.w700)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameCtrl,
+                  decoration: InputDecoration(labelText: l.serviceNameHint),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: descCtrl,
+                  decoration: InputDecoration(labelText: l.description),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: priceCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(labelText: l.priceEtb, suffixText: l.currencyEtb),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: durationCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(labelText: l.durationMins),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: durationCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(labelText: l.durationMins),
+                      ),
                     ),
-                  ),
+                  ],
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 10),
+                  Text(error!, style: const TextStyle(color: AppTheme.danger, fontSize: 12)),
                 ],
-              ),
-              if (error != null) ...[
-                const SizedBox(height: 10),
-                Text(error!, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
               ],
-            ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final price = double.tryParse(priceCtrl.text.trim().replaceAll(',', ''));
+                final duration = int.tryParse(durationCtrl.text.trim());
+                if (nameCtrl.text.trim().isEmpty || price == null || price < 0 || duration == null || duration <= 0) {
+                  setDialogState(() => error = l.invalidServiceValues);
+                  return;
+                }
+                try {
+                  await AppRepository.instance.addService(
+                    shopId: widget.shopId,
+                    name: nameCtrl.text.trim(),
+                    description: descCtrl.text.trim(),
+                    price: price,
+                    durationMinutes: duration,
+                  );
+                } catch (e) {
+                  setDialogState(() => error = e is AppException ? l.errorText(e) : l.saveFailed(l.errorText(e)));
+                  return;
+                }
+                if (ctx.mounted) Navigator.of(ctx).pop();
+                if (mounted) setState(() {});
+              },
+              child: Text(l.addService),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              final price = double.tryParse(priceCtrl.text.trim().replaceAll(',', ''));
-              final duration = int.tryParse(durationCtrl.text.trim());
-              if (nameCtrl.text.trim().isEmpty || price == null || price < 0 || duration == null || duration <= 0) {
-                setDialogState(() => error = l.invalidServiceValues);
-                return;
-              }
-              try {
-                await AppRepository.instance.addService(
-                  shopId: widget.shopId,
-                  name: nameCtrl.text.trim(),
-                  description: descCtrl.text.trim(),
-                  price: price,
-                  durationMinutes: duration,
-                );
-              } catch (e) {
-                setDialogState(() => error = e is AppException ? l.errorText(e) : l.saveFailed(l.errorText(e)));
-                return;
-              }
-              if (ctx.mounted) Navigator.of(ctx).pop();
-              if (mounted) setState(() {});
-            },
-            child: Text(l.addService),
-          ),
-        ],
-      ),
       ),
     );
   }
@@ -116,10 +115,10 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddServiceDialog,
-        backgroundColor: AppTheme.primaryGold,
-        foregroundColor: Colors.black,
+        backgroundColor: AppTheme.ink,
+        foregroundColor: AppTheme.onInk,
         icon: const Icon(Icons.add),
-        label: Text(l.addService, style: const TextStyle(fontWeight: FontWeight.bold)),
+        label: Text(l.addService, style: const TextStyle(fontWeight: FontWeight.w600)),
       ),
       body: services.isEmpty
           ? Center(
@@ -135,27 +134,25 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
               ),
             )
           : ListView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
               itemCount: services.length,
               itemBuilder: (context, index) {
                 final service = services[index];
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppTheme.darkCard,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-                  ),
+                  decoration: AppTheme.cardDecoration(),
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        width: 46,
+                        height: 46,
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryGold.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
+                          color: AppTheme.card,
+                          borderRadius: BorderRadius.circular(AppTheme.radiusTile),
+                          border: Border.all(color: AppTheme.hairline),
                         ),
-                        child: const Icon(Icons.content_cut, color: AppTheme.primaryGold, size: 24),
+                        child: const Icon(Icons.content_cut, color: AppTheme.blue, size: 22),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -164,7 +161,8 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
                           children: [
                             Text(
                               service.name,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w700, fontSize: 16, color: AppTheme.textPrimary),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -176,14 +174,15 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
                             const SizedBox(height: 6),
                             Text(
                               l.minutesShort(service.durationMinutes),
-                              style: const TextStyle(color: AppTheme.primaryGold, fontSize: 12, fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                  color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
                             ),
                           ],
                         ),
                       ),
                       Text(
                         fmt.birr(service.price),
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppTheme.primaryGold),
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: AppTheme.textPrimary),
                       ),
                     ],
                   ),

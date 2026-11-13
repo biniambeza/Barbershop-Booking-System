@@ -64,12 +64,13 @@ class _AdminPaymentReviewScreenState extends State<AdminPaymentReviewScreen> {
     final resolution = await showModalBottomSheet<PaymentReviewResolution>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.darkCard,
+      backgroundColor: AppTheme.card,
       builder: (_) => PaymentReviewSheet(payment: payment, payments: _payments),
     );
     if (resolution == null) return;
     messenger.showSnackBar(SnackBar(
-      content: Text(resolution == PaymentReviewResolution.refundedInChapa ? l.reviewClosedRefunded : l.reviewClosedNoAction),
+      content:
+          Text(resolution == PaymentReviewResolution.refundedInChapa ? l.reviewClosedRefunded : l.reviewClosedNoAction),
     ));
   }
 
@@ -126,7 +127,9 @@ class _Message extends StatelessWidget {
           children: [
             Icon(icon, size: 48, color: AppTheme.textSecondary),
             const SizedBox(height: 12),
-            Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text(title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
             if (body != null) ...[
               const SizedBox(height: 6),
               Text(body!, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textSecondary)),
@@ -154,30 +157,36 @@ class _ReviewCard extends StatelessWidget {
     final reason = paymentReviewReason(payment, booking);
     return Card(
       key: ValueKey('review-${payment.id}'),
-      color: AppTheme.darkCard,
+      color: AppTheme.card,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: Colors.orangeAccent.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
+        side: const BorderSide(color: AppTheme.hairline),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppTheme.radiusCard),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  const Icon(Icons.report_gmailerrorred_rounded, color: Colors.orangeAccent, size: 20),
-                  const SizedBox(width: 8),
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: const BoxDecoration(color: AppTheme.orangeSoft, shape: BoxShape.circle),
+                    child: const Icon(Icons.report_gmailerrorred_rounded, color: AppTheme.warning, size: 19),
+                  ),
+                  const SizedBox(width: 10),
                   Expanded(
-                    child: Text(l.reviewReason(reason), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    child: Text(l.reviewReason(reason),
+                        style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
                   ),
                   Text(
                     fmt.birr(payment.amount),
-                    style: const TextStyle(color: AppTheme.primaryGold, fontWeight: FontWeight.bold, fontSize: 16),
+                    style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 16),
                   ),
                 ],
               ),
@@ -236,7 +245,7 @@ class _PaymentReviewSheetState extends State<PaymentReviewSheet> {
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: AppTheme.darkCard,
+          backgroundColor: AppTheme.card,
           title: Text(l.confirmRefundTitle),
           content: Text(l.confirmRefundBody(context.fmt.birr(_p.amount))),
           actions: [
@@ -285,9 +294,15 @@ class _PaymentReviewSheetState extends State<PaymentReviewSheet> {
       if (_p.verifiedAt != null) (l.detailVerified, when(_p.verifiedAt!)),
       if (shop != null) (l.detailShop, shop.name),
       if (booking != null)
-        (l.detailBooking, '${booking.serviceName} • ${fmt.addisDateMedium(booking.startAt)} • ${l.bookingStatus(booking.status)}'),
+        (
+          l.detailBooking,
+          '${booking.serviceName} • ${fmt.addisDateMedium(booking.startAt)} • ${l.bookingStatus(booking.status)}'
+        ),
       if (payer != null || booking != null)
-        (l.detailCustomer, payer != null ? '${payer.name} ${fmt.phone(payer.phone ?? '')}'.trim() : booking!.customerName),
+        (
+          l.detailCustomer,
+          payer != null ? '${payer.name} ${fmt.phone(payer.phone ?? '')}'.trim() : booking!.customerName
+        ),
       if (_p.chapaMethod != null) (l.detailMethod, _p.chapaMethod!),
       (l.detailTxRef, _p.txRef),
       if (_p.chapaReference != null) (l.detailChapaReference, _p.chapaReference!),
@@ -308,7 +323,7 @@ class _PaymentReviewSheetState extends State<PaymentReviewSheet> {
               const SizedBox(height: 4),
               Text(
                 l.reviewReason(paymentReviewReason(_p, booking)),
-                style: const TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.w600),
+                style: const TextStyle(color: AppTheme.warning, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 12),
               for (final (label, value) in rows)
@@ -335,7 +350,7 @@ class _PaymentReviewSheetState extends State<PaymentReviewSheet> {
                 decoration: InputDecoration(labelText: l.reviewNoteLabel, hintText: l.reviewNoteHint),
               ),
               if (_error != null) ...[
-                Text(_error!, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+                Text(_error!, style: const TextStyle(color: AppTheme.danger, fontSize: 12)),
                 const SizedBox(height: 8),
               ],
               Wrap(
@@ -408,7 +423,7 @@ class _PaymentsToReviewButtonState extends State<PaymentsToReviewButton> {
       icon: Badge(
         isLabelVisible: _count > 0,
         label: Text('$_count'),
-        child: const Icon(Icons.fact_check_outlined, color: AppTheme.primaryGold),
+        child: const Icon(Icons.fact_check_outlined, color: AppTheme.textPrimary),
       ),
       onPressed: () => Navigator.push(
         context,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_theme.dart';
 import '../../../l10n/l10n.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../services/payment_service.dart';
@@ -47,15 +48,15 @@ class SubscriptionBanner extends StatelessWidget {
     final message = messageFor(shop, (now ?? DateTime.now()).toUtc(), l10n: context.l10n);
     if (message == null) return const SizedBox.shrink();
     final severe = shop.subscriptionStatus == SubscriptionStatus.suspended;
-    final color = severe ? Colors.redAccent : Colors.orangeAccent;
+    final color = severe ? AppTheme.danger : AppTheme.warning;
     return Container(
       key: const ValueKey('subscription-banner'),
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: AppTheme.softOf(color),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.6)),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Row(
         children: [

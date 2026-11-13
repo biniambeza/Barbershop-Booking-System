@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../l10n/l10n.dart';
 import '../../services/queue_service.dart';
+import '../shared/widgets/ui_kit.dart';
 import 'queue_screen.dart';
 
 /// Owner / barber dashboard entry to the walk-in queue: live counts of
@@ -42,23 +43,19 @@ class _QueueDashboardCardState extends State<QueueDashboardCard> {
         final serving = entries.where((e) => e.status == QueueStatus.serving).length;
         return Card(
           key: const Key('queueDashboardCard'),
-          color: AppTheme.darkCard,
-          margin: const EdgeInsets.only(bottom: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
-          ),
+          color: AppTheme.card,
+          margin: const EdgeInsets.only(bottom: 12),
+          clipBehavior: Clip.antiAlias,
           child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: AppTheme.primaryGold.withValues(alpha: 0.15),
-              child: const Icon(Icons.groups_rounded, color: AppTheme.primaryGold),
-            ),
-            title: Text(l.queueTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            leading: const IconTile(icon: Icons.groups_outlined, color: AppTheme.green, size: 44),
+            title: Text(l.queueTitle,
+                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: AppTheme.textPrimary)),
             subtitle: Text(
               l.queueDashboardSubtitle(waiting, serving),
               style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5),
             ),
-            trailing: const Icon(Icons.chevron_right),
+            trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary),
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => QueueScreen(shopId: widget.shopId)),

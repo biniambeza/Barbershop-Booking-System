@@ -844,14 +844,14 @@ class AppLocalizationsAm extends AppLocalizations {
   String get authErrGeneric => 'የሆነ ችግር ተፈጥሯል። እባክዎ እንደገና ይሞክሩ።';
 
   @override
-  String get authSubtitle => 'በGoogle መለያዎ ይግቡ ወይም አዲስ መለያ ይፍጠሩ';
+  String get authSubtitle => 'ይግቡ ወይም አዲስ መለያ ይፍጠሩ';
 
   @override
   String get continueWithGoogle => 'በGoogle ይቀጥሉ';
 
   @override
   String get googleSignInNotice =>
-      'የኤስኤምኤስ ኮድ አያስፈልግም። የGoogle ስምዎን እና የኢሜይል አድራሻዎን ብቻ እንጠቀማለን።';
+      'ስምዎን እና የኢሜይል አድራሻዎን ቀጠሮዎችዎን ለማስተዳደር ብቻ እንጠቀማለን።';
 
   @override
   String demoContinueAs(String name) {
@@ -862,7 +862,7 @@ class AppLocalizationsAm extends AppLocalizations {
   String get demoGoogleNotice => 'የሙከራ ሁነታ፦ እውነተኛ የGoogle መለያ ጥቅም ላይ አይውልም።';
 
   @override
-  String get useDifferentAccount => 'ሌላ የGoogle መለያ ተጠቀም';
+  String get useDifferentAccount => 'ሌላ መለያ ተጠቀም';
 
   @override
   String get profilePhoneHelper => 'ለኤስኤምኤስ የቀጠሮ ማስታወሻዎች እና ለክፍያ።';
@@ -903,13 +903,15 @@ class AppLocalizationsAm extends AppLocalizations {
   String get ownerEmailLogin => 'የባለቤቱ Gmail አድራሻ (ለመግቢያ) *';
 
   @override
-  String get ownerEmailHelper => 'ባለቤቱ ፀጉር ቤቱን ለማስተዳደር በዚህ የGoogle መለያ ይገባሉ።';
+  String get ownerEmailHelper =>
+      'ባለቤቱ ፀጉር ቤቱን ለማስተዳደር በዚህ ኢሜይል (በGoogle ወይም በኢሜይል እና የይለፍ ቃል) ይገባሉ።';
 
   @override
-  String get emailForLogin => 'የGmail አድራሻ (ለመግቢያ)';
+  String get emailForLogin => 'የኢሜይል አድራሻ (ለመግቢያ)';
 
   @override
-  String get barberEmailHelper => 'አማራጭ። ፀጉር አስተካካዩ በዚህ የGoogle መለያ ይገባሉ።';
+  String get barberEmailHelper =>
+      'አማራጭ። ፀጉር አስተካካዩ በዚህ ኢሜይል (በGoogle ወይም በኢሜይል እና የይለፍ ቃል) ይገባሉ።';
 
   @override
   String get barberMobileOptional => 'የሞባይል ቁጥር (አማራጭ)';
@@ -1045,7 +1047,7 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String registeredShopSnack(String shop, String email) {
-    return '\"$shop\" ተመዝግቧል። ባለቤቱ አሁን በGoogle መለያ $email መግባት ይችላሉ።';
+    return '\"$shop\" ተመዝግቧል። ባለቤቱ አሁን በ$email መግባት ይችላሉ።';
   }
 
   @override
@@ -2572,4 +2574,154 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get reviewsErrNotFound => 'ይህ ግምገማ ከእንግዲህ የለም።';
+
+  @override
+  String get authTabLogin => 'ግባ';
+
+  @override
+  String get authTabRegister => 'ተመዝገብ';
+
+  @override
+  String get authOr => 'ወይም';
+
+  @override
+  String get emailLabel => 'ኢሜይል';
+
+  @override
+  String get passwordLabel => 'የይለፍ ቃል';
+
+  @override
+  String get confirmPasswordLabel => 'የይለፍ ቃሉን ያረጋግጡ';
+
+  @override
+  String get newPasswordLabel => 'አዲስ የይለፍ ቃል';
+
+  @override
+  String get showPassword => 'የይለፍ ቃሉን አሳይ';
+
+  @override
+  String get hidePassword => 'የይለፍ ቃሉን ደብቅ';
+
+  @override
+  String get loginButton => 'ግባ';
+
+  @override
+  String get forgotPassword => 'የይለፍ ቃልዎን ረሱት?';
+
+  @override
+  String get sendCode => 'ኮድ ላክ';
+
+  @override
+  String codeSentTo(String email) {
+    return 'ባለ 6 አሃዝ ኮድ ወደ $email ልከናል';
+  }
+
+  @override
+  String get codeLabel => 'ባለ 6 አሃዝ ኮድ';
+
+  @override
+  String get verifyAndCreate => 'አረጋግጥ እና መለያ ፍጠር';
+
+  @override
+  String get resendCode => 'ኮዱን እንደገና ላክ';
+
+  @override
+  String resendCodeIn(int seconds) {
+    return 'በ$seconds ሰከንድ ውስጥ ኮዱን እንደገና መላክ ይችላሉ';
+  }
+
+  @override
+  String get codeResent => 'አዲስ ኮድ ልከናል።';
+
+  @override
+  String get changeEmail => 'ኢሜይል ቀይር';
+
+  @override
+  String get passwordHelper => 'ቢያንስ 8 ቁምፊዎች፣ ፊደል እና ቁጥር ያካተተ';
+
+  @override
+  String get passwordsDontMatch => 'የይለፍ ቃሎቹ አይመሳሰሉም።';
+
+  @override
+  String get enterPassword => 'የይለፍ ቃልዎን ያስገቡ።';
+
+  @override
+  String get codeRequired => 'ባለ 6 አሃዝ ኮዱን ያስገቡ።';
+
+  @override
+  String get resetTitle => 'የይለፍ ቃልዎን ዳግም ያስጀምሩ';
+
+  @override
+  String get resetIntro => 'የመለያዎን ኢሜይል ያስገቡ፤ ባለ 6 አሃዝ ኮድ እንልክልዎታለን።';
+
+  @override
+  String get resetButton => 'የይለፍ ቃል ቀይር';
+
+  @override
+  String get resetDone => 'የይለፍ ቃልዎ ተቀይሯል። በአዲሱ የይለፍ ቃል ይግቡ።';
+
+  @override
+  String get backToLogin => 'ወደ መግቢያ ተመለስ';
+
+  @override
+  String get demoEmailHint =>
+      'ሙከራ፦ ኮዱ ሁልጊዜ 123456 ነው። የሙከራ መለያዎች በይለፍ ቃል demo1234 ይገባሉ።';
+
+  @override
+  String get emailErrWeakPassword =>
+      'ከ8 እስከ 128 ቁምፊዎች ያሉት፣ ቢያንስ አንድ ፊደል እና አንድ ቁጥር ያለው የይለፍ ቃል ይጠቀሙ።';
+
+  @override
+  String get emailErrInvalidCode => 'ኮዱ ትክክል አይደለም። ኢሜይሉን ይመልከቱ እና እንደገና ይሞክሩ።';
+
+  @override
+  String get emailErrCodeExpired => 'ኮዱ ጊዜው አልፎበታል። አዲስ ኮድ ይጠይቁ።';
+
+  @override
+  String get emailErrAlreadyRegistered => 'በዚህ ኢሜይል የተፈጠረ መለያ አለ። እባክዎ ይግቡ።';
+
+  @override
+  String get emailErrTooSoon => 'ሌላ ኮድ ከመጠየቅዎ በፊት ትንሽ ይጠብቁ።';
+
+  @override
+  String emailErrTooSoonSeconds(int seconds) {
+    return 'ሌላ ኮድ ከመጠየቅዎ በፊት $seconds ሰከንድ ይጠብቁ።';
+  }
+
+  @override
+  String get emailErrRateLimited => 'በጣም ብዙ ሙከራዎች። እባክዎ ቆይተው እንደገና ይሞክሩ።';
+
+  @override
+  String get emailErrNotConfigured =>
+      'አሁን ኢሜይል መላክ አልቻልንም። በGoogle ለመግባት ይሞክሩ።';
+
+  @override
+  String get emailErrWrongCredentials => 'የተሳሳተ ኢሜይል ወይም የይለፍ ቃል።';
+
+  @override
+  String get emailErrNotEnabled => 'በኢሜይል መግባት ገና አልነቃም።';
+
+  @override
+  String get emailErrServiceUnavailable =>
+      'ይህ አገልግሎት ገና አልተዘጋጀም። በGoogle ለመግባት ይሞክሩ።';
+
+  @override
+  String get errEmailNotVerified =>
+      'ይህ የኢሜይል አድራሻ አልተረጋገጠም። በGoogle ይግቡ ወይም ድጋፍ ሰጪን ያነጋግሩ።';
+
+  @override
+  String get emailErrSendFailed => 'ኢሜይሉን መላክ አልተቻለም። እባክዎ እንደገና ይሞክሩ።';
+
+  @override
+  String get emailErrInvalidInput => 'ያስገቡትን መረጃ ያረጋግጡ እና እንደገና ይሞክሩ።';
+
+  @override
+  String emailErrInvalidCodeAttempts(int count) {
+    return 'ኮዱ ትክክል አይደለም። የቀሩ ሙከራዎች፦ $count።';
+  }
+
+  @override
+  String emailErrRateLimitedMinutes(int minutes) {
+    return 'በጣም ብዙ ሙከራዎች። ከ$minutes ደቂቃ በኋላ እንደገና ይሞክሩ።';
+  }
 }

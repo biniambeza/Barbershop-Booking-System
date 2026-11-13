@@ -1,0 +1,25 @@
+{
+  "name": "crown-blade-auth",
+  "private": true,
+  "description": "Email + password accounts for Crown & Blade: 6-digit email codes for registration and password reset.",
+  "main": "lib/index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "tsc -p tsconfig.test.json && node --test build-test/test/codes.test.js build-test/test/cleanup.test.js build-test/test/input.test.js build-test/test/rateLimit.test.js build-test/test/templates.test.js build-test/test/service.test.js",
+    "serve": "npm run build && firebase emulators:start --only functions,firestore",
+    "deploy": "firebase deploy --only functions:auth"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.1.0",
+    "nodemailer": "^10.1.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/nodemailer": "^8.0.2",
+    "typescript": "^5.6.0"
+  }
+}

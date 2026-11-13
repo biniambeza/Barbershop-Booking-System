@@ -69,7 +69,7 @@ class _RateBookingDialogState extends State<RateBookingDialog> {
     final l = context.l10n;
     final b = widget.booking;
     return AlertDialog(
-      backgroundColor: AppTheme.darkSurface,
+      backgroundColor: AppTheme.card,
       title: Text(l.reviewsRateTitle),
       content: SingleChildScrollView(
         child: Column(
@@ -89,7 +89,7 @@ class _RateBookingDialogState extends State<RateBookingDialog> {
                 child: Text(
                   l.reviewsStarsLabel(_rating),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12, color: AppTheme.primaryGold),
+                  style: const TextStyle(fontSize: 12, color: AppTheme.warning, fontWeight: FontWeight.w600),
                 ),
               ),
             const SizedBox(height: 14),
@@ -106,7 +106,7 @@ class _RateBookingDialogState extends State<RateBookingDialog> {
               Text(
                 _error!,
                 key: const ValueKey('review-error'),
-                style: const TextStyle(color: Colors.redAccent, fontSize: 12.5),
+                style: const TextStyle(color: AppTheme.danger, fontSize: 12.5),
               ),
           ],
         ),

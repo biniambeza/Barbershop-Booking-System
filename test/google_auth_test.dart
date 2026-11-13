@@ -285,9 +285,10 @@ void main() {
     await tester.pumpWidget(const BarbershopApp());
     expect(find.byType(AuthScreen), findsOneWidget);
     expect(find.text('Continue with Google'), findsOneWidget);
-    // No phone/OTP fields and no demo personas in a non-demo build.
-    expect(find.byType(TextField), findsNothing);
+    // No phone field and no demo personas or demo hints in a non-demo build.
+    expect(find.byKey(const ValueKey('profile-phone')), findsNothing);
     expect(find.text('DEMO ACCOUNTS'), findsNothing);
+    expect(find.byKey(const ValueKey('demo-email-hint')), findsNothing);
 
     AppRepository.instance.googleAuthService =
         FakeGoogleAuthService(GoogleIdentity(email: 'Abel.Tesfaye@gmail.com', displayName: 'Abel Tesfaye'));

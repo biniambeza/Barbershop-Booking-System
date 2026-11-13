@@ -234,7 +234,7 @@ void main() {
     testWidgets('customer', (tester) async {
       repo.switchRole(UserRole.customer);
       await pumpAm(tester, const CustomerMainNav());
-      expect(find.text('ፀጉር ቤቶች'), findsWidgets);
+      expect(find.byTooltip('ፀጉር ቤቶች'), findsWidgets);
       final shop = repo.getShopById('shop_1')!;
       await pumpAm(tester, BarbershopDetailScreen(shop: shop));
       await pumpAm(

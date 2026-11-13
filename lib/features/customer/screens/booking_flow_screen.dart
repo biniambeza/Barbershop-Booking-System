@@ -235,8 +235,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.darkCard,
-        icon: const Icon(Icons.event_busy_rounded, color: AppTheme.primaryGold, size: 40),
+        backgroundColor: AppTheme.card,
+        icon: const Icon(Icons.event_busy_rounded, color: AppTheme.ink, size: 40),
         title: Text(context.l10n.slotJustTaken),
         content: Text(context.l10n.slotJustTakenBody),
         actions: [
@@ -254,7 +254,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     try {
       final moved = await _repo.rescheduleBooking(moving.id, start);
       final local = toAddisWallClock(moved.startAt);
-      final when = l.dateAtTime(fmt.dayShort(DateTime(local.year, local.month, local.day)), fmt.addisTime(moved.startAt));
+      final when =
+          l.dateAtTime(fmt.dayShort(DateTime(local.year, local.month, local.day)), fmt.addisTime(moved.startAt));
       messenger.showSnackBar(SnackBar(content: Text(l.rescheduleDone(when))));
       if (mounted) navigator.pop(true);
     } on SlotTakenException {
@@ -276,18 +277,18 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.darkCard,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: AppTheme.card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.primaryGold.withValues(alpha: 0.15),
+                color: AppTheme.greenSoft,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check_circle_rounded, size: 54, color: AppTheme.primaryGold),
+              child: const Icon(Icons.check_circle_rounded, size: 54, color: AppTheme.green),
             ),
             const SizedBox(height: 16),
             Text(
@@ -302,11 +303,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             ),
             const SizedBox(height: 16),
             Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.darkSurface,
-                borderRadius: BorderRadius.circular(12),
-              ),
+              padding: const EdgeInsets.all(14),
+              decoration: AppTheme.panelDecoration(),
               child: Column(
                 children: [
                   _buildReceiptRow(l.receiptShop, shopName),
@@ -365,7 +363,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             value,
             style: TextStyle(
               fontWeight: isHighlight ? FontWeight.bold : FontWeight.w500,
-              color: isHighlight ? AppTheme.primaryGold : AppTheme.textPrimary,
+              color: isHighlight ? AppTheme.ink : AppTheme.textPrimary,
               fontSize: isHighlight ? 14 : 12,
             ),
           ),
@@ -440,21 +438,18 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     final l = context.l10n;
     final fmt = context.fmt;
     final local = toAddisWallClock(moving.startAt);
-    final when = l.dateAtTime(fmt.dayShort(DateTime(local.year, local.month, local.day)), fmt.addisTime(moving.startAt));
+    final when =
+        l.dateAtTime(fmt.dayShort(DateTime(local.year, local.month, local.day)), fmt.addisTime(moving.startAt));
     return Container(
       key: const ValueKey('reschedule-summary'),
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.darkCard,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
-      ),
+      padding: const EdgeInsets.all(14),
+      decoration: AppTheme.cardDecoration(radius: AppTheme.radiusPanel + 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(l.serviceAndPrice(moving.serviceName, fmt.birr(moving.price)),
-              style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryGold)),
+              style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
           const SizedBox(height: 4),
           Text(l.barberLabel(moving.barberName), style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
           const SizedBox(height: 4),
@@ -465,25 +460,22 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
   }
 
   Widget _sectionTitle(BuildContext context, String text) =>
-      Text(text, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold));
+      Text(text, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontSize: 17, fontWeight: FontWeight.w700));
 
   Widget _buildShopSummary(Barbershop shop) {
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.darkCard,
-        borderRadius: BorderRadius.circular(12),
-      ),
+      decoration: AppTheme.cardDecoration(radius: AppTheme.radiusPanel + 2),
       child: Row(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(AppTheme.radiusTile),
             child: Image.network(
               shop.imageUrl,
               width: 50,
               height: 50,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(width: 50, height: 50, color: AppTheme.darkSurface),
+              errorBuilder: (context, error, stackTrace) => Container(width: 50, height: 50, color: AppTheme.surface),
             ),
           ),
           const SizedBox(width: 12),
@@ -492,7 +484,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(shop.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                Text(context.l10n.shopAddress(shop), style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                Text(context.l10n.shopAddress(shop),
+                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
               ],
             ),
           ),
@@ -519,11 +512,11 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                 margin: const EdgeInsets.only(right: 12),
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppTheme.primaryGold.withValues(alpha: 0.15) : AppTheme.darkCard,
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppTheme.card,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusPanel),
                   border: Border.all(
-                    color: isSelected ? AppTheme.primaryGold : Colors.transparent,
-                    width: 2,
+                    color: isSelected ? AppTheme.ink : AppTheme.hairline,
+                    width: isSelected ? 2 : 1,
                   ),
                 ),
                 child: Column(
@@ -533,15 +526,20 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                       radius: 18,
                       backgroundImage: barber.avatarUrl != null ? NetworkImage(barber.avatarUrl!) : null,
                       onBackgroundImageError: barber.avatarUrl != null ? (error, stackTrace) {} : null,
-                      backgroundColor: AppTheme.primaryGold,
+                      backgroundColor: AppTheme.surface,
                       child: barber.avatarUrl == null
-                          ? Text(barber.name.isEmpty ? '?' : barber.name.substring(0, 1), style: const TextStyle(color: Colors.black))
+                          ? Text(barber.name.isEmpty ? '?' : barber.name.substring(0, 1),
+                              style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700))
                           : null,
                     ),
                     const SizedBox(height: 4),
-                    Text(barber.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(barber.name,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
                     if (!barber.isAvailable)
-                      Text(context.l10n.unavailable, style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
+                      Text(context.l10n.unavailable,
+                          style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
                   ],
                 ),
               ),
@@ -563,7 +561,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             child: ChoiceChip(
               label: Text(context.l10n.serviceChip(service.name, _etb(service.price), service.durationMinutes)),
               selected: isSelected,
-              selectedColor: AppTheme.primaryGold,
+              selectedColor: AppTheme.ink,
               onSelected: (val) {
                 if (val) {
                   setState(() {
@@ -594,7 +592,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
           final dayName = fmt.weekdayShort(date);
           final dayNum = '${date.day}';
           final fg = isSelected
-              ? Colors.black
+              ? AppTheme.onInk
               : enabled
                   ? AppTheme.textPrimary
                   : AppTheme.textSecondary.withValues(alpha: 0.4);
@@ -608,10 +606,10 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                 width: 65,
                 margin: const EdgeInsets.only(right: 10),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppTheme.primaryGold : AppTheme.darkCard.withValues(alpha: enabled ? 1 : 0.4),
-                  borderRadius: BorderRadius.circular(12),
+                  color: isSelected ? AppTheme.ink : (enabled ? AppTheme.card : AppTheme.surface),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusPanel),
                   border: Border.all(
-                    color: isSelected ? AppTheme.primaryGold : Colors.white.withValues(alpha: 0.05),
+                    color: isSelected ? AppTheme.ink : AppTheme.hairline,
                   ),
                 ),
                 child: Column(
@@ -621,7 +619,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                       index == 0 ? context.l10n.today : dayName,
                       style: TextStyle(
                         fontSize: 12,
-                        color: isSelected ? Colors.black : AppTheme.textSecondary.withValues(alpha: enabled ? 1 : 0.4),
+                        color:
+                            isSelected ? AppTheme.onInk : AppTheme.textSecondary.withValues(alpha: enabled ? 1 : 0.4),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -666,7 +665,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(color: AppTheme.darkCard, borderRadius: BorderRadius.circular(12)),
+        decoration: AppTheme.panelDecoration(color: AppTheme.card),
         child: Row(
           children: [
             const Icon(Icons.event_busy_rounded, color: AppTheme.textSecondary, size: 20),
@@ -680,7 +679,12 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     final groups = <String, List<DateTime>>{l.morning: [], l.afternoon: [], l.evening: []};
     for (final s in slots) {
       final h = toAddisWallClock(s).hour;
-      groups[h < 12 ? l.morning : h < 17 ? l.afternoon : l.evening]!.add(s);
+      groups[h < 12
+              ? l.morning
+              : h < 17
+                  ? l.afternoon
+                  : l.evening]!
+          .add(s);
     }
 
     return Column(
@@ -690,7 +694,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
           if (entry.value.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.only(bottom: 8, top: 4),
-              child: Text(entry.key, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+              child: Text(entry.key,
+                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
             ),
             Wrap(
               spacing: 10,
@@ -702,12 +707,12 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                   key: ValueKey('slot-$label'),
                   onTap: () => setState(() => _selectedStart = slot),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     decoration: BoxDecoration(
-                      color: isSelected ? AppTheme.primaryGold : AppTheme.darkCard,
-                      borderRadius: BorderRadius.circular(10),
+                      color: isSelected ? AppTheme.ink : AppTheme.card,
+                      borderRadius: BorderRadius.circular(999),
                       border: Border.all(
-                        color: isSelected ? AppTheme.primaryGold : Colors.white.withValues(alpha: 0.08),
+                        color: isSelected ? AppTheme.ink : AppTheme.hairline,
                       ),
                     ),
                     child: Text(
@@ -715,7 +720,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: isSelected ? Colors.black : AppTheme.textPrimary,
+                        color: isSelected ? AppTheme.onInk : AppTheme.textPrimary,
                       ),
                     ),
                   ),
@@ -731,12 +736,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
   Widget _buildTotal(BarbershopService service, DateTime? selected) {
     final l = context.l10n;
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.darkCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
-      ),
+      padding: const EdgeInsets.all(18),
+      decoration: AppTheme.heroDecoration,
       child: Column(
         children: [
           Row(
@@ -745,13 +746,14 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               Expanded(
                 child: Text(
                   _paymentMethod == PaymentMethod.cash ? l.totalPayAtSalon : l.totalPayOnline,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.onInkMuted),
                 ),
               ),
               const SizedBox(width: 8),
               Text(
                 _etb(service.price),
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.primaryGold),
+                style: const TextStyle(
+                    fontSize: 26, fontWeight: FontWeight.w700, color: AppTheme.onInk, letterSpacing: -0.5),
               ),
             ],
           ),
@@ -761,7 +763,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               alignment: Alignment.centerLeft,
               child: Text(
                 l.dateAtTime(context.fmt.dayShort(_date), _slotDisplay(selected)),
-                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                style: const TextStyle(color: AppTheme.onInkMuted, fontSize: 12.5),
               ),
             ),
           ],
@@ -774,12 +776,20 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             width: double.infinity,
             child: ElevatedButton(
               key: const ValueKey('confirm-booking'),
+              // White pill on the charcoal summary card.
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: AppTheme.ink,
+                disabledBackgroundColor: Colors.white.withValues(alpha: 0.14),
+                disabledForegroundColor: AppTheme.onInkMuted,
+                minimumSize: const Size(0, 56),
+              ),
               onPressed: _isSubmitting || selected == null ? null : _confirmBooking,
               child: _isSubmitting
                   ? const SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
+                      child: CircularProgressIndicator(color: AppTheme.ink, strokeWidth: 2),
                     )
                   : Text(selected == null
                       ? l.selectATime
@@ -799,19 +809,19 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       final selected = _paymentMethod == method;
       return InkWell(
         key: ValueKey('pay-method-${method.name}'),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppTheme.radiusPanel),
         onTap: _isSubmitting ? null : () => setState(() => _paymentMethod = method),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? AppTheme.primaryGold.withValues(alpha: 0.12) : AppTheme.darkSurface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: selected ? AppTheme.primaryGold : Colors.white12),
+            color: AppTheme.card,
+            borderRadius: BorderRadius.circular(AppTheme.radiusPanel),
+            border: Border.all(color: selected ? AppTheme.ink : AppTheme.hairline, width: selected ? 1.6 : 1),
           ),
           child: Row(
             children: [
               Icon(selected ? Icons.radio_button_checked : Icons.radio_button_off,
-                  size: 18, color: selected ? AppTheme.primaryGold : AppTheme.textSecondary),
+                  size: 18, color: selected ? AppTheme.ink : AppTheme.textSecondary),
               const SizedBox(width: 10),
               Icon(icon, size: 18, color: AppTheme.textSecondary),
               const SizedBox(width: 10),

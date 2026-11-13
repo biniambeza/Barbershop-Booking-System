@@ -28,7 +28,7 @@ class StarRatingDisplay extends StatelessWidget {
                         ? Icons.star_half_rounded
                         : Icons.star_outline_rounded,
                 size: size,
-                color: AppTheme.primaryGold,
+                color: AppTheme.orange,
               ),
           ],
         ),
@@ -62,7 +62,7 @@ class StarRatingInput extends StatelessWidget {
             onPressed: () => onChanged(i),
             icon: Icon(
               i <= value ? Icons.star_rounded : Icons.star_outline_rounded,
-              color: AppTheme.primaryGold,
+              color: i <= value ? AppTheme.orange : AppTheme.textTertiary,
             ),
           ),
       ],
@@ -93,14 +93,14 @@ class RatingBadge extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.star_rounded, size: fontSize + 2, color: AppTheme.primaryGold),
+            Icon(Icons.star_rounded, size: fontSize + 2, color: AppTheme.orange),
             const SizedBox(width: 2),
             Flexible(
               child: Text(
                 showCount ? '${summary.rating.toStringAsFixed(1)} (${summary.count})' : summary.rating.toStringAsFixed(1),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: fontSize, color: AppTheme.primaryGold, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: fontSize, color: AppTheme.textPrimary, fontWeight: FontWeight.w700),
               ),
             ),
           ],
@@ -126,11 +126,7 @@ class RatingSummaryCard extends StatelessWidget {
     return Container(
       key: const ValueKey('rating-summary'),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.darkCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
+      decoration: AppTheme.cardDecoration(),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -140,7 +136,7 @@ class RatingSummaryCard extends StatelessWidget {
               Text(
                 summary.count == 0 ? '–' : summary.rating.toStringAsFixed(1),
                 key: const ValueKey('rating-average'),
-                style: const TextStyle(fontSize: 34, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: AppTheme.textPrimary, letterSpacing: -0.8),
               ),
               StarRatingDisplay(rating: summary.rating, size: 15),
               const SizedBox(height: 4),
@@ -169,13 +165,13 @@ class RatingSummaryCard extends StatelessWidget {
                         const SizedBox(width: 6),
                         Expanded(
                           child: ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(6),
                             child: LinearProgressIndicator(
                               key: ValueKey('rating-bar-$star'),
                               value: dist?.fraction(star) ?? 0,
-                              minHeight: 7,
-                              backgroundColor: AppTheme.accentSlate,
-                              valueColor: const AlwaysStoppedAnimation(AppTheme.primaryGold),
+                              minHeight: 6,
+                              backgroundColor: AppTheme.track,
+                              valueColor: const AlwaysStoppedAnimation(AppTheme.green),
                             ),
                           ),
                         ),
@@ -224,11 +220,7 @@ class ReviewTile extends StatelessWidget {
       key: ValueKey('review-${review.id}'),
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppTheme.darkCard,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-      ),
+      decoration: AppTheme.cardDecoration(radius: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -236,10 +228,10 @@ class ReviewTile extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 16,
-                backgroundColor: AppTheme.primaryGold.withValues(alpha: 0.18),
+                backgroundColor: AppTheme.surface,
                 child: Text(
                   name.isEmpty ? '?' : String.fromCharCode(name.runes.first),
-                  style: const TextStyle(color: AppTheme.primaryGold, fontWeight: FontWeight.bold),
+                  style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700),
                 ),
               ),
               const SizedBox(width: 10),
@@ -247,7 +239,7 @@ class ReviewTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text(name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.textPrimary)),
                     if (barberName != null && barberName!.isNotEmpty)
                       Text(
                         l.barberLabel(barberName!),
@@ -271,7 +263,7 @@ class ReviewTile extends StatelessWidget {
           ),
           if (review.hasComment) ...[
             const SizedBox(height: 10),
-            Text(review.comment!, style: const TextStyle(fontSize: 13.5, height: 1.4)),
+            Text(review.comment!, style: const TextStyle(fontSize: 13.5, height: 1.4, color: AppTheme.textPrimary)),
           ],
           if (review.hasReply) ...[
             const SizedBox(height: 10),
@@ -280,19 +272,19 @@ class ReviewTile extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: AppTheme.darkSurface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border(left: BorderSide(color: AppTheme.primaryGold.withValues(alpha: 0.6), width: 3)),
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border(left: BorderSide(color: AppTheme.ink, width: 3)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     l.reviewsOwnerReply,
-                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: AppTheme.primaryGold),
+                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                   ),
                   const SizedBox(height: 4),
-                  Text(review.reply!, style: const TextStyle(fontSize: 13, height: 1.4)),
+                  Text(review.reply!, style: const TextStyle(fontSize: 13, height: 1.4, color: AppTheme.textPrimary)),
                 ],
               ),
             ),
@@ -300,7 +292,7 @@ class ReviewTile extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               l.reviewsAwaitingReply,
-              style: const TextStyle(fontSize: 11.5, color: Colors.orangeAccent),
+              style: const TextStyle(fontSize: 11.5, color: AppTheme.warning),
             ),
           ],
           if (onReply != null)

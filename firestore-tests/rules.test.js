@@ -2536,3 +2536,116 @@ describe('insights aggregates (functions only)', () => {
     }
   });
 });
+
+// =====================================================================
+// Email registration codes (functions/auth): code hashes and send
+// counters are invisible to every client.
+// =====================================================================
+
+describe('emailCodes and authRateLimits (functions/auth only)', () => {
+  const codeId = 'register_' + 'a'.repeat(64);
+  const rateId = 'email_' + 'b'.repeat(64);
+
+  beforeEach(async () => {
+    await seed('emailCodes', codeId, {
+      purpose: 'register',
+      emailHash: 'a'.repeat(64),
+      codeHash: 'c'.repeat(64),
+      salt: 'd'.repeat(32),
+      expiresAt: NOW,
+      attempts: 0,
+      createdAt: NOW,
+      lastSentAt: NOW,
+    });
+    await seed('authRateLimits', rateId, { count: 1, windowStart: NOW, expiresAt: NOW });
+  });
+
+  test('nobody reads, lists or writes code docs', async () => {
+    const dbs = [
+      ['anon', anon()],
+      ['customer', as('customer', EMAILS.customer)],
+      ['owner1', as('owner1', EMAILS.owner1)],
+      ['admin', as('admin', EMAILS.admin)],
+      ['new user', as('fresh', 'fresh@example.com')],
+    ];
+    for (const [who, db] of dbs) {
+      await assertFails(getDoc(doc(db, 'emailCodes', codeId)), who);
+      await assertFails(getDocs(collection(db, 'emailCodes')), who);
+      await assertFails(setDoc(doc(db, 'emailCodes', 'reset_' + 'e'.repeat(64)), { purpose: 'reset' }), who);
+      await assertFails(updateDoc(doc(db, 'emailCodes', codeId), { attempts: 0 }), who);
+      await assertFails(deleteDoc(doc(db, 'emailCodes', codeId)), who);
+      await assertFails(setDoc(doc(db, 'emailCodes', codeId, 'sub', 'x'), { a: 1 }), who);
+    }
+  });
+
+  test('nobody reads, lists or writes rate-limit counters', async () => {
+    const dbs = [
+      ['anon', anon()],
+      ['customer', as('customer', EMAILS.customer)],
+      ['admin', as('admin', EMAILS.admin)],
+    ];
+    for (const [who, db] of dbs) {
+      await assertFails(getDoc(doc(db, 'authRateLimits', rateId)), who);
+      await assertFails(getDocs(collection(db, 'authRateLimits')), who);
+      await assertFails(setDoc(doc(db, 'authRateLimits', 'ip_x'), { count: 0 }), who);
+      await assertFails(updateDoc(doc(db, 'authRateLimits', rateId), { count: 0 }), who);
+      await assertFails(deleteDoc(doc(db, 'authRateLimits', rateId)), who);
+    }
+  });
+});
+
+describe('email + password accounts', () => {
+  // functions/auth creates these users with emailVerified: true after the
+  // emailed code is confirmed, so the token looks like a Google one apart
+  // from the provider.
+  const emailUser = (uid, email, verified = true) =>
+    env
+      .authenticatedContext(uid, { email, email_verified: verified, firebase: { sign_in_provider: 'password' } })
+      .firestore();
+
+  test('a verified email/password user can create a customer profile', async () => {
+    const db = emailUser('pw1', 'pw.user@example.com');
+    await assertSucceeds(
+      setDoc(doc(db, 'users', 'pw1'), {
+        uid: 'pw1',
+        email: 'pw.user@example.com',
+        name: 'Selam',
+        phone: '+251911223344',
+        role: 'customer',
+        createdAt: NOW,
+      }),
+    );
+  });
+
+  test('an unverified email/password user cannot', async () => {
+    const db = emailUser('pw2', 'pw2@example.com', false);
+    await assertFails(
+      setDoc(doc(db, 'users', 'pw2'), {
+        uid: 'pw2',
+        email: 'pw2@example.com',
+        name: 'Selam',
+        phone: '+251911223345',
+        role: 'customer',
+        createdAt: NOW,
+      }),
+    );
+  });
+
+  test('a verified email/password user can consume their invite', async () => {
+    await seed('invites', 'pw.barber@example.com', invite('pw.barber@example.com', 'barber', { shopId: 'shop1', barberId: 'barber1' }, 'owner1'));
+    const db = emailUser('pw3', 'pw.barber@example.com');
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'users', 'pw3'), {
+      uid: 'pw3',
+      email: 'pw.barber@example.com',
+      name: 'Dawit',
+      phone: '+251911223346',
+      role: 'barber',
+      shopId: 'shop1',
+      barberId: 'barber1',
+      createdAt: NOW,
+    });
+    batch.delete(doc(db, 'invites', 'pw.barber@example.com'));
+    await assertSucceeds(batch.commit());
+  });
+});

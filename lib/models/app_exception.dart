@@ -19,6 +19,9 @@ enum AppErrorCode {
 
   /// The Google account has no verified email address.
   googleEmailMissing,
+
+  /// An email/password account whose email address is not verified.
+  emailNotVerified,
   invalidName,
   signInRequired,
   accountLoadFailed,
@@ -91,6 +94,8 @@ enum AppErrorCode {
         return 'Enter a valid Gmail / email address for the owner.';
       case AppErrorCode.googleEmailMissing:
         return 'Your Google account has no verified email address.';
+      case AppErrorCode.emailNotVerified:
+        return 'This email address is not verified yet. Register again to get a new code.';
       case AppErrorCode.invalidName:
         return 'Enter your name (up to 100 characters).';
       case AppErrorCode.signInRequired:

@@ -60,8 +60,8 @@ class _BookingReviewActionState extends State<BookingReviewAction> {
             key: ValueKey('my-review-${booking.id}'),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: AppTheme.primaryGold.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+              color: AppTheme.orangeSoft,
+              borderRadius: BorderRadius.circular(999),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -77,7 +77,10 @@ class _BookingReviewActionState extends State<BookingReviewAction> {
         return ElevatedButton.icon(
           key: ValueKey('rate-booking-${booking.id}'),
           onPressed: () => showRateBookingDialog(context, booking, service: widget.service),
-          style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6)),
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size(0, 36),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          ),
           icon: const Icon(Icons.star_rounded, size: 16),
           label: Text(l.reviewsRateAction, style: const TextStyle(fontSize: 12)),
         );

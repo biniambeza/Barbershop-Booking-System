@@ -15,11 +15,11 @@ class PaymentStatusBadge extends StatelessWidget {
   static Color colorFor(PaymentStatus status) {
     switch (status) {
       case PaymentStatus.paid:
-        return Colors.greenAccent;
+        return AppTheme.success;
       case PaymentStatus.pending:
-        return Colors.orangeAccent;
+        return AppTheme.warning;
       case PaymentStatus.refunded:
-        return Colors.lightBlueAccent;
+        return AppTheme.blue;
       case PaymentStatus.unpaid:
         return AppTheme.textSecondary;
     }
@@ -46,9 +46,9 @@ class PaymentStatusBadge extends StatelessWidget {
       key: ValueKey('payment-badge-${booking.id}'),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.45)),
+        color: AppTheme.softOf(color),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.transparent),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -74,13 +74,13 @@ class SubscriptionStatusChip extends StatelessWidget {
   static Color colorFor(SubscriptionStatus status) {
     switch (status) {
       case SubscriptionStatus.trialing:
-        return Colors.lightBlueAccent;
+        return AppTheme.blue;
       case SubscriptionStatus.active:
-        return Colors.greenAccent;
+        return AppTheme.success;
       case SubscriptionStatus.pastDue:
-        return Colors.orangeAccent;
+        return AppTheme.warning;
       case SubscriptionStatus.suspended:
-        return Colors.redAccent;
+        return AppTheme.danger;
     }
   }
 
@@ -90,9 +90,9 @@ class SubscriptionStatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.45)),
+        color: AppTheme.softOf(color),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.transparent),
       ),
       child: Text(
         context.l10n.subscriptionStatus(status),

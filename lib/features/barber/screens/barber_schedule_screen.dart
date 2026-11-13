@@ -10,6 +10,7 @@ import '../../../models/booking_model.dart';
 import '../../../services/app_repository.dart';
 import '../../../services/availability_service.dart';
 import '../../../services/time_off_service.dart';
+import '../../shared/widgets/ui_kit.dart';
 
 /// A barber's day: their effective working hours (own days/hours within the
 /// shop's) on a 30-minute timeline in Addis Ababa time, with each booking
@@ -83,7 +84,7 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
               _buildDateSelector(shop, barber),
               _buildHoursBanner(shop, barber),
               _buildTimeOffBar(shop, barber, dayTimeOff, canManage),
-              const Divider(height: 1, color: Colors.white12),
+              const Divider(height: 1, color: AppTheme.hairline),
               Expanded(child: _buildTimeline(shop, barber, dayBookings, dayTimeOff)),
             ],
           ),
@@ -105,17 +106,17 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
     }
     return Container(
       width: double.infinity,
-      color: AppTheme.darkCard,
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      color: AppTheme.background,
+      padding: const EdgeInsets.fromLTRB(20, 2, 16, 10),
       child: Row(
         children: [
           Icon(barber.isAvailable ? Icons.access_time_rounded : Icons.pause_circle_outline_rounded,
-              size: 14, color: barber.isAvailable ? AppTheme.primaryGold : Colors.orangeAccent),
+              size: 14, color: barber.isAvailable ? AppTheme.success : AppTheme.warning),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
               barber.isAvailable ? text : l.notTakingNewBookings(text),
-              style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+              style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary),
             ),
           ),
         ],
@@ -131,18 +132,19 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
     if (!canManage && dayTimeOff.isEmpty) return const SizedBox.shrink();
     return Container(
       width: double.infinity,
-      color: AppTheme.darkCard,
-      padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.fromLTRB(14, 4, 6, 10),
+      decoration: AppTheme.cardDecoration(radius: AppTheme.radiusPanel),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.beach_access_rounded, size: 14, color: Colors.white54),
+              const Icon(Icons.beach_access_rounded, size: 15, color: AppTheme.orange),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(l.timeOffTitle,
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
+                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
               ),
               if (canManage && shop != null)
                 TextButton.icon(
@@ -154,7 +156,7 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
             ],
           ),
           if (dayTimeOff.isEmpty)
-            Text(l.timeOffEmpty, style: const TextStyle(fontSize: 11, color: Colors.white38))
+            Text(l.timeOffEmpty, style: const TextStyle(fontSize: 11, color: AppTheme.textTertiary))
           else
             for (final t in dayTimeOff)
               Row(
@@ -174,7 +176,7 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
                       key: ValueKey('remove-time-off-${t.id}'),
                       tooltip: l.timeOffRemove,
                       visualDensity: VisualDensity.compact,
-                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent),
+                      icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.danger),
                       onPressed: () => _removeTimeOff(t),
                     ),
                 ],
@@ -190,7 +192,6 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.darkCard,
         title: Text(l.timeOffRemove),
         content: Text(l.timeOffRemoveConfirm),
         actions: [
@@ -198,7 +199,7 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
           TextButton(
             key: const ValueKey('confirm-remove-time-off'),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(l.timeOffRemove, style: const TextStyle(color: Colors.redAccent)),
+            child: Text(l.timeOffRemove, style: const TextStyle(color: AppTheme.danger)),
           ),
         ],
       ),
@@ -288,7 +289,7 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(color: AppTheme.darkCard, borderRadius: BorderRadius.circular(12)),
+      decoration: AppTheme.cardDecoration(radius: AppTheme.radiusPanel),
       child: Row(
         children: [
           Icon(icon, color: AppTheme.textSecondary, size: 20),
@@ -304,9 +305,9 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
     final schedule = shop == null ? null : WorkingSchedule.of(shop, barber);
 
     return Container(
-      height: 90,
+      height: 92,
       padding: const EdgeInsets.symmetric(vertical: 10),
-      color: AppTheme.darkCard,
+      color: AppTheme.background,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -322,10 +323,10 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
               width: 58,
               margin: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
-                color: isSelected ? AppTheme.primaryGold : Colors.black26,
-                borderRadius: BorderRadius.circular(12),
+                color: isSelected ? AppTheme.ink : AppTheme.card,
+                borderRadius: BorderRadius.circular(18),
                 border: Border.all(
-                  color: isSelected ? AppTheme.primaryGold : Colors.white12,
+                  color: isSelected ? AppTheme.ink : AppTheme.hairline,
                 ),
               ),
               child: Opacity(
@@ -337,8 +338,8 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
                       context.fmt.weekdayShort(day),
                       style: TextStyle(
                         fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: isSelected ? Colors.black : AppTheme.textSecondary,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? AppTheme.onInkMuted : AppTheme.textSecondary,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -346,8 +347,8 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
                       '${day.day}',
                       style: TextStyle(
                         fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: isSelected ? Colors.black : Colors.white,
+                        fontWeight: FontWeight.w800,
+                        color: isSelected ? AppTheme.onInk : AppTheme.textPrimary,
                       ),
                     ),
                   ],
@@ -363,16 +364,17 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
   Color _statusColor(BookingStatus status) {
     switch (status) {
       case BookingStatus.completed:
-        return Colors.greenAccent;
+        return AppTheme.ink;
       case BookingStatus.inProgress:
-        return Colors.orangeAccent;
+        return AppTheme.blue;
       case BookingStatus.cancelled:
-        return Colors.redAccent;
+        return AppTheme.danger;
       case BookingStatus.noShow:
-        return Colors.deepOrangeAccent;
+        return AppTheme.slate;
       case BookingStatus.pending:
+        return AppTheme.warning;
       case BookingStatus.confirmed:
-        return Colors.lightBlueAccent;
+        return AppTheme.success;
     }
   }
 
@@ -384,37 +386,36 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
       content = Container(
         height: 28,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white24),
+          color: AppTheme.orangeSoft,
+          borderRadius: BorderRadius.circular(12),
         ),
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Text(context.l10n.timeOffSlotLabel, style: const TextStyle(fontSize: 11, color: Colors.white54)),
+        child: Text(context.l10n.timeOffSlotLabel,
+            style: const TextStyle(fontSize: 11, color: AppTheme.warning, fontWeight: FontWeight.w600)),
       );
     } else if (continuing) {
       content = Container(
         height: 28,
         decoration: BoxDecoration(
-          color: Colors.lightBlueAccent.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.lightBlueAccent.withValues(alpha: 0.25)),
+          color: AppTheme.blueSoft,
+          borderRadius: BorderRadius.circular(12),
         ),
         alignment: Alignment.centerLeft,
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        child: Text(context.l10n.busy, style: const TextStyle(fontSize: 11, color: Colors.white38)),
+        child: Text(context.l10n.busy, style: const TextStyle(fontSize: 11, color: AppTheme.blue, fontWeight: FontWeight.w600)),
       );
     } else {
       content = Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.black26,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white12),
+          color: AppTheme.card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppTheme.hairline),
         ),
         child: Text(
           context.l10n.availableSlot,
-          style: const TextStyle(fontSize: 12, color: Colors.white30, fontStyle: FontStyle.italic),
+          style: const TextStyle(fontSize: 12, color: AppTheme.textTertiary, fontStyle: FontStyle.italic),
         ),
       );
     }
@@ -428,7 +429,7 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
             width: 70,
             child: Text(
               time,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
             ),
           ),
           Expanded(child: content),
@@ -445,11 +446,7 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppTheme.darkCard,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.5)),
-      ),
+      decoration: AppTheme.cardDecoration(radius: AppTheme.radiusPanel),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -459,27 +456,21 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
               Expanded(
                 child: Text(
                   booking.customerName,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  l.bookingStatus(booking.status),
-                  style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.bold),
-                ),
+              StatusChip(
+                label: l.bookingStatus(booking.status),
+                color: color,
+                background: booking.status == BookingStatus.completed ? AppTheme.slateSoft : null,
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
             l.serviceAndPrice(booking.serviceName, fmt.birr(booking.price)),
-            style: const TextStyle(fontSize: 12, color: AppTheme.primaryGold),
+            style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 2),
           Text(
@@ -572,7 +563,6 @@ class _AddTimeOffDialogState extends State<_AddTimeOffDialog> {
       showDialog<void>(
         context: context,
         builder: (ctx) => AlertDialog(
-          backgroundColor: AppTheme.darkCard,
           content: Text(l.errorText(e), key: const ValueKey('time-off-error')),
           actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(MaterialLocalizations.of(ctx).okButtonLabel))],
         ),
@@ -587,7 +577,6 @@ class _AddTimeOffDialogState extends State<_AddTimeOffDialog> {
     String label(int m) => fmt.time(m ~/ 60 % 24, m % 60);
     final minutes = _minutes;
     return AlertDialog(
-      backgroundColor: AppTheme.darkCard,
       title: Text(l.timeOffAdd),
       content: SingleChildScrollView(
         child: Column(
@@ -601,13 +590,15 @@ class _AddTimeOffDialogState extends State<_AddTimeOffDialog> {
               children: [
                 ChoiceChip(
                   key: const ValueKey('time-off-whole-day'),
-                  label: Text(l.timeOffWholeDay),
+                  label: Text(l.timeOffWholeDay,
+                      style: TextStyle(color: _wholeDay ? AppTheme.onInk : AppTheme.textPrimary)),
                   selected: _wholeDay,
                   onSelected: (_) => setState(() => _wholeDay = true),
                 ),
                 ChoiceChip(
                   key: const ValueKey('time-off-hours'),
-                  label: Text(l.timeOffHours),
+                  label: Text(l.timeOffHours,
+                      style: TextStyle(color: !_wholeDay ? AppTheme.onInk : AppTheme.textPrimary)),
                   selected: !_wholeDay,
                   onSelected: (_) => setState(() => _wholeDay = false),
                 ),

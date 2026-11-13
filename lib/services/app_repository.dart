@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:uuid/uuid.dart';
 import '../core/utils/email_utils.dart';
+import '../core/utils/password_utils.dart';
 import '../core/utils/phone_utils.dart';
 import '../data/addis_time.dart';
 import '../data/seed_dataset.dart';
@@ -22,11 +23,13 @@ import 'availability_service.dart';
 import 'booking_policy.dart' as policy;
 import 'data_cache.dart';
 import 'data_store.dart';
+import 'email_auth_service.dart';
 import 'firestore_data_store.dart';
 import 'google_auth_service.dart';
 import 'time_off_service.dart';
 
 export '../models/app_exception.dart';
+export 'email_auth_service.dart' show EmailAuthException, EmailAuthErrorCode, EmailCodeSent;
 
 /// Where the signed-in session currently stands.
 enum AuthStatus {
@@ -80,6 +83,18 @@ class AppRepository extends ChangeNotifier {
   @visibleForTesting
   set googleAuthService(GoogleAuthService service) => _googleAuth = service;
 
+  /// Email + password sign-in and the emailed-code flows. Local mode uses an
+  /// in-memory fake (code 123456; seeded accounts log in with "demo1234").
+  late EmailAuthService _emailAuth = _defaultLocalEmailAuth();
+
+  EmailAuthService _defaultLocalEmailAuth() =>
+      LocalEmailAuthService(isExistingAccount: (email) => _findUserByEmail(email) != null);
+
+  /// Tests: replaces the email sign-in service used in local mode. [loadSeed]
+  /// restores a fresh in-memory one.
+  @visibleForTesting
+  set emailAuthService(EmailAuthService service) => _emailAuth = service;
+
   bool get isFirebaseAttached => _firebaseReady;
   FirebaseFirestore get _db => FirebaseFirestore.instance;
 
@@ -90,6 +105,7 @@ class AppRepository extends ChangeNotifier {
     _firebaseReady = true;
     final google = FirebaseGoogleAuthService(FirebaseAuth.instance);
     _googleAuth = google;
+    _emailAuth = FirebaseEmailAuthService(FirebaseAuth.instance);
     // Web: report a failed redirect sign-in (used when the popup is blocked).
     google.redirectError().then((error) {
       if (error == null) return;
@@ -133,6 +149,7 @@ class AppRepository extends ChangeNotifier {
     _currentUser = null;
     _authStatus = AuthStatus.signedOut;
     _googleAuth = _defaultLocalGoogleAuth();
+    _emailAuth = _defaultLocalEmailAuth();
     _clearPending();
     _authError = null;
     notifyListeners();
@@ -213,7 +230,81 @@ class AppRepository extends ChangeNotifier {
     if (identity == null) return; // Cancelled (or redirecting on web).
     // With Firebase, _onFirebaseAuthChanged loads the profile.
     if (_firebaseReady) return;
-    _signInLocally(identity);
+    _signInLocally(identity.email, identity.displayName);
+  }
+
+  // --- Email + password ---
+
+  static String _validEmailOrThrow(String email) {
+    final valid = validEmailOrNull(email);
+    if (valid == null) throw const EmailAuthException(EmailAuthErrorCode.invalidEmail);
+    return valid;
+  }
+
+  static void _checkPassword(String password) {
+    if (!isValidPassword(password)) throw const EmailAuthException(EmailAuthErrorCode.weakPassword);
+  }
+
+  static String _codeOrThrow(String code) {
+    final valid = normalizeEmailCode(code);
+    if (valid == null) throw const EmailAuthException(EmailAuthErrorCode.invalidCode);
+    return valid;
+  }
+
+  /// Registration step 1: checks [email] and [password] locally, then emails
+  /// a 6-digit code. [language] ('en' | 'am') picks the email's language.
+  Future<EmailCodeSent> registerRequestCode({
+    required String email,
+    required String password,
+    String language = 'en',
+  }) async {
+    final normalized = _validEmailOrThrow(email);
+    _checkPassword(password);
+    return _emailAuth.requestCode(email: normalized, purpose: EmailCodePurpose.register, language: language);
+  }
+
+  /// Registration step 2: verifies [code], creates the account (its email is
+  /// verified by the code) and signs in. A new account continues at
+  /// [AuthStatus.needsProfile], where email invites apply as usual.
+  Future<void> registerComplete({
+    required String email,
+    required String code,
+    required String password,
+    String? name,
+  }) async {
+    final normalized = _validEmailOrThrow(email);
+    _checkPassword(password);
+    final validCode = _codeOrThrow(code);
+    await _emailAuth.completeRegistration(email: normalized, code: validCode, password: password, name: name);
+    await loginWithEmail(email: normalized, password: password);
+  }
+
+  /// Signs in with email and password. With Firebase the auth listener loads
+  /// the profile; locally the session switches immediately.
+  Future<void> loginWithEmail({required String email, required String password}) async {
+    _authError = null;
+    final normalized = _validEmailOrThrow(email);
+    if (password.isEmpty) throw const EmailAuthException(EmailAuthErrorCode.wrongCredentials);
+    final identity = await _emailAuth.signIn(email: normalized, password: password);
+    if (_firebaseReady) return;
+    final existing = _findUserByEmail(identity.email);
+    _signInLocally(identity.email, identity.displayName ?? existing?.name);
+  }
+
+  /// Forgot password step 1: emails a reset code. Succeeds whether or not an
+  /// account exists for [email].
+  Future<EmailCodeSent> resetRequestCode({required String email, String language = 'en'}) {
+    final normalized = _validEmailOrThrow(email);
+    return _emailAuth.requestCode(email: normalized, purpose: EmailCodePurpose.reset, language: language);
+  }
+
+  /// Forgot password step 2: verifies [code] and sets [newPassword]. Does not
+  /// sign in.
+  Future<void> resetComplete({required String email, required String code, required String newPassword}) async {
+    final normalized = _validEmailOrThrow(email);
+    _checkPassword(newPassword);
+    final validCode = _codeOrThrow(code);
+    await _emailAuth.resetPassword(email: normalized, code: validCode, newPassword: newPassword);
   }
 
   /// Demo builds: one-tap sign-in as the seeded account with [email] (the
@@ -224,17 +315,16 @@ class AppRepository extends ChangeNotifier {
     final normalized = normalizeEmail(email);
     final user = _findUserByEmail(normalized);
     _authError = null;
-    _signInLocally(GoogleIdentity(email: normalized, displayName: user?.name));
+    _signInLocally(normalized, user?.name);
   }
 
   AppUser? _findUserByEmail(String email) =>
       _cache.users.values.where((u) => u.email != null && normalizeEmail(u.email!) == email).firstOrNull;
 
   /// Local (demo / test) equivalent of [_onFirebaseAuthChanged].
-  void _signInLocally(GoogleIdentity identity) {
-    final email = identity.email;
+  void _signInLocally(String email, String? displayName) {
     _pendingEmail = email;
-    _pendingDisplayName = identity.displayName;
+    _pendingDisplayName = displayName;
 
     final existing = _findUserByEmail(email);
     final invite = _cache.invites[email];
@@ -371,11 +461,15 @@ class AppRepository extends ChangeNotifier {
     try {
       final rawEmail = fbUser.email;
       if (rawEmail == null || rawEmail.isEmpty || !fbUser.emailVerified) {
-        // Only verified Google emails can sign in (the rules check
-        // request.auth.token.email_verified too). Sessions from the old
-        // phone sign-in end here quietly.
-        if (fbUser.providerData.any((p) => p.providerId == 'google.com')) {
+        // Only verified emails can sign in (the rules check
+        // request.auth.token.email_verified too): Google accounts, and
+        // email/password accounts created with an emailed code. Sessions
+        // from the old phone sign-in end here quietly.
+        final providers = fbUser.providerData.map((p) => p.providerId).toSet();
+        if (providers.contains('google.com')) {
           _authError = AppStateException(AppErrorCode.googleEmailMissing);
+        } else if (providers.contains('password')) {
+          _authError = AppStateException(AppErrorCode.emailNotVerified);
         }
         await FirebaseAuth.instance.signOut();
         return;

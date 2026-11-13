@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../shared/widgets/ui_kit.dart';
 import '../../../l10n/l10n.dart';
 import '../../../models/booking_model.dart';
 import '../../../models/service_model.dart';
@@ -55,7 +56,7 @@ class CustomerBookingsScreen extends StatelessWidget {
               ),
             )
           : ListView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, FloatingPillNavBar.contentPadding),
               itemCount: bookings.length,
               itemBuilder: (context, index) {
                 final booking = bookings[index];
@@ -68,17 +69,17 @@ class CustomerBookingsScreen extends StatelessWidget {
   static Color statusColor(BookingStatus status) {
     switch (status) {
       case BookingStatus.confirmed:
-        return Colors.green;
+        return AppTheme.success;
       case BookingStatus.inProgress:
-        return Colors.orangeAccent;
+        return AppTheme.blue;
       case BookingStatus.pending:
-        return Colors.orange;
+        return AppTheme.warning;
       case BookingStatus.completed:
-        return AppTheme.primaryGold;
+        return AppTheme.ink;
       case BookingStatus.cancelled:
-        return Colors.red;
+        return AppTheme.danger;
       case BookingStatus.noShow:
-        return Colors.deepOrangeAccent;
+        return AppTheme.slate;
     }
   }
 
@@ -92,12 +93,8 @@ class CustomerBookingsScreen extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.darkCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-      ),
+      padding: const EdgeInsets.all(18),
+      decoration: AppTheme.cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -107,23 +104,12 @@ class CustomerBookingsScreen extends StatelessWidget {
               Expanded(
                 child: Text(
                   booking.shopName,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: color.withValues(alpha: 0.5)),
-                ),
-                child: Text(
-                  l.bookingStatus(booking.status).toUpperCase(),
-                  style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
-                ),
-              ),
+              StatusChip(label: l.bookingStatus(booking.status).toUpperCase(), color: color),
             ],
           ),
           const SizedBox(height: 8),
@@ -132,7 +118,7 @@ class CustomerBookingsScreen extends StatelessWidget {
               Flexible(
                 child: Text(
                   booking.serviceName,
-                  style: const TextStyle(fontSize: 14, color: AppTheme.primaryGold, fontWeight: FontWeight.w600),
+                  style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
                 ),
               ),
               if (booking.rescheduleCount > 0) ...[
@@ -141,10 +127,10 @@ class CustomerBookingsScreen extends StatelessWidget {
                   key: ValueKey('rescheduled-badge-${booking.id}'),
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Colors.lightBlueAccent.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6),
+                    color: AppTheme.blueSoft,
+                    borderRadius: BorderRadius.circular(999),
                   ),
-                  child: Text(l.rescheduledBadge, style: const TextStyle(fontSize: 10, color: Colors.lightBlueAccent)),
+                  child: Text(l.rescheduledBadge, style: const TextStyle(fontSize: 10, color: AppTheme.blue)),
                 ),
               ],
             ],
@@ -156,7 +142,8 @@ class CustomerBookingsScreen extends StatelessWidget {
             children: [
               const Icon(Icons.person_outline, size: 16, color: AppTheme.textSecondary),
               const SizedBox(width: 6),
-              Text(l.barberLabel(booking.barberName), style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+              Text(l.barberLabel(booking.barberName),
+                  style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
             ],
           ),
           const SizedBox(height: 6),
@@ -182,14 +169,15 @@ class CustomerBookingsScreen extends StatelessWidget {
               style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
             ),
           ],
-          const Divider(height: 24, color: AppTheme.accentSlate),
+          const Divider(height: 24, color: AppTheme.hairline),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 fmt.birr(booking.price),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryGold),
+                style: const TextStyle(
+                    fontSize: 19, fontWeight: FontWeight.w700, color: AppTheme.textPrimary, letterSpacing: -0.3),
               ),
               const SizedBox(width: 8),
               Flexible(
@@ -202,7 +190,10 @@ class CustomerBookingsScreen extends StatelessWidget {
                       ElevatedButton(
                         key: ValueKey('pay-booking-${booking.id}'),
                         onPressed: () => payForBooking(context, booking),
-                        style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6)),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(0, 38),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        ),
                         child: Text(
                           booking.paymentStatus == PaymentStatus.pending ? l.finishPayment : l.payNow,
                           style: const TextStyle(fontSize: 12),
@@ -282,9 +273,10 @@ class _RescheduleButton extends StatelessWidget {
       key: ValueKey('reschedule-booking-${booking.id}'),
       onPressed: () => _open(context),
       style: OutlinedButton.styleFrom(
-        foregroundColor: AppTheme.primaryGold,
-        side: const BorderSide(color: AppTheme.primaryGold),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        foregroundColor: AppTheme.ink,
+        side: const BorderSide(color: AppTheme.hairline),
+        minimumSize: const Size(0, 38),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       ),
       child: Text(context.l10n.rescheduleAction, style: const TextStyle(fontSize: 12)),
     );
@@ -335,9 +327,10 @@ class _CancelBookingButtonState extends State<_CancelBookingButton> {
       key: ValueKey('cancel-booking-${widget.booking.id}'),
       onPressed: _busy ? null : _cancel,
       style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.redAccent,
-        side: const BorderSide(color: Colors.redAccent),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        foregroundColor: AppTheme.danger,
+        side: const BorderSide(color: AppTheme.hairline),
+        minimumSize: const Size(0, 38),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       ),
       child: _busy
           ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))

@@ -68,7 +68,7 @@ Future<PaymentVerification?> _runCheckout(
     checkout = await _withProgress(context, create(), l10n.preparingCheckout);
   } on PaymentException catch (e) {
     if (e.code == 'already-exists') {
-      messenger?.showSnackBar(SnackBar(content: Text(l10n.paymentError(e)), backgroundColor: Colors.green.shade700));
+      messenger?.showSnackBar(SnackBar(content: Text(l10n.paymentError(e)), backgroundColor: AppTheme.success));
     } else if (context.mounted) {
       await showPaymentError(context, e);
     }
@@ -118,13 +118,13 @@ Future<T> _withProgress<T>(BuildContext context, Future<T> future, String label)
     builder: (_) => PopScope(
       canPop: false,
       child: AlertDialog(
-        backgroundColor: AppTheme.darkCard,
+        backgroundColor: AppTheme.card,
         content: Row(
           children: [
             const SizedBox(
               width: 22,
               height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2.5, color: AppTheme.primaryGold),
+              child: CircularProgressIndicator(strokeWidth: 2.5, color: AppTheme.ink),
             ),
             const SizedBox(width: 16),
             Expanded(child: Text(label)),
@@ -145,8 +145,8 @@ Future<void> showPaymentError(BuildContext context, PaymentException error) {
   return showDialog<void>(
     context: context,
     builder: (ctx) => AlertDialog(
-      backgroundColor: AppTheme.darkCard,
-      icon: const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 40),
+      backgroundColor: AppTheme.card,
+      icon: const Icon(Icons.error_outline_rounded, color: AppTheme.danger, size: 40),
       title: Text(context.l10n.paymentProblem),
       content: Text(context.l10n.paymentError(error)),
       actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(context.l10n.ok))],
@@ -170,13 +170,13 @@ void showPaymentResult(BuildContext context, PaymentVerification? result, {doubl
     final until = result.periodEndsAt;
     final extra = until == null ? '' : l.subscriptionActiveUntilSentence(fmt.addisDateMedium(until));
     messenger.showSnackBar(SnackBar(
-      backgroundColor: Colors.green.shade700,
+      backgroundColor: AppTheme.success,
       content: Text(l.paymentReceivedAmount(fmt.birr(result.amount), extra)),
     ));
     return;
   }
   messenger.showSnackBar(SnackBar(
-    backgroundColor: Colors.red.shade700,
+    backgroundColor: AppTheme.danger,
     content: Text(l.paymentFailedRetry),
   ));
 }
@@ -202,10 +202,10 @@ class _SimulatedChapaCheckoutDialogState extends State<SimulatedChapaCheckoutDia
   Widget build(BuildContext context) {
     final l = context.l10n;
     return AlertDialog(
-      backgroundColor: AppTheme.darkCard,
+      backgroundColor: AppTheme.card,
       title: Row(
         children: [
-          const Icon(Icons.lock_outline_rounded, color: AppTheme.primaryGold, size: 20),
+          const Icon(Icons.lock_outline_rounded, color: AppTheme.ink, size: 20),
           const SizedBox(width: 8),
           Expanded(child: Text(l.chapaCheckoutDemo)),
         ],
@@ -219,7 +219,7 @@ class _SimulatedChapaCheckoutDialogState extends State<SimulatedChapaCheckoutDia
           const SizedBox(height: 12),
           Text(
             context.fmt.birr(widget.amount),
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.primaryGold),
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppTheme.textPrimary, letterSpacing: -0.5),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -339,8 +339,8 @@ class _PaymentWaitingDialogState extends State<PaymentWaitingDialog> with Widget
   Widget build(BuildContext context) {
     final l = context.l10n;
     return AlertDialog(
-      backgroundColor: AppTheme.darkCard,
-      icon: const Icon(Icons.open_in_browser_rounded, color: AppTheme.primaryGold, size: 40),
+      backgroundColor: AppTheme.card,
+      icon: const Icon(Icons.open_in_browser_rounded, color: AppTheme.ink, size: 40),
       title: Text(l.completeYourPayment),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -351,7 +351,7 @@ class _PaymentWaitingDialogState extends State<PaymentWaitingDialog> with Widget
           ),
           if (_checking) ...[
             const SizedBox(height: 16),
-            const LinearProgressIndicator(color: AppTheme.primaryGold),
+            const LinearProgressIndicator(color: AppTheme.ink),
           ],
           if (_message != null) ...[
             const SizedBox(height: 12),
@@ -413,12 +413,12 @@ class _PaymentReturnScreenState extends State<PaymentReturnScreen> {
     final fmt = context.fmt;
     Widget body;
     if (_error != null) {
-      body = _status(Icons.error_outline_rounded, Colors.redAccent, l.couldNotCheckPayment, _error!);
+      body = _status(Icons.error_outline_rounded, AppTheme.danger, l.couldNotCheckPayment, _error!);
     } else if (r == null) {
       body = Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const CircularProgressIndicator(color: AppTheme.primaryGold),
+          const CircularProgressIndicator(color: AppTheme.ink),
           const SizedBox(height: 16),
           Text(l.checkingPayment),
         ],
@@ -427,11 +427,11 @@ class _PaymentReturnScreenState extends State<PaymentReturnScreen> {
       final what = r.type == PaymentType.subscription
           ? (r.periodEndsAt == null ? l.subscriptionIsActive : l.subscriptionActiveUntil(fmt.addisDateMedium(r.periodEndsAt!)))
           : l.bookingIsPaid;
-      body = _status(Icons.check_circle_rounded, Colors.greenAccent, l.paymentReceived, l.amountThen(fmt.birr(r.amount), what));
+      body = _status(Icons.check_circle_rounded, AppTheme.success, l.paymentReceived, l.amountThen(fmt.birr(r.amount), what));
     } else if (r.isPending) {
-      body = _status(Icons.hourglass_top_rounded, Colors.orangeAccent, l.stillProcessing, l.stillProcessingBody);
+      body = _status(Icons.hourglass_top_rounded, AppTheme.warning, l.stillProcessing, l.stillProcessingBody);
     } else {
-      body = _status(Icons.cancel_rounded, Colors.redAccent, l.paymentFailed, l.noMoneyTaken);
+      body = _status(Icons.cancel_rounded, AppTheme.danger, l.paymentFailed, l.noMoneyTaken);
     }
 
     return Scaffold(

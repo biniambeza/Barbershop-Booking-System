@@ -8,6 +8,7 @@ import '../../../models/barber_model.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../services/app_repository.dart';
 import '../../../services/availability_service.dart' show WorkingSchedule;
+import '../../shared/widgets/ui_kit.dart';
 
 class ManageBarbersScreen extends StatefulWidget {
   final String shopId;
@@ -43,9 +44,8 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: AppTheme.darkCard,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(l.addBarberToShop, style: const TextStyle(fontWeight: FontWeight.bold)),
+          backgroundColor: AppTheme.card,
+          title: Text(l.addBarberToShop, style: const TextStyle(fontWeight: FontWeight.w700)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -86,7 +86,7 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                 ),
                 if (formError != null) ...[
                   const SizedBox(height: 10),
-                  Text(formError!, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+                  Text(formError!, style: const TextStyle(color: AppTheme.danger, fontSize: 12)),
                 ],
                 const SizedBox(height: 16),
                 Text(l.selectAvatar, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
@@ -104,7 +104,7 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: isSelected ? AppTheme.primaryGold : Colors.transparent,
+                              color: isSelected ? AppTheme.ink : Colors.transparent,
                               width: 2.5,
                             ),
                           ),
@@ -167,7 +167,7 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppTheme.darkCard,
+        backgroundColor: AppTheme.card,
         title: Text(context.l10n.removeBarberTitle),
         content: Text(context.l10n.removeBarberBody(name)),
         actions: [
@@ -176,7 +176,7 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
             child: Text(context.l10n.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.red, foregroundColor: Colors.white),
             onPressed: () async {
               Navigator.pop(ctx);
               final messenger = ScaffoldMessenger.of(context);
@@ -218,17 +218,17 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddBarberDialog,
-        backgroundColor: AppTheme.primaryGold,
-        foregroundColor: Colors.black,
+        backgroundColor: AppTheme.ink,
+        foregroundColor: AppTheme.onInk,
         icon: const Icon(Icons.person_add),
-        label: Text(context.l10n.addBarber, style: const TextStyle(fontWeight: FontWeight.bold)),
+        label: Text(context.l10n.addBarber, style: const TextStyle(fontWeight: FontWeight.w600)),
       ),
       body: barbers.isEmpty
           ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.people_outline, size: 48, color: AppTheme.textSecondary),
+                  const IconTile(icon: Icons.people_outline, color: AppTheme.textSecondary, size: 64),
                   const SizedBox(height: 12),
                   Text(context.l10n.noBarbersYet, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
@@ -237,27 +237,24 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
               ),
             )
           : ListView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
               itemCount: barbers.length,
               itemBuilder: (context, index) {
                 final barber = barbers[index];
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppTheme.darkCard,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-                  ),
+                  decoration: AppTheme.cardDecoration(),
                   child: Row(
                     children: [
                       CircleAvatar(
                         radius: 26,
                         backgroundImage: barber.avatarUrl != null ? NetworkImage(barber.avatarUrl!) : null,
                         onBackgroundImageError: barber.avatarUrl != null ? (error, stackTrace) {} : null,
-                        backgroundColor: AppTheme.primaryGold,
+                        backgroundColor: AppTheme.surface,
                         child: barber.avatarUrl == null
-                            ? Text(barber.name.substring(0, 1), style: const TextStyle(color: Colors.black, fontSize: 18))
+                            ? Text(barber.name.substring(0, 1),
+                                style: const TextStyle(color: AppTheme.onInk, fontSize: 18))
                             : null,
                       ),
                       const SizedBox(width: 14),
@@ -267,7 +264,8 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                           children: [
                             Text(
                               barber.name,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w700, fontSize: 16, color: AppTheme.textPrimary),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -278,7 +276,7 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 context.l10n.loginInvitePending(invite.email),
-                                style: const TextStyle(color: AppTheme.primaryGold, fontSize: 12),
+                                style: const TextStyle(color: AppTheme.blue, fontSize: 12, fontWeight: FontWeight.w500),
                               ),
                             ],
                             if (shop != null) ...[
@@ -292,13 +290,14 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                             const SizedBox(height: 6),
                             Row(
                               children: [
-                                const Icon(Icons.star, size: 14, color: AppTheme.primaryGold),
+                                const Icon(Icons.star_rounded, size: 15, color: AppTheme.orange),
                                 const SizedBox(width: 4),
                                 Flexible(
                                   child: Text(
                                     context.l10n.reviewsRatingShort(barber.rating, barber.reviewCount),
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 12, color: AppTheme.primaryGold, fontWeight: FontWeight.w600),
+                                    style: const TextStyle(
+                                        fontSize: 12, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
                                   ),
                                 ),
                               ],
@@ -309,12 +308,12 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                       if (shop != null)
                         IconButton(
                           key: ValueKey('edit-hours-${barber.id}'),
-                          icon: const Icon(Icons.schedule, size: 20, color: AppTheme.primaryGold),
+                          icon: const Icon(Icons.schedule, size: 20, color: AppTheme.ink),
                           tooltip: context.l10n.editWorkingHours,
                           onPressed: () => _editSchedule(barber, shop),
                         ),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                        icon: const Icon(Icons.delete_outline, size: 20, color: AppTheme.danger),
                         tooltip: context.l10n.removeBarber,
                         onPressed: () => _confirmDeleteBarber(barber.id, barber.name),
                       ),
@@ -400,9 +399,8 @@ class _BarberScheduleDialogState extends State<BarberScheduleDialog> {
     final shopDays = _shop.workingDays.toList()..sort();
     final hours = [for (var h = _shop.openingHour; h <= _shop.closingHour; h++) h];
     return AlertDialog(
-      backgroundColor: AppTheme.darkCard,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      title: Text(l.barberHoursTitle(widget.barber.name), style: const TextStyle(fontWeight: FontWeight.bold)),
+      backgroundColor: AppTheme.card,
+      title: Text(l.barberHoursTitle(widget.barber.name), style: const TextStyle(fontWeight: FontWeight.w700)),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -412,7 +410,7 @@ class _BarberScheduleDialogState extends State<BarberScheduleDialog> {
               key: const ValueKey('follow-shop-hours'),
               contentPadding: EdgeInsets.zero,
               value: _followShop,
-              activeThumbColor: AppTheme.primaryGold,
+              activeThumbColor: Colors.white,
               title: Text(l.followShopHours),
               subtitle: Text(
                 '${l.followShopHoursSubtitle}\n${l.shopHoursSummary}: ${fmt.hoursRange(_shop.openingHour, _shop.closingHour)}',
@@ -431,9 +429,15 @@ class _BarberScheduleDialogState extends State<BarberScheduleDialog> {
                   for (final d in shopDays)
                     FilterChip(
                       key: ValueKey('day-$d'),
-                      label: Text(fmt.weekdayName(d)),
+                      label: Text(
+                        fmt.weekdayName(d),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: _days.contains(d) ? AppTheme.onInk : AppTheme.textPrimary,
+                        ),
+                      ),
                       selected: _days.contains(d),
-                      selectedColor: AppTheme.primaryGold.withValues(alpha: 0.3),
+                      selectedColor: AppTheme.ink,
                       onSelected: _saving
                           ? null
                           : (on) => setState(() {
@@ -481,7 +485,7 @@ class _BarberScheduleDialogState extends State<BarberScheduleDialog> {
             ],
             if (_error != null) ...[
               const SizedBox(height: 10),
-              Text(_error!, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+              Text(_error!, style: const TextStyle(color: AppTheme.danger, fontSize: 12)),
             ],
           ],
         ),

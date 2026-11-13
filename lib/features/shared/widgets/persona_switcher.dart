@@ -15,7 +15,7 @@ void showPersonaSwitcher(BuildContext context, {required UserRole current}) {
 
   showModalBottomSheet(
     context: context,
-    backgroundColor: AppTheme.darkCard,
+    backgroundColor: AppTheme.card,
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -37,7 +37,7 @@ void showPersonaSwitcher(BuildContext context, {required UserRole current}) {
           ),
           title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
           subtitle: Text(subtitle),
-          trailing: active ? const Icon(Icons.check, color: AppTheme.primaryGold) : null,
+          trailing: active ? const Icon(Icons.check, color: AppTheme.ink) : null,
           onTap: () {
             Navigator.pop(ctx);
             if (!active) onSelect();
@@ -54,7 +54,7 @@ void showPersonaSwitcher(BuildContext context, {required UserRole current}) {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.swap_horiz, color: AppTheme.primaryGold),
+                  const Icon(Icons.swap_horiz, color: AppTheme.ink),
                   const SizedBox(width: 8),
                   Text(l.personaTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ],
@@ -65,7 +65,7 @@ void showPersonaSwitcher(BuildContext context, {required UserRole current}) {
               tile(
                 role: UserRole.admin,
                 icon: Icons.admin_panel_settings,
-                color: Colors.purpleAccent,
+                color: AppTheme.purple,
                 title: l.personaAdminTitle,
                 subtitle: l.personaAdminSubtitle,
                 onSelect: () => repo.switchRole(UserRole.admin),
@@ -73,7 +73,7 @@ void showPersonaSwitcher(BuildContext context, {required UserRole current}) {
               tile(
                 role: UserRole.barbershopOwner,
                 icon: Icons.storefront,
-                color: AppTheme.primaryGold,
+                color: AppTheme.ink,
                 title: l.personaOwnerTitle,
                 subtitle: l.personaOwnerSubtitle(ownerShop?.name ?? '-'),
                 onSelect: () => repo.switchRole(UserRole.barbershopOwner, targetShopId: ownerShop?.id),
@@ -81,7 +81,7 @@ void showPersonaSwitcher(BuildContext context, {required UserRole current}) {
               tile(
                 role: UserRole.barber,
                 icon: Icons.content_cut,
-                color: Colors.tealAccent,
+                color: AppTheme.teal,
                 title: l.personaBarberTitle,
                 subtitle: l.personaBarberSubtitle(barber?.name ?? '-'),
                 onSelect: () => repo.switchRole(UserRole.barber, targetBarberId: barber?.id),
@@ -89,7 +89,7 @@ void showPersonaSwitcher(BuildContext context, {required UserRole current}) {
               tile(
                 role: UserRole.customer,
                 icon: Icons.person,
-                color: Colors.lightBlueAccent,
+                color: AppTheme.blue,
                 title: l.personaCustomerTitle,
                 subtitle: l.personaCustomerSubtitle,
                 onSelect: () => repo.switchRole(UserRole.customer),

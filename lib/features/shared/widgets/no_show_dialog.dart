@@ -10,8 +10,8 @@ Future<bool> confirmNoShow(BuildContext context, Booking booking) async {
   final ok = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
-      backgroundColor: AppTheme.darkCard,
-      icon: const Icon(Icons.person_off_rounded, color: Colors.deepOrangeAccent, size: 36),
+      backgroundColor: AppTheme.card,
+      icon: const Icon(Icons.person_off_rounded, color: AppTheme.slate, size: 36),
       title: Text(l.noShowConfirmTitle),
       content: Text(l.noShowConfirmBody(booking.customerName)),
       actions: [
@@ -19,7 +19,7 @@ Future<bool> confirmNoShow(BuildContext context, Booking booking) async {
         TextButton(
           key: const ValueKey('confirm-no-show'),
           onPressed: () => Navigator.of(ctx).pop(true),
-          child: Text(l.noShowAction, style: const TextStyle(color: Colors.deepOrangeAccent)),
+          child: Text(l.noShowAction, style: const TextStyle(color: AppTheme.slate)),
         ),
       ],
     ),

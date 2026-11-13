@@ -24,8 +24,8 @@ class NotificationBell extends StatelessWidget {
           icon: Badge(
             isLabelVisible: unread > 0,
             label: Text(unread > 99 ? '99+' : '$unread'),
-            backgroundColor: AppTheme.primaryGold,
-            textColor: Colors.black,
+            backgroundColor: AppTheme.red,
+            textColor: Colors.white,
             child: Icon(unread > 0 ? Icons.notifications_active_outlined : Icons.notifications_none_rounded),
           ),
           onPressed: () => Navigator.of(context).push(

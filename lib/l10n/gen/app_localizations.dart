@@ -1433,7 +1433,7 @@ abstract class AppLocalizations {
   /// No description provided for @authSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Sign in or create an account with your Google account'**
+  /// **'Log in or create an account'**
   String get authSubtitle;
 
   /// No description provided for @continueWithGoogle.
@@ -1445,7 +1445,7 @@ abstract class AppLocalizations {
   /// No description provided for @googleSignInNotice.
   ///
   /// In en, this message translates to:
-  /// **'No SMS code needed. We only use your Google name and email address.'**
+  /// **'We only use your name and email address to manage your bookings.'**
   String get googleSignInNotice;
 
   /// No description provided for @demoContinueAs.
@@ -1463,7 +1463,7 @@ abstract class AppLocalizations {
   /// No description provided for @useDifferentAccount.
   ///
   /// In en, this message translates to:
-  /// **'Use a different Google account'**
+  /// **'Use a different account'**
   String get useDifferentAccount;
 
   /// No description provided for @profilePhoneHelper.
@@ -1535,19 +1535,19 @@ abstract class AppLocalizations {
   /// No description provided for @ownerEmailHelper.
   ///
   /// In en, this message translates to:
-  /// **'The owner signs in with this Google account to manage the shop.'**
+  /// **'The owner signs in with this email (Google or email and password) to manage the shop.'**
   String get ownerEmailHelper;
 
   /// No description provided for @emailForLogin.
   ///
   /// In en, this message translates to:
-  /// **'Gmail Address (for login)'**
+  /// **'Email address (for login)'**
   String get emailForLogin;
 
   /// No description provided for @barberEmailHelper.
   ///
   /// In en, this message translates to:
-  /// **'Optional. The barber signs in with this Google account.'**
+  /// **'Optional. The barber signs in with this email (Google or email and password).'**
   String get barberEmailHelper;
 
   /// No description provided for @barberMobileOptional.
@@ -1775,7 +1775,7 @@ abstract class AppLocalizations {
   /// No description provided for @registeredShopSnack.
   ///
   /// In en, this message translates to:
-  /// **'Registered \"{shop}\". The owner can now sign in with Google as {email}.'**
+  /// **'Registered \"{shop}\". The owner can now sign in as {email}.'**
   String registeredShopSnack(String shop, String email);
 
   /// No description provided for @registrationError.
@@ -4381,6 +4381,276 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This review no longer exists.'**
   String get reviewsErrNotFound;
+
+  /// No description provided for @authTabLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in'**
+  String get authTabLogin;
+
+  /// No description provided for @authTabRegister.
+  ///
+  /// In en, this message translates to:
+  /// **'Register'**
+  String get authTabRegister;
+
+  /// No description provided for @authOr.
+  ///
+  /// In en, this message translates to:
+  /// **'or'**
+  String get authOr;
+
+  /// No description provided for @emailLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get emailLabel;
+
+  /// No description provided for @passwordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get passwordLabel;
+
+  /// No description provided for @confirmPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm password'**
+  String get confirmPasswordLabel;
+
+  /// No description provided for @newPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'New password'**
+  String get newPasswordLabel;
+
+  /// No description provided for @showPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Show password'**
+  String get showPassword;
+
+  /// No description provided for @hidePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide password'**
+  String get hidePassword;
+
+  /// No description provided for @loginButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in'**
+  String get loginButton;
+
+  /// No description provided for @forgotPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get forgotPassword;
+
+  /// No description provided for @sendCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Send code'**
+  String get sendCode;
+
+  /// No description provided for @codeSentTo.
+  ///
+  /// In en, this message translates to:
+  /// **'We sent a 6-digit code to {email}'**
+  String codeSentTo(String email);
+
+  /// No description provided for @codeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'6-digit code'**
+  String get codeLabel;
+
+  /// No description provided for @verifyAndCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify and create account'**
+  String get verifyAndCreate;
+
+  /// No description provided for @resendCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend code'**
+  String get resendCode;
+
+  /// No description provided for @resendCodeIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend code in {seconds} s'**
+  String resendCodeIn(int seconds);
+
+  /// No description provided for @codeResent.
+  ///
+  /// In en, this message translates to:
+  /// **'We sent a new code.'**
+  String get codeResent;
+
+  /// No description provided for @changeEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Change email'**
+  String get changeEmail;
+
+  /// No description provided for @passwordHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'At least 8 characters, with a letter and a number'**
+  String get passwordHelper;
+
+  /// No description provided for @passwordsDontMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'The passwords do not match.'**
+  String get passwordsDontMatch;
+
+  /// No description provided for @enterPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your password.'**
+  String get enterPassword;
+
+  /// No description provided for @codeRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the 6-digit code.'**
+  String get codeRequired;
+
+  /// No description provided for @resetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset your password'**
+  String get resetTitle;
+
+  /// No description provided for @resetIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your account email and we\'ll send you a 6-digit code.'**
+  String get resetIntro;
+
+  /// No description provided for @resetButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset password'**
+  String get resetButton;
+
+  /// No description provided for @resetDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Your password has been changed. Log in with your new password.'**
+  String get resetDone;
+
+  /// No description provided for @backToLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to log in'**
+  String get backToLogin;
+
+  /// No description provided for @demoEmailHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Demo: the code is always 123456. Demo accounts log in with the password demo1234.'**
+  String get demoEmailHint;
+
+  /// No description provided for @emailErrWeakPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Use 8 to 128 characters with at least one letter and one number.'**
+  String get emailErrWeakPassword;
+
+  /// No description provided for @emailErrInvalidCode.
+  ///
+  /// In en, this message translates to:
+  /// **'That code is not correct. Check the email and try again.'**
+  String get emailErrInvalidCode;
+
+  /// No description provided for @emailErrCodeExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'That code has expired. Request a new code.'**
+  String get emailErrCodeExpired;
+
+  /// No description provided for @emailErrAlreadyRegistered.
+  ///
+  /// In en, this message translates to:
+  /// **'An account with this email already exists. Log in instead.'**
+  String get emailErrAlreadyRegistered;
+
+  /// No description provided for @emailErrTooSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Please wait a moment before requesting another code.'**
+  String get emailErrTooSoon;
+
+  /// No description provided for @emailErrTooSoonSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'Please wait {seconds} s before requesting another code.'**
+  String emailErrTooSoonSeconds(int seconds);
+
+  /// No description provided for @emailErrRateLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Please try again later.'**
+  String get emailErrRateLimited;
+
+  /// No description provided for @emailErrNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'We can\'t send emails right now. Try Google sign-in instead.'**
+  String get emailErrNotConfigured;
+
+  /// No description provided for @emailErrWrongCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrong email or password.'**
+  String get emailErrWrongCredentials;
+
+  /// No description provided for @emailErrNotEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Email sign-in is not enabled yet.'**
+  String get emailErrNotEnabled;
+
+  /// No description provided for @emailErrServiceUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This service isn\'t available yet. Try Google sign-in instead.'**
+  String get emailErrServiceUnavailable;
+
+  /// No description provided for @errEmailNotVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'This email address is not verified. Sign in with Google or contact support.'**
+  String get errEmailNotVerified;
+
+  /// No description provided for @emailErrSendFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send the email. Please try again.'**
+  String get emailErrSendFailed;
+
+  /// No description provided for @emailErrInvalidInput.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the details you entered and try again.'**
+  String get emailErrInvalidInput;
+
+  /// No description provided for @emailErrInvalidCodeAttempts.
+  ///
+  /// In en, this message translates to:
+  /// **'That code is not correct. Attempts left: {count}.'**
+  String emailErrInvalidCodeAttempts(int count);
+
+  /// No description provided for @emailErrRateLimitedMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many attempts. Try again in {minutes} min.'**
+  String emailErrRateLimitedMinutes(int minutes);
 }
 
 class _AppLocalizationsDelegate

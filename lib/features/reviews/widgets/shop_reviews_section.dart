@@ -61,7 +61,7 @@ class _ShopReviewsSectionState extends State<ShopReviewsSection> {
       key: const ValueKey('shop-reviews-section'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Divider(height: 32, color: AppTheme.accentSlate),
+        const Divider(height: 32, color: AppTheme.hairline),
         Text(
           l.reviewsTitle,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),

@@ -27,15 +27,17 @@ class NotificationsScreen extends StatelessWidget {
               if (svc.unreadCount > 0)
                 TextButton(
                   onPressed: svc.markAllRead,
-                  child: Text(context.l10n.markAllRead, style: const TextStyle(color: AppTheme.primaryGold)),
+                  child: Text(context.l10n.markAllRead,
+                      style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
                 ),
             ],
           ),
           body: items.isEmpty
               ? const _EmptyInbox()
               : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                   itemCount: items.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1, color: AppTheme.accentSlate),
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (context, i) => _NotificationTile(
                     notification: items[i],
                     onTap: () => svc.markRead(items[i].id),
@@ -84,35 +86,46 @@ class _NotificationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final n = notification;
     final (icon, color) = notificationIcon(n.type);
-    return ListTile(
-      onTap: onTap,
-      tileColor: n.read ? null : AppTheme.primaryGold.withValues(alpha: 0.06),
-      leading: CircleAvatar(
-        backgroundColor: color.withValues(alpha: 0.15),
-        child: Icon(icon, color: color, size: 20),
+    return Container(
+      decoration: AppTheme.cardDecoration(
+        radius: AppTheme.radiusPanel + 4,
+        color: n.read ? AppTheme.surface : AppTheme.card,
       ),
-      title: Text(
-        n.title,
-        style: TextStyle(fontWeight: n.read ? FontWeight.normal : FontWeight.bold),
+      child: Material(
+        type: MaterialType.transparency,
+        child: ListTile(
+          onTap: onTap,
+          contentPadding: const EdgeInsets.fromLTRB(14, 8, 14, 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusPanel + 4)),
+          leading: CircleAvatar(
+            backgroundColor: AppTheme.softOf(color),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          title: Text(
+            n.title,
+            style: TextStyle(fontSize: 14.5, fontWeight: n.read ? FontWeight.w500 : FontWeight.w700),
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 2),
+              Text(n.body, style: const TextStyle(color: AppTheme.textSecondary)),
+              const SizedBox(height: 4),
+              Text(relativeTime(n.createdAt, l10n: context.l10n),
+                  style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+            ],
+          ),
+          trailing: n.read
+              ? null
+              : Container(
+                  key: const ValueKey('unread-dot'),
+                  width: 10,
+                  height: 10,
+                  decoration: const BoxDecoration(color: AppTheme.green, shape: BoxShape.circle),
+                ),
+          isThreeLine: true,
+        ),
       ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 2),
-          Text(n.body, style: const TextStyle(color: AppTheme.textSecondary)),
-          const SizedBox(height: 4),
-          Text(relativeTime(n.createdAt, l10n: context.l10n), style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-        ],
-      ),
-      trailing: n.read
-          ? null
-          : Container(
-              key: const ValueKey('unread-dot'),
-              width: 10,
-              height: 10,
-              decoration: const BoxDecoration(color: AppTheme.primaryGold, shape: BoxShape.circle),
-            ),
-      isThreeLine: true,
     );
   }
 }
@@ -120,33 +133,33 @@ class _NotificationTile extends StatelessWidget {
 (IconData, Color) notificationIcon(String type) {
   switch (type) {
     case NotificationTypes.created:
-      return (Icons.event_note_rounded, Colors.lightBlueAccent);
+      return (Icons.event_note_rounded, AppTheme.blue);
     case NotificationTypes.confirmed:
-      return (Icons.event_available_rounded, Colors.greenAccent);
+      return (Icons.event_available_rounded, AppTheme.success);
     case NotificationTypes.cancelled:
     case NotificationTypes.slotTaken:
-      return (Icons.event_busy_rounded, Colors.redAccent);
+      return (Icons.event_busy_rounded, AppTheme.danger);
     case NotificationTypes.paymentReceived:
     case NotificationTypes.subscriptionPaid:
-      return (Icons.payments_rounded, Colors.greenAccent);
+      return (Icons.payments_rounded, AppTheme.success);
     case NotificationTypes.paymentRefunded:
-      return (Icons.currency_exchange_rounded, Colors.lightBlueAccent);
+      return (Icons.currency_exchange_rounded, AppTheme.blue);
     case NotificationTypes.paymentFailed:
     case NotificationTypes.subscriptionFailed:
-      return (Icons.money_off_rounded, Colors.redAccent);
+      return (Icons.money_off_rounded, AppTheme.danger);
     case NotificationTypes.started:
-      return (Icons.content_cut_rounded, Colors.tealAccent);
+      return (Icons.content_cut_rounded, AppTheme.teal);
     case NotificationTypes.completed:
-      return (Icons.check_circle_outline_rounded, AppTheme.primaryGold);
+      return (Icons.check_circle_outline_rounded, AppTheme.ink);
     case NotificationTypes.reminder24h:
     case NotificationTypes.reminder2h:
-      return (Icons.alarm_rounded, Colors.orangeAccent);
+      return (Icons.alarm_rounded, AppTheme.warning);
     case NotificationTypes.rescheduled:
-      return (Icons.update_rounded, Colors.lightBlueAccent);
+      return (Icons.update_rounded, AppTheme.blue);
     case NotificationTypes.noShow:
-      return (Icons.person_off_rounded, Colors.redAccent);
+      return (Icons.person_off_rounded, AppTheme.danger);
     case NotificationTypes.queueNext:
-      return (Icons.groups_rounded, Colors.greenAccent);
+      return (Icons.groups_rounded, AppTheme.success);
     default:
       return (Icons.notifications_rounded, AppTheme.textSecondary);
   }

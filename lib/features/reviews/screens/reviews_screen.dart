@@ -133,7 +133,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                     Text(
                       l.reviewsLoadFailed,
                       key: const ValueKey('reviews-load-failed'),
-                      style: const TextStyle(color: Colors.redAccent),
+                      style: const TextStyle(color: AppTheme.danger),
                     ),
                     TextButton(onPressed: _loadMore, child: Text(l.reviewsRetry)),
                   ],
@@ -215,7 +215,7 @@ class _ReplyDialogState extends State<_ReplyDialog> {
     final l = context.l10n;
     final review = widget.review;
     return AlertDialog(
-      backgroundColor: AppTheme.darkSurface,
+      backgroundColor: AppTheme.card,
       title: Text(review.hasReply ? l.reviewsEditReply : l.reviewsReplyAction),
       content: SingleChildScrollView(
         child: Column(
@@ -242,7 +242,7 @@ class _ReplyDialogState extends State<_ReplyDialog> {
               Text(
                 _error!,
                 key: const ValueKey('review-reply-error'),
-                style: const TextStyle(color: Colors.redAccent, fontSize: 12.5),
+                style: const TextStyle(color: AppTheme.danger, fontSize: 12.5),
               ),
           ],
         ),

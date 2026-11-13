@@ -7,6 +7,7 @@ import '../models/payment_model.dart';
 import '../models/plan_model.dart';
 import '../models/user_model.dart';
 import '../services/availability_service.dart' show SlotTakenException;
+import '../services/email_auth_service.dart' show EmailAuthErrorCode, EmailAuthException;
 import '../services/payment_service.dart' show PaymentErrorReason, PaymentException;
 import 'gen/app_localizations.dart';
 
@@ -141,6 +142,7 @@ extension AppLabels on AppLocalizations {
     if (error is AppException) return appError(error.code, error.args);
     if (error is SlotTakenException) return errSlotTaken;
     if (error is PaymentException) return paymentError(error);
+    if (error is EmailAuthException) return emailAuthError(error);
     if (error is FirebaseAuthException) return authError(error);
     if (error is FirebaseException) {
       switch (error.code) {
@@ -171,6 +173,8 @@ extension AppLabels on AppLocalizations {
         return errInvalidOwnerEmail;
       case AppErrorCode.googleEmailMissing:
         return errGoogleEmailMissing;
+      case AppErrorCode.emailNotVerified:
+        return errEmailNotVerified;
       case AppErrorCode.invalidName:
         return errInvalidName;
       case AppErrorCode.signInRequired:
@@ -326,6 +330,7 @@ extension AppLabels on AppLocalizations {
   /// the repository's [AppException]s, in the active language.
   String authError(Object error) {
     if (error is AppException) return appError(error.code, error.args);
+    if (error is EmailAuthException) return emailAuthError(error);
     if (error is FirebaseAuthException) {
       switch (error.code) {
         case 'operation-not-allowed':
@@ -349,4 +354,47 @@ extension AppLabels on AppLocalizations {
     return authErrGeneric;
   }
 
+  /// Text for email sign-in, registration and password-reset errors.
+  String emailAuthError(EmailAuthException error) {
+    switch (error.code) {
+      case EmailAuthErrorCode.invalidEmail:
+        return errInvalidEmail;
+      case EmailAuthErrorCode.weakPassword:
+        return emailErrWeakPassword;
+      case EmailAuthErrorCode.invalidCode:
+        final left = error.attemptsLeft;
+        return left != null && left > 0 ? emailErrInvalidCodeAttempts(left) : emailErrInvalidCode;
+      case EmailAuthErrorCode.codeExpired:
+        return emailErrCodeExpired;
+      case EmailAuthErrorCode.emailAlreadyRegistered:
+        return emailErrAlreadyRegistered;
+      case EmailAuthErrorCode.tooSoon:
+        final seconds = error.retryAfterSeconds;
+        return seconds != null && seconds > 0 ? emailErrTooSoonSeconds(seconds) : emailErrTooSoon;
+      case EmailAuthErrorCode.rateLimited:
+        final seconds = error.retryAfterSeconds;
+        return seconds != null && seconds > 0 ? emailErrRateLimitedMinutes((seconds / 60).ceil()) : emailErrRateLimited;
+      case EmailAuthErrorCode.tooManyRequests:
+        return emailErrRateLimited;
+      case EmailAuthErrorCode.emailNotConfigured:
+        return emailErrNotConfigured;
+      case EmailAuthErrorCode.emailSendFailed:
+        return emailErrSendFailed;
+      case EmailAuthErrorCode.invalidInput:
+        return emailErrInvalidInput;
+      case EmailAuthErrorCode.wrongCredentials:
+        return emailErrWrongCredentials;
+      case EmailAuthErrorCode.userDisabled:
+        return authErrUserDisabled;
+      case EmailAuthErrorCode.network:
+        return authErrNetwork;
+      case EmailAuthErrorCode.notEnabled:
+        return emailErrNotEnabled;
+      case EmailAuthErrorCode.serviceUnavailable:
+        return emailErrServiceUnavailable;
+      case EmailAuthErrorCode.unknown:
+        final raw = error.rawCode;
+        return raw == null ? authErrGeneric : authErrWithCode(raw);
+    }
+  }
 }

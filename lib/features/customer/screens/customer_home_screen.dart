@@ -8,6 +8,7 @@ import '../../../services/app_repository.dart';
 import '../../notifications/widgets/notification_bell.dart';
 import '../../shared/widgets/language_toggle.dart';
 import '../../shared/widgets/persona_switcher.dart';
+import '../../shared/widgets/ui_kit.dart';
 import 'barbershop_detail_screen.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
@@ -48,7 +49,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   Widget build(BuildContext context) {
     final repo = AppRepository.instance;
     final allShops = repo.getShops();
-    _cities = ['All', ...{for (final s in allShops) if (s.subCity.isNotEmpty) s.subCity}];
+    _cities = [
+      'All',
+      ...{
+        for (final s in allShops)
+          if (s.subCity.isNotEmpty) s.subCity
+      }
+    ];
 
     final filteredShops = allShops.where((s) {
       final matchesSearch = _searchQuery.isEmpty ||
@@ -66,20 +73,21 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     final l = context.l10n;
     return Scaffold(
       appBar: AppBar(
+        centerTitle: false,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               l.brandUpper,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 2,
-                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                    fontSize: 17,
                   ),
             ),
             Row(
               children: [
-                Icon(Icons.location_on, size: 13, color: AppTheme.primaryGold),
+                Icon(Icons.location_on, size: 13, color: AppTheme.green),
                 SizedBox(width: 4),
                 Text(
                   l.cityAddisAbaba,
@@ -92,17 +100,17 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         actions: [
           if (kDemoMode)
             TextButton.icon(
-            style: TextButton.styleFrom(
-              backgroundColor: Colors.lightBlueAccent.withValues(alpha: 0.15),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              style: TextButton.styleFrom(
+                backgroundColor: AppTheme.blueSoft,
+                shape: const StadiumBorder(),
+              ),
+              onPressed: () => showPersonaSwitcher(context, current: UserRole.customer),
+              icon: const Icon(Icons.swap_horiz, size: 16, color: AppTheme.blue),
+              label: Text(
+                l.roleCustomer,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.blue),
+              ),
             ),
-            onPressed: () => showPersonaSwitcher(context, current: UserRole.customer),
-            icon: const Icon(Icons.swap_horiz, size: 16, color: Colors.lightBlueAccent),
-            label: Text(
-              l.roleCustomer,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.lightBlueAccent),
-            ),
-          ),
           const LanguageToggle(),
           const NotificationBell(),
           IconButton(
@@ -126,85 +134,59 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     onChanged: (val) => setState(() => _searchQuery = val),
                     decoration: InputDecoration(
                       hintText: l.searchShopsHint,
-                      prefixIcon: const Icon(Icons.search, color: AppTheme.primaryGold),
-                      filled: true,
-                      fillColor: AppTheme.darkCard,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide.none,
-                      ),
+                      prefixIcon: const Icon(Icons.search, color: AppTheme.textSecondary),
                     ),
                   ),
                   const SizedBox(height: 16),
 
                   // Promotional Feature Banner: Find Master Barbers
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppTheme.primaryGold.withValues(alpha: 0.25),
-                          AppTheme.darkCard,
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
+                  HeroCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryGold,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  l.premierTalent,
-                                  style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Colors.black),
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                l.bookWithMasters,
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                l.bookWithMastersSubtitle,
-                                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-                              ),
-                              const SizedBox(height: 10),
-                              ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppTheme.primaryGold,
-                                  foregroundColor: Colors.black,
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                ),
-                                icon: const Icon(Icons.content_cut, size: 16),
-                                label: Text(l.findBarbers, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                                onPressed: widget.onOpenBarbers,
-                              ),
-                            ],
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Flexible(child: HeroChip(label: l.premierTalent, icon: Icons.workspace_premium_outlined)),
+                            const SizedBox(width: 12),
+                            const Spacer(),
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration:
+                                  const BoxDecoration(shape: BoxShape.circle, gradient: AppTheme.metallicGradient),
+                              child: const Icon(Icons.content_cut, color: AppTheme.ink, size: 20),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          l.bookWithMasters,
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.onInk,
+                            letterSpacing: -0.4,
+                            height: 1.15,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Container(
-                          width: 64,
-                          height: 64,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppTheme.primaryGold.withValues(alpha: 0.15),
-                            border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.4)),
+                        const SizedBox(height: 6),
+                        Text(
+                          l.bookWithMastersSubtitle,
+                          style: const TextStyle(fontSize: 13, color: AppTheme.onInkMuted, height: 1.35),
+                        ),
+                        const SizedBox(height: 18),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: AppTheme.ink,
+                            minimumSize: const Size(0, 46),
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                           ),
-                          child: const Icon(Icons.content_cut, color: AppTheme.primaryGold, size: 32),
+                          icon: const Icon(Icons.content_cut, size: 16),
+                          label:
+                              Text(l.findBarbers, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                          onPressed: widget.onOpenBarbers,
                         ),
                       ],
                     ),
@@ -216,7 +198,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     children: [
                       Text(
                         l.subCityFilterLabel,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                        style:
+                            const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -230,11 +213,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                                 child: ChoiceChip(
                                   label: Text(city == 'All' ? l.all : l.placeName(city)),
                                   selected: isSelected,
-                                  selectedColor: AppTheme.primaryGold,
+                                  selectedColor: AppTheme.ink,
                                   labelStyle: TextStyle(
                                     fontSize: 11.5,
-                                    fontWeight: FontWeight.bold,
-                                    color: isSelected ? Colors.black : AppTheme.textSecondary,
+                                    fontWeight: FontWeight.w600,
+                                    color: isSelected ? AppTheme.onInk : AppTheme.textPrimary,
                                   ),
                                   onSelected: (val) {
                                     if (val) setState(() => _selectedCity = city);
@@ -259,12 +242,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                           child: FilterChip(
                             label: Text(_categoryLabel(cat)),
                             selected: isSelected,
-                            selectedColor: AppTheme.primaryGold.withValues(alpha: 0.25),
-                            checkmarkColor: AppTheme.primaryGold,
+                            selectedColor: AppTheme.ink,
                             labelStyle: TextStyle(
-                              fontSize: 11,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              color: isSelected ? AppTheme.primaryGold : AppTheme.textSecondary,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected ? AppTheme.onInk : AppTheme.textPrimary,
                             ),
                             onSelected: (val) {
                               setState(() => _selectedCategory = cat);
@@ -281,13 +263,15 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       Expanded(
                         child: Text(
                           l.featuredBarbershops(filteredShops.length),
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                          style:
+                              const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         _selectedCity == 'All' ? l.allLocations : l.placeName(_selectedCity),
-                        style: const TextStyle(fontSize: 12, color: AppTheme.primaryGold, fontWeight: FontWeight.bold),
+                        style:
+                            const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
@@ -329,7 +313,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               ),
             ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
+          const SliverToBoxAdapter(child: SizedBox(height: FloatingPillNavBar.contentPadding)),
         ],
       ),
     );
@@ -344,11 +328,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: AppTheme.darkCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
+      decoration: AppTheme.cardDecoration(),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
@@ -372,9 +352,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) => Container(
                     height: 160,
-                    color: AppTheme.darkSurface,
+                    color: AppTheme.surface,
                     child: const Center(
-                      child: Icon(Icons.storefront, size: 48, color: AppTheme.primaryGold),
+                      child: Icon(Icons.storefront, size: 48, color: AppTheme.ink),
                     ),
                   ),
                 ),
@@ -384,18 +364,20 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.8),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.5)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.star, size: 14, color: AppTheme.primaryGold),
+                        const Icon(Icons.star_rounded, size: 15, color: AppTheme.orange),
                         const SizedBox(width: 4),
                         Text(
-                          shop.reviewCount == 0 ? context.l10n.reviewsNew : '${shop.rating.toStringAsFixed(1)} (${shop.reviewCount})',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                          shop.reviewCount == 0
+                              ? context.l10n.reviewsNew
+                              : '${shop.rating.toStringAsFixed(1)} (${shop.reviewCount})',
+                          style:
+                              const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                         ),
                       ],
                     ),
@@ -410,7 +392,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.green.shade800.withValues(alpha: 0.9),
+                            color: AppTheme.success,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
@@ -418,7 +400,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                             children: [
                               Icon(Icons.verified, size: 13, color: Colors.white),
                               SizedBox(width: 4),
-                              Text(l.verifiedBadge, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
+                              Text(l.verifiedBadge,
+                                  style:
+                                      const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
                             ],
                           ),
                         ),
@@ -431,13 +415,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.85),
+                      color: AppTheme.ink.withValues(alpha: 0.85),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.location_city, size: 12, color: AppTheme.primaryGold),
+                        const Icon(Icons.location_city, size: 12, color: AppTheme.onInk),
                         const SizedBox(width: 4),
                         Text(
                           l.shopArea(shop),
@@ -462,13 +446,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       Expanded(
                         child: Text(
                           shop.name,
-                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                          style:
+                              const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                         ),
                       ),
                       IconButton(
                         icon: Icon(
                           isFav ? Icons.favorite : Icons.favorite_border,
-                          color: isFav ? Colors.redAccent : AppTheme.textSecondary,
+                          color: isFav ? AppTheme.danger : AppTheme.textSecondary,
                           size: 20,
                         ),
                         padding: EdgeInsets.zero,
@@ -512,18 +497,20 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.people_outline, size: 14, color: AppTheme.primaryGold),
+                          const Icon(Icons.people_outline, size: 14, color: AppTheme.success),
                           const SizedBox(width: 3),
                           Text(
                             l.barbersCount(barbers.length),
-                            style: const TextStyle(fontSize: 11.5, color: AppTheme.primaryGold, fontWeight: FontWeight.w600),
+                            style: const TextStyle(
+                                fontSize: 11.5, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(width: 8),
-                          const Icon(Icons.content_cut, size: 13, color: AppTheme.primaryGold),
+                          const Icon(Icons.content_cut, size: 13, color: AppTheme.blue),
                           const SizedBox(width: 3),
                           Text(
                             l.servicesCount(services.length),
-                            style: const TextStyle(fontSize: 11.5, color: AppTheme.primaryGold, fontWeight: FontWeight.w600),
+                            style: const TextStyle(
+                                fontSize: 11.5, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
                           ),
                         ],
                       ),
@@ -536,7 +523,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     width: double.infinity,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        minimumSize: const Size(0, 48),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       onPressed: () {
                         Navigator.push(

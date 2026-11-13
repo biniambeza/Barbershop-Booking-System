@@ -30,7 +30,8 @@ class LanguageToggle extends StatelessWidget {
                 padding: const EdgeInsets.all(2),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.6)),
+                  color: AppTheme.card,
+                  border: Border.all(color: AppTheme.hairline),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -51,7 +52,7 @@ class LanguageToggle extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
-        color: selected ? AppTheme.primaryGold : Colors.transparent,
+        color: selected ? AppTheme.ink : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -59,7 +60,7 @@ class LanguageToggle extends StatelessWidget {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.bold,
-          color: selected ? Colors.black : AppTheme.textSecondary,
+          color: selected ? AppTheme.onInk : AppTheme.textSecondary,
         ),
       ),
     );

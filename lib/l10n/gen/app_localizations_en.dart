@@ -886,15 +886,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authErrGeneric => 'Something went wrong. Please try again.';
 
   @override
-  String get authSubtitle =>
-      'Sign in or create an account with your Google account';
+  String get authSubtitle => 'Log in or create an account';
 
   @override
   String get continueWithGoogle => 'Continue with Google';
 
   @override
   String get googleSignInNotice =>
-      'No SMS code needed. We only use your Google name and email address.';
+      'We only use your name and email address to manage your bookings.';
 
   @override
   String demoContinueAs(String name) {
@@ -905,7 +904,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get demoGoogleNotice => 'Demo mode: no real Google account is used.';
 
   @override
-  String get useDifferentAccount => 'Use a different Google account';
+  String get useDifferentAccount => 'Use a different account';
 
   @override
   String get profilePhoneHelper => 'For SMS booking reminders and payments.';
@@ -952,14 +951,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get ownerEmailHelper =>
-      'The owner signs in with this Google account to manage the shop.';
+      'The owner signs in with this email (Google or email and password) to manage the shop.';
 
   @override
-  String get emailForLogin => 'Gmail Address (for login)';
+  String get emailForLogin => 'Email address (for login)';
 
   @override
   String get barberEmailHelper =>
-      'Optional. The barber signs in with this Google account.';
+      'Optional. The barber signs in with this email (Google or email and password).';
 
   @override
   String get barberMobileOptional => 'Mobile Number (optional)';
@@ -1096,7 +1095,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String registeredShopSnack(String shop, String email) {
-    return 'Registered \"$shop\". The owner can now sign in with Google as $email.';
+    return 'Registered \"$shop\". The owner can now sign in as $email.';
   }
 
   @override
@@ -2675,4 +2674,164 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reviewsErrNotFound => 'This review no longer exists.';
+
+  @override
+  String get authTabLogin => 'Log in';
+
+  @override
+  String get authTabRegister => 'Register';
+
+  @override
+  String get authOr => 'or';
+
+  @override
+  String get emailLabel => 'Email';
+
+  @override
+  String get passwordLabel => 'Password';
+
+  @override
+  String get confirmPasswordLabel => 'Confirm password';
+
+  @override
+  String get newPasswordLabel => 'New password';
+
+  @override
+  String get showPassword => 'Show password';
+
+  @override
+  String get hidePassword => 'Hide password';
+
+  @override
+  String get loginButton => 'Log in';
+
+  @override
+  String get forgotPassword => 'Forgot password?';
+
+  @override
+  String get sendCode => 'Send code';
+
+  @override
+  String codeSentTo(String email) {
+    return 'We sent a 6-digit code to $email';
+  }
+
+  @override
+  String get codeLabel => '6-digit code';
+
+  @override
+  String get verifyAndCreate => 'Verify and create account';
+
+  @override
+  String get resendCode => 'Resend code';
+
+  @override
+  String resendCodeIn(int seconds) {
+    return 'Resend code in $seconds s';
+  }
+
+  @override
+  String get codeResent => 'We sent a new code.';
+
+  @override
+  String get changeEmail => 'Change email';
+
+  @override
+  String get passwordHelper =>
+      'At least 8 characters, with a letter and a number';
+
+  @override
+  String get passwordsDontMatch => 'The passwords do not match.';
+
+  @override
+  String get enterPassword => 'Enter your password.';
+
+  @override
+  String get codeRequired => 'Enter the 6-digit code.';
+
+  @override
+  String get resetTitle => 'Reset your password';
+
+  @override
+  String get resetIntro =>
+      'Enter your account email and we\'ll send you a 6-digit code.';
+
+  @override
+  String get resetButton => 'Reset password';
+
+  @override
+  String get resetDone =>
+      'Your password has been changed. Log in with your new password.';
+
+  @override
+  String get backToLogin => 'Back to log in';
+
+  @override
+  String get demoEmailHint =>
+      'Demo: the code is always 123456. Demo accounts log in with the password demo1234.';
+
+  @override
+  String get emailErrWeakPassword =>
+      'Use 8 to 128 characters with at least one letter and one number.';
+
+  @override
+  String get emailErrInvalidCode =>
+      'That code is not correct. Check the email and try again.';
+
+  @override
+  String get emailErrCodeExpired =>
+      'That code has expired. Request a new code.';
+
+  @override
+  String get emailErrAlreadyRegistered =>
+      'An account with this email already exists. Log in instead.';
+
+  @override
+  String get emailErrTooSoon =>
+      'Please wait a moment before requesting another code.';
+
+  @override
+  String emailErrTooSoonSeconds(int seconds) {
+    return 'Please wait $seconds s before requesting another code.';
+  }
+
+  @override
+  String get emailErrRateLimited =>
+      'Too many attempts. Please try again later.';
+
+  @override
+  String get emailErrNotConfigured =>
+      'We can\'t send emails right now. Try Google sign-in instead.';
+
+  @override
+  String get emailErrWrongCredentials => 'Wrong email or password.';
+
+  @override
+  String get emailErrNotEnabled => 'Email sign-in is not enabled yet.';
+
+  @override
+  String get emailErrServiceUnavailable =>
+      'This service isn\'t available yet. Try Google sign-in instead.';
+
+  @override
+  String get errEmailNotVerified =>
+      'This email address is not verified. Sign in with Google or contact support.';
+
+  @override
+  String get emailErrSendFailed =>
+      'Couldn\'t send the email. Please try again.';
+
+  @override
+  String get emailErrInvalidInput =>
+      'Check the details you entered and try again.';
+
+  @override
+  String emailErrInvalidCodeAttempts(int count) {
+    return 'That code is not correct. Attempts left: $count.';
+  }
+
+  @override
+  String emailErrRateLimitedMinutes(int minutes) {
+    return 'Too many attempts. Try again in $minutes min.';
+  }
 }

@@ -43,7 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        codebase: [ notifications, payments, bookings, insights, queue ]
+        codebase: [ notifications, payments, bookings, insights, queue, auth ]
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4

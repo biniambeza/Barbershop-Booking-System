@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../l10n/l10n.dart';
 import '../../../services/app_repository.dart';
 import '../../../services/reports_service.dart';
+import '../../shared/widgets/ui_kit.dart';
 
 /// Owner reports for one shop: an Overview tab (month picker, totals,
 /// 6-month revenue trend, top services, barber performance) and a Clients
@@ -59,8 +60,11 @@ class _OwnerReportsScreenState extends State<OwnerReportsScreen> {
               IconButton(icon: const Icon(Icons.refresh), tooltip: l.reportsRetry, onPressed: _reload),
           ],
           bottom: TabBar(
-            indicatorColor: AppTheme.primaryGold,
-            labelColor: AppTheme.primaryGold,
+            indicatorColor: AppTheme.ink,
+            indicatorWeight: 2.5,
+            indicatorSize: TabBarIndicatorSize.label,
+            labelColor: AppTheme.textPrimary,
+            unselectedLabelColor: AppTheme.textSecondary,
             tabs: [
               Tab(key: const ValueKey('reports-tab-overview'), text: l.reportsOverviewTab),
               Tab(key: const ValueKey('reports-tab-clients'), text: l.reportsClientsTab),
@@ -145,29 +149,43 @@ class _OverviewTab extends StatelessWidget {
     final stats = report.month(month);
     final trend = report.trendEndingAt(month, ReportsService.trendMonths);
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
-        Row(
-          children: [
-            Text(l.reportsMonthLabel, style: const TextStyle(color: AppTheme.textSecondary)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: DropdownButton<String>(
-                key: const ValueKey('reports-month-picker'),
-                value: month,
-                isExpanded: true,
-                items: [
-                  for (final m in report.months)
-                    DropdownMenuItem(value: m.month, child: Text(_monthLabel(context, m.month))),
-                ],
-                onChanged: (m) {
-                  if (m != null) onMonthChanged(m);
-                },
+        Container(
+          padding: const EdgeInsets.only(left: 16, right: 8),
+          decoration: BoxDecoration(
+            color: AppTheme.card,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: AppTheme.hairline),
+          ),
+          child: Row(
+            children: [
+              Text(l.reportsMonthLabel,
+                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButton<String>(
+                  key: const ValueKey('reports-month-picker'),
+                  value: month,
+                  isExpanded: true,
+                  underline: const SizedBox(),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusPanel),
+                  dropdownColor: AppTheme.card,
+                  icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.textSecondary),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(color: AppTheme.textPrimary),
+                  items: [
+                    for (final m in report.months)
+                      DropdownMenuItem(value: m.month, child: Text(_monthLabel(context, m.month))),
+                  ],
+                  onChanged: (m) {
+                    if (m != null) onMonthChanged(m);
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         Wrap(
           spacing: 10,
           runSpacing: 10,
@@ -176,25 +194,26 @@ class _OverviewTab extends StatelessWidget {
                 key: const ValueKey('reports-total-bookings'),
                 label: l.reportsBookings,
                 value: '${stats.bookings}',
-                icon: Icons.event_note),
+                icon: Icons.event_note,
+                color: AppTheme.blue),
             _MetricTile(
                 key: const ValueKey('reports-total-completed'),
                 label: l.reportsCompleted,
                 value: '${stats.completed}',
                 icon: Icons.check_circle_outline,
-                color: Colors.greenAccent),
+                color: AppTheme.success),
             _MetricTile(
                 key: const ValueKey('reports-total-cancelled'),
                 label: l.reportsCancelled,
                 value: '${stats.cancelled}',
                 icon: Icons.cancel_outlined,
-                color: Colors.redAccent),
+                color: AppTheme.danger),
             _MetricTile(
                 key: const ValueKey('reports-total-noshows'),
                 label: l.reportsNoShows,
                 value: '${stats.noShows}',
                 icon: Icons.person_off_outlined,
-                color: Colors.orangeAccent),
+                color: AppTheme.warning),
             _MetricTile(
                 key: const ValueKey('reports-total-revenue'),
                 label: l.reportsRevenue,
@@ -207,23 +226,33 @@ class _OverviewTab extends StatelessWidget {
           const SizedBox(height: 12),
           Text(l.reportsNoBookingsMonth, style: const TextStyle(color: AppTheme.textSecondary)),
         ],
-        const SizedBox(height: 20),
+        const SizedBox(height: 22),
         _SectionTitle(l.reportsRevenueTrend),
         _RevenueBars(months: trend),
-        const SizedBox(height: 20),
+        const SizedBox(height: 22),
         _SectionTitle(l.reportsTopServices),
         if (stats.topServices.isEmpty)
           Text(l.reportsNoCompletedMonth, style: const TextStyle(color: AppTheme.textSecondary))
         else
           for (final s in stats.topServices)
-            _RankRow(title: s.name, subtitle: l.reportsCompletedCount(s.count), amount: fmt.birr(s.revenueEtb)),
-        const SizedBox(height: 20),
+            _RankRow(
+                icon: Icons.content_cut,
+                color: AppTheme.blue,
+                title: s.name,
+                subtitle: l.reportsCompletedCount(s.count),
+                amount: fmt.birr(s.revenueEtb)),
+        const SizedBox(height: 22),
         _SectionTitle(l.reportsBarberPerformance),
         if (stats.barberPerformance.isEmpty)
           Text(l.reportsNoCompletedMonth, style: const TextStyle(color: AppTheme.textSecondary))
         else
           for (final b in stats.barberPerformance)
-            _RankRow(title: b.name, subtitle: l.reportsCompletedCount(b.completed), amount: fmt.birr(b.revenueEtb)),
+            _RankRow(
+                icon: Icons.person_outline,
+                color: AppTheme.green,
+                title: b.name,
+                subtitle: l.reportsCompletedCount(b.completed),
+                amount: fmt.birr(b.revenueEtb)),
         if (showUpdatedNote) ...[
           const SizedBox(height: 20),
           Text(l.reportsUpdatedNote, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
@@ -239,9 +268,10 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child:
-            Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.textPrimary)),
+        padding: const EdgeInsets.only(bottom: 10, left: 2),
+        child: Text(text,
+            style: const TextStyle(
+                fontWeight: FontWeight.w700, fontSize: 17, color: AppTheme.textPrimary, letterSpacing: -0.2)),
       );
 }
 
@@ -261,34 +291,65 @@ class _MetricTile extends StatelessWidget {
       final half = (constraints.maxWidth - 10) / 2;
       return SizedBox(
         width: wide ? constraints.maxWidth : half,
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppTheme.darkCard,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white12),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: color ?? AppTheme.primaryGold),
-              const SizedBox(width: 10),
-              Expanded(
+        child: wide
+            ? HeroCard(
+                padding: const EdgeInsets.all(18),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: const BoxDecoration(shape: BoxShape.circle, gradient: AppTheme.metallicGradient),
+                      child: Icon(icon, size: 20, color: AppTheme.ink),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(label,
+                              style: const TextStyle(fontSize: 12, color: AppTheme.onInkMuted),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
+                          const SizedBox(height: 4),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(value,
+                                style: const TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.onInk,
+                                    letterSpacing: -0.6)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : Container(
+                padding: const EdgeInsets.all(14),
+                decoration: AppTheme.cardDecoration(radius: 18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    IconTile(icon: icon, color: color ?? AppTheme.ink, size: 40),
+                    const SizedBox(height: 12),
                     Text(label,
-                        style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                        style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 2),
                     Text(value,
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                        style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textPrimary,
+                            letterSpacing: -0.4)),
                   ],
                 ),
               ),
-            ],
-          ),
-        ),
       );
     });
   }
@@ -303,67 +364,110 @@ class _RevenueBars extends StatelessWidget {
   Widget build(BuildContext context) {
     final fmt = context.fmt;
     final max = months.fold<double>(0, (m, s) => s.revenueEtb > m ? s.revenueEtb : m);
-    const barArea = 110.0;
+    const barArea = 130.0;
     return Container(
       key: const ValueKey('reports-revenue-trend'),
-      padding: const EdgeInsets.fromLTRB(8, 12, 8, 8),
-      decoration: BoxDecoration(color: AppTheme.darkCard, borderRadius: BorderRadius.circular(12)),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          for (final s in months)
-            Expanded(
-              child: Semantics(
-                label: '${_monthLabel(context, s.month)}: ${fmt.birr(s.revenueEtb)}',
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    FittedBox(
-                      child: Text(
-                        s.revenueEtb > 0 ? NumberFormat.compact(locale: 'en').format(s.revenueEtb) : '0',
-                        style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+      padding: const EdgeInsets.fromLTRB(10, 16, 10, 12),
+      decoration: AppTheme.cardDecoration(),
+      child: CustomPaint(
+        painter: const _DashedGridPainter(bottomInset: 22, lines: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            for (final s in months)
+              Expanded(
+                child: Semantics(
+                  label: '${_monthLabel(context, s.month)}: ${fmt.birr(s.revenueEtb)}',
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      FittedBox(
+                        child: Text(
+                          s.revenueEtb > 0 ? NumberFormat.compact(locale: 'en').format(s.revenueEtb) : '0',
+                          style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      height: max <= 0 ? 2 : 2 + (barArea - 2) * (s.revenueEtb / max),
-                      margin: const EdgeInsets.symmetric(horizontal: 6),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryGold.withValues(alpha: s.revenueEtb > 0 ? 0.85 : 0.25),
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                      const SizedBox(height: 4),
+                      Container(
+                        height: max <= 0 ? 4 : 4 + (barArea - 4) * (s.revenueEtb / max),
+                        margin: const EdgeInsets.symmetric(horizontal: 9),
+                        decoration: BoxDecoration(
+                          gradient: s.revenueEtb > 0 ? AppTheme.buttonGradient : null,
+                          color: s.revenueEtb > 0 ? null : AppTheme.track,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    FittedBox(
-                      child: Text(_monthLabel(context, s.month, short: true),
-                          style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      FittedBox(
+                        child: Text(_monthLabel(context, s.month, short: true),
+                            style: const TextStyle(
+                                fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
+/// Light dashed horizontal grid lines behind the revenue bars.
+class _DashedGridPainter extends CustomPainter {
+  const _DashedGridPainter({required this.bottomInset, required this.lines});
+
+  final double bottomInset;
+  final int lines;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppTheme.hairline
+      ..strokeWidth = 1;
+    final chartHeight = size.height - bottomInset;
+    for (var i = 0; i <= lines; i++) {
+      final y = chartHeight * i / lines;
+      var x = 0.0;
+      while (x < size.width) {
+        canvas.drawLine(Offset(x, y), Offset((x + 4).clamp(0, size.width), y), paint);
+        x += 8;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedGridPainter oldDelegate) =>
+      oldDelegate.bottomInset != bottomInset || oldDelegate.lines != lines;
+}
+
 class _RankRow extends StatelessWidget {
-  const _RankRow({required this.title, required this.subtitle, required this.amount});
+  const _RankRow({
+    required this.title,
+    required this.subtitle,
+    required this.amount,
+    this.icon = Icons.content_cut,
+    this.color = AppTheme.ink,
+  });
   final String title;
   final String subtitle;
   final String amount;
+  final IconData icon;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      color: AppTheme.darkCard,
-      margin: const EdgeInsets.only(bottom: 8),
+      color: AppTheme.card,
+      margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
-        dense: true,
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle, style: const TextStyle(color: AppTheme.textSecondary)),
-        trailing: Text(amount, style: const TextStyle(color: AppTheme.primaryGold, fontWeight: FontWeight.bold)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        leading: IconTile(icon: icon, color: color, size: 42),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+        subtitle: Text(subtitle, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
+        trailing: Text(amount,
+            style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 14.5)),
       ),
     );
   }
@@ -381,7 +485,7 @@ class _ClientsTab extends StatelessWidget {
       return Center(child: Text(l.reportsNoClients, style: const TextStyle(color: AppTheme.textSecondary)));
     }
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       itemCount: clients.length,
       itemBuilder: (context, i) {
         final c = clients[i];
@@ -392,17 +496,19 @@ class _ClientsTab extends StatelessWidget {
         ].join(' · ');
         return Card(
           key: ValueKey('reports-client-${c.customerId}'),
-          color: AppTheme.darkCard,
-          margin: const EdgeInsets.only(bottom: 8),
+          color: AppTheme.card,
+          margin: const EdgeInsets.only(bottom: 10),
           child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             leading: CircleAvatar(
-              backgroundColor: AppTheme.primaryGold.withValues(alpha: 0.2),
+              backgroundColor: AppTheme.surface,
               child: Text(
                 c.name.isNotEmpty ? c.name.characters.first.toUpperCase() : '?',
-                style: const TextStyle(color: AppTheme.primaryGold, fontWeight: FontWeight.bold),
+                style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700),
               ),
             ),
-            title: Text(c.name.isNotEmpty ? c.name : fmt.phone(c.phone)),
+            title: Text(c.name.isNotEmpty ? c.name : fmt.phone(c.phone),
+                style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -414,15 +520,14 @@ class _ClientsTab extends StatelessWidget {
             trailing: c.noShowCount > 0
                 ? Container(
                     key: ValueKey('reports-noshow-badge-${c.customerId}'),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.orangeAccent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.6)),
+                      color: AppTheme.orangeSoft,
+                      borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
                       l.reportsClientNoShows(c.noShowCount),
-                      style: const TextStyle(fontSize: 11, color: Colors.orangeAccent, fontWeight: FontWeight.bold),
+                      style: const TextStyle(fontSize: 11, color: AppTheme.warning, fontWeight: FontWeight.w700),
                     ),
                   )
                 : null,

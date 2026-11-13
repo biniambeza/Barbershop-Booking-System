@@ -101,7 +101,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Icon(Icons.verified_user_outlined, size: 54, color: AppTheme.primaryGold),
+                  const Icon(Icons.verified_user_outlined, size: 54, color: AppTheme.ink),
                   const SizedBox(height: 12),
                   Text(
                     l.welcome,
@@ -119,10 +119,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: AppTheme.darkCard,
+                      color: AppTheme.card,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: invite != null ? AppTheme.primaryGold.withValues(alpha: 0.5) : Colors.white12,
+                        color: invite != null ? AppTheme.green : AppTheme.hairline,
                       ),
                     ),
                     child: Text(roleMessage, textAlign: TextAlign.center),
@@ -161,7 +161,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         ? const SizedBox(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.onInk),
                           )
                         : Text(l.continueLabel),
                   ),
@@ -174,7 +174,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     Text(
                       _error!,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                      style: const TextStyle(color: AppTheme.danger, fontSize: 13),
                     ),
                   ],
                 ],

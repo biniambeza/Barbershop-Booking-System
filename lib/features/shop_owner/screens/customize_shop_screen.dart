@@ -186,8 +186,8 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
         actions: [
           TextButton.icon(
             onPressed: _previewShopAsCustomer,
-            icon: const Icon(Icons.remove_red_eye_outlined, size: 16, color: AppTheme.primaryGold),
-            label: Text(l.preview, style: const TextStyle(color: AppTheme.primaryGold, fontWeight: FontWeight.bold)),
+            icon: const Icon(Icons.remove_red_eye_outlined, size: 16, color: AppTheme.ink),
+            label: Text(l.preview, style: const TextStyle(color: AppTheme.ink, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -195,13 +195,15 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: SizedBox(
-            height: 50,
+            height: 56,
             child: ElevatedButton.icon(
               onPressed: _isSaving ? null : _saveChanges,
               icon: _isSaving
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
+                  ? const SizedBox(
+                      width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.onInk))
                   : const Icon(Icons.check),
-              label: Text(_isSaving ? l.savingUpdates : l.publishCustomizations, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              label: Text(_isSaving ? l.savingUpdates : l.publishCustomizations,
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
             ),
           ),
         ),
@@ -216,17 +218,13 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
               // Header Card
               Container(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.darkCard,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
-                ),
+                decoration: AppTheme.cardDecoration(),
                 child: Row(
                   children: [
                     const CircleAvatar(
-                      backgroundColor: AppTheme.primaryGold,
-                      radius: 20,
-                      child: Icon(Icons.brush, color: Colors.black, size: 20),
+                      backgroundColor: AppTheme.ink,
+                      radius: 22,
+                      child: Icon(Icons.brush, color: AppTheme.onInk, size: 20),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -250,7 +248,8 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _nameCtrl,
-                decoration: InputDecoration(labelText: l.barbershopNameRequired, prefixIcon: const Icon(Icons.business)),
+                decoration:
+                    InputDecoration(labelText: l.barbershopNameRequired, prefixIcon: const Icon(Icons.business)),
                 validator: (val) => val == null || val.trim().isEmpty ? l.required : null,
               ),
               const SizedBox(height: 14),
@@ -275,7 +274,8 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
               const SizedBox(height: 14),
 
               // Theme Presets
-              Text(l.themePresets, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
+              Text(l.themePresets,
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -285,9 +285,15 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
                     return Padding(
                       padding: const EdgeInsets.only(right: 8.0),
                       child: ChoiceChip(
-                        label: Text(_presetTitle(preset['title']!)),
+                        label: Text(
+                          _presetTitle(preset['title']!),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: isSelected ? AppTheme.onInk : AppTheme.textPrimary,
+                          ),
+                        ),
                         selected: isSelected,
-                        selectedColor: AppTheme.primaryGold,
+                        selectedColor: AppTheme.ink,
                         onSelected: (val) {
                           if (val) setState(() => _imageCtrl.text = preset['url']!);
                         },
@@ -308,16 +314,13 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.darkCard,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white12),
-                ),
+                decoration: AppTheme.cardDecoration(),
                 child: Column(
                   children: [
                     TextFormField(
                       controller: _addressCtrl,
-                      decoration: InputDecoration(labelText: l.streetAddress, prefixIcon: const Icon(Icons.location_on_outlined)),
+                      decoration: InputDecoration(
+                          labelText: l.streetAddress, prefixIcon: const Icon(Icons.location_on_outlined)),
                       validator: (val) => val == null || val.trim().isEmpty ? l.required : null,
                     ),
                     const SizedBox(height: 12),
@@ -325,9 +328,10 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
                       isExpanded: true,
                       initialValue: _subCity,
                       decoration: InputDecoration(labelText: l.subCity, prefixIcon: const Icon(Icons.map_outlined)),
-                      dropdownColor: AppTheme.darkCard,
+                      dropdownColor: AppTheme.card,
                       items: [
-                        for (final sc in subCities) DropdownMenuItem(value: sc, child: Text(sc.isEmpty ? '-' : l.placeName(sc))),
+                        for (final sc in subCities)
+                          DropdownMenuItem(value: sc, child: Text(sc.isEmpty ? '-' : l.placeName(sc))),
                       ],
                       onChanged: (val) => setState(() => _subCity = val ?? _subCity),
                     ),
@@ -361,7 +365,7 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
                       isExpanded: true,
                       initialValue: _openingHour,
                       decoration: InputDecoration(labelText: l.openingHour),
-                      dropdownColor: AppTheme.darkCard,
+                      dropdownColor: AppTheme.card,
                       items: List.generate(15, (i) => i + 6).map((h) {
                         return DropdownMenuItem(value: h, child: Text(fmt.hour(h)));
                       }).toList(),
@@ -374,7 +378,7 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
                       isExpanded: true,
                       initialValue: _closingHour,
                       decoration: InputDecoration(labelText: l.closingHour),
-                      dropdownColor: AppTheme.darkCard,
+                      dropdownColor: AppTheme.card,
                       items: List.generate(15, (i) => i + 10).map((h) {
                         return DropdownMenuItem(value: h, child: Text(fmt.hour(h)));
                       }).toList(),
@@ -384,7 +388,8 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              Text(l.openWorkingDays, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
+              Text(l.openWorkingDays,
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -403,8 +408,9 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
                 key: const ValueKey('policy-cutoff'),
                 isExpanded: true,
                 initialValue: _cutoffHours,
-                decoration: InputDecoration(labelText: l.policyCutoffLabel, prefixIcon: const Icon(Icons.timer_outlined)),
-                dropdownColor: AppTheme.darkCard,
+                decoration:
+                    InputDecoration(labelText: l.policyCutoffLabel, prefixIcon: const Icon(Icons.timer_outlined)),
+                dropdownColor: AppTheme.card,
                 items: [
                   for (final h in {..._cutoffChoices, _cutoffHours}.toList()..sort())
                     DropdownMenuItem(value: h, child: Text(l.policyHoursValue(h))),
@@ -416,8 +422,9 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
                 key: const ValueKey('policy-max-reschedules'),
                 isExpanded: true,
                 initialValue: _maxReschedules,
-                decoration: InputDecoration(labelText: l.policyMaxReschedulesLabel, prefixIcon: const Icon(Icons.update)),
-                dropdownColor: AppTheme.darkCard,
+                decoration:
+                    InputDecoration(labelText: l.policyMaxReschedulesLabel, prefixIcon: const Icon(Icons.update)),
+                dropdownColor: AppTheme.card,
                 items: [
                   for (var n = 0; n <= kMaxMaxReschedules; n++)
                     DropdownMenuItem(value: n, child: Text(l.policyMaxReschedulesValue(n))),
@@ -435,12 +442,21 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
   Widget _buildSectionTitle(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, color: AppTheme.primaryGold, size: 20),
-        const SizedBox(width: 8),
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: AppTheme.card,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppTheme.hairline),
+          ),
+          child: Icon(icon, color: AppTheme.ink, size: 18),
+        ),
+        const SizedBox(width: 10),
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
           ),
         ),
       ],
@@ -460,21 +476,21 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
           }
         });
       },
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppTheme.radiusTile),
       child: Container(
         width: 44,
-        height: 40,
+        height: 44,
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.primaryGold : AppTheme.darkCard,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: isSelected ? AppTheme.primaryGold : Colors.white12),
+          color: isSelected ? AppTheme.ink : AppTheme.card,
+          borderRadius: BorderRadius.circular(AppTheme.radiusTile),
+          border: Border.all(color: isSelected ? AppTheme.ink : AppTheme.hairline),
         ),
         alignment: Alignment.center,
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.black : AppTheme.textSecondary,
-            fontWeight: FontWeight.bold,
+            color: isSelected ? AppTheme.onInk : AppTheme.textSecondary,
+            fontWeight: FontWeight.w600,
             fontSize: 12,
           ),
         ),

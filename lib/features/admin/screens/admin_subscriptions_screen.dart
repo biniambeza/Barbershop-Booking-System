@@ -71,15 +71,15 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
               if (ae == null || be == null) return ae == null ? 1 : -1;
               return ae.compareTo(be);
             });
-          final plans = _repo.getPlans().toList()
-            ..sort((a, b) => a.priceMonthlyEtb.compareTo(b.priceMonthlyEtb));
+          final plans = _repo.getPlans().toList()..sort((a, b) => a.priceMonthlyEtb.compareTo(b.priceMonthlyEtb));
 
           return Scaffold(
             appBar: AppBar(
               title: Text(context.l10n.subscriptionsAndPlans),
               bottom: TabBar(
-                indicatorColor: AppTheme.primaryGold,
-                labelColor: AppTheme.primaryGold,
+                indicatorColor: AppTheme.ink,
+                indicatorSize: TabBarIndicatorSize.label,
+                labelColor: AppTheme.textPrimary,
                 unselectedLabelColor: AppTheme.textSecondary,
                 tabs: [
                   Tab(text: context.l10n.tabShops(shops.length)),
@@ -116,8 +116,14 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
           children: [
             for (final status in SubscriptionStatus.values)
               Chip(
+                avatar: Center(
+                    child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration:
+                            BoxDecoration(color: SubscriptionStatusChip.colorFor(status), shape: BoxShape.circle))),
                 label: Text(context.l10n.statusCountChip(context.l10n.subscriptionStatus(status), counts[status] ?? 0)),
-                side: BorderSide(color: SubscriptionStatusChip.colorFor(status).withValues(alpha: 0.5)),
+                side: const BorderSide(color: AppTheme.hairline),
               ),
           ],
         ),
@@ -138,14 +144,14 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
             : l.endsDaysLeft(_date(ends), days);
     return Card(
       key: ValueKey('admin-sub-${shop.id}'),
-      color: AppTheme.darkCard,
+      color: AppTheme.card,
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
         title: Text(shop.name, maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: Text(
           '${l.planName(shop.subscriptionPlan, _repo.getPlan(shop.subscriptionPlan))} • $endText'
           '${shop.subCity.isEmpty ? '' : '\n${l.placeName(shop.subCity)}'}',
-          style: const TextStyle(fontSize: 12),
+          style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
         ),
         isThreeLine: shop.subCity.isNotEmpty,
         trailing: SubscriptionStatusChip(status: shop.subscriptionStatus),
@@ -211,14 +217,14 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
         for (final plan in plans)
           Card(
             key: ValueKey('admin-plan-${plan.id}'),
-            color: AppTheme.darkCard,
+            color: AppTheme.card,
             margin: const EdgeInsets.only(bottom: 10),
             child: ListTile(
               title: Text('${plan.name} (${plan.id})'),
               subtitle: Text(
                 '${l.perMonth(context.fmt.birr(plan.priceMonthlyEtb))} • ${l.barberLimit(plan)}'
                 '${plan.features.isEmpty ? '' : '\n${plan.features.join(' • ')}'}',
-                style: const TextStyle(fontSize: 12),
+                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
               ),
               isThreeLine: plan.features.isNotEmpty,
               onTap: () => _editPlan(plan, const []),
@@ -291,7 +297,7 @@ class _SubscriptionDialogState extends State<_SubscriptionDialog> {
     final planIds = {...SubscriptionPlan.knownIds, widget.shop.subscriptionPlan}.toList();
     final l = context.l10n;
     return AlertDialog(
-      backgroundColor: AppTheme.darkCard,
+      backgroundColor: AppTheme.card,
       title: Text(widget.shop.name),
       content: SingleChildScrollView(
         child: Column(
@@ -317,7 +323,8 @@ class _SubscriptionDialogState extends State<_SubscriptionDialog> {
               initialValue: _status,
               decoration: InputDecoration(labelText: l.statusLabel),
               items: [
-                for (final s in SubscriptionStatus.values) DropdownMenuItem(value: s, child: Text(l.subscriptionStatus(s))),
+                for (final s in SubscriptionStatus.values)
+                  DropdownMenuItem(value: s, child: Text(l.subscriptionStatus(s))),
               ],
               onChanged: (v) => setState(() => _status = v ?? _status),
             ),
@@ -430,7 +437,8 @@ class _PlanDialog extends StatefulWidget {
 class _PlanDialogState extends State<_PlanDialog> {
   late String _id = widget.plan?.id ?? widget.newIds.first;
   late final _name = TextEditingController(text: widget.plan?.name ?? planDisplayName(_id));
-  late final _price = TextEditingController(text: widget.plan == null ? '' : widget.plan!.priceMonthlyEtb.toStringAsFixed(0));
+  late final _price =
+      TextEditingController(text: widget.plan == null ? '' : widget.plan!.priceMonthlyEtb.toStringAsFixed(0));
   late bool _unlimited = widget.plan?.isUnlimited ?? false;
   late final _maxBarbers = TextEditingController(
     text: widget.plan == null || widget.plan!.isUnlimited ? '3' : '${widget.plan!.maxBarbers}',
@@ -475,7 +483,7 @@ class _PlanDialogState extends State<_PlanDialog> {
   Widget build(BuildContext context) {
     final l = context.l10n;
     return AlertDialog(
-      backgroundColor: AppTheme.darkCard,
+      backgroundColor: AppTheme.card,
       title: Text(widget.plan == null ? l.newPlan : l.editPlan(widget.plan!.name)),
       content: SingleChildScrollView(
         child: Column(
@@ -524,7 +532,7 @@ class _PlanDialogState extends State<_PlanDialog> {
               title: Text(l.availableToOwners),
               onChanged: (v) => setState(() => _active = v),
             ),
-            if (_error != null) Text(_error!, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+            if (_error != null) Text(_error!, style: const TextStyle(color: AppTheme.danger, fontSize: 12)),
           ],
         ),
       ),

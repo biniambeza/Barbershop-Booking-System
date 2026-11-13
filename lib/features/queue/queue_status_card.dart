@@ -6,6 +6,7 @@ import '../../models/barbershop_model.dart';
 import '../../models/user_model.dart';
 import '../../services/app_repository.dart';
 import '../../services/queue_service.dart';
+import '../shared/widgets/ui_kit.dart';
 import 'queue_l10n.dart';
 
 /// Walk-in queue on a shop's detail page: "N waiting, about X min" from the
@@ -114,24 +115,17 @@ class _QueueStatusCardState extends State<QueueStatusCard> {
               width: double.infinity,
               margin: const EdgeInsets.only(top: 16),
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.darkCard,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color:
-                      mine != null ? AppTheme.primaryGold.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.08),
-                ),
-              ),
+              decoration: AppTheme.cardDecoration(borderColor: mine != null ? AppTheme.green : null),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.groups_rounded, color: AppTheme.primaryGold, size: 18),
-                      const SizedBox(width: 6),
+                      const IconTile(icon: Icons.groups_outlined, color: AppTheme.green, size: 40),
+                      const SizedBox(width: 12),
                       Text(l.queueTitle,
                           style:
-                              const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                              const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -147,7 +141,7 @@ class _QueueStatusCardState extends State<QueueStatusCard> {
                     Text(
                       _myStatus(context, mine, summary),
                       key: const Key('queueMyStatus'),
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.primaryGold),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.success),
                     ),
                     if (mine.status == QueueStatus.waiting) ...[
                       const SizedBox(height: 10),
@@ -162,8 +156,6 @@ class _QueueStatusCardState extends State<QueueStatusCard> {
                     const SizedBox(height: 10),
                     FilledButton.icon(
                       key: const Key('queueJoinButton'),
-                      style:
-                          FilledButton.styleFrom(backgroundColor: AppTheme.primaryGold, foregroundColor: Colors.black),
                       onPressed: _busy || widget.shop.isSuspended ? null : _join,
                       icon: const Icon(Icons.how_to_reg_rounded, size: 18),
                       label: Text(l.queueJoin),

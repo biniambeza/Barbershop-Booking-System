@@ -70,7 +70,7 @@ class BarbershopApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         navigatorKey: NotificationService.navigatorKey,
         scaffoldMessengerKey: NotificationService.messengerKey,
-        theme: AppTheme.darkTheme,
+        theme: AppTheme.lightTheme,
         locale: localeController.locale,
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -93,7 +93,7 @@ class RootGate extends StatelessWidget {
         switch (repo.authStatus) {
           case AuthStatus.initializing:
             return const Scaffold(
-              body: Center(child: CircularProgressIndicator(color: AppTheme.primaryGold)),
+              body: Center(child: CircularProgressIndicator(color: AppTheme.ink)),
             );
           case AuthStatus.signedOut:
             return const AuthScreen();
@@ -136,7 +136,7 @@ class _FirebaseSetupRequired extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.cloud_off, size: 48, color: AppTheme.primaryGold),
+                const Icon(Icons.cloud_off, size: 48, color: AppTheme.ink),
                 const SizedBox(height: 16),
                 Text(
                   context.l10n.serviceUnavailable,

@@ -4,8 +4,11 @@ rules_version = '2';
 // Crown & Blade - Firestore security rules
 // =====================================================================
 //
-// Sign-in is with Google (Firebase Auth). A person is identified by their
-// verified Google email, lowercased (myEmail() below). Every signed-in
+// Sign-in is with Google or with email + password (Firebase Auth). Email
+// accounts are created by functions/auth only after a 6-digit code sent to
+// the address is confirmed, so they are created with a verified email. A
+// person is identified by their verified sign-in email, lowercased
+// (myEmail() below). Every signed-in
 // person has a profile at users/{uid}, and the `role` stored there is the
 // only source of truth for what they may do:
 //
@@ -35,7 +38,7 @@ rules_version = '2';
 // that Google account.
 //
 // Cloud Functions (functions/notifications, functions/payments,
-// functions/bookings) use the Admin SDK and bypass these rules. Everything they own is read-only (or
+// functions/bookings, functions/auth) use the Admin SDK and bypass these rules. Everything they own is read-only (or
 // invisible) to clients: payments/*, notificationLog/*, inbox documents
 // (except `read`), shop subscription fields, booking payment fields and
 // reminder flags.
@@ -104,6 +107,13 @@ rules_version = '2';
 //   payments/{paymentId}       written by functions only; read by the payer,
 //                              the shop owner and admins
 //   notificationLog/{id}       functions only (no client access)
+//   emailCodes/{purpose}_{sha256(email)}
+//                              functions/auth only (no client access):
+//                              salted SHA-256 hash of a 6-digit email code
+//                              for 'register' or 'reset', expiresAt,
+//                              attempts, lastSentAt
+//   authRateLimits/{key}       functions/auth only (no client access):
+//                              per-email / per-IP send counters
 // =====================================================================
 
 service cloud.firestore {
@@ -1228,6 +1238,19 @@ service cloud.firestore {
         canManageShop(resource.data.shopId)
       );
       allow write: if false;
+    }
+
+    // -----------------------------------------------------------------
+    // emailCodes/* and authRateLimits/* - functions/auth only. They hold
+    // code hashes and send counters for email registration and password
+    // reset; clients must never read or write them.
+    // -----------------------------------------------------------------
+    match /emailCodes/{docId=**} {
+      allow read, write: if false;
+    }
+
+    match /authRateLimits/{docId=**} {
+      allow read, write: if false;
     }
 
     // notificationLog/* and everything else is closed.

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../shared/widgets/ui_kit.dart';
 import '../../../l10n/l10n.dart';
 import '../../reviews/reviews_l10n.dart';
 import '../../../models/barber_model.dart';
@@ -76,7 +77,7 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
 
         return Scaffold(
           appBar: AppBar(
-            title: Text(context.l10n.findTopBarbers, style: const TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(context.l10n.findTopBarbers, style: const TextStyle(fontWeight: FontWeight.w700)),
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(116),
               child: Column(
@@ -88,14 +89,8 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                       onChanged: (val) => setState(() => _searchQuery = val),
                       decoration: InputDecoration(
                         hintText: context.l10n.searchBarbersHint,
-                        prefixIcon: const Icon(Icons.search, color: AppTheme.primaryGold),
-                        filled: true,
-                        fillColor: AppTheme.darkCard,
+                        prefixIcon: const Icon(Icons.search, color: AppTheme.textSecondary),
                         contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
                       ),
                     ),
                   ),
@@ -116,11 +111,11 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                           child: ChoiceChip(
                             label: Text(_specialtyLabel(specialty)),
                             selected: isSelected,
-                            selectedColor: AppTheme.primaryGold,
+                            selectedColor: AppTheme.ink,
                             labelStyle: TextStyle(
                               fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: isSelected ? Colors.black : AppTheme.textSecondary,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected ? AppTheme.onInk : AppTheme.textPrimary,
                             ),
                             onSelected: (val) {
                               if (val) setState(() => _selectedSpecialty = specialty);
@@ -150,7 +145,7 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, FloatingPillNavBar.contentPadding),
                   itemCount: filtered.length,
                   itemBuilder: (context, index) {
                     final item = filtered[index];
@@ -169,11 +164,7 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: AppTheme.darkCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white12),
-      ),
+      decoration: AppTheme.cardDecoration(),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -184,6 +175,8 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
               children: [
                 CircleAvatar(
                   radius: 30,
+                  backgroundColor: AppTheme.surface,
+                  foregroundColor: AppTheme.textSecondary,
                   backgroundImage: barber.avatarUrl != null ? NetworkImage(barber.avatarUrl!) : null,
                   child: barber.avatarUrl == null ? const Icon(Icons.person, size: 30) : null,
                 ),
@@ -197,13 +190,14 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                           Expanded(
                             child: Text(
                               barber.name,
-                              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white),
+                              style: const TextStyle(
+                                  fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                             ),
                           ),
                           IconButton(
                             icon: Icon(
                               isFav ? Icons.favorite : Icons.favorite_border,
-                              color: isFav ? Colors.redAccent : AppTheme.textSecondary,
+                              color: isFav ? AppTheme.danger : AppTheme.textSecondary,
                               size: 20,
                             ),
                             padding: EdgeInsets.zero,
@@ -215,12 +209,13 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                       const SizedBox(height: 2),
                       Text(
                         barber.title,
-                        style: const TextStyle(fontSize: 13, color: AppTheme.primaryGold, fontWeight: FontWeight.w600),
+                        style:
+                            const TextStyle(fontSize: 13, color: AppTheme.textSecondary, fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(Icons.star, color: AppTheme.primaryGold, size: 14),
+                          const Icon(Icons.star_rounded, color: AppTheme.orange, size: 16),
                           const SizedBox(width: 4),
                           Text(
                             context.l10n.reviewsRatingShort(barber.rating, barber.reviewCount),
@@ -247,13 +242,13 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
-                  color: Colors.black26,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.white12),
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(AppTheme.radiusPanel),
+                  border: Border.all(color: AppTheme.hairline),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.storefront, size: 16, color: AppTheme.primaryGold),
+                    const Icon(Icons.storefront, size: 16, color: AppTheme.ink),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Column(
@@ -261,7 +256,8 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                         children: [
                           Text(
                             shop.name,
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                            style:
+                                const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                           ),
                           Text(
                             context.l10n.shopAddress(shop),
@@ -285,13 +281,13 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryGold.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
+                    color: AppTheme.card,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: AppTheme.hairline),
                   ),
                   child: Text(
                     spec,
-                    style: const TextStyle(fontSize: 10.5, color: AppTheme.primaryGold, fontWeight: FontWeight.w600),
+                    style: const TextStyle(fontSize: 11, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
                   ),
                 );
               }).toList(),
@@ -302,15 +298,13 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryGold,
-                  foregroundColor: Colors.black,
+                  minimumSize: const Size(0, 50),
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 icon: const Icon(Icons.calendar_month, size: 18),
                 label: Text(
                   context.l10n.bookWith(barber.name.split(' ').first),
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                 ),
                 onPressed: () {
                   if (defaultService == null) {

@@ -26,7 +26,7 @@ Multi-tenant barbershop booking platform for Addis Ababa, built with Flutter and
 | Localization | `lib/l10n/` | English and Amharic (`app_en.arb`, `app_am.arb`). Prices in Birr, phones in +251 form, dates and times in Addis time. |
 | Security | `firestore.rules` | Roles, shop ownership, booking validity (price, duration, slot locks), and payment and subscription fields that only functions may write. Tested in `firestore-tests/`. |
 
-Collections: `users`, `invites`, `barbershops` (with `services`, `barbers`, `barbers/*/slotLocks`, `barbers/*/timeOff`, `queue`, `queueSummary` (functions only), `reviews`, and `stats` and `clients` (functions only; owner and admin read) subcollections), `bookings`, `plans`, `payments`, `notificationLog` and `insightsApplied` (functions only), `users/{uid}/devices` and `users/{uid}/notifications`. All dates are stored as ISO-8601 UTC strings.
+Collections: `users`, `invites`, `barbershops` (with `services`, `barbers`, `barbers/*/slotLocks`, `barbers/*/timeOff`, `queue`, `queueSummary` (functions only), `reviews`, and `stats` and `clients` (functions only; owner and admin read) subcollections), `bookings`, `plans`, `payments`, `notificationLog`, `insightsApplied`, `emailCodes` and `authRateLimits` (functions only), `users/{uid}/devices` and `users/{uid}/notifications`. All dates are stored as ISO-8601 UTC strings.
 
 In demo mode and in tests every feature runs on a local store (`LocalDataStore`, `LocalQueueStore`, `LocalReviewStore`, and `ReportsService` computing the figures from the cached bookings), so nothing needs Firebase.
 
@@ -40,7 +40,7 @@ In demo mode and in tests every feature runs on a local store (`LocalDataStore`,
 
 ## How sign-in and roles work
 
-- Everyone signs in with their Google account (Firebase Authentication, Google provider). There are no passwords and no SMS codes. A person is identified by their verified Google email, lowercased.
+- People sign in with their Google account, or with an email address and password (Firebase Authentication, Google and Email/Password providers). An email account is only created after a 6-digit code sent to that address is entered, so its email is verified too (see [Email registration codes](#email-registration-codes)). There are no SMS codes. A person is identified by their verified sign-in email, lowercased, so invites work the same for both kinds of account.
 - On first sign-in the person enters their name and a contact phone number (Ethiopian mobile, `+2519...` or `+2517...`) and gets a profile at `users/{uid}` holding `email` (taken from the Google account, cannot be changed later), `name` and `phone`. The phone is not verified; it is used for bookings, SMS reminders and Chapa, and the person can change it (and their name and language) in their profile.
 - The role on that profile is enforced by [firestore.rules](firestore.rules). Nobody can choose their own role:
   - Without an invite, a new account is a **customer**.
@@ -133,7 +133,7 @@ Edit `lib/l10n/app_en.arb` and `lib/l10n/app_am.arb` (they have the same keys), 
 
 ## Cloud Functions
 
-There are five codebases (TypeScript, Node 20, region `europe-west1`), all listed in [firebase.json](firebase.json) and built and tested in CI:
+There are six codebases (TypeScript, Node 20, region `europe-west1`), all listed in [firebase.json](firebase.json) and built and tested in CI:
 
 | Codebase | Functions |
 |---|---|
@@ -141,6 +141,7 @@ There are five codebases (TypeScript, Node 20, region `europe-west1`), all liste
 | `functions/payments` | Callables `createBookingPayment`, `createSubscriptionPayment`, `verifyPayment`, `setShopSubscription`, `seedDefaultPlans`, `resolvePaymentReview` (admin only); HTTPS `chapaWebhook`; scheduled `dailySubscriptionCheck` (03:00 Addis time) |
 | `functions/bookings` | `verifyBookingLocks` (on booking create: checks a slot lock exists for every 15-minute block and cancels the booking with `cancelledBy: 'system'`, `cancelReason: 'slot_conflict'` if one is missing or taken), `verifyRescheduledBookingLocks` (on booking update when the time changed: the same check for the new interval; time-off locks count as taken), `cleanupExpiredSlotLocks` (daily 04:00 Addis: deletes slot locks whose `expiresAt` has passed, booking and time-off locks alike) |
 | `functions/queue` | `onQueueEntryWritten` (recomputes `barbershops/{s}/queueSummary/current` in a transaction, sets a customer's duplicate remote entries to `left`, and sends a `queueNext` inbox entry and push, once, to a remote customer who reaches the front) |
+| `functions/auth` | Callables `requestEmailCode`, `completeEmailRegistration`, `resetPasswordWithCode` (email + password accounts verified by an emailed 6-digit code, see [Email registration codes](#email-registration-codes)); scheduled `cleanupEmailCodes` (daily 04:30 Addis: deletes expired codes and send counters) |
 | `functions/insights` | `aggregateBookingStats` (on every booking write: keeps `barbershops/{s}/stats/{yyyy-MM}` and `clients/{customerId}` up to date, idempotently through `insightsApplied/{bookingId}` markers; system slot-conflict cancellations are not counted), `aggregateReviewRatings` (on review writes: recalculates `rating` and `reviewCount` on the shop and its barbers), callable `rebuildShopStats` (admin only: rebuilds one shop's stats and clients from all its bookings) |
 
 ### Before the first deploy
@@ -157,15 +158,18 @@ There are five codebases (TypeScript, Node 20, region `europe-west1`), all liste
    firebase functions:secrets:set AFROMESSAGE_SENDER         # AfroMessage sender name
    ```
 
+   The `auth` codebase needs the SMTP secrets too; see [Email registration codes](#email-registration-codes).
+
 4. Deploy. The first deploy of `payments` asks for `PAYMENT_RETURN_URL`, the page Chapa sends the customer back to. Use the web app's root URL, for example `https://<host>/`: the app reads `?paymentId=` from it and verifies the payment. `CHAPA_CALLBACK_URL` is optional and defaults to the `chapaWebhook` URL.
 
    ```sh
    firebase deploy --only firestore:rules,firestore:indexes
-   firebase deploy --only functions              # all five codebases
+   firebase deploy --only functions              # all six codebases
    firebase deploy --only functions:payments     # or just one
    firebase deploy --only functions:bookings
    firebase deploy --only functions:queue
    firebase deploy --only functions:insights
+   firebase deploy --only functions:auth
    ```
 
    Deploy `firestore:indexes` first: the bounded booking listeners need the bookings `startAt` composite indexes, the lock cleanup needs the collection-group index on `slotLocks.expiresAt`, the queue needs `queue (status, createdAt)` and `queue (addedBy, createdAt desc)`, barber review lists need `reviews (barberId, createdAt desc)` and `reviews (barberId, rating)`, and `aggregateBookingStats` needs `bookings (shopId, customerId, status, startAt desc)`. Index builds can take a few minutes; queries fail until they finish.
@@ -175,6 +179,47 @@ There are five codebases (TypeScript, Node 20, region `europe-west1`), all liste
 5. In the Chapa dashboard, set the webhook URL to `https://europe-west1-<project-id>.cloudfunctions.net/chapaWebhook`, with the same secret as `CHAPA_WEBHOOK_SECRET`.
 6. Create the subscription plans: as admin, open Subscriptions > Plans > Create default plans, or run the seed script. The defaults are Basic at 500 ETB a month for up to 3 barbers, Pro at 1,200 ETB a month with unlimited barbers, and a 30-day free trial for every new shop.
 
+### Email registration codes
+
+Besides Google, people can create an account with an email address and a password. The address is confirmed with a 6-digit code sent by email, and the same kind of code resets a forgotten password. `functions/auth` does the server side; the app calls its three callables.
+
+**Setup (once per project):**
+
+1. Firebase console > **Authentication > Sign-in method > Add new provider > Email/Password**: turn on **Email/Password** (leave "Email link" off) and save.
+2. Get SMTP credentials from one of:
+   - **Gmail:** turn on 2-Step Verification for the sending Google account, then create an app password at <https://myaccount.google.com/apppasswords>. Host `smtp.gmail.com`, port `465`, user = the Gmail address, password = the 16-character app password. Gmail allows about 500 messages a day.
+   - **Brevo:** Settings > SMTP & API > SMTP: host `smtp-relay.brevo.com`, port `587`, user = the SMTP login shown there, password = an SMTP key. Verify the sender address or domain first.
+   - **Resend:** host `smtp.resend.com`, port `465`, user `resend`, password = an API key, with a verified domain.
+3. Set the secrets (each command prompts for the value):
+
+   ```sh
+   firebase functions:secrets:set SMTP_HOST    # e.g. smtp.gmail.com
+   firebase functions:secrets:set SMTP_PORT    # 465 (TLS) or 587 (STARTTLS)
+   firebase functions:secrets:set SMTP_USER
+   firebase functions:secrets:set SMTP_PASS    # app password / SMTP key
+   firebase functions:secrets:set MAIL_FROM    # e.g. "Crown & Blade <you@gmail.com>"
+   ```
+
+4. Deploy (the project must be on the **Blaze** plan): `firebase deploy --only functions:auth`, and `firebase deploy --only firestore:rules` if the rules changed.
+
+If a secret is empty, `requestEmailCode` fails with `email-not-configured` and logs which secrets are missing. To change a secret later, set it again and redeploy `functions:auth`.
+
+**Flow:**
+
+- **Register:** the app calls `requestEmailCode({email, purpose: 'register', language})`, the person types the code, then the app calls `completeEmailRegistration({email, code, password, name?})`. That creates the Firebase Auth user with a verified email. The app then signs in with `signInWithEmailAndPassword` and runs the usual first sign-in profile setup (name, contact phone, invite), which creates `users/{uid}`; the function never writes `users/*`.
+- **Forgot password:** `requestEmailCode({email, purpose: 'reset', language})`, then `resetPasswordWithCode({email, code, newPassword})`, which sets the password and signs the account out everywhere else (refresh tokens revoked). The answer to a reset request is the same whether or not the account exists; a code is only emailed to accounts that have a password (a Google-only account gets nothing and keeps signing in with Google).
+- The email is in the language the app is set to, followed by the other one (English and Amharic).
+- Errors come back as `HttpsError` with `details.code`: `invalid-email`, `invalid-input`, `email-already-registered`, `too-soon` (with `details.retryAfterSeconds`), `rate-limited`, `invalid-code` (with `details.attemptsLeft`), `code-expired`, `weak-password`, `email-not-configured`, `email-send-failed`, `internal`.
+
+**Limits:**
+
+- A code is 6 random digits, valid for 10 minutes and usable once. Only a salted SHA-256 hash is stored, in `emailCodes/{purpose}_{sha256(email)}`; a new code replaces the previous one. Register and reset codes are separate.
+- 5 wrong tries and the code is deleted (`code-expired`); the person asks for a new one.
+- One code per email and purpose every 60 seconds, at most 5 codes per email per day and 20 per IP address per hour (counters in `authRateLimits`, keyed by hashes).
+- Passwords: 8 to 128 characters with at least one letter and one digit.
+- `emailCodes` and `authRateLimits` are closed to clients in the rules; `cleanupEmailCodes` deletes expired documents daily.
+- App Check is not enforced on these callables yet.
+
 ### Push notifications
 
 - **Android:** works after `flutterfire configure`. The app creates the `bookings` notification channel.
@@ -183,6 +228,7 @@ There are five codebases (TypeScript, Node 20, region `europe-west1`), all liste
 
 ## What still needs real-world setup
 
+- SMTP credentials for the email codes (Gmail app password, Brevo or Resend) and the Email/Password provider turned on (see [Email registration codes](#email-registration-codes)).
 - A Firebase project (`flutterfire configure`), the Google sign-in provider enabled (with the Android SHA-1 fingerprints and the web domains authorized), and the first admin invite (see above).
 - A Chapa merchant account. Test with Chapa test keys first: the webhook signature check and the verify response were written from Chapa's docs and have not run against live Chapa.
 - An AfroMessage account with an approved sender name. Until then, set `AFROMESSAGE_TOKEN` to `none`.
@@ -215,5 +261,6 @@ cd functions/payments && npm install && npm run build && npm test
 cd functions/bookings && npm install && npm run build && npm test
 cd functions/queue && npm install && npm run build && npm test
 cd functions/insights && npm install && npm run build && npm test
+cd functions/auth && npm install && npm run build && npm test
 cd tool/seed && npm install && npm test          # seed script
 ```
