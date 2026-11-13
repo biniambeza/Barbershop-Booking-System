@@ -41,6 +41,9 @@ class AppUser {
   final String? barberId;
   final DateTime createdAt;
 
+  /// Preferred language: 'en' or 'am'. Null means not chosen yet.
+  final String? language;
+
   AppUser({
     required this.uid,
     this.email,
@@ -50,7 +53,11 @@ class AppUser {
     this.shopId,
     this.barberId,
     required this.createdAt,
+    this.language,
   });
+
+  /// Language for messages (SMS / push). Amharic unless chosen otherwise.
+  String get preferredLanguage => language ?? 'am';
 
   Map<String, dynamic> toMap() {
     return {
@@ -62,6 +69,7 @@ class AppUser {
       if (shopId != null) 'shopId': shopId,
       if (barberId != null) 'barberId': barberId,
       'createdAt': createdAt.toUtc().toIso8601String(),
+      if (language != null) 'language': language,
     };
   }
 
@@ -74,6 +82,7 @@ class AppUser {
     String? shopId,
     String? barberId,
     DateTime? createdAt,
+    String? language,
   }) {
     return AppUser(
       uid: uid ?? this.uid,
@@ -84,6 +93,7 @@ class AppUser {
       shopId: shopId ?? this.shopId,
       barberId: barberId ?? this.barberId,
       createdAt: createdAt ?? this.createdAt,
+      language: language ?? this.language,
     );
   }
 
@@ -96,9 +106,10 @@ class AppUser {
       role: UserRole.fromString(map['role']),
       shopId: map['shopId'],
       barberId: map['barberId'],
-      createdAt: map['createdAt'] != null
+      createdAt: map['createdAt'] is String
           ? DateTime.tryParse(map['createdAt']) ?? DateTime.now()
           : DateTime.now(),
+      language: map['language'] == 'en' || map['language'] == 'am' ? map['language'] : null,
     );
   }
 }

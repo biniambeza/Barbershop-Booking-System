@@ -11,6 +11,13 @@ class Barber {
   final String? phone;
   final List<String> specialties;
 
+  /// Days this barber works (1 = Mon ... 7 = Sun). Null = the shop's days.
+  final List<int>? workingDays;
+
+  /// Personal hours (Addis local, 0-24). Null = the shop's hours.
+  final int? startHour;
+  final int? endHour;
+
   Barber({
     required this.id,
     required this.shopId,
@@ -23,8 +30,12 @@ class Barber {
     this.email,
     this.phone,
     this.specialties = const ['Skin Fade', 'Beard Trim', 'Scissor Cut'],
+    this.workingDays,
+    this.startHour,
+    this.endHour,
   });
 
+  /// Full document, used when the profile is created.
   Map<String, dynamic> toMap() {
     return {
       'shopId': shopId,
@@ -37,6 +48,27 @@ class Barber {
       'email': email,
       'phone': phone,
       'specialties': specialties,
+      if (workingDays != null) 'workingDays': workingDays,
+      if (startHour != null) 'startHour': startHour,
+      if (endHour != null) 'endHour': endHour,
+    };
+  }
+
+  /// The fields an owner may edit (never rating/reviewCount/shopId).
+  /// Null schedule fields are returned as null; the data layer turns them
+  /// into field deletes.
+  Map<String, dynamic> toProfileMap() {
+    return {
+      'name': name,
+      'title': title,
+      'avatarUrl': avatarUrl,
+      'isAvailable': isAvailable,
+      'email': email,
+      'phone': phone,
+      'specialties': specialties,
+      'workingDays': workingDays,
+      'startHour': startHour,
+      'endHour': endHour,
     };
   }
 
@@ -52,6 +84,9 @@ class Barber {
     String? email,
     String? phone,
     List<String>? specialties,
+    List<int>? workingDays,
+    int? startHour,
+    int? endHour,
   }) {
     return Barber(
       id: id ?? this.id,
@@ -65,6 +100,9 @@ class Barber {
       email: email ?? this.email,
       phone: phone ?? this.phone,
       specialties: specialties ?? this.specialties,
+      workingDays: workingDays ?? this.workingDays,
+      startHour: startHour ?? this.startHour,
+      endHour: endHour ?? this.endHour,
     );
   }
 
@@ -82,6 +120,9 @@ class Barber {
       phone: map['phone'],
       specialties: (map['specialties'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
           const ['Skin Fade', 'Beard Trim'],
+      workingDays: (map['workingDays'] as List<dynamic>?)?.map((e) => (e as num).toInt()).toList(),
+      startHour: (map['startHour'] as num?)?.toInt(),
+      endHour: (map['endHour'] as num?)?.toInt(),
     );
   }
 }

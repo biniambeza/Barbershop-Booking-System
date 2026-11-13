@@ -1,21 +1,39 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../data/addis_time.dart';
+import '../../../l10n/l10n.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../models/service_model.dart';
 import '../../../models/barber_model.dart';
+import '../../../models/booking_model.dart';
 import '../../../services/app_repository.dart';
+import '../../../services/availability_service.dart';
+import '../../payments/payment_flow.dart';
 
+/// Pick barber, service, day and a real free time, then book.
+///
+/// Slots come from [availableSlotStarts]: the barber's working days/hours
+/// (within the shop's), the service duration, "now" in Addis Ababa plus a
+/// lead time, and the barber's live busy times
+/// ([AppRepository.watchBarberBusyTimes]: visible bookings + slot locks).
+/// The server transaction is the final word: if someone else took the slot
+/// first, [SlotTakenException] is shown and the slots refresh.
 class BookingFlowScreen extends StatefulWidget {
   final Barbershop shop;
   final BarbershopService initialService;
   final Barber initialBarber;
+
+  /// Overrides the clock (tests).
+  final DateTime Function()? clock;
 
   const BookingFlowScreen({
     super.key,
     required this.shop,
     required this.initialService,
     required this.initialBarber,
+    this.clock,
   });
 
   @override
@@ -23,39 +41,124 @@ class BookingFlowScreen extends StatefulWidget {
 }
 
 class _BookingFlowScreenState extends State<BookingFlowScreen> {
-  late BarbershopService _selectedService;
-  late Barber _selectedBarber;
-  DateTime _selectedDate = DateTime.now();
-  String? _selectedTimeSlot;
+  final _repo = AppRepository.instance;
+
+  late String _serviceId;
+  late String _barberId;
+  late DateTime _date; // Addis calendar day, DateTime(y, m, d)
+  DateTime? _selectedStart; // UTC
   bool _isSubmitting = false;
 
-  final List<String> _timeSlots = [
-    '09:00 AM',
-    '09:45 AM',
-    '10:30 AM',
-    '11:15 AM',
-    '12:00 PM',
-    '01:30 PM',
-    '02:15 PM',
-    '03:00 PM',
-    '03:45 PM',
-    '04:30 PM',
-    '05:15 PM',
-    '06:00 PM',
-  ];
+  /// Cash at the shop (default) or Chapa right after booking. The booking
+  /// is always created as 'cash'; the payments function switches it to
+  /// 'chapa' when the checkout starts.
+  PaymentMethod _paymentMethod = PaymentMethod.cash;
+
+  List<BusyInterval> _busy = const [];
+  bool _busyLoaded = false;
+  StreamSubscription<List<BusyInterval>>? _busySub;
+  Timer? _clockTimer;
+  late DateTime _now;
+
+  DateTime _readClock() => (widget.clock?.call() ?? DateTime.now()).toUtc();
 
   @override
   void initState() {
     super.initState();
-    _selectedService = widget.initialService;
-    _selectedBarber = widget.initialBarber;
-    _selectedTimeSlot = _timeSlots[2]; // Default 10:30 AM
+    _now = _readClock();
+    _serviceId = widget.initialService.id;
+    _barberId = widget.initialBarber.id;
+    _date = _firstBookableDate(_currentShop, _currentBarber) ?? addisToday(_now);
+    _subscribeBusy();
+    // Past slots disappear as time goes by.
+    _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) setState(() => _now = _readClock());
+    });
   }
 
+  @override
+  void dispose() {
+    _busySub?.cancel();
+    _clockTimer?.cancel();
+    super.dispose();
+  }
+
+  // Live copies from the repository (fall back to what we were given).
+  Barbershop get _currentShop => _repo.getShopById(widget.shop.id) ?? widget.shop;
+  Barber get _currentBarber => _repo.getBarberById(_barberId) ?? widget.initialBarber;
+  BarbershopService get _currentService => _repo.getServiceById(_serviceId) ?? widget.initialService;
+
+  DateTime? _firstBookableDate(Barbershop shop, Barber barber) {
+    for (final d in upcomingAddisDates(nowUtc: _now)) {
+      if (isBookableDate(shop: shop, barber: barber, addisDate: d, nowUtc: _now)) return d;
+    }
+    return null;
+  }
+
+  void _subscribeBusy() {
+    _busySub?.cancel();
+    _busyLoaded = false;
+    _busySub = _repo.watchBarberBusyTimes(widget.shop.id, _barberId, _date).listen((busy) {
+      if (!mounted) return;
+      setState(() {
+        _busy = busy;
+        _busyLoaded = true;
+      });
+    });
+  }
+
+  void _selectBarber(Barber barber) {
+    if (barber.id == _barberId) return;
+    setState(() {
+      _barberId = barber.id;
+      _selectedStart = null;
+      final shop = _currentShop;
+      if (!isBookableDate(shop: shop, barber: barber, addisDate: _date, nowUtc: _now)) {
+        _date = _firstBookableDate(shop, barber) ?? _date;
+      }
+    });
+    _subscribeBusy();
+  }
+
+  void _selectDate(DateTime date) {
+    if (DateUtils.isSameDay(date, _date)) return;
+    setState(() {
+      _date = date;
+      _selectedStart = null;
+    });
+    _subscribeBusy();
+  }
+
+  List<DateTime> _slots(Barbershop shop, Barber barber, BarbershopService service) => availableSlotStarts(
+        shop: shop,
+        barber: barber,
+        durationMinutes: service.durationMinutes,
+        addisDate: _date,
+        busy: _busy,
+        nowUtc: _now,
+      );
+
+  /// The stored display slot (always English 12-hour form, e.g. '02:30 PM').
+  static String _slotLabel(DateTime startUtc) {
+    final t = toAddisWallClock(startUtc);
+    return formatTimeSlot(t.hour, t.minute);
+  }
+
+  /// The slot time shown to the user, in the active language.
+  String _slotDisplay(DateTime startUtc) => context.fmt.addisTime(startUtc);
+
+  String _etb(double amount) => context.fmt.birr(amount);
+
   Future<void> _confirmBooking() async {
-    if (_selectedTimeSlot == null) {
+    final shop = _currentShop;
+    final barber = _currentBarber;
+    final service = _currentService;
+    _now = _readClock();
+    final start = _selectedStart;
+    if (start == null || !_slots(shop, barber, service).contains(start)) {
+      setState(() => _selectedStart = null);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select an appointment time slot.')),
+        SnackBar(content: Text(context.l10n.selectAvailableTime)),
       );
       return;
     }
@@ -63,86 +166,137 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     setState(() => _isSubmitting = true);
 
     try {
-      final booking = await AppRepository.instance.createBooking(
-        shopId: widget.shop.id,
-        shopName: widget.shop.name,
-        barberId: _selectedBarber.id,
-        barberName: _selectedBarber.name,
-        serviceId: _selectedService.id,
-        serviceName: _selectedService.name,
-        price: _selectedService.price,
-        date: _selectedDate,
-        timeSlot: _selectedTimeSlot!,
+      final booking = await _repo.createBooking(
+        shopId: shop.id,
+        shopName: shop.name,
+        barberId: barber.id,
+        barberName: barber.name,
+        serviceId: service.id,
+        serviceName: service.name,
+        price: service.price,
+        date: DateTime(_date.year, _date.month, _date.day),
+        timeSlot: _slotLabel(start),
+        startAt: start,
+        durationMinutes: service.durationMinutes,
       );
 
       if (!mounted) return;
-
-      showDialog(
+      _showConfirmation(booking.shopName, booking.barberName, booking.serviceName, booking.startAt, booking.price,
+          booking: booking);
+    } on SlotTakenException {
+      if (!mounted) return;
+      setState(() => _selectedStart = null);
+      _subscribeBusy(); // refresh the busy times
+      await showDialog<void>(
         context: context,
-        barrierDismissible: false,
         builder: (ctx) => AlertDialog(
           backgroundColor: AppTheme.darkCard,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryGold.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.check_circle_rounded, size: 54, color: AppTheme.primaryGold),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Booking Confirmed!',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Your seat with ${booking.barberName} is reserved.',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.darkSurface,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    _buildReceiptRow('Shop', booking.shopName),
-                    _buildReceiptRow('Service', booking.serviceName),
-                    _buildReceiptRow('Date', DateFormat('EEE, MMM d').format(booking.date)),
-                    _buildReceiptRow('Time', booking.timeSlot),
-                    _buildReceiptRow('Total', '\$${booking.price.toStringAsFixed(0)}', isHighlight: true),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(ctx).pop(); // dismiss dialog
-                  Navigator.of(context).pop(); // return to detail or home
-                },
-                child: const Text('Back to Home'),
-              ),
-            ],
-          ),
+          icon: const Icon(Icons.event_busy_rounded, color: AppTheme.primaryGold, size: 40),
+          title: Text(context.l10n.slotJustTaken),
+          content: Text(context.l10n.slotJustTakenBody),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(context.l10n.pickAnotherTime)),
+          ],
         ),
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        final message = e is StateError ? e.message : e is FormatException ? e.message : '$e';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
       }
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
       }
     }
+  }
+
+  void _showConfirmation(String shopName, String barberName, String serviceName, DateTime startUtc, double price,
+      {Booking? booking}) {
+    final payOnline = booking != null && _paymentMethod == PaymentMethod.chapa;
+    final local = toAddisWallClock(startUtc);
+    final l = context.l10n;
+    final fmt = context.fmt;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.darkCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryGold.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check_circle_rounded, size: 54, color: AppTheme.primaryGold),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              l.bookingConfirmed,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l.seatReserved(barberName),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.darkSurface,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                children: [
+                  _buildReceiptRow(l.receiptShop, shopName),
+                  _buildReceiptRow(l.receiptService, serviceName),
+                  _buildReceiptRow(l.receiptDate, fmt.dayShort(DateTime(local.year, local.month, local.day))),
+                  _buildReceiptRow(l.receiptTime, _slotDisplay(startUtc)),
+                  _buildReceiptRow(l.receiptTotal, _etb(price), isHighlight: true),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            if (payOnline) ...[
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  key: const ValueKey('pay-now-chapa'),
+                  onPressed: () async {
+                    Navigator.of(ctx).pop(); // dismiss dialog
+                    await payForBooking(context, booking);
+                    if (mounted) Navigator.of(context).pop(); // return to detail or home
+                  },
+                  icon: const Icon(Icons.lock_outline_rounded, size: 18),
+                  label: Text(l.payAmountNow(_etb(price))),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  Navigator.of(context).pop();
+                },
+                child: Text(l.payAtShopInstead),
+              ),
+            ] else
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop(); // dismiss dialog
+                  Navigator.of(context).pop(); // return to detail or home
+                },
+                child: Text(l.backToHome),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildReceiptRow(String label, String value, {bool isHighlight = false}) {
@@ -167,188 +321,295 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final repo = AppRepository.instance;
-    final allServices = repo.getServicesForShop(widget.shop.id);
-    final allBarbers = repo.getBarbersForShop(widget.shop.id);
+    return ListenableBuilder(
+      listenable: _repo,
+      builder: (context, _) {
+        final shop = _currentShop;
+        final barber = _currentBarber;
+        final service = _currentService;
+        final allServices = _repo.getServicesForShop(shop.id);
+        final allBarbers = _repo.getBarbersForShop(shop.id);
+        final slots = _slots(shop, barber, service);
+        final selected = slots.contains(_selectedStart) ? _selectedStart : null;
+        final l = context.l10n;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Confirm Appointment'),
+        return Scaffold(
+          appBar: AppBar(title: Text(l.confirmAppointment)),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildShopSummary(shop),
+                const SizedBox(height: 24),
+                _sectionTitle(context, l.stepChooseBarber),
+                const SizedBox(height: 12),
+                _buildBarberPicker(allBarbers.isEmpty ? [barber] : allBarbers),
+                const SizedBox(height: 24),
+                _sectionTitle(context, l.stepSelectedService),
+                const SizedBox(height: 12),
+                _buildServicePicker(allServices.isEmpty ? [service] : allServices),
+                const SizedBox(height: 24),
+                _sectionTitle(context, l.stepSelectDate),
+                const SizedBox(height: 12),
+                _buildDatePicker(shop, barber),
+                const SizedBox(height: 24),
+                _sectionTitle(context, l.stepAvailableTimes),
+                const SizedBox(height: 4),
+                Text(
+                  l.durationAddisTime(service.durationMinutes),
+                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                ),
+                const SizedBox(height: 12),
+                _buildSlots(shop, barber, slots, selected),
+                const SizedBox(height: 32),
+                _buildTotal(service, selected),
+                const SizedBox(height: 30),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _sectionTitle(BuildContext context, String text) =>
+      Text(text, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold));
+
+  Widget _buildShopSummary(Barbershop shop) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.darkCard,
+        borderRadius: BorderRadius.circular(12),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              shop.imageUrl,
+              width: 50,
+              height: 50,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(width: 50, height: 50, color: AppTheme.darkSurface),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(shop.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                Text(context.l10n.shopAddress(shop), style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBarberPicker(List<Barber> barbers) {
+    return SizedBox(
+      height: 96,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: barbers.length,
+        itemBuilder: (context, index) {
+          final barber = barbers[index];
+          final isSelected = _barberId == barber.id;
+          return Opacity(
+            opacity: barber.isAvailable ? 1 : 0.45,
+            child: InkWell(
+              onTap: barber.isAvailable ? () => _selectBarber(barber) : null,
+              child: Container(
+                width: 120,
+                margin: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppTheme.primaryGold.withValues(alpha: 0.15) : AppTheme.darkCard,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected ? AppTheme.primaryGold : Colors.transparent,
+                    width: 2,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundImage: barber.avatarUrl != null ? NetworkImage(barber.avatarUrl!) : null,
+                      onBackgroundImageError: barber.avatarUrl != null ? (error, stackTrace) {} : null,
+                      backgroundColor: AppTheme.primaryGold,
+                      child: barber.avatarUrl == null
+                          ? Text(barber.name.isEmpty ? '?' : barber.name.substring(0, 1), style: const TextStyle(color: Colors.black))
+                          : null,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(barber.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    if (!barber.isAvailable)
+                      Text(context.l10n.unavailable, style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildServicePicker(List<BarbershopService> services) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: services.map((service) {
+          final isSelected = _serviceId == service.id;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(context.l10n.serviceChip(service.name, _etb(service.price), service.durationMinutes)),
+              selected: isSelected,
+              selectedColor: AppTheme.primaryGold,
+              onSelected: (val) {
+                if (val) {
+                  setState(() {
+                    _serviceId = service.id;
+                    _selectedStart = null;
+                  });
+                }
+              },
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildDatePicker(Barbershop shop, Barber barber) {
+    final dates = upcomingAddisDates(nowUtc: _now);
+    return SizedBox(
+      height: 80,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: dates.length,
+        itemBuilder: (context, index) {
+          final date = dates[index];
+          final enabled = isBookableDate(shop: shop, barber: barber, addisDate: date, nowUtc: _now);
+          final isSelected = DateUtils.isSameDay(_date, date);
+          final fmt = context.fmt;
+          final dayName = fmt.weekdayShort(date);
+          final dayNum = '${date.day}';
+          final fg = isSelected
+              ? Colors.black
+              : enabled
+                  ? AppTheme.textPrimary
+                  : AppTheme.textSecondary.withValues(alpha: 0.4);
+
+          return Tooltip(
+            message: enabled ? fmt.weekdayMonthDay(date) : context.l10n.closed,
+            child: InkWell(
+              key: ValueKey('booking-date-$index'),
+              onTap: enabled ? () => _selectDate(date) : null,
+              child: Container(
+                width: 65,
+                margin: const EdgeInsets.only(right: 10),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppTheme.primaryGold : AppTheme.darkCard.withValues(alpha: enabled ? 1 : 0.4),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected ? AppTheme.primaryGold : Colors.white.withValues(alpha: 0.05),
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      index == 0 ? context.l10n.today : dayName,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isSelected ? Colors.black : AppTheme.textSecondary.withValues(alpha: enabled ? 1 : 0.4),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      dayNum,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: fg,
+                        decoration: enabled ? null : TextDecoration.lineThrough,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSlots(Barbershop shop, Barber barber, List<DateTime> slots, DateTime? selected) {
+    final l = context.l10n;
+    String? emptyMessage;
+    if (shop.isSuspended) {
+      emptyMessage = l.shopNotTakingBookings;
+    } else if (!barber.isAvailable) {
+      emptyMessage = l.barberNotTakingBookings(barber.name);
+    } else if (!isBookableDate(shop: shop, barber: barber, addisDate: _date, nowUtc: _now)) {
+      emptyMessage = l.barberDayOff(barber.name);
+    } else if (!_busyLoaded) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    } else if (slots.isEmpty) {
+      emptyMessage = l.noFreeTimes;
+    }
+    if (emptyMessage != null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: AppTheme.darkCard, borderRadius: BorderRadius.circular(12)),
+        child: Row(
           children: [
-            // Shop Summary Bar
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.darkCard,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      widget.shop.imageUrl,
-                      width: 50,
-                      height: 50,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(width: 50, height: 50, color: AppTheme.darkSurface),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(widget.shop.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                        Text('${widget.shop.address}, ${widget.shop.city}', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+            const Icon(Icons.event_busy_rounded, color: AppTheme.textSecondary, size: 20),
+            const SizedBox(width: 10),
+            Expanded(child: Text(emptyMessage, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13))),
+          ],
+        ),
+      );
+    }
+
+    final groups = <String, List<DateTime>>{l.morning: [], l.afternoon: [], l.evening: []};
+    for (final s in slots) {
+      final h = toAddisWallClock(s).hour;
+      groups[h < 12 ? l.morning : h < 17 ? l.afternoon : l.evening]!.add(s);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final entry in groups.entries)
+          if (entry.value.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8, top: 4),
+              child: Text(entry.key, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
             ),
-            const SizedBox(height: 24),
-
-            // Step 1: Barber Selection
-            Text('1. Choose Barber', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 90,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: allBarbers.length,
-                itemBuilder: (context, index) {
-                  final barber = allBarbers[index];
-                  final isSelected = _selectedBarber.id == barber.id;
-                  return InkWell(
-                    onTap: () => setState(() => _selectedBarber = barber),
-                    child: Container(
-                      width: 120,
-                      margin: const EdgeInsets.only(right: 12),
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.primaryGold.withValues(alpha: 0.15) : AppTheme.darkCard,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected ? AppTheme.primaryGold : Colors.transparent,
-                          width: 2,
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircleAvatar(
-                            radius: 18,
-                            backgroundImage: barber.avatarUrl != null ? NetworkImage(barber.avatarUrl!) : null,
-                            onBackgroundImageError: barber.avatarUrl != null ? (error, stackTrace) {} : null,
-                            backgroundColor: AppTheme.primaryGold,
-                            child: barber.avatarUrl == null ? Text(barber.name.substring(0, 1), style: const TextStyle(color: Colors.black)) : null,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(barber.name, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), maxLines: 1),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Step 2: Service Selection
-            Text('2. Selected Service', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: allServices.map((service) {
-                  final isSelected = _selectedService.id == service.id;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text('${service.name} (\$${service.price.toStringAsFixed(0)})'),
-                      selected: isSelected,
-                      selectedColor: AppTheme.primaryGold,
-                      onSelected: (val) {
-                        if (val) setState(() => _selectedService = service);
-                      },
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Step 3: Date Picker
-            Text('3. Select Date', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 80,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: 14,
-                itemBuilder: (context, index) {
-                  final date = DateTime.now().add(Duration(days: index));
-                  final isSelected = DateUtils.isSameDay(_selectedDate, date);
-                  final dayName = DateFormat('EEE').format(date);
-                  final dayNum = DateFormat('d').format(date);
-
-                  return InkWell(
-                    onTap: () => setState(() => _selectedDate = date),
-                    child: Container(
-                      width: 65,
-                      margin: const EdgeInsets.only(right: 10),
-                      decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.primaryGold : AppTheme.darkCard,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected ? AppTheme.primaryGold : Colors.white.withValues(alpha: 0.05),
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            dayName,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isSelected ? Colors.black : AppTheme.textSecondary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            dayNum,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: isSelected ? Colors.black : AppTheme.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // Step 4: Time Slot
-            Text('4. Available Time Slots', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
             Wrap(
               spacing: 10,
               runSpacing: 10,
-              children: _timeSlots.map((slot) {
-                final isSelected = _selectedTimeSlot == slot;
+              children: entry.value.map((slot) {
+                final isSelected = selected == slot;
+                final label = _slotLabel(slot);
                 return InkWell(
-                  onTap: () => setState(() => _selectedTimeSlot = slot),
+                  key: ValueKey('slot-$label'),
+                  onTap: () => setState(() => _selectedStart = slot),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
@@ -359,7 +620,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                       ),
                     ),
                     child: Text(
-                      slot,
+                      _slotDisplay(slot),
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -370,49 +631,114 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                 );
               }).toList(),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 12),
+          ],
+      ],
+    );
+  }
 
-            // Total Card & CTA
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.darkCard,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
+  Widget _buildTotal(BarbershopService service, DateTime? selected) {
+    final l = context.l10n;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.darkCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  _paymentMethod == PaymentMethod.cash ? l.totalPayAtSalon : l.totalPayOnline,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                ),
               ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Total to Pay at Salon:', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-                      Text(
-                        '\$${_selectedService.price.toStringAsFixed(0)}',
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.primaryGold),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isSubmitting ? null : _confirmBooking,
-                      child: _isSubmitting
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
-                            )
-                          : const Text('Confirm Appointment'),
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 8),
+              Text(
+                _etb(service.price),
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppTheme.primaryGold),
+              ),
+            ],
+          ),
+          if (selected != null) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                l.dateAtTime(context.fmt.dayShort(_date), _slotDisplay(selected)),
+                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
               ),
             ),
-            const SizedBox(height: 30),
           ],
-        ),
+          const SizedBox(height: 12),
+          _buildPaymentChoice(),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              key: const ValueKey('confirm-booking'),
+              onPressed: _isSubmitting || selected == null ? null : _confirmBooking,
+              child: _isSubmitting
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
+                    )
+                  : Text(selected == null ? l.selectATime : l.confirmAppointment),
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildPaymentChoice() {
+    final l = context.l10n;
+    Widget option(PaymentMethod method, IconData icon, String title, String subtitle) {
+      final selected = _paymentMethod == method;
+      return InkWell(
+        key: ValueKey('pay-method-${method.name}'),
+        borderRadius: BorderRadius.circular(12),
+        onTap: _isSubmitting ? null : () => setState(() => _paymentMethod = method),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? AppTheme.primaryGold.withValues(alpha: 0.12) : AppTheme.darkSurface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: selected ? AppTheme.primaryGold : Colors.white12),
+          ),
+          child: Row(
+            children: [
+              Icon(selected ? Icons.radio_button_checked : Icons.radio_button_off,
+                  size: 18, color: selected ? AppTheme.primaryGold : AppTheme.textSecondary),
+              const SizedBox(width: 10),
+              Icon(icon, size: 18, color: AppTheme.textSecondary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    Text(subtitle, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        option(PaymentMethod.cash, Icons.payments_outlined, l.payAtShopCash, l.payAfterAppointment),
+        const SizedBox(height: 8),
+        option(PaymentMethod.chapa, Icons.phone_android_rounded, l.payNowWithChapa, l.chapaMethods),
+      ],
     );
   }
 }

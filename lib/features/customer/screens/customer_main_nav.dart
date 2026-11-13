@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../l10n/l10n.dart';
 import 'customer_home_screen.dart';
 import 'find_barbers_screen.dart';
 import 'customer_bookings_screen.dart';
@@ -36,21 +37,21 @@ class _CustomerMainNavState extends State<CustomerMainNav> {
         onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
         backgroundColor: AppTheme.darkSurface,
         indicatorColor: AppTheme.primaryGold,
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.storefront_outlined),
-            selectedIcon: Icon(Icons.storefront, color: Colors.black),
-            label: 'Barbershops',
+            icon: const Icon(Icons.storefront_outlined),
+            selectedIcon: const Icon(Icons.storefront, color: Colors.black),
+            label: context.l10n.navBarbershops,
           ),
           NavigationDestination(
-            icon: Icon(Icons.content_cut_outlined),
-            selectedIcon: Icon(Icons.content_cut, color: Colors.black),
-            label: 'Find Barbers',
+            icon: const Icon(Icons.content_cut_outlined),
+            selectedIcon: const Icon(Icons.content_cut, color: Colors.black),
+            label: context.l10n.findBarbers,
           ),
           NavigationDestination(
-            icon: Icon(Icons.calendar_month_outlined),
-            selectedIcon: Icon(Icons.calendar_month, color: Colors.black),
-            label: 'Appointments',
+            icon: const Icon(Icons.calendar_month_outlined),
+            selectedIcon: const Icon(Icons.calendar_month, color: Colors.black),
+            label: context.l10n.navAppointments,
           ),
         ],
       ),

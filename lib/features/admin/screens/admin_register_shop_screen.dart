@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/utils/phone_utils.dart';
-import '../../../services/phone_auth_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../l10n/l10n.dart';
 import '../../../services/app_repository.dart';
+import '../../../data/addis_locations.dart';
 
 class AdminRegisterShopScreen extends StatefulWidget {
   const AdminRegisterShopScreen({super.key});
@@ -15,22 +16,22 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
   final _formKey = GlobalKey<FormState>();
 
   // Shop Details
-  final _shopNameCtrl = TextEditingController(text: 'Grand Central Barber Club');
-  final _shopDescCtrl = TextEditingController(
-    text: 'Bespoke precision haircuts, beard sculpting, and luxury hot towel treatments.',
-  );
-  final _shopPhoneCtrl = TextEditingController(text: '+1 212-555-7800');
+  final _shopNameCtrl = TextEditingController();
+  final _shopDescCtrl = TextEditingController();
+  final _shopPhoneCtrl = TextEditingController();
   final _imageCtrl = TextEditingController(
     text: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800',
   );
 
   // Owner Details
-  final _ownerNameCtrl = TextEditingController(text: 'Victor Cole');
+  final _ownerNameCtrl = TextEditingController();
   final _ownerPhoneCtrl = TextEditingController();
 
   // Location Details
-  final _addressCtrl = TextEditingController(text: '89 E 42nd St');
-  final _cityCtrl = TextEditingController(text: 'New York, NY');
+  final _addressCtrl = TextEditingController();
+  final _cityCtrl = TextEditingController(text: kDefaultCity);
+  final _landmarkCtrl = TextEditingController();
+  String _subCity = 'Bole';
 
   // Operating Hours
   int _openingHour = 9;
@@ -57,6 +58,22 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
     },
   ];
 
+  String _presetName(String name) {
+    final l = context.l10n;
+    switch (name) {
+      case 'Classic Lounge':
+        return l.presetClassicLounge;
+      case 'Vintage Wood':
+        return l.presetVintageWood;
+      case 'Modern Gold':
+        return l.presetModernGold;
+      case 'Industrial Studio':
+        return l.presetIndustrialStudio;
+      default:
+        return name;
+    }
+  }
+
   @override
   void dispose() {
     _shopNameCtrl.dispose();
@@ -67,20 +84,25 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
     _ownerPhoneCtrl.dispose();
     _addressCtrl.dispose();
     _cityCtrl.dispose();
+    _landmarkCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _submitForm() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
+    final shopPhone = normalizeEthiopianContactPhone(_shopPhoneCtrl.text) ?? _shopPhoneCtrl.text.trim();
 
     try {
       await AppRepository.instance.registerBarbershopByAdmin(
         shopName: _shopNameCtrl.text.trim(),
         ownerName: _ownerNameCtrl.text.trim(),
         ownerPhone: _ownerPhoneCtrl.text.trim(),
+        shopPhone: shopPhone,
         address: _addressCtrl.text.trim(),
         city: _cityCtrl.text.trim(),
+        subCity: _subCity,
+        landmark: _landmarkCtrl.text.trim(),
         description: _shopDescCtrl.text.trim(),
         imageUrl: _imageCtrl.text.trim(),
         openingHour: _openingHour,
@@ -94,7 +116,7 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
           SnackBar(
             backgroundColor: Colors.green.shade800,
             content: Text(
-              'Registered "${_shopNameCtrl.text}". The owner can now sign in with ${formatEthiopianPhone(_ownerPhoneCtrl.text)}.',
+              context.l10n.registeredShopSnack(_shopNameCtrl.text.trim(), formatEthiopianPhone(_ownerPhoneCtrl.text)),
               style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
             ),
           ),
@@ -104,7 +126,7 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Registration error: ${describeAuthError(e)}')),
+          SnackBar(content: Text(context.l10n.registrationError(context.l10n.authError(e)))),
         );
       }
     } finally {
@@ -114,9 +136,11 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
+    final fmt = context.fmt;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Register New Barbershop'),
+        title: Text(l.registerNewBarbershop),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -140,7 +164,7 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
                     CircleAvatar(
                       backgroundColor: AppTheme.primaryGold,
@@ -153,12 +177,12 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'SaaS Barbershop Onboarding',
+                            l.onboardingTitle,
                             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
                           ),
                           SizedBox(height: 2),
                           Text(
-                            'Registers shop profile, provisions tenant owner account & sets up staff suite.',
+                            l.onboardingSubtitle,
                             style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                           ),
                         ],
@@ -170,40 +194,43 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
               const SizedBox(height: 24),
 
               // Section 1: Shop Information
-              _buildSectionHeader('1. Shop Profile & Branding', Icons.storefront),
+              _buildSectionHeader(l.sectionShopProfile, Icons.storefront),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _shopNameCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Barbershop Business Name *',
-                  prefixIcon: Icon(Icons.business),
+                decoration: InputDecoration(
+                  labelText: l.shopBusinessName,
+                  hintText: l.shopBusinessNameHint,
+                  prefixIcon: const Icon(Icons.business),
                 ),
-                validator: (val) => val == null || val.trim().isEmpty ? 'Required' : null,
+                validator: (val) => val == null || val.trim().isEmpty ? l.required : null,
               ),
               const SizedBox(height: 14),
               TextFormField(
                 controller: _shopDescCtrl,
                 maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Shop Description',
-                  prefixIcon: Icon(Icons.description_outlined),
+                decoration: InputDecoration(
+                  labelText: l.shopDescription,
+                  prefixIcon: const Icon(Icons.description_outlined),
                 ),
               ),
               const SizedBox(height: 14),
               TextFormField(
                 controller: _shopPhoneCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Shop Telephone *',
-                  prefixIcon: Icon(Icons.phone_outlined),
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  labelText: l.shopTelephone,
+                  hintText: l.shopPhoneHint,
+                  prefixIcon: const Icon(Icons.phone_outlined),
                 ),
-                validator: (val) => val == null || val.trim().isEmpty ? 'Required' : null,
+                validator: (val) => normalizeEthiopianContactPhone(val ?? '') == null ? l.invalidContactPhone : null,
               ),
               const SizedBox(height: 14),
               TextFormField(
                 controller: _imageCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Cover Image URL',
-                  prefixIcon: Icon(Icons.image_outlined),
+                decoration: InputDecoration(
+                  labelText: l.coverImageUrl,
+                  prefixIcon: const Icon(Icons.image_outlined),
                 ),
               ),
               const SizedBox(height: 8),
@@ -212,7 +239,7 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
                 spacing: 8,
                 children: _imagePresets.map((preset) {
                   return ActionChip(
-                    label: Text(preset['name']!, style: const TextStyle(fontSize: 11)),
+                    label: Text(_presetName(preset['name']!), style: const TextStyle(fontSize: 11)),
                     onPressed: () {
                       setState(() {
                         _imageCtrl.text = preset['url']!;
@@ -224,34 +251,33 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
               const SizedBox(height: 28),
 
               // Section 2: Owner Account
-              _buildSectionHeader('2. Barbershop Owner Account', Icons.person_outline),
+              _buildSectionHeader(l.sectionOwnerAccount, Icons.person_outline),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _ownerNameCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Owner Full Name *',
-                  prefixIcon: Icon(Icons.badge_outlined),
+                decoration: InputDecoration(
+                  labelText: l.ownerFullName,
+                  hintText: l.ownerNameHint,
+                  prefixIcon: const Icon(Icons.badge_outlined),
                 ),
-                validator: (val) => val == null || val.trim().isEmpty ? 'Required' : null,
+                validator: (val) => val == null || val.trim().isEmpty ? l.required : null,
               ),
               const SizedBox(height: 14),
               TextFormField(
                 controller: _ownerPhoneCtrl,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: 'Owner Mobile Number (Login) *',
+                decoration: InputDecoration(
+                  labelText: l.ownerMobileLogin,
                   hintText: '09XX XXX XXX',
-                  helperText: 'The owner signs in with this number to manage the shop.',
-                  prefixIcon: Icon(Icons.phone_android),
+                  helperText: l.ownerMobileHelper,
+                  prefixIcon: const Icon(Icons.phone_android),
                 ),
-                validator: (val) => normalizeEthiopianPhone(val ?? '') == null
-                    ? 'Enter a valid Ethiopian mobile number (09... or 07...)'
-                    : null,
+                validator: (val) => normalizeEthiopianPhone(val ?? '') == null ? l.invalidEthiopianPhone : null,
               ),
               const SizedBox(height: 28),
 
               // Section 3: Location Details (No Map!)
-              _buildSectionHeader('3. Physical Location', Icons.location_on_outlined),
+              _buildSectionHeader(l.sectionLocation, Icons.location_on_outlined),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(16),
@@ -264,22 +290,44 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
                   children: [
                     TextFormField(
                       controller: _addressCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Street Address *',
-                        prefixIcon: Icon(Icons.location_on_outlined),
-                        hintText: 'e.g. 123 Main St, Suite 4',
+                      decoration: InputDecoration(
+                        labelText: l.streetAddressRequired,
+                        prefixIcon: const Icon(Icons.location_on_outlined),
+                        hintText: l.streetAddressHint,
                       ),
-                      validator: (val) => val == null || val.trim().isEmpty ? 'Required' : null,
+                      validator: (val) => val == null || val.trim().isEmpty ? l.required : null,
+                    ),
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      initialValue: _subCity,
+                      decoration: InputDecoration(
+                        labelText: l.subCityRequired,
+                        prefixIcon: const Icon(Icons.map_outlined),
+                      ),
+                      items: [
+                        for (final sc in kAddisSubCities) DropdownMenuItem(value: sc, child: Text(l.placeName(sc))),
+                      ],
+                      onChanged: (val) => setState(() => _subCity = val ?? _subCity),
+                    ),
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _landmarkCtrl,
+                      decoration: InputDecoration(
+                        labelText: l.landmark,
+                        prefixIcon: const Icon(Icons.place_outlined),
+                        hintText: l.landmarkHint,
+                      ),
                     ),
                     const SizedBox(height: 14),
                     TextFormField(
                       controller: _cityCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'City, State & ZIP *',
-                        prefixIcon: Icon(Icons.location_city),
-                        hintText: 'e.g. New York, NY 10001',
+                      decoration: InputDecoration(
+                        labelText: l.cityRequired,
+                        prefixIcon: const Icon(Icons.location_city),
+                        hintText: l.cityHint,
                       ),
-                      validator: (val) => val == null || val.trim().isEmpty ? 'Required' : null,
+                      validator: (val) => val == null || val.trim().isEmpty ? l.required : null,
                     ),
                   ],
                 ),
@@ -287,19 +335,20 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
               const SizedBox(height: 28),
 
               // Section 4: Operating Hours & Status
-              _buildSectionHeader('4. Business Hours & Verification', Icons.access_time),
+              _buildSectionHeader(l.sectionHours, Icons.access_time),
               const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<int>(
+                      isExpanded: true,
                       initialValue: _openingHour,
-                      decoration: const InputDecoration(labelText: 'Opening Time'),
+                      decoration: InputDecoration(labelText: l.openingTime),
                       dropdownColor: AppTheme.darkCard,
                       items: List.generate(6, (i) => i + 6).map((h) {
                         return DropdownMenuItem(
                           value: h,
-                          child: Text('$h:00 AM'),
+                          child: Text(fmt.hour(h)),
                         );
                       }).toList(),
                       onChanged: (val) {
@@ -310,13 +359,14 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: DropdownButtonFormField<int>(
+                      isExpanded: true,
                       initialValue: _closingHour,
-                      decoration: const InputDecoration(labelText: 'Closing Time'),
+                      decoration: InputDecoration(labelText: l.closingTime),
                       dropdownColor: AppTheme.darkCard,
                       items: List.generate(8, (i) => i + 16).map((h) {
                         return DropdownMenuItem(
                           value: h,
-                          child: Text('${h - 12}:00 PM'),
+                          child: Text(fmt.hour(h)),
                         );
                       }).toList(),
                       onChanged: (val) {
@@ -329,8 +379,8 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
               const SizedBox(height: 14),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Mark as Verified Partner Shop', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Verified badge displayed to all customers'),
+                title: Text(l.markVerifiedPartner, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(l.markVerifiedPartnerSubtitle),
                 value: _isVerified,
                 activeThumbColor: AppTheme.primaryGold,
                 onChanged: (val) => setState(() => _isVerified = val),
@@ -351,7 +401,7 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
                         )
                       : const Icon(Icons.check_circle_outline),
                   label: Text(
-                    _isSubmitting ? 'Registering Barbershop...' : 'Register Barbershop into Network',
+                    _isSubmitting ? l.registeringBarbershop : l.registerIntoNetwork,
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                 ),
@@ -369,9 +419,11 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
       children: [
         Icon(icon, color: AppTheme.primaryGold, size: 20),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
         ),
       ],
     );

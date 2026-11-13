@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../l10n/l10n.dart';
 import '../../../models/booking_model.dart';
 import '../../../services/app_repository.dart';
+import '../../../services/payment_service.dart';
+import '../../payments/payment_flow.dart';
+import '../../payments/widgets/payment_status_badge.dart';
 
 class CustomerBookingsScreen extends StatelessWidget {
   const CustomerBookingsScreen({super.key});
@@ -10,12 +13,20 @@ class CustomerBookingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final repo = AppRepository.instance;
+    // Rebuild on live changes (e.g. paymentStatus turning 'paid').
+    return ListenableBuilder(
+      listenable: repo,
+      builder: (context, _) => _buildScaffold(context, repo),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context, AppRepository repo) {
     final currentUserId = repo.currentUser?.uid ?? 'user_cust_1';
     final bookings = repo.getCustomerBookings(currentUserId);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Appointments'),
+        title: Text(context.l10n.myAppointments),
       ),
       body: bookings.isEmpty
           ? Center(
@@ -24,9 +35,9 @@ class CustomerBookingsScreen extends StatelessWidget {
                 children: [
                   Icon(Icons.calendar_month_outlined, size: 64, color: AppTheme.textSecondary.withValues(alpha: 0.5)),
                   const SizedBox(height: 16),
-                  const Text('No bookings yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(context.l10n.noBookingsYet, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  const Text('Explore top barbershops and book your first slot.', style: TextStyle(color: AppTheme.textSecondary)),
+                  Text(context.l10n.noBookingsHint, style: const TextStyle(color: AppTheme.textSecondary)),
                 ],
               ),
             )
@@ -42,6 +53,8 @@ class CustomerBookingsScreen extends StatelessWidget {
   }
 
   Widget _buildBookingCard(BuildContext context, Booking booking) {
+    final l = context.l10n;
+    final fmt = context.fmt;
     Color statusColor;
     switch (booking.status) {
       case BookingStatus.confirmed:
@@ -91,7 +104,7 @@ class CustomerBookingsScreen extends StatelessWidget {
                   border: Border.all(color: statusColor.withValues(alpha: 0.5)),
                 ),
                 child: Text(
-                  booking.status.name.toUpperCase(),
+                  l.bookingStatus(booking.status).toUpperCase(),
                   style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -102,12 +115,14 @@ class CustomerBookingsScreen extends StatelessWidget {
             booking.serviceName,
             style: const TextStyle(fontSize: 14, color: AppTheme.primaryGold, fontWeight: FontWeight.w600),
           ),
+          const SizedBox(height: 6),
+          PaymentStatusBadge(booking: booking),
           const SizedBox(height: 8),
           Row(
             children: [
               const Icon(Icons.person_outline, size: 16, color: AppTheme.textSecondary),
               const SizedBox(width: 6),
-              Text('Barber: ${booking.barberName}', style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+              Text(l.barberLabel(booking.barberName), style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
             ],
           ),
           const SizedBox(height: 6),
@@ -115,9 +130,11 @@ class CustomerBookingsScreen extends StatelessWidget {
             children: [
               const Icon(Icons.event_outlined, size: 16, color: AppTheme.textSecondary),
               const SizedBox(width: 6),
-              Text(
-                '${DateFormat('EEEE, MMM d, y').format(booking.date)} at ${booking.timeSlot}',
-                style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary, fontWeight: FontWeight.w500),
+              Expanded(
+                child: Text(
+                  l.dateAtTime(fmt.dayLong(fmt.bookingDay(booking)), fmt.bookingTime(booking)),
+                  style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary, fontWeight: FontWeight.w500),
+                ),
               ),
             ],
           ),
@@ -126,21 +143,41 @@ class CustomerBookingsScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '\$${booking.price.toStringAsFixed(0)}',
+                fmt.birr(booking.price),
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryGold),
               ),
-              if (booking.status != BookingStatus.cancelled && booking.status != BookingStatus.completed)
-                OutlinedButton(
-                  onPressed: () {
-                    AppRepository.instance.updateBookingStatus(booking.id, BookingStatus.cancelled);
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.redAccent,
-                    side: const BorderSide(color: Colors.redAccent),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  ),
-                  child: const Text('Cancel Booking', style: TextStyle(fontSize: 12)),
-                ),
+              Wrap(
+                spacing: 8,
+                children: [
+                  if (canPayBookingOnline(booking))
+                    ElevatedButton(
+                      key: ValueKey('pay-booking-${booking.id}'),
+                      onPressed: () => payForBooking(context, booking),
+                      style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6)),
+                      child: Text(
+                        booking.paymentStatus == PaymentStatus.pending ? l.finishPayment : l.payNow,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  if (booking.status != BookingStatus.cancelled && booking.status != BookingStatus.completed)
+                    OutlinedButton(
+                      onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        try {
+                          await AppRepository.instance.updateBookingStatus(booking.id, BookingStatus.cancelled);
+                        } catch (e) {
+                          messenger.showSnackBar(SnackBar(content: Text(l.cancelBookingFailed('$e'))));
+                        }
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.redAccent,
+                        side: const BorderSide(color: Colors.redAccent),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      ),
+                      child: Text(l.cancelBooking, style: const TextStyle(fontSize: 12)),
+                    ),
+                ],
+              ),
             ],
           ),
         ],

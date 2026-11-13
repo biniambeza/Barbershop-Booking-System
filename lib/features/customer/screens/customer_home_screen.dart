@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../l10n/l10n.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../models/user_model.dart';
 import '../../../services/app_repository.dart';
+import '../../notifications/widgets/notification_bell.dart';
+import '../../shared/widgets/language_toggle.dart';
+import '../../shared/widgets/persona_switcher.dart';
 import 'barbershop_detail_screen.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
@@ -18,139 +22,67 @@ class CustomerHomeScreen extends StatefulWidget {
 class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   String _searchQuery = '';
   String _selectedCity = 'All';
-  String _selectedCategory = 'All';
+  String _selectedCategory = 'all';
 
-  final List<String> _cities = ['All', 'New York', 'Brooklyn'];
-  final List<String> _categories = [
-    'All',
-    'Fades & Tapers',
-    'Beard Sculpt',
-    'Hot Shave',
-    'Kids & VIP'
-  ];
+  /// Sub-city filter chips ('All' + the sub-cities of the listed shops).
+  List<String> _cities = const ['All'];
+  static const List<String> _categories = ['all', 'fades', 'beard', 'shave', 'kids'];
 
-  void _showRoleSwitcher(BuildContext context, AppRepository repo) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppTheme.darkCard,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.swap_horiz, color: AppTheme.primaryGold),
-                    SizedBox(width: 8),
-                    Text(
-                      'SaaS Role Switcher',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Switch persona instantly to experience each role',
-                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.purpleAccent,
-                    child: Icon(Icons.admin_panel_settings, color: Colors.white),
-                  ),
-                  title: const Text('Platform Superadmin', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('Register shops, oversee platform metrics & users'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    repo.switchRole(UserRole.admin);
-                  },
-                ),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: AppTheme.primaryGold,
-                    child: Icon(Icons.storefront, color: Colors.black),
-                  ),
-                  title: const Text('Barbershop Owner', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text("Manage The Gentleman's Quarter shop, staff & menu"),
-                  onTap: () {
-                    Navigator.pop(context);
-                    repo.switchRole(UserRole.barbershopOwner);
-                  },
-                ),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.tealAccent,
-                    child: Icon(Icons.content_cut, color: Colors.black),
-                  ),
-                  title: const Text('Staff Barber Workspace', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('Marcus Vance: Manage queue, update appointments & shifts'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    repo.switchRole(UserRole.barber);
-                  },
-                ),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.lightBlueAccent,
-                    child: Icon(Icons.person, color: Colors.black),
-                  ),
-                  title: const Text('Client / Customer (Active)', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('Browse shops, find barbers & book appointments'),
-                  trailing: const Icon(Icons.check, color: AppTheme.primaryGold),
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+  String _categoryLabel(String id) {
+    final l = context.l10n;
+    switch (id) {
+      case 'fades':
+        return l.catFades;
+      case 'beard':
+        return l.catBeard;
+      case 'shave':
+        return l.catShave;
+      case 'kids':
+        return l.catKids;
+      default:
+        return l.all;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final repo = AppRepository.instance;
     final allShops = repo.getShops();
+    _cities = ['All', ...{for (final s in allShops) if (s.subCity.isNotEmpty) s.subCity}];
 
     final filteredShops = allShops.where((s) {
       final matchesSearch = _searchQuery.isEmpty ||
           s.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           s.city.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          s.subCity.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          (s.landmark ?? '').toLowerCase().contains(_searchQuery.toLowerCase()) ||
           s.address.toLowerCase().contains(_searchQuery.toLowerCase());
 
-      final matchesCity = _selectedCity == 'All' || s.city.toLowerCase().contains(_selectedCity.toLowerCase());
+      final matchesCity = _selectedCity == 'All' || s.subCity == _selectedCity;
 
       return matchesSearch && matchesCity;
     }).toList();
 
+    final l = context.l10n;
     return Scaffold(
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'CROWN & BLADE',
+              l.brandUpper,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w900,
                     letterSpacing: 2,
                     fontSize: 18,
                   ),
             ),
-            const Row(
+            Row(
               children: [
                 Icon(Icons.location_on, size: 13, color: AppTheme.primaryGold),
                 SizedBox(width: 4),
                 Text(
-                  'Greater New York Area',
+                  l.cityAddisAbaba,
                   style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                 ),
               ],
@@ -164,15 +96,17 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               backgroundColor: Colors.lightBlueAccent.withValues(alpha: 0.15),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             ),
-            onPressed: () => _showRoleSwitcher(context, repo),
+            onPressed: () => showPersonaSwitcher(context, current: UserRole.customer),
             icon: const Icon(Icons.swap_horiz, size: 16, color: Colors.lightBlueAccent),
-            label: const Text(
-              'Customer',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.lightBlueAccent),
+            label: Text(
+              l.roleCustomer,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.lightBlueAccent),
             ),
           ),
+          const LanguageToggle(),
+          const NotificationBell(),
           IconButton(
-            tooltip: 'Sign Out',
+            tooltip: l.signOut,
             icon: const Icon(Icons.logout_rounded, size: 20),
             onPressed: () => repo.signOut(),
           ),
@@ -191,7 +125,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   TextField(
                     onChanged: (val) => setState(() => _searchQuery = val),
                     decoration: InputDecoration(
-                      hintText: 'Search barbershops by name or neighborhood...',
+                      hintText: l.searchShopsHint,
                       prefixIcon: const Icon(Icons.search, color: AppTheme.primaryGold),
                       filled: true,
                       fillColor: AppTheme.darkCard,
@@ -231,20 +165,20 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                                   color: AppTheme.primaryGold,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: const Text(
-                                  'PREMIER TALENT',
-                                  style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Colors.black),
+                                child: Text(
+                                  l.premierTalent,
+                                  style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Colors.black),
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              const Text(
-                                'Book Directly with Master Barbers',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                              Text(
+                                l.bookWithMasters,
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                               ),
                               const SizedBox(height: 4),
-                              const Text(
-                                'Browse verified specialists, view portfolios & reserve seats.',
-                                style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                              Text(
+                                l.bookWithMastersSubtitle,
+                                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                               ),
                               const SizedBox(height: 10),
                               ElevatedButton.icon(
@@ -255,7 +189,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                 ),
                                 icon: const Icon(Icons.content_cut, size: 16),
-                                label: const Text('Find Barbers', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                label: Text(l.findBarbers, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                                 onPressed: widget.onOpenBarbers,
                               ),
                             ],
@@ -280,9 +214,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   // City Filter Chips
                   Row(
                     children: [
-                      const Text(
-                        'City:',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                      Text(
+                        l.subCityFilterLabel,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -294,7 +228,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                               return Padding(
                                 padding: const EdgeInsets.only(right: 6),
                                 child: ChoiceChip(
-                                  label: Text(city),
+                                  label: Text(city == 'All' ? l.all : l.placeName(city)),
                                   selected: isSelected,
                                   selectedColor: AppTheme.primaryGold,
                                   labelStyle: TextStyle(
@@ -323,7 +257,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         return Padding(
                           padding: const EdgeInsets.only(right: 6),
                           child: FilterChip(
-                            label: Text(cat),
+                            label: Text(_categoryLabel(cat)),
                             selected: isSelected,
                             selectedColor: AppTheme.primaryGold.withValues(alpha: 0.25),
                             checkmarkColor: AppTheme.primaryGold,
@@ -344,12 +278,15 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Featured Barbershops (${filteredShops.length})',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                      Expanded(
+                        child: Text(
+                          l.featuredBarbershops(filteredShops.length),
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       Text(
-                        _selectedCity == 'All' ? 'All Locations' : _selectedCity,
+                        _selectedCity == 'All' ? l.allLocations : l.placeName(_selectedCity),
                         style: const TextStyle(fontSize: 12, color: AppTheme.primaryGold, fontWeight: FontWeight.bold),
                       ),
                     ],
@@ -370,7 +307,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       const Icon(Icons.storefront, size: 54, color: AppTheme.textSecondary),
                       const SizedBox(height: 12),
                       Text(
-                        'No barbershops found matching "$_searchQuery"',
+                        l.noShopsMatching(_searchQuery),
                         style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
                       ),
                     ],
@@ -402,6 +339,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     final services = repo.getServicesForShop(shop.id);
     final barbers = repo.getBarbersForShop(shop.id);
     final isFav = repo.isShopFavorite(shop.id);
+    final l = context.l10n;
+    final fmt = context.fmt;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -474,12 +413,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                             color: Colors.green.shade800.withValues(alpha: 0.9),
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.verified, size: 13, color: Colors.white),
                               SizedBox(width: 4),
-                              Text('VERIFIED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
+                              Text(l.verifiedBadge, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
                             ],
                           ),
                         ),
@@ -501,7 +440,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         const Icon(Icons.location_city, size: 12, color: AppTheme.primaryGold),
                         const SizedBox(width: 4),
                         Text(
-                          shop.city,
+                          l.shopArea(shop),
                           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
                       ],
@@ -545,7 +484,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
-                          shop.fullAddress,
+                          context.l10n.shopAddress(shop),
                           style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -554,28 +493,36 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Row(
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    runSpacing: 4,
                     children: [
-                      const Icon(Icons.schedule, size: 14, color: AppTheme.textSecondary),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${shop.openingHour}:00 AM - ${shop.closingHour - 12}:00 PM',
-                        style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-                      ),
-                      const Spacer(),
                       Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.schedule, size: 14, color: AppTheme.textSecondary),
+                          const SizedBox(width: 4),
+                          Text(
+                            fmt.hoursRange(shop.openingHour, shop.closingHour),
+                            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(Icons.people_outline, size: 14, color: AppTheme.primaryGold),
                           const SizedBox(width: 3),
                           Text(
-                            '${barbers.length} Barbers',
+                            l.barbersCount(barbers.length),
                             style: const TextStyle(fontSize: 11.5, color: AppTheme.primaryGold, fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(width: 8),
                           const Icon(Icons.content_cut, size: 13, color: AppTheme.primaryGold),
                           const SizedBox(width: 3),
                           Text(
-                            '${services.length} Services',
+                            l.servicesCount(services.length),
                             style: const TextStyle(fontSize: 11.5, color: AppTheme.primaryGold, fontWeight: FontWeight.w600),
                           ),
                         ],
@@ -599,7 +546,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                           ),
                         );
                       },
-                      child: const Text('View Services & Book'),
+                      child: Text(l.viewServicesAndBook),
                     ),
                   ),
                 ],

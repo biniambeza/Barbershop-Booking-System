@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/phone_utils.dart';
+import '../../../data/addis_locations.dart';
+import '../../../l10n/l10n.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../services/app_repository.dart';
 import '../../customer/screens/barbershop_detail_screen.dart';
@@ -22,6 +25,8 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
   late TextEditingController _addressCtrl;
   late TextEditingController _cityCtrl;
   late TextEditingController _imageCtrl;
+  late TextEditingController _landmarkCtrl;
+  late String _subCity;
 
   late int _openingHour;
   late int _closingHour;
@@ -57,6 +62,8 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
     _addressCtrl = TextEditingController(text: s.address);
     _cityCtrl = TextEditingController(text: s.city);
     _imageCtrl = TextEditingController(text: s.imageUrl);
+    _landmarkCtrl = TextEditingController(text: s.landmark ?? '');
+    _subCity = s.subCity;
 
     _openingHour = s.openingHour;
     _closingHour = s.closingHour;
@@ -71,47 +78,70 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
     _addressCtrl.dispose();
     _cityCtrl.dispose();
     _imageCtrl.dispose();
+    _landmarkCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _saveChanges() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isSaving = true);
+  String _presetTitle(String title) {
+    final l = context.l10n;
+    switch (title) {
+      case 'Royal Gold & Noir':
+        return l.presetRoyalGold;
+      case 'Vintage Gentleman':
+        return l.presetVintageGentleman;
+      case 'Empire Luxury':
+        return l.presetEmpireLuxury;
+      case 'Urban Industrial':
+        return l.presetUrbanIndustrial;
+      default:
+        return title;
+    }
+  }
 
-    final updated = widget.shop.copyWith(
+  Barbershop _edited() {
+    final phone = _phoneCtrl.text.trim();
+    final landmark = _landmarkCtrl.text.trim();
+    return widget.shop.copyWith(
       name: _nameCtrl.text.trim(),
       description: _descCtrl.text.trim(),
-      phone: _phoneCtrl.text.trim(),
+      phone: normalizeEthiopianContactPhone(phone) ?? phone,
       address: _addressCtrl.text.trim(),
       city: _cityCtrl.text.trim(),
+      subCity: _subCity,
+      landmark: landmark.isEmpty ? null : landmark,
       imageUrl: _imageCtrl.text.trim(),
       openingHour: _openingHour,
       closingHour: _closingHour,
       workingDays: _workingDays,
     );
+  }
 
-    await AppRepository.instance.updateShop(updated);
+  Future<void> _saveChanges() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _isSaving = true);
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+
+    final updated = _edited();
+    try {
+      await AppRepository.instance.updateShop(updated);
+    } catch (e) {
+      if (mounted) setState(() => _isSaving = false);
+      messenger.showSnackBar(SnackBar(content: Text(l.saveFailed('$e'))));
+      return;
+    }
 
     if (mounted) {
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Customized shop settings saved successfully!')),
+      messenger.showSnackBar(
+        SnackBar(content: Text(l.shopSettingsSaved)),
       );
       Navigator.pop(context, updated);
     }
   }
 
   void _previewShopAsCustomer() {
-    final previewShop = widget.shop.copyWith(
-      name: _nameCtrl.text.trim(),
-      description: _descCtrl.text.trim(),
-      phone: _phoneCtrl.text.trim(),
-      address: _addressCtrl.text.trim(),
-      city: _cityCtrl.text.trim(),
-      imageUrl: _imageCtrl.text.trim(),
-      openingHour: _openingHour,
-      closingHour: _closingHour,
-    );
+    final previewShop = _edited();
 
     Navigator.push(
       context,
@@ -123,14 +153,21 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
+    final fmt = context.fmt;
+    final subCities = [
+      if (_subCity.isEmpty) '',
+      ...kAddisSubCities,
+      if (_subCity.isNotEmpty && !kAddisSubCities.contains(_subCity)) _subCity,
+    ];
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Customize My Barbershop'),
+        title: Text(l.customizeMyBarbershop),
         actions: [
           TextButton.icon(
             onPressed: _previewShopAsCustomer,
             icon: const Icon(Icons.remove_red_eye_outlined, size: 16, color: AppTheme.primaryGold),
-            label: const Text('Preview', style: TextStyle(color: AppTheme.primaryGold, fontWeight: FontWeight.bold)),
+            label: Text(l.preview, style: const TextStyle(color: AppTheme.primaryGold, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -144,7 +181,7 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
               icon: _isSaving
                   ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
                   : const Icon(Icons.check),
-              label: Text(_isSaving ? 'Saving Updates...' : 'Publish Shop Customizations', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              label: Text(_isSaving ? l.savingUpdates : l.publishCustomizations, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             ),
           ),
         ),
@@ -176,11 +213,10 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Barbershop Brand Profile',
+                          Text(l.brandProfile,
                               style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                           const SizedBox(height: 2),
-                          const Text('Changes made here instantly appear in the customer booking experience.',
-                              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                          Text(l.brandProfileHint, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                         ],
                       ),
                     ),
@@ -190,28 +226,36 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
               const SizedBox(height: 24),
 
               // Section 1: Identity & Visuals
-              _buildSectionTitle('Barbershop Branding & Info', Icons.storefront),
+              _buildSectionTitle(l.sectionBranding, Icons.storefront),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _nameCtrl,
-                decoration: const InputDecoration(labelText: 'Barbershop Name *', prefixIcon: Icon(Icons.business)),
-                validator: (val) => val == null || val.trim().isEmpty ? 'Required' : null,
+                decoration: InputDecoration(labelText: l.barbershopNameRequired, prefixIcon: const Icon(Icons.business)),
+                validator: (val) => val == null || val.trim().isEmpty ? l.required : null,
               ),
               const SizedBox(height: 14),
               TextFormField(
                 controller: _descCtrl,
                 maxLines: 3,
-                decoration: const InputDecoration(labelText: 'Brand Bio & Story', prefixIcon: Icon(Icons.notes)),
+                decoration: InputDecoration(labelText: l.brandBio, prefixIcon: const Icon(Icons.notes)),
               ),
               const SizedBox(height: 14),
               TextFormField(
                 controller: _phoneCtrl,
-                decoration: const InputDecoration(labelText: 'Business Phone Number', prefixIcon: Icon(Icons.phone)),
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  labelText: l.businessPhone,
+                  hintText: l.shopPhoneHint,
+                  prefixIcon: const Icon(Icons.phone),
+                ),
+                validator: (val) => val == null || val.trim().isEmpty || normalizeEthiopianContactPhone(val) != null
+                    ? null
+                    : l.invalidContactPhone,
               ),
               const SizedBox(height: 14),
 
               // Theme Presets
-              const Text('Quick Theme Aesthetic Presets:', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
+              Text(l.themePresets, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -221,7 +265,7 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
                     return Padding(
                       padding: const EdgeInsets.only(right: 8.0),
                       child: ChoiceChip(
-                        label: Text(preset['title']!),
+                        label: Text(_presetTitle(preset['title']!)),
                         selected: isSelected,
                         selectedColor: AppTheme.primaryGold,
                         onSelected: (val) {
@@ -235,12 +279,12 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
               const SizedBox(height: 10),
               TextFormField(
                 controller: _imageCtrl,
-                decoration: const InputDecoration(labelText: 'Cover Photo Image URL', prefixIcon: Icon(Icons.image)),
+                decoration: InputDecoration(labelText: l.coverPhotoUrl, prefixIcon: const Icon(Icons.image)),
               ),
               const SizedBox(height: 28),
 
               // Section 2: Physical Location (No Map!)
-              _buildSectionTitle('Physical Location & Address', Icons.location_on_outlined),
+              _buildSectionTitle(l.sectionAddress, Icons.location_on_outlined),
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(16),
@@ -253,14 +297,34 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
                   children: [
                     TextFormField(
                       controller: _addressCtrl,
-                      decoration: const InputDecoration(labelText: 'Street Address', prefixIcon: Icon(Icons.location_on_outlined)),
-                      validator: (val) => val == null || val.trim().isEmpty ? 'Required' : null,
+                      decoration: InputDecoration(labelText: l.streetAddress, prefixIcon: const Icon(Icons.location_on_outlined)),
+                      validator: (val) => val == null || val.trim().isEmpty ? l.required : null,
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      initialValue: _subCity,
+                      decoration: InputDecoration(labelText: l.subCity, prefixIcon: const Icon(Icons.map_outlined)),
+                      dropdownColor: AppTheme.darkCard,
+                      items: [
+                        for (final sc in subCities) DropdownMenuItem(value: sc, child: Text(sc.isEmpty ? '-' : l.placeName(sc))),
+                      ],
+                      onChanged: (val) => setState(() => _subCity = val ?? _subCity),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _landmarkCtrl,
+                      decoration: InputDecoration(
+                        labelText: l.landmark,
+                        hintText: l.landmarkHint,
+                        prefixIcon: const Icon(Icons.place_outlined),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       controller: _cityCtrl,
-                      decoration: const InputDecoration(labelText: 'City & State', prefixIcon: Icon(Icons.location_city)),
-                      validator: (val) => val == null || val.trim().isEmpty ? 'Required' : null,
+                      decoration: InputDecoration(labelText: l.city, prefixIcon: const Icon(Icons.location_city)),
+                      validator: (val) => val == null || val.trim().isEmpty ? l.required : null,
                     ),
                   ],
                 ),
@@ -268,19 +332,18 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
               const SizedBox(height: 28),
 
               // Section 3: Operating Hours & Open Days
-              _buildSectionTitle('Business Schedule & Hours', Icons.schedule),
+              _buildSectionTitle(l.sectionSchedule, Icons.schedule),
               const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<int>(
+                      isExpanded: true,
                       initialValue: _openingHour,
-                      decoration: const InputDecoration(labelText: 'Opening Hour'),
+                      decoration: InputDecoration(labelText: l.openingHour),
                       dropdownColor: AppTheme.darkCard,
                       items: List.generate(15, (i) => i + 6).map((h) {
-                        final period = h >= 12 ? 'PM' : 'AM';
-                        final displayHour = h > 12 ? h - 12 : h;
-                        return DropdownMenuItem(value: h, child: Text('$displayHour:00 $period'));
+                        return DropdownMenuItem(value: h, child: Text(fmt.hour(h)));
                       }).toList(),
                       onChanged: (val) => setState(() => _openingHour = val ?? 9),
                     ),
@@ -288,13 +351,12 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: DropdownButtonFormField<int>(
+                      isExpanded: true,
                       initialValue: _closingHour,
-                      decoration: const InputDecoration(labelText: 'Closing Hour'),
+                      decoration: InputDecoration(labelText: l.closingHour),
                       dropdownColor: AppTheme.darkCard,
                       items: List.generate(15, (i) => i + 10).map((h) {
-                        final period = h >= 12 ? 'PM' : 'AM';
-                        final displayHour = h > 12 ? h - 12 : h;
-                        return DropdownMenuItem(value: h, child: Text('$displayHour:00 $period'));
+                        return DropdownMenuItem(value: h, child: Text(fmt.hour(h)));
                       }).toList(),
                       onChanged: (val) => setState(() => _closingHour = val ?? 20),
                     ),
@@ -302,18 +364,12 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              const Text('Open Working Days:', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
+              Text(l.openWorkingDays, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildDayToggle(1, 'Mon'),
-                  _buildDayToggle(2, 'Tue'),
-                  _buildDayToggle(3, 'Wed'),
-                  _buildDayToggle(4, 'Thu'),
-                  _buildDayToggle(5, 'Fri'),
-                  _buildDayToggle(6, 'Sat'),
-                  _buildDayToggle(7, 'Sun'),
+                  for (var d = 1; d <= 7; d++) _buildDayToggle(d, fmt.weekdayName(d)),
                 ],
               ),
               const SizedBox(height: 60),
@@ -329,9 +385,11 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
       children: [
         Icon(icon, color: AppTheme.primaryGold, size: 20),
         const SizedBox(width: 8),
-        Text(
-          title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
         ),
       ],
     );

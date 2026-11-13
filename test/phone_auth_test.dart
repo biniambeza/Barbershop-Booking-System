@@ -6,7 +6,11 @@ import 'package:barbershop_booking/main.dart';
 import 'package:barbershop_booking/models/user_model.dart';
 import 'package:barbershop_booking/services/app_repository.dart';
 
+import 'test_helpers.dart';
+
 void main() {
+  setUpAll(loadTestSeed);
+
   group('normalizeEthiopianPhone', () {
     test('accepts common Ethiopian mobile formats', () {
       for (final input in [

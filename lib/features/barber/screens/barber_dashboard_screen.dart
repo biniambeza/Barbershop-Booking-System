@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/phone_utils.dart';
+import '../../../data/addis_time.dart';
+import '../../../l10n/l10n.dart';
 import '../../../models/user_model.dart';
 import '../../../models/booking_model.dart';
 import '../../../models/barber_model.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../services/app_repository.dart';
+import '../../notifications/widgets/notification_bell.dart';
+import '../../shared/widgets/language_toggle.dart';
+import '../../shared/widgets/persona_switcher.dart';
+import '../../payments/widgets/payment_status_badge.dart';
 import 'barber_schedule_screen.dart';
 
 class BarberDashboardScreen extends StatefulWidget {
@@ -30,91 +37,15 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
     super.dispose();
   }
 
-  void _showRoleSwitcher(BuildContext context, AppRepository repo) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppTheme.darkCard,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.swap_horiz, color: AppTheme.primaryGold),
-                    SizedBox(width: 8),
-                    Text(
-                      'SaaS Role Switcher',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Switch persona instantly to test each role',
-                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.purple,
-                    child: Icon(Icons.admin_panel_settings, color: Colors.white),
-                  ),
-                  title: const Text('Platform Superadmin', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('Register shops, oversee analytics, manage users'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    repo.switchRole(UserRole.admin);
-                  },
-                ),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: AppTheme.primaryGold,
-                    child: Icon(Icons.storefront, color: Colors.black),
-                  ),
-                  title: const Text('Barbershop Owner', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text("Manage The Gentleman's Quarter shop & staff"),
-                  onTap: () {
-                    Navigator.pop(context);
-                    repo.switchRole(UserRole.barbershopOwner);
-                  },
-                ),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.tealAccent,
-                    child: Icon(Icons.content_cut, color: Colors.black),
-                  ),
-                  title: const Text('Staff Barber (Active)', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('View appointments, update cut queue, track earnings'),
-                  trailing: const Icon(Icons.check, color: AppTheme.primaryGold),
-                  onTap: () {
-                    Navigator.pop(context);
-                  },
-                ),
-                ListTile(
-                  leading: const CircleAvatar(
-                    backgroundColor: Colors.lightBlueAccent,
-                    child: Icon(Icons.person, color: Colors.black),
-                  ),
-                  title: const Text('Client / Customer', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('Browse shops, find barbers, book appointments'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    repo.switchRole(UserRole.customer);
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+  /// Runs a booking status change and reports a failure (e.g. a rules rejection).
+  Future<void> _setStatus(AppRepository repo, String bookingId, BookingStatus status) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
+    try {
+      await repo.updateBookingStatus(bookingId, status);
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(l.statusUpdateFailed('$e'))));
+    }
   }
 
   @override
@@ -133,38 +64,44 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
         final completedBookings = bookings.where((b) => b.status == BookingStatus.completed).toList();
         final totalEarnings = barber != null ? repo.getBarberTotalEarnings(barber.id) : 0.0;
 
+        final l = context.l10n;
         return Scaffold(
           appBar: AppBar(
-            title: const Row(
+            title: Row(
               children: [
-                Icon(Icons.content_cut, color: AppTheme.primaryGold, size: 20),
-                SizedBox(width: 8),
-                Text('Barber Workspace', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Icon(Icons.content_cut, color: AppTheme.primaryGold, size: 20),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(l.barberWorkspace,
+                      overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold)),
+                ),
               ],
             ),
             actions: [
               if (kDemoMode)
                 TextButton.icon(
-                style: TextButton.styleFrom(
-                  backgroundColor: Colors.tealAccent.withValues(alpha: 0.15),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.tealAccent.withValues(alpha: 0.15),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  ),
+                  onPressed: () => showPersonaSwitcher(context, current: UserRole.barber),
+                  icon: const Icon(Icons.swap_horiz, size: 16, color: Colors.tealAccent),
+                  label: Text(
+                    l.roleBarber,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.tealAccent),
+                  ),
                 ),
-                onPressed: () => _showRoleSwitcher(context, repo),
-                icon: const Icon(Icons.swap_horiz, size: 16, color: Colors.tealAccent),
-                label: const Text(
-                  'Barber',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.tealAccent),
-                ),
-              ),
+              const LanguageToggle(),
+              const NotificationBell(),
               IconButton(
-                tooltip: 'Sign Out',
+                tooltip: l.signOut,
                 icon: const Icon(Icons.logout, size: 20),
                 onPressed: () => repo.signOut(),
               ),
             ],
           ),
           body: barber == null
-              ? const Center(child: Text('No Barber profile linked to this account.'))
+              ? Center(child: Text(l.noBarberProfile))
               : NestedScrollView(
                   headerSliverBuilder: (context, innerBoxIsScrolled) {
                     return [
@@ -198,10 +135,10 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                             labelColor: AppTheme.primaryGold,
                             unselectedLabelColor: AppTheme.textSecondary,
                             tabs: [
-                              Tab(text: 'Confirmed (${upcomingBookings.length})'),
-                              Tab(text: 'In Progress (${inProgressBookings.length})'),
-                              Tab(text: 'Completed (${completedBookings.length})'),
-                              Tab(text: 'All (${bookings.length})'),
+                              Tab(text: l.tabConfirmed(upcomingBookings.length)),
+                              Tab(text: l.tabInProgress(inProgressBookings.length)),
+                              Tab(text: l.tabCompleted(completedBookings.length)),
+                              Tab(text: l.tabAll(bookings.length)),
                             ],
                           ),
                         ),
@@ -211,10 +148,10 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                   body: TabBarView(
                     controller: _tabController,
                     children: [
-                      _buildBookingsList(upcomingBookings, repo, emptyMsg: 'No confirmed appointments scheduled.'),
-                      _buildBookingsList(inProgressBookings, repo, emptyMsg: 'No appointments currently in progress.'),
-                      _buildBookingsList(completedBookings, repo, emptyMsg: 'No completed appointments yet today.'),
-                      _buildBookingsList(bookings, repo, emptyMsg: 'No booking history found.'),
+                      _buildBookingsList(upcomingBookings, repo, emptyMsg: l.emptyConfirmed),
+                      _buildBookingsList(inProgressBookings, repo, emptyMsg: l.emptyInProgress),
+                      _buildBookingsList(completedBookings, repo, emptyMsg: l.emptyCompleted),
+                      _buildBookingsList(bookings, repo, emptyMsg: l.emptyHistory),
                     ],
                   ),
                 ),
@@ -301,26 +238,30 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: barber.isAvailable ? Colors.greenAccent : Colors.orangeAccent,
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: barber.isAvailable ? Colors.greenAccent : Colors.orangeAccent,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    barber.isAvailable ? 'Status: On Duty (Accepting Clients)' : 'Status: On Break / Away',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: barber.isAvailable ? Colors.greenAccent : Colors.orangeAccent,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        barber.isAvailable ? context.l10n.statusOnDuty : context.l10n.statusOnBreak,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: barber.isAvailable ? Colors.greenAccent : Colors.orangeAccent,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
               Switch(
                 value: barber.isAvailable,
@@ -343,11 +284,12 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
     required int completedCount,
     required double totalEarnings,
   }) {
+    final l = context.l10n;
     return Row(
       children: [
         Expanded(
           child: _buildMetricTile(
-            title: 'Appointments',
+            title: l.metricAppointments,
             value: '$todayAppointmentsCount',
             icon: Icons.calendar_today,
             color: Colors.lightBlueAccent,
@@ -356,7 +298,7 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
         const SizedBox(width: 8),
         Expanded(
           child: _buildMetricTile(
-            title: 'In Chair',
+            title: l.metricInChair,
             value: '$inProgressCount',
             icon: Icons.chair,
             color: Colors.orangeAccent,
@@ -365,7 +307,7 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
         const SizedBox(width: 8),
         Expanded(
           child: _buildMetricTile(
-            title: 'Completed',
+            title: l.statusCompleted,
             value: '$completedCount',
             icon: Icons.check_circle_outline,
             color: Colors.greenAccent,
@@ -374,9 +316,9 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
         const SizedBox(width: 8),
         Expanded(
           child: _buildMetricTile(
-            title: 'Earnings',
-            value: '\$${totalEarnings.toStringAsFixed(0)}',
-            icon: Icons.attach_money,
+            title: l.metricEarnings,
+            value: context.fmt.birr(totalEarnings),
+            icon: Icons.payments_outlined,
             color: AppTheme.primaryGold,
           ),
         ),
@@ -430,11 +372,11 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
           ),
           child: const Icon(Icons.schedule, color: AppTheme.primaryGold, size: 20),
         ),
-        title: const Text(
-          'View Weekly Schedule & Calendar',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        title: Text(
+          context.l10n.viewWeeklySchedule,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
         ),
-        subtitle: const Text('Inspect daily time slots, shifts, and bookings timeline', style: TextStyle(fontSize: 11)),
+        subtitle: Text(context.l10n.viewWeeklyScheduleSubtitle, style: const TextStyle(fontSize: 11)),
         trailing: const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
         onTap: () {
           Navigator.push(
@@ -482,27 +424,29 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
   Widget _buildBookingCard(BuildContext context, Booking booking, AppRepository repo) {
     Color statusColor;
     String statusLabel;
+    final l = context.l10n;
+    final fmt = context.fmt;
 
     switch (booking.status) {
       case BookingStatus.confirmed:
         statusColor = Colors.lightBlueAccent;
-        statusLabel = 'Confirmed';
+        statusLabel = l.statusConfirmed;
         break;
       case BookingStatus.inProgress:
         statusColor = Colors.orangeAccent;
-        statusLabel = 'In Chair';
+        statusLabel = l.metricInChair;
         break;
       case BookingStatus.completed:
         statusColor = Colors.greenAccent;
-        statusLabel = 'Completed';
+        statusLabel = l.statusCompleted;
         break;
       case BookingStatus.cancelled:
         statusColor = Colors.redAccent;
-        statusLabel = 'Cancelled';
+        statusLabel = l.statusCancelled;
         break;
       case BookingStatus.pending:
         statusColor = Colors.amber;
-        statusLabel = 'Pending';
+        statusLabel = l.statusPending;
         break;
     }
 
@@ -556,26 +500,29 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                 ),
               ),
               Text(
-                '\$${booking.price.toStringAsFixed(0)}',
+                fmt.birr(booking.price),
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.primaryGold),
               ),
             ],
           ),
           const SizedBox(height: 6),
+          PaymentStatusBadge(booking: booking),
+          const SizedBox(height: 6),
           Row(
             children: [
               const Icon(Icons.access_time, size: 14, color: AppTheme.textSecondary),
               const SizedBox(width: 6),
-              Text(
-                '${booking.timeSlot} • ${_formatDate(booking.date)}',
-                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+              Expanded(
+                child: Text(
+                  '${fmt.bookingTime(booking)} • ${_formatDate(fmt, booking)}',
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                ),
               ),
-              const Spacer(),
               if (booking.customerPhone.isNotEmpty) ...[
                 const Icon(Icons.phone, size: 13, color: AppTheme.textSecondary),
                 const SizedBox(width: 4),
                 Text(
-                  booking.customerPhone,
+                  formatEthiopianPhone(booking.customerPhone),
                   style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                 ),
               ],
@@ -597,9 +544,9 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   ),
                   icon: const Icon(Icons.close, size: 15),
-                  label: const Text('No-Show', style: TextStyle(fontSize: 11)),
+                  label: Text(l.noShow, style: const TextStyle(fontSize: 11)),
                   onPressed: () {
-                    repo.updateBookingStatus(booking.id, BookingStatus.cancelled);
+                    _setStatus(repo, booking.id, BookingStatus.cancelled);
                   },
                 ),
                 const SizedBox(width: 8),
@@ -610,9 +557,9 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                   ),
                   icon: const Icon(Icons.chair, size: 16),
-                  label: const Text('Start Service', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  label: Text(l.startService, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   onPressed: () {
-                    repo.updateBookingStatus(booking.id, BookingStatus.inProgress);
+                    _setStatus(repo, booking.id, BookingStatus.inProgress);
                   },
                 ),
               ] else if (booking.status == BookingStatus.inProgress) ...[
@@ -623,21 +570,22 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   ),
                   icon: const Icon(Icons.check_circle, size: 16),
-                  label: const Text('Mark Completed', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  label: Text(l.markCompleted, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   onPressed: () {
-                    repo.updateBookingStatus(booking.id, BookingStatus.completed);
+                    _setStatus(repo, booking.id, BookingStatus.completed);
                   },
                 ),
               ] else if (booking.status == BookingStatus.completed) ...[
-                const Row(
+                Row(
                   children: [
                     Icon(Icons.check_circle, size: 14, color: Colors.greenAccent),
                     SizedBox(width: 4),
-                    Text('Service Completed', style: TextStyle(fontSize: 11, color: Colors.greenAccent, fontWeight: FontWeight.bold)),
+                    Text(l.serviceCompleted,
+                        style: const TextStyle(fontSize: 11, color: Colors.greenAccent, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ] else ...[
-                const Text('Appointment Cancelled', style: TextStyle(fontSize: 11, color: Colors.redAccent)),
+                Text(l.appointmentCancelled, style: const TextStyle(fontSize: 11, color: Colors.redAccent)),
               ],
             ],
           ),
@@ -646,12 +594,14 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
     );
   }
 
-  String _formatDate(DateTime dt) {
-    final now = DateTime.now();
-    if (dt.year == now.year && dt.month == now.month && dt.day == now.day) {
-      return 'Today';
+  /// 'Today' or the Addis calendar date of the booking.
+  String _formatDate(AppFormats fmt, Booking booking) {
+    final day = fmt.bookingDay(booking);
+    final today = addisNow();
+    if (day.year == today.year && day.month == today.month && day.day == today.day) {
+      return context.l10n.today;
     }
-    return '${dt.month}/${dt.day}/${dt.year}';
+    return fmt.dateMedium(day);
   }
 }
 

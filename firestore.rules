@@ -13,7 +13,8 @@ rules_version = '2';
 //                      their own appointments and availability
 //   barbershopOwner  - manages one shop: profile, services, barbers,
 //                      all of the shop's bookings
-//   admin            - registers / verifies / removes shops, manages users
+//   admin            - registers / verifies / removes shops, manages users,
+//                      plans and subscriptions
 //
 // Nobody can give themselves a role. A role other than `customer` is only
 // granted through an invite at invites/{phone} (the E.164 phone number),
@@ -25,25 +26,50 @@ rules_version = '2';
 // Firebase console with: phone, role: "admin", name, createdBy: "console",
 // createdAt: an ISO-8601 string. Then sign in with that number.
 //
+// Cloud Functions (functions/notifications, functions/payments) use the
+// Admin SDK and bypass these rules. Everything they own is read-only (or
+// invisible) to clients: payments/*, notificationLog/*, inbox documents
+// (except `read`), shop subscription fields, booking payment fields and
+// reminder flags.
+//
+// All instants are ISO-8601 UTC strings ("2026-11-20T07:00:00.000Z").
+// Addis Ababa is UTC+3 with no DST.
+//
 // Collections
 //   users/{uid}                uid, name, phone, role, shopId?, barberId?,
-//                              email?, createdAt
+//                              email?, createdAt, language? ('en'|'am')
+//     /devices/{deviceId}      token, platform, updatedAt   (owner only)
+//     /notifications/{id}      title, body, type, bookingId?, read,
+//                              createdAt   (functions; owner reads, sets read)
 //   invites/{phone}            phone, role, name, shopId?, barberId?,
 //                              createdBy, createdAt
 //   barbershops/{shopId}       ownerId ('' until the invited owner signs
 //                              in), name, description, address, city,
-//                              phone, imageUrl, rating, reviewCount,
-//                              openingHour, closingHour, workingDays,
-//                              isVerified
-//     /services/{serviceId}    shopId, name, description, price,
+//                              subCity?, landmark?, phone, imageUrl, rating,
+//                              reviewCount, openingHour, closingHour,
+//                              workingDays, isVerified, subscriptionPlan?,
+//                              subscriptionStatus?, subscriptionEndsAt?,
+//                              createdAt?
+//     /services/{serviceId}    shopId, name, description, price (ETB),
 //                              durationMinutes
 //     /barbers/{barberId}      shopId, name, title, avatarUrl, rating,
 //                              reviewCount, isAvailable, email, phone,
-//                              specialties
+//                              specialties, workingDays?, startHour?, endHour?
+//       /slotLocks/{lockId}    bookingId, customerId, startAt
+//                              lockId = Addis 'yyyyMMdd-HHmm' of a 15-minute
+//                              block; one per block a booking covers
 //   bookings/{bookingId}       shopId, shopName, barberId, barberName,
 //                              customerId, customerName, customerPhone,
 //                              serviceId, serviceName, price, date,
-//                              timeSlot, status, createdAt
+//                              timeSlot, status, createdAt, startAt, endAt,
+//                              durationMinutes, paymentStatus, paymentMethod,
+//                              cancelledBy?; functions only: paymentId?,
+//                              paidAt?, reminder24hSentAt?, reminder2hSentAt?
+//   plans/{planId}             name, priceMonthlyEtb, maxBarbers, features,
+//                              active   (public read, admin write)
+//   payments/{paymentId}       written by functions only; read by the payer,
+//                              the shop owner and admins
+//   notificationLog/{id}       functions only (no client access)
 // =====================================================================
 
 service cloud.firestore {
@@ -71,6 +97,14 @@ service cloud.firestore {
 
     function servicePath(shopId, serviceId) {
       return /databases/$(database)/documents/barbershops/$(shopId)/services/$(serviceId);
+    }
+
+    function bookingPath(bookingId) {
+      return /databases/$(database)/documents/bookings/$(bookingId);
+    }
+
+    function slotLockPath(shopId, barberId, lockId) {
+      return /databases/$(database)/documents/barbershops/$(shopId)/barbers/$(barberId)/slotLocks/$(lockId);
     }
 
     // -----------------------------------------------------------------
@@ -109,6 +143,13 @@ service cloud.firestore {
 
     function canManageShop(shopId) {
       return isAdmin() || isOwnerOf(shopId);
+    }
+
+    // The shop's owner or one of its barbers.
+    function isStaffOf(shopId) {
+      return hasProfile() &&
+        me().role in ['barbershopOwner', 'barber'] &&
+        me().get('shopId', '') == shopId;
     }
 
     // Signed-in barber linked to this barber profile. Deleting the barber
@@ -155,6 +196,21 @@ service cloud.firestore {
       return value is timestamp || isValidDateString(value);
     }
 
+    function optDate(data, field) {
+      return !(field in data) || isValidDateOrTimestamp(data[field]);
+    }
+
+    function optInt(data, field, minValue, maxValue) {
+      return !(field in data) ||
+        (data[field] is int && data[field] >= minValue && data[field] <= maxValue);
+    }
+
+    function optWorkingDays(data) {
+      return !('workingDays' in data) ||
+        (data.workingDays is list && data.workingDays.size() <= 7 &&
+          data.workingDays.hasOnly([1, 2, 3, 4, 5, 6, 7]));
+    }
+
     // True if `field` has the same value before and after the write.
     function unchanged(field) {
       return request.resource.data.get(field, null) == resource.data.get(field, null);
@@ -165,11 +221,59 @@ service cloud.firestore {
     }
 
     // -----------------------------------------------------------------
+    // Time helpers (appointment instants and slot-lock ids)
+    // -----------------------------------------------------------------
+
+    // A whole-minute UTC instant exactly as Dart's
+    // DateTime.toUtc().toIso8601String() writes it.
+    function isUtcMinute(s) {
+      return s is string && s.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:00[.]000Z$');
+    }
+
+    // ...on the 15-minute grid (Addis is a whole-hour offset from UTC).
+    function isQuarterHour(s) {
+      return s is string && s.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:(00|15|30|45):00[.]000Z$');
+    }
+
+    // Parses an isUtcMinute string.
+    function utcMinuteToTs(s) {
+      return timestamp.date(int(s[0:4]), int(s[5:7]), int(s[8:10])) +
+        duration.value(int(s[11:13]) * 60 + int(s[14:16]), 'm');
+    }
+
+    // Slot-lock ids are the Addis wall clock (UTC+3) of the block start,
+    // yyyyMMdd-HHmm, on the 15-minute grid. The helpers below avoid
+    // ternary padding and timestamp parsing where they can: a 90-minute
+    // booking writes seven documents, and all their rules share one budget
+    // of 1000 evaluated expressions per request.
+
+    // 'HHmm' of a minute of the day (zero-padded by formatting 1HHmm).
+    function hhmm(minuteOfDay) {
+      return string(10000 + int((minuteOfDay - minuteOfDay % 60) / 60) * 100 + minuteOfDay % 60)[1:5];
+    }
+
+    // The slot-lock id of the block starting at the UTC instant `s`
+    // (an isQuarterHour string). Before 21:00 UTC the Addis day is the
+    // UTC day, so the id is cut from the string; later blocks (Addis
+    // 00:00-02:59) go through timestamp arithmetic.
+    function lockIdOf(s) {
+      return int(s[11:13]) < 21
+        ? s[0:4] + s[5:7] + s[8:10] + '-' + string(103 + int(s[11:13]))[1:3] + s[14:16]
+        : addisDayOf(utcMinuteToTs(s) + duration.value(3, 'h')) + '-' +
+          hhmm((int(s[11:13]) - 21) * 60 + int(s[14:16]));
+    }
+
+    // 'yyyyMMdd' of a timestamp already shifted to Addis time.
+    function addisDayOf(a) {
+      return string(a.year() * 10000 + a.month() * 100 + a.day());
+    }
+
+    // -----------------------------------------------------------------
     // Domain validators
     // -----------------------------------------------------------------
 
     function isValidUser(d) {
-      return d.keys().hasOnly(['uid', 'email', 'name', 'phone', 'role', 'shopId', 'barberId', 'createdAt']) &&
+      return d.keys().hasOnly(['uid', 'email', 'name', 'phone', 'role', 'shopId', 'barberId', 'createdAt', 'language']) &&
         d.keys().hasAll(['uid', 'name', 'phone', 'role', 'createdAt']) &&
         isString(d.uid, 1, 128) &&
         isString(d.name, 1, 100) &&
@@ -178,6 +282,7 @@ service cloud.firestore {
         optString(d, 'email', 3, 254) &&
         optString(d, 'shopId', 1, 128) &&
         optString(d, 'barberId', 1, 128) &&
+        (!('language' in d) || d.language in ['en', 'am']) &&
         isValidDateOrTimestamp(d.createdAt) &&
         // Each role carries exactly the links it needs.
         (
@@ -225,9 +330,11 @@ service cloud.firestore {
 
     function isValidBarbershop(d) {
       return d.keys().hasOnly([
-          'ownerId', 'name', 'description', 'address', 'city', 'phone',
-          'imageUrl', 'rating', 'reviewCount', 'openingHour', 'closingHour',
-          'workingDays', 'isVerified'
+          'ownerId', 'name', 'description', 'address', 'city', 'subCity',
+          'landmark', 'phone', 'imageUrl', 'rating', 'reviewCount',
+          'openingHour', 'closingHour', 'workingDays', 'isVerified',
+          'subscriptionPlan', 'subscriptionStatus', 'subscriptionEndsAt',
+          'createdAt'
         ]) &&
         d.keys().hasAll(['ownerId', 'name', 'description', 'address', 'city', 'phone', 'imageUrl']) &&
         isString(d.ownerId, 0, 128) &&
@@ -235,14 +342,35 @@ service cloud.firestore {
         isString(d.description, 1, 1000) &&
         isString(d.address, 1, 200) &&
         isString(d.city, 1, 100) &&
+        (!('subCity' in d) || isString(d.subCity, 0, 60)) &&
+        optString(d, 'landmark', 0, 200) &&
         isString(d.phone, 1, 30) &&
         isValidUrl(d.imageUrl) &&
         (!('rating' in d) || (d.rating is number && d.rating >= 0 && d.rating <= 5)) &&
-        (!('reviewCount' in d) || (d.reviewCount is int && d.reviewCount >= 0)) &&
-        (!('openingHour' in d) || (d.openingHour is int && d.openingHour >= 0 && d.openingHour <= 23)) &&
-        (!('closingHour' in d) || (d.closingHour is int && d.closingHour >= 1 && d.closingHour <= 24)) &&
-        (!('workingDays' in d) || (d.workingDays is list && d.workingDays.size() <= 7)) &&
-        (!('isVerified' in d) || d.isVerified is bool);
+        optInt(d, 'reviewCount', 0, 100000000) &&
+        optInt(d, 'openingHour', 0, 23) &&
+        optInt(d, 'closingHour', 1, 24) &&
+        optWorkingDays(d) &&
+        (!('isVerified' in d) || d.isVerified is bool) &&
+        (!('subscriptionPlan' in d) || d.subscriptionPlan in ['trial', 'basic', 'pro']) &&
+        (!('subscriptionStatus' in d) ||
+          d.subscriptionStatus in ['trialing', 'active', 'past_due', 'suspended']) &&
+        optDate(d, 'subscriptionEndsAt') &&
+        optDate(d, 'createdAt');
+    }
+
+    // Shop fields only the platform (admin / Cloud Functions) may change.
+    function platformShopFields() {
+      return ['isVerified', 'rating', 'reviewCount', 'subscriptionPlan',
+        'subscriptionStatus', 'subscriptionEndsAt', 'createdAt'];
+    }
+
+    // Customers see shops that are not suspended. This must be provable
+    // from the customer listener's `subscriptionStatus in [...]` filter,
+    // so it reads the field directly: docs without it (written before
+    // subscriptions existed) are visible to their staff and admins only.
+    function isCustomerVisibleShop(d) {
+      return d.subscriptionStatus in ['trialing', 'active', 'past_due'];
     }
 
     function isValidService(d, shopId) {
@@ -258,7 +386,8 @@ service cloud.firestore {
     function isValidBarber(d, shopId) {
       return d.keys().hasOnly([
           'shopId', 'name', 'title', 'avatarUrl', 'rating', 'reviewCount',
-          'isAvailable', 'email', 'phone', 'specialties'
+          'isAvailable', 'email', 'phone', 'specialties', 'workingDays',
+          'startHour', 'endHour'
         ]) &&
         d.keys().hasAll(['shopId', 'name', 'title']) &&
         d.shopId == shopId &&
@@ -268,23 +397,17 @@ service cloud.firestore {
         optString(d, 'email', 3, 254) &&
         optString(d, 'phone', 1, 30) &&
         (!('rating' in d) || (d.rating is number && d.rating >= 0 && d.rating <= 5)) &&
-        (!('reviewCount' in d) || (d.reviewCount is int && d.reviewCount >= 0)) &&
+        optInt(d, 'reviewCount', 0, 100000000) &&
         (!('isAvailable' in d) || d.isAvailable is bool) &&
-        (!('specialties' in d) || (d.specialties is list && d.specialties.size() <= 20));
+        (!('specialties' in d) || (d.specialties is list && d.specialties.size() <= 20)) &&
+        optWorkingDays(d) &&
+        optInt(d, 'startHour', 0, 23) &&
+        optInt(d, 'endHour', 1, 24);
     }
 
-    function isValidBooking(d) {
-      return d.keys().hasOnly([
-          'shopId', 'shopName', 'barberId', 'barberName', 'customerId',
-          'customerName', 'customerPhone', 'serviceId', 'serviceName',
-          'price', 'date', 'timeSlot', 'status', 'createdAt'
-        ]) &&
-        d.keys().hasAll([
-          'shopId', 'shopName', 'barberId', 'barberName', 'customerId',
-          'customerName', 'customerPhone', 'serviceId', 'serviceName',
-          'price', 'date', 'timeSlot', 'status', 'createdAt'
-        ]) &&
-        isString(d.shopId, 1, 128) &&
+    // Field types shared by every booking document.
+    function isBookingCore(d) {
+      return isString(d.shopId, 1, 128) &&
         isString(d.shopName, 1, 120) &&
         isString(d.barberId, 1, 128) &&
         isString(d.barberName, 1, 100) &&
@@ -298,6 +421,162 @@ service cloud.firestore {
         isString(d.timeSlot, 1, 50) &&
         d.status in ['pending', 'confirmed', 'inProgress', 'completed', 'cancelled'] &&
         isValidDateOrTimestamp(d.createdAt);
+    }
+
+    // Shape of any stored booking, including legacy ones without the
+    // appointment interval and documents carrying function-written fields.
+    function isValidBooking(d) {
+      return d.keys().hasOnly([
+          'shopId', 'shopName', 'barberId', 'barberName', 'customerId',
+          'customerName', 'customerPhone', 'serviceId', 'serviceName',
+          'price', 'date', 'timeSlot', 'status', 'createdAt',
+          'startAt', 'endAt', 'durationMinutes', 'paymentStatus',
+          'paymentMethod', 'cancelledBy',
+          // Written by Cloud Functions only.
+          'paymentId', 'paidAt', 'reminder24hSentAt', 'reminder2hSentAt'
+        ]) &&
+        d.keys().hasAll([
+          'shopId', 'shopName', 'barberId', 'barberName', 'customerId',
+          'customerName', 'customerPhone', 'serviceId', 'serviceName',
+          'price', 'date', 'timeSlot', 'status', 'createdAt'
+        ]) &&
+        isBookingCore(d) &&
+        optDate(d, 'startAt') &&
+        optDate(d, 'endAt') &&
+        optInt(d, 'durationMinutes', 5, 480) &&
+        (!('paymentStatus' in d) || d.paymentStatus in ['unpaid', 'pending', 'paid', 'refunded']) &&
+        (!('paymentMethod' in d) || d.paymentMethod in ['cash', 'chapa']) &&
+        optString(d, 'cancelledBy', 1, 128);
+    }
+
+    // The slot lock `id` exists after this write and belongs to the booking.
+    function holdsLock(d, bookingId, id) {
+      return getAfter(slotLockPath(d.shopId, d.barberId, id)).data.bookingId == bookingId;
+    }
+
+    // Offset of the booking's last 15-minute block (start is on the grid).
+    function lastBlockOffset(minutes) {
+      return (minutes - 1) - ((minutes - 1) % 15);
+    }
+
+    // The booking's slot locks, created in the same transaction. `day` is
+    // the Addis 'yyyyMMdd-' of the start and `m0` its Addis minute of the
+    // day. The first four blocks and the last block are checked (rules
+    // have per-request budgets for document reads and expressions).
+    function holdsLocks(d, bookingId, day, m0) {
+      return holdsLock(d, bookingId, day + hhmm(m0)) &&
+        (d.durationMinutes <= 15 || holdsLock(d, bookingId, day + hhmm(m0 + 15))) &&
+        (d.durationMinutes <= 30 || holdsLock(d, bookingId, day + hhmm(m0 + 30))) &&
+        (d.durationMinutes <= 45 || holdsLock(d, bookingId, day + hhmm(m0 + 45))) &&
+        (lastBlockOffset(d.durationMinutes) <= 45 ||
+          holdsLock(d, bookingId, day + hhmm(m0 + lastBlockOffset(d.durationMinutes))));
+    }
+
+    // The appointment interval: endAt = startAt + durationMinutes, starting
+    // in the next 31 days and ending by Addis midnight; and its slot locks
+    // are held.
+    function isValidInterval(d, bookingId) {
+      let start = utcMinuteToTs(d.startAt);
+      let a = start + duration.value(3, 'h');
+      let m0 = a.hours() * 60 + a.minutes();
+      return utcMinuteToTs(d.endAt) == start + duration.value(d.durationMinutes, 'm') &&
+        start > request.time &&
+        start < request.time + duration.value(31, 'd') &&
+        m0 + d.durationMinutes <= 1440 &&
+        holdsLocks(d, bookingId, addisDayOf(a) + '-', m0);
+    }
+
+    // A new booking from the app.
+    function isValidNewBooking(d, bookingId) {
+      return d.keys().hasOnly([
+          'shopId', 'shopName', 'barberId', 'barberName', 'customerId',
+          'customerName', 'customerPhone', 'serviceId', 'serviceName',
+          'price', 'date', 'timeSlot', 'status', 'createdAt',
+          'startAt', 'endAt', 'durationMinutes', 'paymentStatus',
+          'paymentMethod'
+        ]) &&
+        d.keys().size() == 19 &&
+        d.shopName is string && d.shopName.size() <= 120 &&
+        d.barberName is string && d.barberName.size() <= 100 &&
+        d.customerName is string && d.customerName.size() <= 100 &&
+        d.customerPhone is string && d.customerPhone.size() <= 30 &&
+        d.serviceName is string && d.serviceName.size() <= 100 &&
+        d.timeSlot is string && d.timeSlot.size() <= 50 &&
+        isValidDateString(d.date) &&
+        isValidDateString(d.createdAt) &&
+        d.status in ['pending', 'confirmed'] &&
+        d.paymentStatus == 'unpaid' &&
+        d.paymentMethod in ['cash', 'chapa'] &&
+        d.durationMinutes is int &&
+        isQuarterHour(d.startAt) &&
+        isUtcMinute(d.endAt) &&
+        isValidInterval(d, bookingId);
+    }
+
+    // A booking may only reference a bookable shop, an available barber
+    // and a real service, at that service's price and duration.
+    function isBookable(d) {
+      return get(shopPath(d.shopId)).data.get('subscriptionStatus', 'trialing') != 'suspended' &&
+        get(barberPath(d.shopId, d.barberId)).data.get('isAvailable', true) == true &&
+        get(servicePath(d.shopId, d.serviceId)).data.price == d.price &&
+        get(servicePath(d.shopId, d.serviceId)).data.durationMinutes == d.durationMinutes;
+    }
+
+    // cancelledBy is only set by the person cancelling, on the transition
+    // to cancelled.
+    function cancelledByOk() {
+      return !changedKeys().hasAny(['cancelledBy']) ||
+        (request.resource.data.status == 'cancelled' &&
+          resource.data.status != 'cancelled' &&
+          request.resource.data.cancelledBy == request.auth.uid);
+    }
+
+    // A lock for a block inside a live booking of the caller's, at this
+    // shop and barber. The booking may be created in the same transaction.
+    // Kept lean: a 90-minute booking writes six locks, and every write of
+    // the transaction shares one budget of 1000 evaluated expressions.
+    // (Reading bookingId, customerId and startAt fails if one is missing,
+    // so hasOnly is enough for the shape.)
+    function canCreateSlotLock(shopId, barberId, lockId, d) {
+      let bk = getAfter(bookingPath(d.bookingId)).data;
+      return d.keys().hasOnly(['bookingId', 'customerId', 'startAt']) &&
+        d.customerId == request.auth.uid &&
+        bk.customerId == request.auth.uid &&
+        bk.shopId == shopId &&
+        bk.barberId == barberId &&
+        bk.status in ['pending', 'confirmed'] &&
+        isQuarterHour(d.startAt) &&
+        d.startAt >= bk.startAt &&
+        d.startAt < bk.endAt &&
+        lockId == lockIdOf(d.startAt);
+    }
+
+    // Releasing a lock: its booking is cancelled (now or earlier) and the
+    // caller is someone who may cancel that booking.
+    function canReleaseSlotLock(shopId, barberId) {
+      let bk = getAfter(bookingPath(resource.data.bookingId)).data;
+      return bk.status == 'cancelled' &&
+        bk.shopId == shopId &&
+        bk.barberId == barberId &&
+        (bk.customerId == request.auth.uid || isBarberProfile(shopId, barberId));
+    }
+
+    function isValidPlan(d) {
+      return d.keys().hasOnly(['name', 'priceMonthlyEtb', 'maxBarbers', 'features', 'active']) &&
+        d.keys().hasAll(['name', 'priceMonthlyEtb', 'maxBarbers', 'features', 'active']) &&
+        isString(d.name, 1, 60) &&
+        d.priceMonthlyEtb is number && d.priceMonthlyEtb >= 0 && d.priceMonthlyEtb <= 1000000 &&
+        d.maxBarbers is int && d.maxBarbers >= -1 && d.maxBarbers <= 1000 &&
+        d.features is list && d.features.size() <= 30 &&
+        d.active is bool;
+    }
+
+    function isValidDevice(d) {
+      return d.keys().hasOnly(['token', 'platform', 'updatedAt']) &&
+        d.keys().hasAll(['token', 'platform', 'updatedAt']) &&
+        isString(d.token, 1, 4096) &&
+        d.platform in ['android', 'ios', 'web'] &&
+        isValidDateString(d.updatedAt);
     }
 
     // -----------------------------------------------------------------
@@ -325,14 +604,33 @@ service cloud.firestore {
         (request.auth.uid == userId &&
           unchanged('uid') && unchanged('createdAt') && unchanged('phone') &&
           (
-            // Ordinary profile edits never touch the role fields...
-            (unchanged('role') && unchanged('shopId') && unchanged('barberId')) ||
-            // ...except a customer accepting an invite (one time).
+            // Ordinary profile edits: name, language, email.
+            changedKeys().hasOnly(['name', 'language', 'email']) ||
+            // ...or a customer accepting an invite (one time).
             (resource.data.role == 'customer' && matchesMyInvite(request.resource.data))
           ))
       );
 
       allow delete: if isAdmin();
+
+      // FCM registration tokens of this user's devices.
+      match /devices/{deviceId} {
+        allow read, delete: if signedIn() && request.auth.uid == userId;
+        allow create, update: if signedIn() &&
+          request.auth.uid == userId &&
+          deviceId.matches('^[A-Za-z0-9_-]{1,128}$') &&
+          isValidDevice(request.resource.data);
+      }
+
+      // In-app inbox, written by Cloud Functions. The user may only mark
+      // a notification as read.
+      match /notifications/{notificationId} {
+        allow read: if signedIn() && request.auth.uid == userId;
+        allow update: if signedIn() &&
+          request.auth.uid == userId &&
+          changedKeys().hasOnly(['read']) &&
+          request.resource.data.read == true;
+      }
     }
 
     // -----------------------------------------------------------------
@@ -371,21 +669,36 @@ service cloud.firestore {
     }
 
     // -----------------------------------------------------------------
+    // Collection-group reads (customer and admin listeners). Services and
+    // barber profiles are public, like the nested rules below. These do
+    // not match slotLocks (a different collection id).
+    // -----------------------------------------------------------------
+    match /{path=**}/services/{serviceId} {
+      allow read: if true;
+    }
+
+    match /{path=**}/barbers/{barberId} {
+      allow read: if true;
+    }
+
+    // -----------------------------------------------------------------
     // barbershops/{shopId}
     // -----------------------------------------------------------------
     match /barbershops/{shopId} {
-      // Public directory.
-      allow read: if true;
+      // Public directory of shops that are not suspended. A suspended shop
+      // stays visible to its own staff and to admins.
+      allow read: if isCustomerVisibleShop(resource.data) || isAdmin() || isStaffOf(shopId);
 
       // Shops are onboarded by the platform admin.
       allow create: if isAdmin() && isValidBarbershop(request.resource.data);
 
-      // Owners edit their shop but cannot verify it or change its rating.
-      // They can claim an unowned shop (ownerId '') once.
+      // Owners edit their shop's profile but cannot verify it, change its
+      // rating or its subscription. They can claim an unowned shop
+      // (ownerId '') once.
       allow update: if isValidBarbershop(request.resource.data) && (
         isAdmin() ||
         (isOwnerOf(shopId) &&
-          !changedKeys().hasAny(['isVerified', 'rating', 'reviewCount']) &&
+          !changedKeys().hasAny(platformShopFields()) &&
           (unchanged('ownerId') ||
             (resource.data.ownerId == '' && request.resource.data.ownerId == request.auth.uid)))
       );
@@ -406,13 +719,34 @@ service cloud.firestore {
 
         allow update: if isValidBarber(request.resource.data, shopId) && (
           isAdmin() ||
-          // Owners manage profiles but not ratings.
+          // Owners manage profiles and working hours but not ratings.
           (isOwnerOf(shopId) && !changedKeys().hasAny(['rating', 'reviewCount'])) ||
           // A barber can only toggle their own availability.
           (isBarberProfile(shopId, barberId) && changedKeys().hasOnly(['isAvailable']))
         );
 
         allow delete: if canManageShop(shopId);
+
+        // Double-booking prevention: one lock per 15-minute block of a
+        // booking, created in the same transaction as the booking. Locks
+        // are never updated, so a second booking for a taken block fails.
+        match /slotLocks/{lockId} {
+          // The booking screen reads a day's locks to show busy times.
+          // Locks hold only a booking id, a uid and an instant.
+          allow read: if signedIn();
+
+          allow create: if signedIn() &&
+            canCreateSlotLock(shopId, barberId, lockId, request.resource.data);
+
+          allow update: if false;
+
+          // Released when the booking is cancelled; owners and admins may
+          // clear their shop's locks at any time.
+          allow delete: if signedIn() && (
+            canManageShop(shopId) ||
+            canReleaseSlotLock(shopId, barberId)
+          );
+        }
       }
     }
 
@@ -426,37 +760,63 @@ service cloud.firestore {
         isBarberProfile(resource.data.shopId, resource.data.barberId)
       );
 
-      // Customers book for themselves, with a barber and service that exist
-      // in that shop, at the service's real price.
+      // Customers book for themselves, with an available barber and a
+      // service of a non-suspended shop, at the service's real price and
+      // duration, holding the slot locks for the appointment.
       allow create: if hasProfile() &&
-        isValidBooking(request.resource.data) &&
         request.resource.data.customerId == request.auth.uid &&
-        request.resource.data.status in ['pending', 'confirmed'] &&
-        exists(barberPath(request.resource.data.shopId, request.resource.data.barberId)) &&
-        exists(servicePath(request.resource.data.shopId, request.resource.data.serviceId)) &&
-        get(servicePath(request.resource.data.shopId, request.resource.data.serviceId)).data.price ==
-          request.resource.data.price;
+        isValidNewBooking(request.resource.data, bookingId) &&
+        isBookable(request.resource.data);
 
-      // Only the status can change after booking.
+      // Only the status (plus who cancelled) changes after booking.
+      // Payment fields and reminder flags belong to Cloud Functions; an
+      // admin may also correct paymentStatus.
       allow update: if signedIn() &&
         isValidBooking(request.resource.data) &&
-        changedKeys().hasOnly(['status']) &&
+        cancelledByOk() &&
         (
-          // Customer: cancel an upcoming booking.
-          (resource.data.customerId == request.auth.uid &&
-            resource.data.status in ['pending', 'confirmed'] &&
-            request.resource.data.status == 'cancelled') ||
-          // Assigned barber: run their own queue.
-          isBarberProfile(resource.data.shopId, resource.data.barberId) ||
-          // Shop owner or admin.
-          canManageShop(resource.data.shopId)
+          (changedKeys().hasOnly(['status', 'cancelledBy']) &&
+            (
+              // Customer: cancel an upcoming booking.
+              (resource.data.customerId == request.auth.uid &&
+                resource.data.status in ['pending', 'confirmed'] &&
+                request.resource.data.status == 'cancelled') ||
+              // Assigned barber or shop owner: run the shop's queue. A
+              // cancelled booking has released its slot, so it stays
+              // cancelled.
+              ((isBarberProfile(resource.data.shopId, resource.data.barberId) ||
+                  isOwnerOf(resource.data.shopId)) &&
+                (resource.data.status != 'cancelled' || request.resource.data.status == 'cancelled')) ||
+              isAdmin()
+            )) ||
+          (isAdmin() && changedKeys().hasOnly(['status', 'cancelledBy', 'paymentStatus']))
         );
 
       // Bookings are kept for history.
       allow delete: if isAdmin();
     }
 
-    // Everything else is closed.
+    // -----------------------------------------------------------------
+    // plans/{planId} - subscription plans
+    // -----------------------------------------------------------------
+    match /plans/{planId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidPlan(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    // -----------------------------------------------------------------
+    // payments/{paymentId} - written by Cloud Functions only
+    // -----------------------------------------------------------------
+    match /payments/{paymentId} {
+      allow read: if signedIn() && (
+        resource.data.userId == request.auth.uid ||
+        canManageShop(resource.data.shopId)
+      );
+      allow write: if false;
+    }
+
+    // notificationLog/* and everything else is closed.
     match /{document=**} {
       allow read, write: if false;
     }

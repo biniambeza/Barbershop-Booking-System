@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../l10n/l10n.dart';
 import '../../../models/barber_model.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../services/app_repository.dart';
@@ -17,7 +18,8 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
   String _searchQuery = '';
   String _selectedSpecialty = 'All';
 
-  final List<String> _specialtyFilters = [
+  // Values match the English specialty names stored on barbers.
+  static const List<String> _specialtyFilters = [
     'All',
     'Skin Fade',
     'Beard Sculpting',
@@ -25,6 +27,24 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
     'Scissor Cut',
     'Executive Styling',
   ];
+
+  String _specialtyLabel(String value) {
+    final l = context.l10n;
+    switch (value) {
+      case 'Skin Fade':
+        return l.specSkinFade;
+      case 'Beard Sculpting':
+        return l.specBeardSculpting;
+      case 'Hot Shave':
+        return l.specHotShave;
+      case 'Scissor Cut':
+        return l.specScissorCut;
+      case 'Executive Styling':
+        return l.specExecutiveStyling;
+      default:
+        return l.specAll;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +63,8 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
               barber.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
               barber.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
               shop.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-              shop.city.toLowerCase().contains(_searchQuery.toLowerCase());
+              shop.city.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+              shop.subCity.toLowerCase().contains(_searchQuery.toLowerCase());
 
           final matchesSpecialty = _selectedSpecialty == 'All' ||
               barber.specialties.any((s) => s.toLowerCase().contains(_selectedSpecialty.toLowerCase())) ||
@@ -54,7 +75,7 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Find Top Barbers', style: TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(context.l10n.findTopBarbers, style: const TextStyle(fontWeight: FontWeight.bold)),
             bottom: PreferredSize(
               preferredSize: const Size.fromHeight(116),
               child: Column(
@@ -65,7 +86,7 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                     child: TextField(
                       onChanged: (val) => setState(() => _searchQuery = val),
                       decoration: InputDecoration(
-                        hintText: 'Search by barber name, specialty, or shop...',
+                        hintText: context.l10n.searchBarbersHint,
                         prefixIcon: const Icon(Icons.search, color: AppTheme.primaryGold),
                         filled: true,
                         fillColor: AppTheme.darkCard,
@@ -92,7 +113,7 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4),
                           child: ChoiceChip(
-                            label: Text(specialty),
+                            label: Text(_specialtyLabel(specialty)),
                             selected: isSelected,
                             selectedColor: AppTheme.primaryGold,
                             labelStyle: TextStyle(
@@ -121,7 +142,7 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                       const Icon(Icons.search_off, size: 56, color: AppTheme.textSecondary),
                       const SizedBox(height: 12),
                       Text(
-                        'No barbers found matching "$_searchQuery"',
+                        context.l10n.noBarbersMatching(_searchQuery),
                         style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
                       ),
                     ],
@@ -201,7 +222,7 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                           const Icon(Icons.star, color: AppTheme.primaryGold, size: 14),
                           const SizedBox(width: 4),
                           Text(
-                            '${barber.rating.toStringAsFixed(1)} (${barber.reviewCount} reviews)',
+                            context.l10n.reviewsCount(barber.rating.toStringAsFixed(1), barber.reviewCount),
                             style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                           ),
                         ],
@@ -242,7 +263,7 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
                           ),
                           Text(
-                            shop.fullAddress,
+                            context.l10n.shopAddress(shop),
                             style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -287,13 +308,13 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                 ),
                 icon: const Icon(Icons.calendar_month, size: 18),
                 label: Text(
-                  'Book with ${barber.name.split(' ').first}',
+                  context.l10n.bookWith(barber.name.split(' ').first),
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                 ),
                 onPressed: () {
                   if (defaultService == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('No services available at this shop yet.')),
+                      SnackBar(content: Text(context.l10n.noServicesAtShop)),
                     );
                     return;
                   }

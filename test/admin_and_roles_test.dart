@@ -1,94 +1,32 @@
-import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:barbershop_booking/core/theme/app_theme.dart';
+import 'package:barbershop_booking/models/barbershop_model.dart';
 import 'package:barbershop_booking/models/user_model.dart';
 import 'package:barbershop_booking/services/app_repository.dart';
 import 'package:barbershop_booking/features/admin/screens/admin_dashboard_screen.dart';
 import 'package:barbershop_booking/features/shop_owner/screens/customize_shop_screen.dart';
-
-class _TestHttpClientResponse extends Fake implements HttpClientResponse {
-  static final _transparentImage = base64Decode(
-    'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
-  );
-
-  @override
-  int get statusCode => 200;
-  @override
-  int get contentLength => _transparentImage.length;
-  @override
-  HttpClientResponseCompressionState get compressionState =>
-      HttpClientResponseCompressionState.notCompressed;
-
-  @override
-  StreamSubscription<List<int>> listen(
-    void Function(List<int> event)? onData, {
-    Function? onError,
-    void Function()? onDone,
-    bool? cancelOnError,
-  }) {
-    return Stream<List<int>>.value(_transparentImage).listen(
-      onData,
-      onError: onError,
-      onDone: onDone,
-      cancelOnError: cancelOnError,
-    );
-  }
-}
-
-class _TestHttpClientRequest extends Fake implements HttpClientRequest {
-  @override
-  final HttpHeaders headers = _TestHttpHeaders();
-
-  @override
-  Future<HttpClientResponse> close() async => _TestHttpClientResponse();
-}
-
-class _TestHttpHeaders extends Fake implements HttpHeaders {
-  @override
-  void add(String name, Object value, {bool preserveHeaderCase = false}) {}
-  @override
-  void set(String name, Object value, {bool preserveHeaderCase = false}) {}
-}
-
-class _TestHttpClient extends Fake implements HttpClient {
-  @override
-  bool autoUncompress = true;
-  @override
-  Duration? connectionTimeout;
-  @override
-  Duration idleTimeout = const Duration(seconds: 15);
-  @override
-  int? maxConnectionsPerHost;
-  @override
-  String? userAgent;
-
-  @override
-  Future<HttpClientRequest> getUrl(Uri url) async => _TestHttpClientRequest();
-}
-
-class _TestHttpOverrides extends HttpOverrides {
-  @override
-  HttpClient createHttpClient(SecurityContext? context) => _TestHttpClient();
-}
+import 'test_helpers.dart';
 
 void main() {
   setUpAll(() {
-    HttpOverrides.global = _TestHttpOverrides();
+    HttpOverrides.global = TestHttpOverrides();
+    loadTestSeed();
   });
   test('Admin registers a new Barbershop and provisions Owner account', () async {
     final repo = AppRepository.instance;
     final initialCount = repo.getShops().length;
 
     final newShopId = await repo.registerBarbershopByAdmin(
-      shopName: 'Hudson Yards Fade Lounge',
-      ownerName: 'Gregory King',
+      shopName: 'Summit Fade Lounge',
+      ownerName: 'Girma Tadesse',
       ownerPhone: '0912 345 678',
-      address: '500 W 33rd St',
-      city: 'New York, NY',
-      description: 'Ultra-modern cuts and beard grooming in Hudson Yards.',
+      address: 'Summit Condominium Road',
+      city: 'Addis Ababa',
+      subCity: 'Bole',
+      landmark: 'Near Summit Fiyel Bet',
+      description: 'Modern cuts and beard grooming in Summit.',
       imageUrl: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800',
       openingHour: 8,
       closingHour: 21,
@@ -100,10 +38,16 @@ void main() {
     expect(repo.getShops().length, initialCount + 1);
     final shop = repo.getShopById(newShopId);
     expect(shop, isNotNull);
-    expect(shop!.name, 'Hudson Yards Fade Lounge');
-    expect(shop.address, '500 W 33rd St');
-    expect(shop.city, 'New York, NY');
+    expect(shop!.name, 'Summit Fade Lounge');
+    expect(shop.address, 'Summit Condominium Road');
+    expect(shop.city, 'Addis Ababa');
+    expect(shop.subCity, 'Bole');
+    expect(shop.landmark, 'Near Summit Fiyel Bet');
     expect(shop.isVerified, true);
+    // New shops start on the free trial.
+    expect(shop.subscriptionPlan, 'trial');
+    expect(shop.subscriptionStatus, SubscriptionStatus.trialing);
+    expect(shop.subscriptionEndsAt!.isAfter(DateTime.now().toUtc().add(const Duration(days: 29))), true);
 
     // The owner is invited by phone; no account exists until they sign in.
     final invite = repo.getPendingOwnerInvite(newShopId);
@@ -118,12 +62,12 @@ void main() {
     await repo.verifyOtp('123456');
     expect(repo.authStatus, AuthStatus.needsProfile);
     expect(repo.pendingInvite?.shopId, newShopId);
-    await repo.completeProfile(name: 'Gregory King');
+    await repo.completeProfile(name: 'Girma Tadesse');
 
     final owner = repo.currentUser!;
     expect(owner.role, UserRole.barbershopOwner);
     expect(owner.shopId, newShopId);
-    expect(owner.name, 'Gregory King');
+    expect(owner.name, 'Girma Tadesse');
     expect(repo.getShopById(newShopId)!.ownerId, owner.uid);
     expect(repo.getPendingOwnerInvite(newShopId), isNull);
     await repo.signOut();
@@ -133,7 +77,7 @@ void main() {
     expect(services.isNotEmpty, true);
     final barbers = repo.getBarbersForShop(newShopId);
     expect(barbers.isNotEmpty, true);
-    expect(barbers.first.name, 'Gregory King');
+    expect(barbers.first.name, 'Girma Tadesse');
   });
 
   test('Barbershop Owner customizes their shop and adds their own barbers', () async {
@@ -157,14 +101,14 @@ void main() {
     final initialBarbers = repo.getBarbersForShop(shop.id).length;
     await repo.addBarber(
       shopId: shop.id,
-      name: 'Mateo Silva',
+      name: 'Mikias Fekadu',
       title: 'Master Scissor & Beard Sculptor',
       avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
     );
 
     final newBarbers = repo.getBarbersForShop(shop.id);
     expect(newBarbers.length, initialBarbers + 1);
-    expect(newBarbers.any((b) => b.name == 'Mateo Silva'), true);
+    expect(newBarbers.any((b) => b.name == 'Mikias Fekadu'), true);
   });
 
   test('Customer searches across favorite barbershops and favorite barbers', () {
@@ -173,13 +117,13 @@ void main() {
     expect(allBarbersWithShops.isNotEmpty, true);
 
     // Search by barber name
-    final searchName = 'Marcus';
+    final searchName = 'Yonas';
     final matchingBarbers = allBarbersWithShops.where((item) =>
       item.barber.name.toLowerCase().contains(searchName.toLowerCase()) ||
       item.shop.name.toLowerCase().contains(searchName.toLowerCase())
     ).toList();
     expect(matchingBarbers.isNotEmpty, true);
-    expect(matchingBarbers.first.barber.name.contains('Marcus'), true);
+    expect(matchingBarbers.first.barber.name.contains('Yonas'), true);
   });
 
   testWidgets('Test AdminDashboardScreen and AdminRegisterShopScreen rendering', (tester) async {

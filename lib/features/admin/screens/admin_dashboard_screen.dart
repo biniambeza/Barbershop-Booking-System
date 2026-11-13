@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../../core/utils/phone_utils.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../l10n/l10n.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../models/booking_model.dart';
 import '../../../models/user_model.dart';
 import '../../../services/app_repository.dart';
+import '../../notifications/widgets/notification_bell.dart';
+import '../../shared/widgets/language_toggle.dart';
+import '../../shared/widgets/persona_switcher.dart';
+import 'admin_subscriptions_screen.dart';
 import 'admin_register_shop_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -33,101 +37,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     super.dispose();
   }
 
-  void _showPersonaSwitcher(BuildContext context) {
-    final repo = AppRepository.instance;
-    final shops = repo.getShops();
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppTheme.darkCard,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.switch_account, color: AppTheme.primaryGold),
-                  SizedBox(width: 8),
-                  Text('Switch Role Persona', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ],
-              ),
-              const SizedBox(height: 14),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: AppTheme.primaryGold,
-                  child: Icon(Icons.admin_panel_settings, color: Colors.black),
-                ),
-                title: const Text('Platform Administrator', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Register barbershops, manage users & platform config'),
-                trailing: const Icon(Icons.check, color: AppTheme.primaryGold),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  repo.switchRole(UserRole.admin);
-                },
-              ),
-              const Divider(color: Colors.white12),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: AppTheme.darkSurface,
-                  child: Icon(Icons.storefront, color: AppTheme.primaryGold),
-                ),
-                title: const Text('Barbershop Owner App', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text('Manage team barbers, services & appointments (${shops.first.name})'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  repo.switchRole(UserRole.barbershopOwner, targetShopId: shops.isNotEmpty ? shops.first.id : null);
-                },
-              ),
-              const Divider(color: Colors.white12),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Colors.tealAccent,
-                  child: Icon(Icons.content_cut, color: Colors.black),
-                ),
-                title: const Text('Staff Barber Workspace', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Marcus Vance: Manage appointment queue & earnings'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  repo.switchRole(UserRole.barber);
-                },
-              ),
-              const Divider(color: Colors.white12),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: AppTheme.darkSurface,
-                  child: Icon(Icons.person, color: Colors.lightBlueAccent),
-                ),
-                title: const Text('Customer View', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Search barbershops, pick favorite barbers & book appointments'),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  repo.switchRole(UserRole.customer);
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   void _confirmDeleteShop(Barbershop shop) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.darkCard,
-        title: const Text('Delete Barbershop?'),
-        content: Text('Are you sure you want to remove "${shop.name}" and all associated barbers, services and appointments?'),
+        title: Text(context.l10n.deleteShopTitle),
+        content: Text(context.l10n.deleteShopBody(shop.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+            child: Text(context.l10n.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
@@ -136,11 +56,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               await AppRepository.instance.deleteShop(shop.id);
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Removed ${shop.name}')),
+                  SnackBar(content: Text(context.l10n.shopRemoved(shop.name))),
                 );
               }
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+            child: Text(context.l10n.delete, style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -167,6 +87,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       final q = _searchQuery.toLowerCase();
       final matchQuery = s.name.toLowerCase().contains(q) ||
           s.city.toLowerCase().contains(q) ||
+          s.subCity.toLowerCase().contains(q) ||
           s.address.toLowerCase().contains(q);
       if (!matchQuery) return false;
 
@@ -177,20 +98,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
     return Scaffold(
       appBar: AppBar(
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'CROWN & BLADE',
-              style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2, fontSize: 16),
+              context.l10n.brandUpper,
+              style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 2, fontSize: 16),
             ),
             Row(
               children: [
-                Icon(Icons.shield, size: 12, color: AppTheme.primaryGold),
-                SizedBox(width: 4),
-                Text(
-                  'Platform System Administration',
-                  style: TextStyle(fontSize: 11, color: AppTheme.primaryGold, fontWeight: FontWeight.bold),
+                const Icon(Icons.shield, size: 12, color: AppTheme.primaryGold),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    context.l10n.adminSubtitle,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11, color: AppTheme.primaryGold, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),
@@ -199,11 +123,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         actions: [
           if (kDemoMode)
             TextButton.icon(
-              onPressed: () => _showPersonaSwitcher(context),
+              onPressed: () => showPersonaSwitcher(context, current: UserRole.admin),
             icon: const Icon(Icons.swap_horiz, size: 18, color: AppTheme.primaryGold),
-            label: const Text('Switch Role', style: TextStyle(color: AppTheme.primaryGold, fontSize: 13, fontWeight: FontWeight.bold)),
+            label: Text(context.l10n.switchRole, style: const TextStyle(color: AppTheme.primaryGold, fontSize: 13, fontWeight: FontWeight.bold)),
           ),
           IconButton(
+            key: const ValueKey('open-admin-subscriptions'),
+            tooltip: context.l10n.subscriptionsAndPlansTooltip,
+            icon: const Icon(Icons.workspace_premium_rounded, color: AppTheme.primaryGold),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AdminSubscriptionsScreen()),
+            ),
+          ),
+          const LanguageToggle(),
+          const NotificationBell(),
+          IconButton(
+            tooltip: context.l10n.signOut,
             icon: const Icon(Icons.logout_rounded),
             onPressed: () => repo.signOut(),
           ),
@@ -216,15 +152,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           tabs: [
             Tab(
               icon: const Icon(Icons.storefront),
-              text: 'Shops (${allShops.length})',
+              text: context.l10n.tabShops(allShops.length),
             ),
             Tab(
               icon: const Icon(Icons.people_outline),
-              text: 'Users (${allUsers.length})',
+              text: context.l10n.tabUsers(allUsers.length),
             ),
             Tab(
               icon: const Icon(Icons.calendar_month),
-              text: 'Bookings (${allBookings.length})',
+              text: context.l10n.tabBookings(allBookings.length),
             ),
           ],
         ),
@@ -239,7 +175,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         backgroundColor: AppTheme.primaryGold,
         foregroundColor: Colors.black,
         icon: const Icon(Icons.add_business),
-        label: const Text('Register Barbershop', style: TextStyle(fontWeight: FontWeight.bold)),
+        label: Text(context.l10n.registerBarbershop, style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
       body: TabBarView(
         controller: _tabController,
@@ -260,6 +196,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   // --- TAB 1: Barbershops Directory ---
   Widget _buildShopsTab(List<Barbershop> filteredShops, int totalShops, int totalBarbers, double totalRevenue) {
     final repo = AppRepository.instance;
+    final l = context.l10n;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -270,23 +207,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           Row(
             children: [
               _buildMetricCard(
-                title: 'Barbershops',
+                title: l.metricBarbershops,
                 value: '$totalShops',
-                subtitle: 'Registered',
+                subtitle: l.metricRegistered,
                 icon: Icons.storefront,
               ),
               const SizedBox(width: 10),
               _buildMetricCard(
-                title: 'Active Barbers',
+                title: l.metricActiveBarbers,
                 value: '$totalBarbers',
-                subtitle: 'Across network',
+                subtitle: l.metricAcrossNetwork,
                 icon: Icons.content_cut,
               ),
               const SizedBox(width: 10),
               _buildMetricCard(
-                title: 'Platform Sales',
-                value: '\$${totalRevenue.toStringAsFixed(0)}',
-                subtitle: 'Gross volume',
+                title: l.metricPlatformSales,
+                value: context.fmt.birr(totalRevenue),
+                subtitle: l.metricGrossVolume,
                 icon: Icons.monetization_on_outlined,
               ),
             ],
@@ -297,7 +234,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           TextField(
             onChanged: (val) => setState(() => _searchQuery = val),
             decoration: InputDecoration(
-              hintText: 'Search shops by name, address, or city...',
+              hintText: l.searchShopsAdminHint,
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _searchQuery.isNotEmpty
                   ? IconButton(
@@ -310,13 +247,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           const SizedBox(height: 12),
 
           // Filter Chips
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
             children: [
-              _buildFilterChip('All', 'All'),
-              const SizedBox(width: 8),
-              _buildFilterChip('Verified', 'Verified Partners'),
-              const SizedBox(width: 8),
-              _buildFilterChip('OpenNow', 'Open Now'),
+              _buildFilterChip('All', l.all),
+              _buildFilterChip('Verified', l.filterVerifiedPartners),
+              _buildFilterChip('OpenNow', l.filterOpenNow),
             ],
           ),
           const SizedBox(height: 16),
@@ -324,13 +261,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Registered Barbershops (${filteredShops.length})',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              Expanded(
+                child: Text(
+                  l.registeredBarbershopsCount(filteredShops.length),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
               ),
-              Text(
-                'Admin Actions Enabled',
-                style: TextStyle(color: AppTheme.primaryGold.withValues(alpha: 0.8), fontSize: 12),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  l.adminActionsEnabled,
+                  textAlign: TextAlign.end,
+                  style: TextStyle(color: AppTheme.primaryGold.withValues(alpha: 0.8), fontSize: 12),
+                ),
               ),
             ],
           ),
@@ -344,13 +287,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 color: AppTheme.darkCard,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Column(
+              child: Column(
                 children: [
                   Icon(Icons.storefront, size: 48, color: AppTheme.textSecondary),
                   SizedBox(height: 8),
-                  Text('No registered barbershops found', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text(l.noRegisteredShops, style: const TextStyle(fontWeight: FontWeight.bold)),
                   SizedBox(height: 4),
-                  Text('Tap "Register Barbershop" to add a new shop to the platform.', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                  Text(l.noRegisteredShopsHint, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
                 ],
               ),
             )
@@ -366,8 +309,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               final ownerLabel = owner != null
                   ? '${owner.name} (${formatEthiopianPhone(owner.phone ?? shop.phone)})'
                   : ownerInvite != null
-                      ? '${ownerInvite.name} (${formatEthiopianPhone(ownerInvite.phone)}) - invite pending'
-                      : 'Not assigned';
+                      ? l.ownerInvitePending(ownerInvite.name, formatEthiopianPhone(ownerInvite.phone))
+                      : l.notAssigned;
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 14),
@@ -426,7 +369,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                     const SizedBox(width: 4),
                                     Expanded(
                                       child: Text(
-                                        '${shop.address}, ${shop.city}',
+                                        [shop.address, if (shop.subCity.isNotEmpty) l.placeName(shop.subCity), l.placeName(shop.city)].join(', '),
                                         style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -436,7 +379,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Owner: $ownerLabel',
+                                  l.ownerLabel(ownerLabel),
                                   style: const TextStyle(fontSize: 12, color: AppTheme.primaryGold),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -445,9 +388,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                 Wrap(
                                   spacing: 8,
                                   children: [
-                                    _buildBadge('${barbers.length} Barbers', Icons.people_outline),
-                                    _buildBadge('${services.length} Services', Icons.content_cut),
-                                    _buildBadge('${bookings.length} Bookings', Icons.calendar_today_outlined),
+                                    _buildBadge(l.barbersCount(barbers.length), Icons.people_outline),
+                                    _buildBadge(l.servicesCount(services.length), Icons.content_cut),
+                                    _buildBadge(l.bookingsCount(bookings.length), Icons.calendar_today_outlined),
                                   ],
                                 ),
                               ],
@@ -472,7 +415,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                               color: shop.isVerified ? AppTheme.primaryGold : AppTheme.textSecondary,
                             ),
                             label: Text(
-                              shop.isVerified ? 'Verified' : 'Verify Shop',
+                              shop.isVerified ? l.verified : l.verifyShop,
                               style: TextStyle(
                                 fontSize: 12,
                                 color: shop.isVerified ? AppTheme.primaryGold : AppTheme.textSecondary,
@@ -488,11 +431,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                   repo.switchRole(UserRole.barbershopOwner, targetShopId: shop.id);
                                 },
                                 icon: const Icon(Icons.dashboard_customize, size: 16, color: AppTheme.primaryGold),
-                                label: const Text('Manage Shop Portal', style: TextStyle(color: AppTheme.primaryGold, fontSize: 12)),
+                                label: Text(l.manageShopPortal, style: const TextStyle(color: AppTheme.primaryGold, fontSize: 12)),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
-                                tooltip: 'Delete Shop',
+                                tooltip: l.deleteShop,
                                 onPressed: () => _confirmDeleteShop(shop),
                               ),
                             ],
@@ -517,11 +460,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       itemCount: allUsers.length,
       itemBuilder: (context, index) {
         final u = allUsers[index];
+        final l = context.l10n;
         final roleLabel = u.role == UserRole.admin
-            ? 'Administrator'
+            ? l.roleAdministrator
             : (u.role == UserRole.barbershopOwner
-                ? 'Shop Owner'
-                : (u.role == UserRole.barber ? 'Staff Barber' : 'Customer'));
+                ? l.roleOwner
+                : (u.role == UserRole.barber ? l.roleStaffBarber : l.roleCustomer));
         final roleColor = u.role == UserRole.admin
             ? Colors.purpleAccent
             : (u.role == UserRole.barbershopOwner
@@ -558,7 +502,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     ),
                     if (u.shopId != null) ...[
                       const SizedBox(height: 4),
-                      Text('Assigned Shop: ${u.shopId}', style: const TextStyle(color: AppTheme.primaryGold, fontSize: 11)),
+                      Text(l.assignedShop(AppRepository.instance.getShopById(u.shopId!)?.name ?? u.shopId!), style: const TextStyle(color: AppTheme.primaryGold, fontSize: 11)),
                     ],
                   ],
                 ),
@@ -585,7 +529,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   // --- TAB 3: System Platform Bookings ---
   Widget _buildBookingsTab(List<Booking> allBookings) {
     if (allBookings.isEmpty) {
-      return const Center(child: Text('No platform appointments recorded yet'));
+      return Center(child: Text(context.l10n.noPlatformAppointments));
     }
 
     return ListView.builder(
@@ -593,6 +537,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       itemCount: allBookings.length,
       itemBuilder: (context, index) {
         final b = allBookings[index];
+        final l = context.l10n;
+        final fmt = context.fmt;
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(14),
@@ -617,7 +563,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      b.status.name.toUpperCase(),
+                      l.bookingStatus(b.status).toUpperCase(),
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
@@ -631,7 +577,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               ),
               const SizedBox(height: 6),
               Text(
-                '${b.serviceName} • \$${b.price.toStringAsFixed(0)}',
+                l.serviceAndPrice(b.serviceName, fmt.birr(b.price)),
                 style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
               ),
               const SizedBox(height: 4),
@@ -639,16 +585,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 children: [
                   const Icon(Icons.person, size: 13, color: AppTheme.textSecondary),
                   const SizedBox(width: 4),
-                  Text('Client: ${b.customerName}', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  Text(l.clientLabel(b.customerName), style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                   const SizedBox(width: 14),
                   const Icon(Icons.content_cut, size: 13, color: AppTheme.textSecondary),
                   const SizedBox(width: 4),
-                  Text('Barber: ${b.barberName}', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  Text(l.barberLabel(b.barberName), style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                 ],
               ),
               const SizedBox(height: 4),
               Text(
-                'Schedule: ${DateFormat('EEE, MMM d').format(b.date)} at ${b.timeSlot}',
+                l.scheduleAt(l.dateAtTime(fmt.dayShort(fmt.bookingDay(b)), fmt.bookingTime(b))),
                 style: const TextStyle(fontSize: 12, color: AppTheme.primaryGold),
               ),
             ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/utils/phone_utils.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../l10n/l10n.dart';
 import '../../../services/app_repository.dart';
 
 class ManageBarbersScreen extends StatefulWidget {
@@ -23,8 +24,9 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
   ];
 
   void _showAddBarberDialog() {
+    final l = context.l10n;
     final nameCtrl = TextEditingController();
-    final titleCtrl = TextEditingController(text: 'Stylist & Fade Specialist');
+    final titleCtrl = TextEditingController(text: l.defaultBarberTitle);
     final phoneCtrl = TextEditingController();
     String? phoneError;
     String selectedAvatar = _avatarPresets[0];
@@ -35,7 +37,7 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: AppTheme.darkCard,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Add Barber to Shop', style: TextStyle(fontWeight: FontWeight.bold)),
+          title: Text(l.addBarberToShop, style: const TextStyle(fontWeight: FontWeight.bold)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -43,27 +45,27 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
               children: [
                 TextField(
                   controller: nameCtrl,
-                  decoration: const InputDecoration(labelText: 'Barber Full Name', prefixIcon: Icon(Icons.person)),
+                  decoration: InputDecoration(labelText: l.barberFullName, prefixIcon: const Icon(Icons.person)),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: titleCtrl,
-                  decoration: const InputDecoration(labelText: 'Specialization (e.g. Master Barber)', prefixIcon: Icon(Icons.badge)),
+                  decoration: InputDecoration(labelText: l.specialization, prefixIcon: const Icon(Icons.badge)),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: phoneCtrl,
                   keyboardType: TextInputType.phone,
                   decoration: InputDecoration(
-                    labelText: 'Mobile Number (for login)',
+                    labelText: l.mobileForLogin,
                     hintText: '09XX XXX XXX',
-                    helperText: 'Optional. The barber signs in with this number.',
+                    helperText: l.barberPhoneHelper,
                     errorText: phoneError,
                     prefixIcon: const Icon(Icons.phone_android),
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text('Select Avatar Portrait:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Text(l.selectAvatar, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 const SizedBox(height: 8),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -98,14 +100,14 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+              child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
             ),
             ElevatedButton(
               onPressed: () async {
                 if (nameCtrl.text.trim().isEmpty) return;
                 final phone = phoneCtrl.text.trim();
                 if (phone.isNotEmpty && normalizeEthiopianPhone(phone) == null) {
-                  setDialogState(() => phoneError = 'Enter a valid number (09... or 07...)');
+                  setDialogState(() => phoneError = l.invalidPhoneShort);
                   return;
                 }
                 try {
@@ -120,13 +122,13 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                   setDialogState(() => phoneError = e.message);
                   return;
                 } catch (e) {
-                  setDialogState(() => phoneError = 'Could not add barber. Please try again.');
+                  setDialogState(() => phoneError = l.addBarberFailed);
                   return;
                 }
                 if (ctx.mounted) Navigator.of(ctx).pop();
                 if (mounted) setState(() {});
               },
-              child: const Text('Add Barber'),
+              child: Text(l.addBarber),
             ),
           ],
         ),
@@ -139,21 +141,27 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.darkCard,
-        title: const Text('Remove Barber?'),
-        content: Text('Are you sure you want to remove "$name" from this barbershop?'),
+        title: Text(context.l10n.removeBarberTitle),
+        content: Text(context.l10n.removeBarberBody(name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+            child: Text(context.l10n.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             onPressed: () async {
               Navigator.pop(ctx);
-              await AppRepository.instance.deleteBarber(barberId);
-              setState(() {});
+              final messenger = ScaffoldMessenger.of(context);
+              final l = context.l10n;
+              try {
+                await AppRepository.instance.deleteBarber(barberId);
+              } catch (e) {
+                messenger.showSnackBar(SnackBar(content: Text(l.saveFailed('$e'))));
+              }
+              if (mounted) setState(() {});
             },
-            child: const Text('Remove', style: TextStyle(color: Colors.white)),
+            child: Text(context.l10n.remove, style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -166,14 +174,14 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Manage Barbers & Staff'),
+        title: Text(context.l10n.manageBarbersStaff),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddBarberDialog,
         backgroundColor: AppTheme.primaryGold,
         foregroundColor: Colors.black,
         icon: const Icon(Icons.person_add),
-        label: const Text('Add Barber', style: TextStyle(fontWeight: FontWeight.bold)),
+        label: Text(context.l10n.addBarber, style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
       body: barbers.isEmpty
           ? Center(
@@ -182,9 +190,9 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                 children: [
                   const Icon(Icons.people_outline, size: 48, color: AppTheme.textSecondary),
                   const SizedBox(height: 12),
-                  const Text('No barbers added yet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(context.l10n.noBarbersYet, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
-                  const Text('Add barbers so clients can book appointments with them.', style: TextStyle(color: AppTheme.textSecondary)),
+                  Text(context.l10n.noBarbersHint, style: const TextStyle(color: AppTheme.textSecondary)),
                 ],
               ),
             )
@@ -229,7 +237,7 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                             if (AppRepository.instance.getPendingBarberInvite(barber.id) != null) ...[
                               const SizedBox(height: 4),
                               Text(
-                                'Login invite pending: ${formatEthiopianPhone(barber.phone ?? '')}',
+                                context.l10n.loginInvitePending(formatEthiopianPhone(barber.phone ?? '')),
                                 style: const TextStyle(color: AppTheme.primaryGold, fontSize: 12),
                               ),
                             ],
@@ -239,7 +247,7 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                                 const Icon(Icons.star, size: 14, color: AppTheme.primaryGold),
                                 const SizedBox(width: 4),
                                 Text(
-                                  '${barber.rating} (${barber.reviewCount} reviews)',
+                                  context.l10n.reviewsCount(barber.rating.toStringAsFixed(1), barber.reviewCount),
                                   style: const TextStyle(fontSize: 12, color: AppTheme.primaryGold, fontWeight: FontWeight.w600),
                                 ),
                               ],
@@ -249,7 +257,7 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
-                        tooltip: 'Remove Barber',
+                        tooltip: context.l10n.removeBarber,
                         onPressed: () => _confirmDeleteBarber(barber.id, barber.name),
                       ),
                     ],

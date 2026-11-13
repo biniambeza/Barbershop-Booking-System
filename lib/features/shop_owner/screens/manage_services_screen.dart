@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../l10n/l10n.dart';
 import '../../../services/app_repository.dart';
 
 class ManageServicesScreen extends StatefulWidget {
@@ -15,27 +16,30 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
   void _showAddServiceDialog() {
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
-    final priceCtrl = TextEditingController(text: '35');
+    final priceCtrl = TextEditingController(text: '300');
     final durationCtrl = TextEditingController(text: '30');
+    final l = context.l10n;
+    String? error;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
         backgroundColor: AppTheme.darkCard,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Add New Service', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(l.addNewService, style: const TextStyle(fontWeight: FontWeight.bold)),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: nameCtrl,
-                decoration: const InputDecoration(labelText: 'Service Name (e.g. Beard Trim)'),
+                decoration: InputDecoration(labelText: l.serviceNameHint),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: descCtrl,
-                decoration: const InputDecoration(labelText: 'Description'),
+                decoration: InputDecoration(labelText: l.description),
               ),
               const SizedBox(height: 12),
               Row(
@@ -43,8 +47,8 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
                   Expanded(
                     child: TextField(
                       controller: priceCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Price (\$)'),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(labelText: l.priceEtb, suffixText: l.currencyEtb),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -52,35 +56,50 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
                     child: TextField(
                       controller: durationCtrl,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Duration (mins)'),
+                      decoration: InputDecoration(labelText: l.durationMins),
                     ),
                   ),
                 ],
               ),
+              if (error != null) ...[
+                const SizedBox(height: 10),
+                Text(error!, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+              ],
             ],
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+            child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
           ),
           ElevatedButton(
-            onPressed: () {
-              if (nameCtrl.text.trim().isEmpty) return;
-              AppRepository.instance.addService(
-                shopId: widget.shopId,
-                name: nameCtrl.text.trim(),
-                description: descCtrl.text.trim(),
-                price: double.tryParse(priceCtrl.text) ?? 30.0,
-                durationMinutes: int.tryParse(durationCtrl.text) ?? 30,
-              );
-              Navigator.of(ctx).pop();
-              setState(() {});
+            onPressed: () async {
+              final price = double.tryParse(priceCtrl.text.trim().replaceAll(',', ''));
+              final duration = int.tryParse(durationCtrl.text.trim());
+              if (nameCtrl.text.trim().isEmpty || price == null || price < 0 || duration == null || duration <= 0) {
+                setDialogState(() => error = l.invalidServiceValues);
+                return;
+              }
+              try {
+                await AppRepository.instance.addService(
+                  shopId: widget.shopId,
+                  name: nameCtrl.text.trim(),
+                  description: descCtrl.text.trim(),
+                  price: price,
+                  durationMinutes: duration,
+                );
+              } catch (e) {
+                setDialogState(() => error = l.saveFailed('$e'));
+                return;
+              }
+              if (ctx.mounted) Navigator.of(ctx).pop();
+              if (mounted) setState(() {});
             },
-            child: const Text('Add Service'),
+            child: Text(l.addService),
           ),
         ],
+      ),
       ),
     );
   }
@@ -88,17 +107,19 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
   @override
   Widget build(BuildContext context) {
     final services = AppRepository.instance.getServicesForShop(widget.shopId);
+    final l = context.l10n;
+    final fmt = context.fmt;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Manage Services & Pricing'),
+        title: Text(l.manageServicesPricing),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showAddServiceDialog,
         backgroundColor: AppTheme.primaryGold,
         foregroundColor: Colors.black,
         icon: const Icon(Icons.add),
-        label: const Text('Add Service', style: TextStyle(fontWeight: FontWeight.bold)),
+        label: Text(l.addService, style: const TextStyle(fontWeight: FontWeight.bold)),
       ),
       body: services.isEmpty
           ? Center(
@@ -107,9 +128,9 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
                 children: [
                   const Icon(Icons.content_cut, size: 48, color: AppTheme.textSecondary),
                   const SizedBox(height: 12),
-                  const Text('No services created yet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text(l.noServicesYet, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
-                  const Text('Tap "Add Service" below to publish your salon pricing.', style: TextStyle(color: AppTheme.textSecondary)),
+                  Text(l.noServicesHint, style: const TextStyle(color: AppTheme.textSecondary)),
                 ],
               ),
             )
@@ -154,14 +175,14 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              '${service.durationMinutes} mins',
+                              l.minutesShort(service.durationMinutes),
                               style: const TextStyle(color: AppTheme.primaryGold, fontSize: 12, fontWeight: FontWeight.w600),
                             ),
                           ],
                         ),
                       ),
                       Text(
-                        '\$${service.price.toStringAsFixed(0)}',
+                        fmt.birr(service.price),
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppTheme.primaryGold),
                       ),
                     ],

@@ -1,5 +1,3 @@
-import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,75 +8,12 @@ import 'package:barbershop_booking/features/barber/screens/barber_dashboard_scre
 import 'package:barbershop_booking/features/barber/screens/barber_schedule_screen.dart';
 import 'package:barbershop_booking/features/customer/screens/find_barbers_screen.dart';
 import 'package:barbershop_booking/features/customer/screens/customer_main_nav.dart';
-
-class _TestHttpClientResponse extends Fake implements HttpClientResponse {
-  static final _transparentImage = base64Decode(
-    'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
-  );
-
-  @override
-  int get statusCode => 200;
-  @override
-  int get contentLength => _transparentImage.length;
-  @override
-  HttpClientResponseCompressionState get compressionState =>
-      HttpClientResponseCompressionState.notCompressed;
-
-  @override
-  StreamSubscription<List<int>> listen(
-    void Function(List<int> event)? onData, {
-    Function? onError,
-    void Function()? onDone,
-    bool? cancelOnError,
-  }) {
-    return Stream<List<int>>.value(_transparentImage).listen(
-      onData,
-      onError: onError,
-      onDone: onDone,
-      cancelOnError: cancelOnError,
-    );
-  }
-}
-
-class _TestHttpClientRequest extends Fake implements HttpClientRequest {
-  @override
-  final HttpHeaders headers = _TestHttpHeaders();
-
-  @override
-  Future<HttpClientResponse> close() async => _TestHttpClientResponse();
-}
-
-class _TestHttpHeaders extends Fake implements HttpHeaders {
-  @override
-  void add(String name, Object value, {bool preserveHeaderCase = false}) {}
-  @override
-  void set(String name, Object value, {bool preserveHeaderCase = false}) {}
-}
-
-class _TestHttpClient extends Fake implements HttpClient {
-  @override
-  bool autoUncompress = true;
-  @override
-  Duration? connectionTimeout;
-  @override
-  Duration idleTimeout = const Duration(seconds: 15);
-  @override
-  int? maxConnectionsPerHost;
-  @override
-  String? userAgent;
-
-  @override
-  Future<HttpClientRequest> getUrl(Uri url) async => _TestHttpClientRequest();
-}
-
-class _TestHttpOverrides extends HttpOverrides {
-  @override
-  HttpClient createHttpClient(SecurityContext? context) => _TestHttpClient();
-}
+import 'test_helpers.dart';
 
 void main() {
   setUpAll(() {
-    HttpOverrides.global = _TestHttpOverrides();
+    HttpOverrides.global = TestHttpOverrides();
+    loadTestSeed();
   });
   test('AppRepository supports all 4 distinct roles with dedicated personas', () {
     final repo = AppRepository.instance;
@@ -86,7 +21,7 @@ void main() {
     // 1. Switch to Admin
     repo.switchRole(UserRole.admin);
     expect(repo.currentUser?.role, UserRole.admin);
-    expect(repo.currentUser?.email, 'admin@crownblade.com');
+    expect(repo.currentUser?.phone, '+251911000001');
 
     // 2. Switch to Barbershop Owner
     repo.switchRole(UserRole.barbershopOwner);
@@ -101,7 +36,7 @@ void main() {
     // 4. Switch to Customer
     repo.switchRole(UserRole.customer);
     expect(repo.currentUser?.role, UserRole.customer);
-    expect(repo.currentUser?.email, 'alex@example.com');
+    expect(repo.currentUser?.phone, '+251911000301');
   });
 
   test('Barber can toggle duty availability and manage appointment lifecycle', () {

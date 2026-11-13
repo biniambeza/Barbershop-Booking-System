@@ -5,8 +5,9 @@ import 'package:flutter/services.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/phone_utils.dart';
+import '../../../l10n/l10n.dart';
+import '../../shared/widgets/language_toggle.dart';
 import '../../../services/app_repository.dart';
-import '../../../services/phone_auth_service.dart';
 
 /// Phone number + SMS code sign-in. The same flow covers new and returning
 /// users; the role comes from the user's profile (or their invite), never
@@ -53,7 +54,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Future<void> _sendCode() async {
     if (normalizeEthiopianPhone(_phoneController.text) == null) {
-      setState(() => _error = 'Enter a valid Ethiopian mobile number (09... or 07...).');
+      setState(() => _error = context.l10n.invalidEthiopianPhone);
       return;
     }
     setState(() {
@@ -67,7 +68,7 @@ class _AuthScreenState extends State<AuthScreen> {
       _codeController.clear();
       _startResendTimer();
     } catch (e) {
-      if (mounted) setState(() => _error = describeAuthError(e));
+      if (mounted) setState(() => _error = context.l10n.authError(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -82,7 +83,7 @@ class _AuthScreenState extends State<AuthScreen> {
       await AppRepository.instance.verifyOtp(_codeController.text);
       // On success the root gate switches screens.
     } catch (e) {
-      if (mounted) setState(() => _error = describeAuthError(e));
+      if (mounted) setState(() => _error = context.l10n.authError(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -112,7 +113,14 @@ class _AuthScreenState extends State<AuthScreen> {
     final sessionError = repo.authError;
     final phone = repo.pendingPhone;
 
+    final l = context.l10n;
     return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: const [LanguageToggle(), SizedBox(width: 8)],
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -126,7 +134,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   const Icon(Icons.content_cut_rounded, size: 58, color: AppTheme.primaryGold),
                   const SizedBox(height: 12),
                   Text(
-                    'CROWN & BLADE',
+                    l.brandUpper,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                           letterSpacing: 3,
@@ -136,8 +144,8 @@ class _AuthScreenState extends State<AuthScreen> {
                   const SizedBox(height: 4),
                   Text(
                     _codeSent
-                        ? 'Enter the 6-digit code sent to ${formatEthiopianPhone(phone ?? _phoneController.text)}'
-                        : 'Sign in or create an account with your phone number',
+                        ? l.authSubtitleCode(formatEthiopianPhone(phone ?? _phoneController.text))
+                        : l.authSubtitlePhone,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondary),
                   ),
@@ -168,23 +176,23 @@ class _AuthScreenState extends State<AuthScreen> {
         keyboardType: TextInputType.phone,
         autofillHints: const [AutofillHints.telephoneNumber],
         inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9+ ]'))],
-        decoration: const InputDecoration(
-          labelText: 'Mobile Number',
+        decoration: InputDecoration(
+          labelText: context.l10n.mobileNumber,
           hintText: '09XX XXX XXX',
-          prefixIcon: Icon(Icons.phone_android),
+          prefixIcon: const Icon(Icons.phone_android),
         ),
         onSubmitted: (_) => _isLoading ? null : _sendCode(),
       ),
       const SizedBox(height: 16),
       ElevatedButton(
         onPressed: _isLoading ? null : _sendCode,
-        child: _isLoading ? _spinner() : const Text('Send Code'),
+        child: _isLoading ? _spinner() : Text(context.l10n.sendCode),
       ),
       const SizedBox(height: 12),
-      const Text(
-        'We will send you a one-time code by SMS. Standard SMS rates may apply.',
+      Text(
+        context.l10n.smsNotice,
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+        style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
       ),
     ];
   }
@@ -207,7 +215,7 @@ class _AuthScreenState extends State<AuthScreen> {
       const SizedBox(height: 16),
       ElevatedButton(
         onPressed: _isLoading ? null : _verifyCode,
-        child: _isLoading ? _spinner() : const Text('Verify'),
+        child: _isLoading ? _spinner() : Text(context.l10n.verify),
       ),
       const SizedBox(height: 8),
       Row(
@@ -215,41 +223,42 @@ class _AuthScreenState extends State<AuthScreen> {
         children: [
           TextButton(
             onPressed: _isLoading ? null : _changeNumber,
-            child: const Text('Change number'),
+            child: Text(context.l10n.changeNumber),
           ),
           TextButton(
             onPressed: _isLoading || _resendIn > 0 ? null : _sendCode,
-            child: Text(_resendIn > 0 ? 'Resend in ${_resendIn}s' : 'Resend code'),
+            child: Text(_resendIn > 0 ? context.l10n.resendIn(_resendIn) : context.l10n.resendCode),
           ),
         ],
       ),
       if (kDemoMode)
-        const Text(
-          'Demo mode: the code is $kDemoOtpCode',
+        Text(
+          context.l10n.demoCodeNotice(kDemoOtpCode),
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 12, color: AppTheme.primaryGold),
+          style: const TextStyle(fontSize: 12, color: AppTheme.primaryGold),
         ),
     ];
   }
 
   List<Widget> _buildDemoPanel() {
     // Phone numbers of the demo accounts in AppRepository._initDemoData.
+    final l = context.l10n;
     final personas = <(String, String, IconData, Color)>[
-      ('Admin', '+251911000001', Icons.admin_panel_settings, Colors.purpleAccent),
-      ('Shop Owner', '+251911000101', Icons.storefront, AppTheme.primaryGold),
-      ('Barber', '+251911000201', Icons.content_cut, Colors.tealAccent),
-      ('Customer', '+251911000301', Icons.person, Colors.lightBlueAccent),
+      (l.roleAdminShort, '+251911000001', Icons.admin_panel_settings, Colors.purpleAccent),
+      (l.roleOwner, '+251911000101', Icons.storefront, AppTheme.primaryGold),
+      (l.roleBarber, '+251911000201', Icons.content_cut, Colors.tealAccent),
+      (l.roleCustomer, '+251911000301', Icons.person, Colors.lightBlueAccent),
     ];
 
     return [
       const SizedBox(height: 28),
-      const Row(
+      Row(
         children: [
           Expanded(child: Divider(color: Colors.white12)),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 10),
             child: Text(
-              'DEMO ACCOUNTS',
+              l.demoAccounts,
               style: TextStyle(
                 fontSize: 11,
                 color: AppTheme.textSecondary,

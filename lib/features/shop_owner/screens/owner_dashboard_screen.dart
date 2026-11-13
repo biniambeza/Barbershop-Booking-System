@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../l10n/l10n.dart';
 import '../../../models/booking_model.dart';
 import '../../../models/user_model.dart';
 import '../../../services/app_repository.dart';
+import '../../notifications/widgets/notification_bell.dart';
+import '../../shared/widgets/language_toggle.dart';
+import '../../shared/widgets/persona_switcher.dart';
 import 'manage_services_screen.dart';
 import 'manage_barbers_screen.dart';
 import 'customize_shop_screen.dart';
+import 'owner_subscription_screen.dart';
+import '../../payments/widgets/payment_status_badge.dart';
+import '../../payments/widgets/subscription_banner.dart';
 
 class OwnerDashboardScreen extends StatefulWidget {
   const OwnerDashboardScreen({super.key});
@@ -24,7 +30,24 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     final repo = AppRepository.instance;
     final user = repo.currentUser;
     final shopId = user?.shopId ?? 'shop_1';
-    final shop = repo.getShopById(shopId) ?? repo.getShops().first;
+    final shop = repo.getShopById(shopId);
+    final l = context.l10n;
+    final fmt = context.fmt;
+    if (shop == null) {
+      // Not loaded yet, or the shop was removed by the platform admin.
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(l.shopNotLoaded),
+              const SizedBox(height: 12),
+              TextButton(onPressed: repo.signOut, child: Text(l.signOutLower)),
+            ],
+          ),
+        ),
+      );
+    }
     final bookings = repo.getShopBookings(shop.id);
     final barbers = repo.getBarbersForShop(shop.id);
     final services = repo.getServicesForShop(shop.id);
@@ -51,61 +74,23 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            const Text(
-              'Partner Business Portal',
-              style: TextStyle(color: AppTheme.primaryGold, fontSize: 11, fontWeight: FontWeight.bold),
+            Text(
+              l.partnerPortal,
+              style: const TextStyle(color: AppTheme.primaryGold, fontSize: 11, fontWeight: FontWeight.bold),
             ),
           ],
         ),
         actions: [
           if (kDemoMode)
-            PopupMenuButton<String>(
-            icon: const Icon(Icons.swap_horiz, color: AppTheme.primaryGold),
-            tooltip: 'Switch Persona',
-            color: AppTheme.darkCard,
-            onSelected: (val) {
-              if (val == 'admin') {
-                repo.switchRole(UserRole.admin);
-              } else if (val == 'barber') {
-                repo.switchRole(UserRole.barber);
-              } else if (val == 'customer') {
-                repo.switchRole(UserRole.customer);
-              }
-            },
-            itemBuilder: (ctx) => const [
-              PopupMenuItem(
-                value: 'admin',
-                child: Row(
-                  children: [
-                    Icon(Icons.admin_panel_settings, color: Colors.purpleAccent, size: 18),
-                    SizedBox(width: 8),
-                    Text('Admin Portal', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'barber',
-                child: Row(
-                  children: [
-                    Icon(Icons.content_cut, color: Colors.tealAccent, size: 18),
-                    SizedBox(width: 8),
-                    Text('Staff Barber Workspace', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ),
-              PopupMenuItem(
-                value: 'customer',
-                child: Row(
-                  children: [
-                    Icon(Icons.person, color: Colors.lightBlueAccent, size: 18),
-                    SizedBox(width: 8),
-                    Text('Customer View', style: TextStyle(fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            IconButton(
+              icon: const Icon(Icons.swap_horiz, color: AppTheme.primaryGold),
+              tooltip: l.switchRole,
+              onPressed: () => showPersonaSwitcher(context, current: UserRole.barbershopOwner),
+            ),
+          const LanguageToggle(),
+          const NotificationBell(),
           IconButton(
+            tooltip: l.signOut,
             icon: const Icon(Icons.logout_rounded),
             onPressed: () => repo.signOut(),
           ),
@@ -116,6 +101,9 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Subscription warning (past due / suspended / ending soon)
+            SubscriptionBanner(shop: shop, onManage: () => _openSubscription(shop.id)),
+
             // Customize Barbershop Banner
             Container(
               padding: const EdgeInsets.all(16),
@@ -146,14 +134,14 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Your Customizable Barbershop App',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.textPrimary),
+                        Text(
+                          l.customizableApp,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.textPrimary),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Branding, cover photo, open hours & map location',
-                          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                          l.customizableAppSubtitle,
+                          style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                         ),
                       ],
                     ),
@@ -169,7 +157,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                       ).then((_) => setState(() {}));
                     },
                     icon: const Icon(Icons.tune, size: 16),
-                    label: const Text('Customize'),
+                    label: Text(l.customize),
                   ),
                 ],
               ),
@@ -193,7 +181,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                       side: BorderSide(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
                     ),
                     icon: const Icon(Icons.content_cut, size: 18),
-                    label: Text('Services (${services.length})', style: const TextStyle(fontSize: 13)),
+                    label: Text(l.servicesButton(services.length), style: const TextStyle(fontSize: 13)),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -211,10 +199,27 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                       side: BorderSide(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
                     ),
                     icon: const Icon(Icons.people_outline, size: 18),
-                    label: Text('Manage Barbers (${barbers.length})', style: const TextStyle(fontSize: 13)),
+                    label: Text(l.manageBarbersButton(barbers.length), style: const TextStyle(fontSize: 13)),
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 14),
+
+            // Platform subscription
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const ValueKey('open-subscription'),
+                onPressed: () => _openSubscription(shop.id),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primaryGold,
+                  side: BorderSide(color: AppTheme.primaryGold.withValues(alpha: 0.3)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                icon: const Icon(Icons.workspace_premium_rounded, size: 18),
+                label: Text(l.subscriptionAndBilling, style: const TextStyle(fontSize: 13)),
+              ),
             ),
             const SizedBox(height: 14),
 
@@ -249,7 +254,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          shop.fullAddress,
+                          l.shopAddress(shop),
                           style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                         ),
                       ],
@@ -270,7 +275,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                       setState(() {});
                     },
                     icon: const Icon(Icons.edit, size: 14),
-                    label: const Text('Edit Info', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    label: Text(l.editInfo, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -279,17 +284,17 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
             Row(
               children: [
                 _buildMetricCard(
-                  title: 'Bookings',
+                  title: l.metricBookings,
                   value: '${bookings.length}',
-                  subtitle: '$confirmedCount active',
+                  subtitle: l.activeCount(confirmedCount),
                   icon: Icons.calendar_today_outlined,
                 ),
                 const SizedBox(width: 12),
                 _buildMetricCard(
-                  title: 'Est. Revenue',
-                  value: '\$${totalRevenue.toStringAsFixed(0)}',
-                  subtitle: 'Gross sales',
-                  icon: Icons.attach_money_rounded,
+                  title: l.metricEstRevenue,
+                  value: fmt.birr(totalRevenue),
+                  subtitle: l.metricGrossSales,
+                  icon: Icons.payments_outlined,
                 ),
               ],
             ),
@@ -300,7 +305,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Appointments Schedule',
+                  l.appointmentsSchedule,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 DropdownButton<String>(
@@ -308,11 +313,11 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                   dropdownColor: AppTheme.darkCard,
                   underline: const SizedBox(),
                   style: const TextStyle(color: AppTheme.primaryGold, fontWeight: FontWeight.bold),
-                  items: const [
-                    DropdownMenuItem(value: 'All', child: Text('All')),
-                    DropdownMenuItem(value: 'Confirmed', child: Text('Confirmed')),
-                    DropdownMenuItem(value: 'Completed', child: Text('Completed')),
-                    DropdownMenuItem(value: 'Cancelled', child: Text('Cancelled')),
+                  items: [
+                    DropdownMenuItem(value: 'All', child: Text(l.all)),
+                    DropdownMenuItem(value: 'Confirmed', child: Text(l.statusConfirmed)),
+                    DropdownMenuItem(value: 'Completed', child: Text(l.statusCompleted)),
+                    DropdownMenuItem(value: 'Cancelled', child: Text(l.statusCancelled)),
                   ],
                   onChanged: (val) {
                     if (val != null) setState(() => _selectedFilter = val);
@@ -330,11 +335,11 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                   color: AppTheme.darkCard,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Column(
+                child: Column(
                   children: [
                     Icon(Icons.event_available, size: 48, color: AppTheme.textSecondary),
                     SizedBox(height: 8),
-                    Text('No appointments found', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text(l.noAppointmentsFound, style: const TextStyle(fontWeight: FontWeight.bold)),
                   ],
                 ),
               )
@@ -352,6 +357,15 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
         ),
       ),
     );
+  }
+
+  void _openSubscription(String shopId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => OwnerSubscriptionScreen(shopId: shopId)),
+    ).then((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   Widget _buildMetricCard({
@@ -388,7 +402,21 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     );
   }
 
+  /// Runs a status change and reports a failure (e.g. a rules rejection).
+  Future<void> _setStatus(Booking booking, BookingStatus status) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
+    try {
+      await AppRepository.instance.updateBookingStatus(booking.id, status);
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(l.statusUpdateFailed('$e'))));
+    }
+    if (mounted) setState(() {});
+  }
+
   Widget _buildAppointmentAdminCard(BuildContext context, Booking booking) {
+    final l = context.l10n;
+    final fmt = context.fmt;
     Color statusColor;
     switch (booking.status) {
       case BookingStatus.confirmed:
@@ -433,7 +461,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  booking.status.name.toUpperCase(),
+                  l.bookingStatus(booking.status).toUpperCase(),
                   style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -441,19 +469,26 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            '${booking.serviceName} • \$${booking.price.toStringAsFixed(0)}',
+            l.serviceAndPrice(booking.serviceName, fmt.birr(booking.price)),
             style: const TextStyle(color: AppTheme.primaryGold, fontSize: 13, fontWeight: FontWeight.w600),
           ),
+          const SizedBox(height: 6),
+          PaymentStatusBadge(booking: booking),
           const SizedBox(height: 8),
           Row(
             children: [
               const Icon(Icons.content_cut, size: 14, color: AppTheme.textSecondary),
               const SizedBox(width: 6),
-              Text('Barber: ${booking.barberName}', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-              const Spacer(),
+              Expanded(
+                child: Text(
+                  l.barberLabel(booking.barberName),
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               const Icon(Icons.schedule, size: 14, color: AppTheme.textSecondary),
               const SizedBox(width: 4),
-              Text('${DateFormat('MMM d').format(booking.date)} at ${booking.timeSlot}', style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary)),
+              Text(l.dateAtTime(fmt.monthDay(fmt.bookingDay(booking)), fmt.bookingTime(booking)), style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary)),
             ],
           ),
           const Divider(height: 20, color: AppTheme.accentSlate),
@@ -464,31 +499,25 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {
-                      AppRepository.instance.updateBookingStatus(booking.id, BookingStatus.completed);
-                      setState(() {});
-                    },
+                    onPressed: () => _setStatus(booking, BookingStatus.completed),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       backgroundColor: Colors.green.shade800,
                       foregroundColor: Colors.white,
                     ),
-                    child: const Text('Mark Completed', style: TextStyle(fontSize: 12)),
+                    child: Text(l.markCompleted, style: const TextStyle(fontSize: 12)),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () {
-                      AppRepository.instance.updateBookingStatus(booking.id, BookingStatus.cancelled);
-                      setState(() {});
-                    },
+                    onPressed: () => _setStatus(booking, BookingStatus.cancelled),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       foregroundColor: Colors.redAccent,
                       side: const BorderSide(color: Colors.redAccent),
                     ),
-                    child: const Text('Cancel Slot', style: TextStyle(fontSize: 12)),
+                    child: Text(l.cancelSlot, style: const TextStyle(fontSize: 12)),
                   ),
                 ),
               ],

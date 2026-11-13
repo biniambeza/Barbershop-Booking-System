@@ -38,8 +38,51 @@ jobs:
           npm ci
           npm test
 
+  functions:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        codebase: [ notifications, payments ]
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: functions/${{ matrix.codebase }}/package-lock.json
+
+      - name: Build and test functions/${{ matrix.codebase }}
+        working-directory: functions/${{ matrix.codebase }}
+        run: |
+          npm ci
+          npm run build
+          npm test
+
+  seed-script:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: tool/seed/package-lock.json
+
+      - name: Test seed script
+        working-directory: tool/seed
+        run: |
+          npm ci
+          npm test
+
   build-and-deploy:
-    needs: firestore-rules
+    needs: [ firestore-rules, functions, seed-script ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source Code
@@ -62,6 +105,12 @@ jobs:
 
       - name: Install Dependencies
         run: flutter pub get
+
+      - name: Generate localizations
+        run: flutter gen-l10n
+
+      - name: Analyze
+        run: flutter analyze
 
       - name: Run Tests
         run: flutter test

@@ -1,0 +1,1198 @@
+{
+  "@@locale": "en",
+  "appTitle": "Crown & Blade - Barbershop Booking",
+  "brandUpper": "CROWN & BLADE",
+  "cancel": "Cancel",
+  "save": "Save",
+  "delete": "Delete",
+  "remove": "Remove",
+  "ok": "OK",
+  "done": "Done",
+  "required": "Required",
+  "signOut": "Sign Out",
+  "signOutLower": "Sign out",
+  "all": "All",
+  "today": "Today",
+  "closed": "Closed",
+  "cityAddisAbaba": "Addis Ababa",
+  "languageTooltip": "Change language",
+  "serviceUnavailable": "Service unavailable",
+  "serviceUnavailableBody": "The app could not connect to its server. Please try again later.",
+  "shopNotLoaded": "Your barbershop could not be loaded.",
+  "invalidEthiopianPhone": "Enter a valid Ethiopian mobile number (09... or 07...)",
+  "minutesShort": "{count} min",
+  "@minutesShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewsCount": "{rating} ({count} reviews)",
+  "@reviewsCount": {
+    "placeholders": {
+      "rating": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "barbersCount": "{count} Barbers",
+  "@barbersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "servicesCount": "{count} Services",
+  "@servicesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bookingsCount": "{count} Bookings",
+  "@bookingsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "barberLabel": "Barber: {name}",
+  "@barberLabel": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "clientLabel": "Client: {name}",
+  "@clientLabel": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dateAtTime": "{date} at {time}",
+  "@dateAtTime": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "serviceAndPrice": "{service} • {price}",
+  "@serviceAndPrice": {
+    "placeholders": {
+      "service": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "roleAdmin": "Platform Admin",
+  "roleOwner": "Shop Owner",
+  "roleBarber": "Barber",
+  "roleCustomer": "Customer",
+  "statusPending": "Pending",
+  "statusConfirmed": "Confirmed",
+  "statusInProgress": "In Progress",
+  "statusCompleted": "Completed",
+  "statusCancelled": "Cancelled",
+  "subTrialing": "Free trial",
+  "subActive": "Active",
+  "subPastDue": "Payment overdue",
+  "subSuspended": "Suspended",
+  "payUnpaid": "Unpaid",
+  "payAtShop": "Pay at shop",
+  "payPending": "Payment pending",
+  "payPaid": "Paid",
+  "payRefunded": "Refunded",
+  "recordProcessing": "Processing",
+  "recordFailed": "Failed",
+  "planTrial": "Free trial",
+  "planBasic": "Basic",
+  "planPro": "Pro",
+  "planUnlimitedBarbers": "Unlimited barbers",
+  "planUpToBarbers": "{count, plural, =1{Up to 1 barber} other{Up to {count} barbers}}",
+  "@planUpToBarbers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "payErrNotSetUp": "Online payments are not set up yet. Please pay at the shop.",
+  "payErrSignIn": "Please sign in again to make a payment.",
+  "payErrNotAllowed": "You are not allowed to make this payment.",
+  "payErrNotFound": "We could not find this item. It may have been removed.",
+  "payErrAlreadyPaid": "This booking is already paid.",
+  "payErrNetwork": "Could not reach the payment service. Check your connection and try again.",
+  "payErrGeneric": "The payment could not be started. Please try again.",
+  "switchRole": "Switch Role",
+  "personaTitle": "Switch demo role",
+  "personaSubtitle": "Demo mode: switch persona instantly to try each role",
+  "personaAdminTitle": "Platform Administrator",
+  "personaAdminSubtitle": "Register barbershops, manage users & platform config",
+  "personaOwnerTitle": "Barbershop Owner App",
+  "personaOwnerSubtitle": "Manage barbers, services & appointments ({shop})",
+  "@personaOwnerSubtitle": {
+    "placeholders": {
+      "shop": {
+        "type": "String"
+      }
+    }
+  },
+  "personaBarberTitle": "Staff Barber Workspace",
+  "personaBarberSubtitle": "{name}: manage the appointment queue & earnings",
+  "@personaBarberSubtitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "personaCustomerTitle": "Customer View",
+  "personaCustomerSubtitle": "Search barbershops, pick favorite barbers & book appointments",
+  "notificationsTitle": "Notifications",
+  "notificationsUnreadTooltip": "Notifications ({count} unread)",
+  "@notificationsUnreadTooltip": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "markAllRead": "Mark all read",
+  "noNotifications": "No notifications yet",
+  "noNotificationsHint": "Booking confirmations, changes and reminders will appear here.",
+  "justNow": "Just now",
+  "minutesAgo": "{count} min ago",
+  "@minutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hoursAgo": "{count} h ago",
+  "@hoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "daysAgo": "{count} d ago",
+  "@daysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "authSubtitlePhone": "Sign in or create an account with your phone number",
+  "authSubtitleCode": "Enter the 6-digit code sent to {phone}",
+  "@authSubtitleCode": {
+    "placeholders": {
+      "phone": {
+        "type": "String"
+      }
+    }
+  },
+  "mobileNumber": "Mobile Number",
+  "sendCode": "Send Code",
+  "smsNotice": "We will send you a one-time code by SMS. Standard SMS rates may apply.",
+  "verify": "Verify",
+  "changeNumber": "Change number",
+  "resendIn": "Resend in {seconds}s",
+  "@resendIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "resendCode": "Resend code",
+  "demoCodeNotice": "Demo mode: the code is {code}",
+  "@demoCodeNotice": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "demoAccounts": "DEMO ACCOUNTS",
+  "roleAdminShort": "Admin",
+  "welcome": "Welcome",
+  "profileCustomerMessage": "Create your account to book barbers across Addis Ababa.",
+  "profileOwnerInvite": "You have been invited to manage {shop} as its owner.",
+  "@profileOwnerInvite": {
+    "placeholders": {
+      "shop": {
+        "type": "String"
+      }
+    }
+  },
+  "profileBarberInvite": "You have been invited to join {shop} as a barber.",
+  "@profileBarberInvite": {
+    "placeholders": {
+      "shop": {
+        "type": "String"
+      }
+    }
+  },
+  "profileRoleInvite": "You have been invited as {role}.",
+  "@profileRoleInvite": {
+    "placeholders": {
+      "role": {
+        "type": "String"
+      }
+    }
+  },
+  "aBarbershop": "a barbershop",
+  "fullName": "Full Name",
+  "continueLabel": "Continue",
+  "useDifferentNumber": "Use a different number",
+  "authErrInvalidPhone": "That phone number is not valid.",
+  "authErrWrongCode": "Wrong code. Check the SMS and try again.",
+  "authErrCodeExpired": "The code expired. Request a new one.",
+  "authErrTooMany": "Too many attempts. Please wait a few minutes and try again.",
+  "authErrQuota": "SMS limit reached. Please try again later.",
+  "authErrNetwork": "No internet connection.",
+  "authErrNotEnabled": "Phone sign-in is not enabled for this app yet.",
+  "authErrGeneric": "Something went wrong. Please try again.",
+  "adminSubtitle": "Platform System Administration",
+  "deleteShopTitle": "Delete Barbershop?",
+  "deleteShopBody": "Are you sure you want to remove \"{shop}\" and all associated barbers, services and appointments?",
+  "@deleteShopBody": {
+    "placeholders": {
+      "shop": {
+        "type": "String"
+      }
+    }
+  },
+  "shopRemoved": "Removed {shop}",
+  "@shopRemoved": {
+    "placeholders": {
+      "shop": {
+        "type": "String"
+      }
+    }
+  },
+  "subscriptionsAndPlansTooltip": "Subscriptions & plans",
+  "tabShops": "Shops ({count})",
+  "@tabShops": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tabUsers": "Users ({count})",
+  "@tabUsers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tabBookings": "Bookings ({count})",
+  "@tabBookings": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "registerBarbershop": "Register Barbershop",
+  "metricBarbershops": "Barbershops",
+  "metricRegistered": "Registered",
+  "metricActiveBarbers": "Active Barbers",
+  "metricAcrossNetwork": "Across network",
+  "metricPlatformSales": "Platform Sales",
+  "metricGrossVolume": "Gross volume",
+  "searchShopsAdminHint": "Search shops by name, address, or sub-city...",
+  "filterVerifiedPartners": "Verified Partners",
+  "filterOpenNow": "Open Now",
+  "registeredBarbershopsCount": "Registered Barbershops ({count})",
+  "@registeredBarbershopsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "adminActionsEnabled": "Admin Actions Enabled",
+  "noRegisteredShops": "No registered barbershops found",
+  "noRegisteredShopsHint": "Tap \"Register Barbershop\" to add a new shop to the platform.",
+  "ownerInvitePending": "{name} ({phone}) - invite pending",
+  "@ownerInvitePending": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "phone": {
+        "type": "String"
+      }
+    }
+  },
+  "notAssigned": "Not assigned",
+  "ownerLabel": "Owner: {owner}",
+  "@ownerLabel": {
+    "placeholders": {
+      "owner": {
+        "type": "String"
+      }
+    }
+  },
+  "verified": "Verified",
+  "verifyShop": "Verify Shop",
+  "manageShopPortal": "Manage Shop Portal",
+  "deleteShop": "Delete Shop",
+  "roleAdministrator": "Administrator",
+  "roleStaffBarber": "Staff Barber",
+  "assignedShop": "Assigned Shop: {shop}",
+  "@assignedShop": {
+    "placeholders": {
+      "shop": {
+        "type": "String"
+      }
+    }
+  },
+  "noPlatformAppointments": "No platform appointments recorded yet",
+  "scheduleAt": "Schedule: {when}",
+  "@scheduleAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "registerNewBarbershop": "Register New Barbershop",
+  "registeredShopSnack": "Registered \"{shop}\". The owner can now sign in with {phone}.",
+  "@registeredShopSnack": {
+    "placeholders": {
+      "shop": {
+        "type": "String"
+      },
+      "phone": {
+        "type": "String"
+      }
+    }
+  },
+  "registrationError": "Registration error: {error}",
+  "@registrationError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "onboardingTitle": "SaaS Barbershop Onboarding",
+  "onboardingSubtitle": "Registers shop profile, provisions tenant owner account & sets up staff suite.",
+  "sectionShopProfile": "1. Shop Profile & Branding",
+  "shopBusinessName": "Barbershop Business Name *",
+  "shopBusinessNameHint": "e.g. Bole Fade Studio",
+  "shopDescription": "Shop Description",
+  "shopTelephone": "Shop Telephone *",
+  "coverImageUrl": "Cover Image URL",
+  "sectionOwnerAccount": "2. Barbershop Owner Account",
+  "ownerFullName": "Owner Full Name *",
+  "ownerMobileLogin": "Owner Mobile Number (Login) *",
+  "ownerMobileHelper": "The owner signs in with this number to manage the shop.",
+  "sectionLocation": "3. Physical Location",
+  "streetAddressRequired": "Street Address *",
+  "streetAddressHint": "e.g. Bole Road, Getu Building, 2nd floor",
+  "subCityRequired": "Sub-city *",
+  "landmark": "Landmark",
+  "landmarkHint": "e.g. Near Edna Mall",
+  "cityRequired": "City *",
+  "cityHint": "e.g. Addis Ababa",
+  "sectionHours": "4. Business Hours & Verification",
+  "openingTime": "Opening Time",
+  "closingTime": "Closing Time",
+  "markVerifiedPartner": "Mark as Verified Partner Shop",
+  "markVerifiedPartnerSubtitle": "Verified badge displayed to all customers",
+  "registeringBarbershop": "Registering Barbershop...",
+  "registerIntoNetwork": "Register Barbershop into Network",
+  "presetClassicLounge": "Classic Lounge",
+  "presetVintageWood": "Vintage Wood",
+  "presetModernGold": "Modern Gold",
+  "presetIndustrialStudio": "Industrial Studio",
+  "subscriptionsAndPlans": "Subscriptions & Plans",
+  "tabPlans": "Plans ({count})",
+  "@tabPlans": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noBarbershopsYet": "No barbershops yet.",
+  "statusCountChip": "{status}: {count}",
+  "@statusCountChip": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noEndDate": "No end date",
+  "endedDaysAgo": "Ended {date} ({days}d ago)",
+  "@endedDaysAgo": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "endsDaysLeft": "Ends {date} ({days}d left)",
+  "@endsDaysLeft": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "subscriptionUpdated": "Subscription of {shop} updated.",
+  "@subscriptionUpdated": {
+    "placeholders": {
+      "shop": {
+        "type": "String"
+      }
+    }
+  },
+  "createDefaultPlans": "Create default plans",
+  "addPlan": "Add plan",
+  "plansExplainer": "Owners can buy the Basic and Pro plans online. Deactivating a plan hides it from owners; current subscriptions keep running.",
+  "noPlansYet": "No plans yet.",
+  "perMonth": "{price} / month",
+  "@perMonth": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "planActivated": "{plan} activated.",
+  "@planActivated": {
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      }
+    }
+  },
+  "planDeactivated": "{plan} deactivated.",
+  "@planDeactivated": {
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      }
+    }
+  },
+  "defaultPlansExist": "The default plans already exist.",
+  "createdPlans": "Created plans: {plans}.",
+  "@createdPlans": {
+    "placeholders": {
+      "plans": {
+        "type": "String"
+      }
+    }
+  },
+  "planSaved": "Plan {plan} saved.",
+  "@planSaved": {
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      }
+    }
+  },
+  "manualSubscriptionHint": "For cash or bank payments and manual fixes.",
+  "planLabel": "Plan",
+  "statusLabel": "Status",
+  "endDate": "End date",
+  "addMonthsPrefix": "Add ",
+  "monthsSuffix": "{count, plural, =1{ month} other{ months}}",
+  "@monthsSuffix": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "setADate": "Set a date...",
+  "keepCurrentEndDate": "Keep current end date",
+  "pickEndDate": "Pick end date",
+  "enterValidPlanValues": "Enter a valid price and barber limit.",
+  "newPlan": "New plan",
+  "editPlan": "Edit {plan}",
+  "@editPlan": {
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      }
+    }
+  },
+  "planId": "Plan id",
+  "nameLabel": "Name",
+  "pricePerMonth": "Price per month",
+  "currencyEtb": "ETB",
+  "maxBarbers": "Max barbers",
+  "featuresOnePerLine": "Features (one per line)",
+  "availableToOwners": "Available to owners",
+  "subscriptionEditTitle": "Subscription: {shop}",
+  "@subscriptionEditTitle": {
+    "placeholders": {
+      "shop": {
+        "type": "String"
+      }
+    }
+  },
+  "invalidContactPhone": "Enter a valid Ethiopian phone number (09..., 07... or 011...)",
+  "shopPhoneHint": "09XX XXX XXX or 011 XXX XXXX",
+  "ownerNameHint": "e.g. Abebe Kebede",
+  "barberWorkspace": "Barber Workspace",
+  "noBarberProfile": "No Barber profile linked to this account.",
+  "tabConfirmed": "Confirmed ({count})",
+  "@tabConfirmed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tabInProgress": "In Progress ({count})",
+  "@tabInProgress": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tabCompleted": "Completed ({count})",
+  "@tabCompleted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tabAll": "All ({count})",
+  "@tabAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "emptyConfirmed": "No confirmed appointments scheduled.",
+  "emptyInProgress": "No appointments currently in progress.",
+  "emptyCompleted": "No completed appointments yet today.",
+  "emptyHistory": "No booking history found.",
+  "statusOnDuty": "Status: On Duty (Accepting Clients)",
+  "statusOnBreak": "Status: On Break / Away",
+  "metricAppointments": "Appointments",
+  "metricInChair": "In Chair",
+  "metricEarnings": "Earnings",
+  "viewWeeklySchedule": "View Weekly Schedule & Calendar",
+  "viewWeeklyScheduleSubtitle": "Inspect daily time slots, shifts, and bookings timeline",
+  "noShow": "No-Show",
+  "startService": "Start Service",
+  "markCompleted": "Mark Completed",
+  "serviceCompleted": "Service Completed",
+  "appointmentCancelled": "Appointment Cancelled",
+  "statusUpdateFailed": "Could not update the appointment: {error}",
+  "@statusUpdateFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "barberScheduleTitle": "{name} • Schedule",
+  "@barberScheduleTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shopHoursUnavailable": "Shop hours unavailable",
+  "noWorkingHours": "No working hours set",
+  "workingHoursLine": "Working hours: {range} • {days}",
+  "@workingHoursLine": {
+    "placeholders": {
+      "range": {
+        "type": "String"
+      },
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "notTakingNewBookings": "{text} • Not taking new bookings",
+  "@notTakingNewBookings": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "dayOff": "Day off - no working hours on {day}.",
+  "@dayOff": {
+    "placeholders": {
+      "day": {
+        "type": "String"
+      }
+    }
+  },
+  "busy": "Busy",
+  "availableSlot": "Available Slot",
+  "rangeWithDuration": "{range} ({minutes} min)",
+  "@rangeWithDuration": {
+    "placeholders": {
+      "range": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "searchShopsHint": "Search barbershops by name or neighborhood...",
+  "premierTalent": "PREMIER TALENT",
+  "bookWithMasters": "Book Directly with Master Barbers",
+  "bookWithMastersSubtitle": "Browse verified specialists, view portfolios & reserve seats.",
+  "findBarbers": "Find Barbers",
+  "subCityFilterLabel": "Sub-city:",
+  "catFades": "Fades & Tapers",
+  "catBeard": "Beard Sculpt",
+  "catShave": "Hot Shave",
+  "catKids": "Kids & VIP",
+  "featuredBarbershops": "Featured Barbershops ({count})",
+  "@featuredBarbershops": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allLocations": "All Locations",
+  "noShopsMatching": "No barbershops found matching \"{query}\"",
+  "@noShopsMatching": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "verifiedBadge": "VERIFIED",
+  "viewServicesAndBook": "View Services & Book",
+  "navBarbershops": "Barbershops",
+  "navAppointments": "Appointments",
+  "verifiedPartnerBadge": "VERIFIED PARTNER",
+  "locationAndHours": "Location & Hours",
+  "hoursWithDays": "{hours} ({days})",
+  "@hoursWithDays": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      },
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "ourMasterBarbers": "Our Master Barbers ({count})",
+  "@ourMasterBarbers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "selectAService": "Select a Service ({count})",
+  "@selectAService": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "chooseAService": "Choose a service",
+  "selectToSeePrice": "Select to see price",
+  "shopHasNoServicesOrBarbers": "This shop does not have active services or barbers.",
+  "bookSlot": "Book Slot",
+  "selectAvailableTime": "Please select an available time.",
+  "slotJustTaken": "Slot just taken",
+  "slotJustTakenBody": "Someone else booked this time a moment ago.\n\nThe list of times has been refreshed.",
+  "pickAnotherTime": "Pick another time",
+  "bookingConfirmed": "Booking Confirmed!",
+  "seatReserved": "Your seat with {barber} is reserved.",
+  "@seatReserved": {
+    "placeholders": {
+      "barber": {
+        "type": "String"
+      }
+    }
+  },
+  "receiptShop": "Shop",
+  "receiptService": "Service",
+  "receiptDate": "Date",
+  "receiptTime": "Time",
+  "receiptTotal": "Total",
+  "payAmountNow": "Pay {amount} now",
+  "@payAmountNow": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "payAtShopInstead": "Pay at the shop instead",
+  "backToHome": "Back to Home",
+  "confirmAppointment": "Confirm Appointment",
+  "stepChooseBarber": "1. Choose Barber",
+  "stepSelectedService": "2. Selected Service",
+  "stepSelectDate": "3. Select Date",
+  "stepAvailableTimes": "4. Available Times",
+  "durationAddisTime": "{minutes} min • Addis Ababa time",
+  "@durationAddisTime": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "unavailable": "Unavailable",
+  "serviceChip": "{service} ({price} • {minutes} min)",
+  "@serviceChip": {
+    "placeholders": {
+      "service": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "shopNotTakingBookings": "This barbershop is not taking bookings right now.",
+  "barberNotTakingBookings": "{barber} is not taking bookings right now. Please choose another barber.",
+  "@barberNotTakingBookings": {
+    "placeholders": {
+      "barber": {
+        "type": "String"
+      }
+    }
+  },
+  "barberDayOff": "{barber} does not work on this day. Please pick another date.",
+  "@barberDayOff": {
+    "placeholders": {
+      "barber": {
+        "type": "String"
+      }
+    }
+  },
+  "noFreeTimes": "No free times left on this day. Please pick another date.",
+  "morning": "Morning",
+  "afternoon": "Afternoon",
+  "evening": "Evening",
+  "totalPayAtSalon": "Total to Pay at Salon:",
+  "totalPayOnline": "Total (pay online):",
+  "selectATime": "Select a time",
+  "payAtShopCash": "Pay at shop (cash)",
+  "payAfterAppointment": "Pay after your appointment",
+  "payNowWithChapa": "Pay now with Chapa",
+  "chapaMethods": "telebirr, CBE Birr or card",
+  "myAppointments": "My Appointments",
+  "noBookingsYet": "No bookings yet",
+  "noBookingsHint": "Explore top barbershops and book your first slot.",
+  "finishPayment": "Finish payment",
+  "payNow": "Pay now",
+  "cancelBooking": "Cancel Booking",
+  "cancelBookingFailed": "Could not cancel the booking: {error}",
+  "@cancelBookingFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "specAll": "All",
+  "specSkinFade": "Skin Fade",
+  "specBeardSculpting": "Beard Sculpting",
+  "specHotShave": "Hot Shave",
+  "specScissorCut": "Scissor Cut",
+  "specExecutiveStyling": "Executive Styling",
+  "findTopBarbers": "Find Top Barbers",
+  "searchBarbersHint": "Search by barber name, specialty, or shop...",
+  "noBarbersMatching": "No barbers found matching \"{query}\"",
+  "@noBarbersMatching": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "bookWith": "Book with {name}",
+  "@bookWith": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noServicesAtShop": "No services available at this shop yet.",
+  "partnerPortal": "Partner Business Portal",
+  "customizableApp": "Your Customizable Barbershop App",
+  "customizableAppSubtitle": "Branding, cover photo, opening hours & location",
+  "customize": "Customize",
+  "servicesButton": "Services ({count})",
+  "@servicesButton": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "manageBarbersButton": "Manage Barbers ({count})",
+  "@manageBarbersButton": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "subscriptionAndBilling": "Subscription & billing",
+  "editInfo": "Edit Info",
+  "metricBookings": "Bookings",
+  "activeCount": "{count} active",
+  "@activeCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "metricEstRevenue": "Est. Revenue",
+  "metricGrossSales": "Gross sales",
+  "appointmentsSchedule": "Appointments Schedule",
+  "noAppointmentsFound": "No appointments found",
+  "cancelSlot": "Cancel Slot",
+  "shopSettingsSaved": "Customized shop settings saved successfully!",
+  "customizeMyBarbershop": "Customize My Barbershop",
+  "preview": "Preview",
+  "savingUpdates": "Saving Updates...",
+  "publishCustomizations": "Publish Shop Customizations",
+  "brandProfile": "Barbershop Brand Profile",
+  "brandProfileHint": "Changes made here instantly appear in the customer booking experience.",
+  "sectionBranding": "Barbershop Branding & Info",
+  "barbershopNameRequired": "Barbershop Name *",
+  "brandBio": "Brand Bio & Story",
+  "businessPhone": "Business Phone Number",
+  "themePresets": "Quick Theme Aesthetic Presets:",
+  "coverPhotoUrl": "Cover Photo Image URL",
+  "sectionAddress": "Physical Location & Address",
+  "streetAddress": "Street Address",
+  "subCity": "Sub-city",
+  "city": "City",
+  "sectionSchedule": "Business Schedule & Hours",
+  "openingHour": "Opening Hour",
+  "closingHour": "Closing Hour",
+  "openWorkingDays": "Open Working Days:",
+  "presetRoyalGold": "Royal Gold & Noir",
+  "presetVintageGentleman": "Vintage Gentleman",
+  "presetEmpireLuxury": "Empire Luxury",
+  "presetUrbanIndustrial": "Urban Industrial",
+  "saveFailed": "Could not save: {error}",
+  "@saveFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "defaultBarberTitle": "Stylist & Fade Specialist",
+  "addBarberToShop": "Add Barber to Shop",
+  "barberFullName": "Barber Full Name",
+  "specialization": "Specialization (e.g. Master Barber)",
+  "mobileForLogin": "Mobile Number (for login)",
+  "barberPhoneHelper": "Optional. The barber signs in with this number.",
+  "selectAvatar": "Select Avatar Portrait:",
+  "invalidPhoneShort": "Enter a valid number (09... or 07...)",
+  "addBarberFailed": "Could not add barber. Please try again.",
+  "addBarber": "Add Barber",
+  "removeBarberTitle": "Remove Barber?",
+  "removeBarberBody": "Are you sure you want to remove \"{name}\" from this barbershop?",
+  "@removeBarberBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "manageBarbersStaff": "Manage Barbers & Staff",
+  "noBarbersYet": "No barbers added yet",
+  "noBarbersHint": "Add barbers so clients can book appointments with them.",
+  "loginInvitePending": "Login invite pending: {phone}",
+  "@loginInvitePending": {
+    "placeholders": {
+      "phone": {
+        "type": "String"
+      }
+    }
+  },
+  "removeBarber": "Remove Barber",
+  "addNewService": "Add New Service",
+  "serviceNameHint": "Service Name (e.g. Beard Trim)",
+  "description": "Description",
+  "priceEtb": "Price (ETB)",
+  "durationMins": "Duration (mins)",
+  "addService": "Add Service",
+  "manageServicesPricing": "Manage Services & Pricing",
+  "noServicesYet": "No services created yet",
+  "noServicesHint": "Tap \"Add Service\" below to publish your salon pricing.",
+  "invalidServiceValues": "Enter a name, a price in ETB and a duration in minutes.",
+  "subscriptionTitle": "Subscription",
+  "plansTitle": "Plans",
+  "plansIntro": "Pay monthly with telebirr, CBE Birr or card through Chapa. Paying early adds a month to your current end date.",
+  "noPlansAvailable": "No plans are available right now. Please contact Crown & Blade support.",
+  "paymentHistory": "Payment history",
+  "noEndDateSet": "No end date set",
+  "endedAgo": "{count, plural, =1{Ended {date} (1 day ago)} other{Ended {date} ({count} days ago)}}",
+  "@endedAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "trialEndsOn": "Trial ends {date}",
+  "@trialEndsOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "renewsBy": "Renews by {date}",
+  "@renewsBy": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "endsToday": "{text} (today)",
+  "@endsToday": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "daysLeftSuffix": "{count, plural, =1{{text} (1 day left)} other{{text} ({count} days left)}}",
+  "@daysLeftSuffix": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "barbersUsage": "Barbers: {count}",
+  "@barbersUsage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "barbersUsageUnlimited": "Barbers: {count} (unlimited)",
+  "@barbersUsageUnlimited": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "barbersUsageOf": "Barbers: {count} of {max}",
+  "@barbersUsageOf": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "planTooSmall": "Your shop has {count} barbers; this plan allows {max}.",
+  "@planTooSmall": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "renewWithChapa": "Renew with Chapa",
+  "payWithChapa": "Pay with Chapa",
+  "paymentHistoryUnavailable": "Payment history is unavailable.",
+  "noSubscriptionPayments": "No subscription payments yet.",
+  "untilDate": "until {date}",
+  "@untilDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "planOneMonth": "{plan} plan - 1 month",
+  "@planOneMonth": {
+    "placeholders": {
+      "plan": {
+        "type": "String"
+      }
+    }
+  },
+  "preparingCheckout": "Preparing secure checkout...",
+  "paymentProblem": "Payment problem",
+  "paymentNotCompleted": "Payment not completed yet. If you paid, it will show as paid shortly.",
+  "subscriptionActiveUntilSentence": " Subscription active until {date}.",
+  "@subscriptionActiveUntilSentence": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentReceivedAmount": "Payment received: {amount}.{extra}",
+  "@paymentReceivedAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "extra": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentFailedRetry": "Payment failed or was cancelled. No money was taken. You can try again.",
+  "chapaCheckoutDemo": "Chapa checkout (demo)",
+  "chapaDemoNotice": "Demo mode: no money moves. Choose Pay to simulate a successful payment.",
+  "cancelPayment": "Cancel payment",
+  "payAmount": "Pay {amount}",
+  "@payAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "chapaNotConfirmedYet": "Chapa has not confirmed the payment yet. Finish it in the browser, then check again.",
+  "completeYourPayment": "Complete your payment",
+  "completePaymentBody": "Pay {amount} on the Chapa page that opened (telebirr, CBE Birr or card), then come back here.",
+  "@completePaymentBody": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "payLater": "Pay later",
+  "openAgain": "Open again",
+  "ivePaid": "I've paid",
+  "couldNotCheckPayment": "Could not check the payment",
+  "checkingPayment": "Checking your payment with Chapa...",
+  "subscriptionIsActive": "Your subscription is active.",
+  "subscriptionActiveUntil": "Your subscription is active until {date}.",
+  "@subscriptionActiveUntil": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "bookingIsPaid": "Your booking is paid.",
+  "paymentReceived": "Payment received",
+  "amountThen": "{amount}. {what}",
+  "@amountThen": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "what": {
+        "type": "String"
+      }
+    }
+  },
+  "stillProcessing": "Still processing",
+  "stillProcessingBody": "Chapa has not confirmed this payment yet. It will update automatically once it does.",
+  "paymentFailed": "Payment failed",
+  "noMoneyTaken": "No money was taken. You can try again.",
+  "paymentTitle": "Payment",
+  "checkAgain": "Check again",
+  "bannerSuspended": "Your shop is suspended: customers cannot see or book it. Pay your subscription to reactivate it.",
+  "bannerOverdueSoon": "Your subscription payment is overdue. The shop will be suspended soon unless you pay.",
+  "bannerOverdueToday": "Your subscription payment is overdue. The shop will be suspended today unless you pay.",
+  "bannerOverdueInDays": "{count, plural, =1{Your subscription payment is overdue. The shop will be suspended in 1 day unless you pay.} other{Your subscription payment is overdue. The shop will be suspended in {count} days unless you pay.}}",
+  "@bannerOverdueInDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bannerTrialEndsToday": "Your free trial ends today. Pay now to keep taking bookings.",
+  "bannerSubEndsToday": "Your subscription ends today. Pay now to keep taking bookings.",
+  "bannerTrialEndsIn": "{count, plural, =1{Your free trial ends in 1 day. Pay now to keep taking bookings.} other{Your free trial ends in {count} days. Pay now to keep taking bookings.}}",
+  "@bannerTrialEndsIn": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "bannerSubEndsIn": "{count, plural, =1{Your subscription ends in 1 day. Pay now to keep taking bookings.} other{Your subscription ends in {count} days. Pay now to keep taking bookings.}}",
+  "@bannerSubEndsIn": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reactivate": "Reactivate",
+  "cardMethod": "Card"
+}

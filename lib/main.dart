@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'core/config/app_config.dart';
 import 'core/theme/app_theme.dart';
+import 'core/utils/formatters.dart';
+import 'l10n/l10n.dart';
 import 'firebase_options.dart';
 import 'models/user_model.dart';
 import 'services/app_repository.dart';
+import 'services/notification_service.dart';
+import 'features/notifications/screens/notifications_screen.dart';
+import 'features/payments/payment_flow.dart';
 import 'features/auth/screens/auth_screen.dart';
 import 'features/auth/screens/profile_setup_screen.dart';
 import 'features/customer/screens/customer_main_nav.dart';
@@ -14,9 +19,14 @@ import 'features/barber/screens/barber_dashboard_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Date symbols for every locale (Amharic month/day names).
+  ensureDateFormattingData();
 
   String? firebaseError;
-  if (!kDemoMode) {
+  if (kDemoMode) {
+    // Offline demo: the bundled Addis Ababa dataset (assets/seed/addis_seed.json).
+    await AppRepository.instance.loadDemoData();
+  } else {
     try {
       await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
       AppRepository.instance.attachFirebase();
@@ -27,6 +37,17 @@ Future<void> main() async {
       firebaseError = e.toString();
     }
   }
+
+  if (firebaseError == null) {
+    // Inbox, unread badge, banners and (with Firebase) FCM registration.
+    NotificationService.inboxRouteBuilder = (_) => const NotificationsScreen();
+    NotificationService.instance.start();
+    // Web: Chapa returns to PAYMENT_RETURN_URL?paymentId=... - verify it.
+    PaymentReturnHandler.start(uri: Uri.base, navigatorKey: NotificationService.navigatorKey);
+  }
+
+  // App language: device default, then the signed-in user's users/{uid}.language.
+  LocaleController.instance.start();
 
   runApp(BarbershopApp(firebaseError: firebaseError));
 }
@@ -39,11 +60,20 @@ class BarbershopApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Crown & Blade - Barbershop Booking',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
-      home: firebaseError != null ? _FirebaseSetupRequired(error: firebaseError!) : const RootGate(),
+    final localeController = LocaleController.instance;
+    return ListenableBuilder(
+      listenable: localeController,
+      builder: (context, _) => MaterialApp(
+        onGenerateTitle: (context) => context.l10n.appTitle,
+        debugShowCheckedModeBanner: false,
+        navigatorKey: NotificationService.navigatorKey,
+        scaffoldMessengerKey: NotificationService.messengerKey,
+        theme: AppTheme.darkTheme,
+        locale: localeController.locale,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        home: firebaseError != null ? _FirebaseSetupRequired(error: firebaseError!) : const RootGate(),
+      ),
     );
   }
 }
@@ -106,15 +136,15 @@ class _FirebaseSetupRequired extends StatelessWidget {
               children: [
                 const Icon(Icons.cloud_off, size: 48, color: AppTheme.primaryGold),
                 const SizedBox(height: 16),
-                const Text(
-                  'Service unavailable',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                Text(
+                  context.l10n.serviceUnavailable,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'The app could not connect to its server. Please try again later.',
+                Text(
+                  context.l10n.serviceUnavailableBody,
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppTheme.textSecondary),
+                  style: const TextStyle(color: AppTheme.textSecondary),
                 ),
                 const SizedBox(height: 16),
                 Text(

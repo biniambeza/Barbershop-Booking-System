@@ -47,6 +47,7 @@ app.*.map.json
 
 # Firestore rules tests
 firestore-tests/node_modules/
+tool/seed/node_modules/
 .firebase/
 *-debug.log
 functions/*/node_modules/

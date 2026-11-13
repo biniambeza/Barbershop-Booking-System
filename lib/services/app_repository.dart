@@ -6,12 +6,19 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:uuid/uuid.dart';
 import '../core/config/app_config.dart';
 import '../core/utils/phone_utils.dart';
+import '../data/addis_time.dart';
+import '../data/seed_dataset.dart';
 import '../models/user_model.dart';
 import '../models/barbershop_model.dart';
 import '../models/service_model.dart';
 import '../models/barber_model.dart';
 import '../models/booking_model.dart';
 import '../models/invite_model.dart';
+import '../models/plan_model.dart';
+import 'availability_service.dart';
+import 'data_cache.dart';
+import 'data_store.dart';
+import 'firestore_data_store.dart';
 import 'phone_auth_service.dart';
 
 /// Where the signed-in session currently stands.
@@ -25,18 +32,30 @@ enum AuthStatus {
   signedIn,
 }
 
+/// The app's single data facade (a [ChangeNotifier] singleton).
+///
+/// Screens read through synchronous getters inside a `ListenableBuilder`.
+/// The getters read a [DataCache]:
+///  * With Firebase attached ([attachFirebase]), Firestore is the source of
+///    truth. When a user signs in, [FirestoreDataStore] opens snapshot
+///    listeners scoped to their role and keeps the cache in sync; they are
+///    closed (and the cache emptied) on sign-out. All writes go to Firestore
+///    and come back through the listeners.
+///  * Without Firebase (DEMO_MODE builds and tests) the cache is loaded from
+///    the seed dataset ([loadDemoData] / [loadSeed]) and [LocalDataStore]
+///    writes to it directly.
 class AppRepository extends ChangeNotifier {
   static final AppRepository instance = AppRepository._internal();
   AppRepository._internal() {
-    _initDemoData();
+    _store = LocalDataStore(_cache);
   }
 
   final _uuid = const Uuid();
+  final DataCache _cache = DataCache();
+  late DataStore _store;
+  FirestoreDataStore? _cloud;
 
   // --- Firebase wiring ---
-  // When Firebase is attached (production), sign-in uses real SMS OTP and the
-  // user's role comes from their `users/{uid}` document. When it is not
-  // attached (demo builds and tests), sign-in runs locally against demo data.
   bool _firebaseReady = false;
   PhoneAuthService? _phoneAuth;
   StreamSubscription<User?>? _authSub;
@@ -44,23 +63,53 @@ class AppRepository extends ChangeNotifier {
   bool get isFirebaseAttached => _firebaseReady;
   FirebaseFirestore get _db => FirebaseFirestore.instance;
 
-  /// True when writes should also go to Firestore.
-  bool get _cloudEnabled => _firebaseReady && FirebaseAuth.instance.currentUser != null;
-
-  /// Connects the repository to Firebase Auth. Call once after
+  /// Connects the repository to Firebase Auth and Firestore. Call once after
   /// `Firebase.initializeApp` succeeds.
   void attachFirebase() {
     if (_firebaseReady) return;
     _firebaseReady = true;
     _phoneAuth = PhoneAuthService(FirebaseAuth.instance);
+    _cache.clear();
+    final cloud = FirestoreDataStore(
+      cache: _cache,
+      onChanged: notifyListeners,
+      onCurrentUserChanged: _onCurrentUserDocChanged,
+    );
+    _cloud = cloud;
+    _store = cloud;
     _currentUser = null;
     _authStatus = AuthStatus.initializing;
     _authSub = FirebaseAuth.instance.authStateChanges().listen(_onFirebaseAuthChanged);
   }
 
+  /// Demo builds: loads the bundled Addis Ababa dataset. No-op with Firebase.
+  Future<void> loadDemoData() async {
+    if (_firebaseReady) return;
+    loadSeed(await SeedDataset.loadFromAssets());
+  }
+
+  /// Replaces all local data with [seed] and signs out. Local mode only
+  /// (demo builds and tests); ignored once Firebase is attached.
+  void loadSeed(SeedDataset seed) {
+    if (_firebaseReady) return;
+    _cache.loadSeed(seed);
+    _favoriteShopIds
+      ..clear()
+      ..addAll(seed.favoriteShopIds);
+    _favoriteBarberIds
+      ..clear()
+      ..addAll(seed.favoriteBarberIds);
+    _currentUser = null;
+    _authStatus = AuthStatus.signedOut;
+    _pendingPhone = null;
+    _pendingInvite = null;
+    notifyListeners();
+  }
+
   @override
   void dispose() {
     _authSub?.cancel();
+    _cloud?.stop();
     super.dispose();
   }
 
@@ -82,511 +131,30 @@ class AppRepository extends ChangeNotifier {
   String? _authError;
   String? get authError => _authError;
 
-  final List<AppUser> _mockUsers = [];
-  final List<Barbershop> _mockShops = [];
-  final List<BarbershopService> _mockServices = [];
-  final List<Barber> _mockBarbers = [];
-  final List<Booking> _mockBookings = [];
-  final Map<String, UserInvite> _mockInvites = {};
+  /// Last Firestore listener error (e.g. permission denied), if any.
+  String? get syncError => _cloud?.lastError;
 
-  final Set<String> _favoriteShopIds = {'shop_1'};
-  final Set<String> _favoriteBarberIds = {'barber_1'};
-
-  void _initDemoData() {
-    // 1. Platform Superadmin
-    final adminUser = AppUser(
-      uid: 'user_admin_1',
-      email: 'admin@crownblade.com',
-      name: 'System Platform Admin',
-      phone: '+251911000001',
-      role: UserRole.admin,
-      createdAt: DateTime.now().subtract(const Duration(days: 90)),
-    );
-    _mockUsers.add(adminUser);
-
-    // 2. Barbershop Owner (The Gentleman's Quarter)
-    final ownerUser1 = AppUser(
-      uid: 'owner_1',
-      email: 'marcus@royalcuts.com',
-      name: 'Marcus Vance (Owner)',
-      phone: '+251911000101',
-      role: UserRole.barbershopOwner,
-      shopId: 'shop_1',
-      createdAt: DateTime.now().subtract(const Duration(days: 60)),
-    );
-    _mockUsers.add(ownerUser1);
-
-    // 3. Dedicated Staff Barbers (Belong to Shop 1)
-    final barberUser1 = AppUser(
-      uid: 'barber_user_1',
-      email: 'marcus.barber@gentlemansquarter.com',
-      name: 'Marcus Vance',
-      phone: '+251911000201',
-      role: UserRole.barber,
-      shopId: 'shop_1',
-      barberId: 'barber_1',
-      createdAt: DateTime.now().subtract(const Duration(days: 60)),
-    );
-    final barberUser2 = AppUser(
-      uid: 'barber_user_2',
-      email: 'david.barber@gentlemansquarter.com',
-      name: 'David Rossi',
-      phone: '+251911000202',
-      role: UserRole.barber,
-      shopId: 'shop_1',
-      barberId: 'barber_2',
-      createdAt: DateTime.now().subtract(const Duration(days: 45)),
-    );
-    _mockUsers.addAll([barberUser1, barberUser2]);
-
-    // 4. Customer
-    final custUser = AppUser(
-      uid: 'user_cust_1',
-      email: 'alex@example.com',
-      name: 'Alex Johnson',
-      phone: '+251911000301',
-      role: UserRole.customer,
-      createdAt: DateTime.now().subtract(const Duration(days: 30)),
-    );
-    _mockUsers.add(custUser);
-
-    // Additional Owners for multi-tenant network
-    _mockUsers.addAll([
-      AppUser(
-        uid: 'owner_2',
-        email: 'leo@classicblade.com',
-        name: 'Leo Thorne',
-        phone: '+251911000102',
-        role: UserRole.barbershopOwner,
-        shopId: 'shop_2',
-        createdAt: DateTime.now().subtract(const Duration(days: 50)),
-      ),
-      AppUser(
-        uid: 'owner_3',
-        email: 'julian@empirebarber.com',
-        name: 'Julian Hayes',
-        phone: '+251911000103',
-        role: UserRole.barbershopOwner,
-        shopId: 'shop_3',
-        createdAt: DateTime.now().subtract(const Duration(days: 40)),
-      ),
-      AppUser(
-        uid: 'owner_4',
-        email: 'samir@dumbosteel.com',
-        name: 'Samir Brooks',
-        phone: '+251911000104',
-        role: UserRole.barbershopOwner,
-        shopId: 'shop_4',
-        createdAt: DateTime.now().subtract(const Duration(days: 35)),
-      ),
-      AppUser(
-        uid: 'owner_5',
-        email: 'arthur@upperwestclub.com',
-        name: 'Arthur Sterling',
-        phone: '+251911000105',
-        role: UserRole.barbershopOwner,
-        shopId: 'shop_5',
-        createdAt: DateTime.now().subtract(const Duration(days: 20)),
-      ),
-    ]);
-
-    // Demo Shop 1
-    const shop1Id = 'shop_1';
-    _mockShops.add(Barbershop(
-      id: shop1Id,
-      ownerId: 'owner_1',
-      name: "The Gentleman's Quarter",
-      description: 'Award-winning master fades, hot towel straight-razor shaves, and executive beard grooming in Midtown.',
-      address: '422 Lexington Ave, Floor 3',
-      city: 'New York, NY',
-      phone: '+1 212-555-8901',
-      imageUrl: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800',
-      rating: 4.9,
-      reviewCount: 142,
-      openingHour: 9,
-      closingHour: 20,
-      isVerified: true,
-    ));
-
-    // Demo Shop 2
-    const shop2Id = 'shop_2';
-    _mockShops.add(Barbershop(
-      id: shop2Id,
-      ownerId: 'owner_2',
-      name: 'Classic Blade Barber Studio',
-      description: 'Traditional heritage barbering with cold towel finish and handcrafted pomades in the Village.',
-      address: '784 Broadway St',
-      city: 'New York, NY',
-      phone: '+1 718-555-4321',
-      imageUrl: 'https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800',
-      rating: 4.7,
-      reviewCount: 98,
-      openingHour: 10,
-      closingHour: 19,
-      isVerified: true,
-    ));
-
-    // Demo Shop 3
-    const shop3Id = 'shop_3';
-    _mockShops.add(Barbershop(
-      id: shop3Id,
-      ownerId: 'owner_3',
-      name: 'Empire Barber & Shave Parlor',
-      description: 'Luxury grooming experiences located steps from Empire State with master straight razor artists.',
-      address: '350 5th Avenue, Suite 12',
-      city: 'New York, NY',
-      phone: '+1 212-555-1212',
-      imageUrl: 'https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=800',
-      rating: 5.0,
-      reviewCount: 210,
-      openingHour: 8,
-      closingHour: 21,
-      isVerified: true,
-    ));
-
-    // Demo Shop 4
-    const shop4Id = 'shop_4';
-    _mockShops.add(Barbershop(
-      id: shop4Id,
-      ownerId: 'owner_4',
-      name: 'DUMBO Steel & Scissor Co.',
-      description: 'Urban industrial barbershop specializing in modern textured crops, fades, and artisanal beard care.',
-      address: '55 Water Street',
-      city: 'Brooklyn, NY',
-      phone: '+1 718-555-9800',
-      imageUrl: 'https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=800',
-      rating: 4.8,
-      reviewCount: 115,
-      openingHour: 10,
-      closingHour: 20,
-      isVerified: true,
-    ));
-
-    // Demo Shop 5
-    const shop5Id = 'shop_5';
-    _mockShops.add(Barbershop(
-      id: shop5Id,
-      ownerId: 'owner_5',
-      name: 'Upper West Gentleman Club',
-      description: 'Refined sanctuary for classic cuts, whiskey bar hospitality, and tailored executive hairstyles.',
-      address: '2150 Broadway',
-      city: 'New York, NY',
-      phone: '+1 212-555-7733',
-      imageUrl: 'https://images.unsplash.com/photo-1512690459411-b9245aed614b?w=800',
-      rating: 4.9,
-      reviewCount: 168,
-      openingHour: 9,
-      closingHour: 19,
-      isVerified: true,
-    ));
-
-    // Services for Shop 1
-    _mockServices.addAll([
-      BarbershopService(
-        id: 'srv_1',
-        shopId: shop1Id,
-        name: 'Signature Skin Fade & Style',
-        description: 'Precision skin fade, clipper & scissor blend, finished with premium styling pomade.',
-        price: 45.0,
-        durationMinutes: 45,
-      ),
-      BarbershopService(
-        id: 'srv_2',
-        shopId: shop1Id,
-        name: 'Beard Sculpt & Razor Edge',
-        description: 'Full beard reshaping, steam treatment, straight razor line-up and organic beard oil.',
-        price: 30.0,
-        durationMinutes: 30,
-      ),
-      BarbershopService(
-        id: 'srv_3',
-        shopId: shop1Id,
-        name: 'The Full Gentlemen Experience',
-        description: 'Haircut, beard sculpt, hot towel aromatic treatment, charcoal nose mask, and scalp massage.',
-        price: 75.0,
-        durationMinutes: 60,
-      ),
-    ]);
-
-    // Services for Shop 2
-    _mockServices.addAll([
-      BarbershopService(
-        id: 'srv_2_1',
-        shopId: shop2Id,
-        name: 'Traditional Scissor Cut',
-        description: 'Classic shears styling, taper neck cleanup, and hot lather shave around the ears.',
-        price: 40.0,
-        durationMinutes: 40,
-      ),
-      BarbershopService(
-        id: 'srv_2_2',
-        shopId: shop2Id,
-        name: 'Straight Razor Hot Shave',
-        description: 'Pre-shave eucalyptus oils, hot towels, badger brush foam, and soothing aftershave balm.',
-        price: 35.0,
-        durationMinutes: 35,
-      ),
-    ]);
-
-    // Services for Shop 3
-    _mockServices.addAll([
-      BarbershopService(
-        id: 'srv_3_1',
-        shopId: shop3Id,
-        name: 'Executive Cut & Beard Detail',
-        description: 'Top-tier master cut with custom beard fade, razor crisp lines, and hair wash.',
-        price: 60.0,
-        durationMinutes: 50,
-      ),
-      BarbershopService(
-        id: 'srv_3_2',
-        shopId: shop3Id,
-        name: 'Royal Hot Towel Shave',
-        description: 'Double warm aromatic towels with ultra-close straight blade glide and cold stone finish.',
-        price: 45.0,
-        durationMinutes: 40,
-      ),
-    ]);
-
-    // Services for Shop 4
-    _mockServices.addAll([
-      BarbershopService(
-        id: 'srv_4_1',
-        shopId: shop4Id,
-        name: 'Textured Crop & Low Fade',
-        description: 'Modern textured crop with powder styling and clean temple tapers.',
-        price: 42.0,
-        durationMinutes: 45,
-      ),
-      BarbershopService(
-        id: 'srv_4_2',
-        shopId: shop4Id,
-        name: 'Beard Trim & Hydration Mask',
-        description: 'Deep conditioning beard treatment, shaping, and razor edge.',
-        price: 28.0,
-        durationMinutes: 25,
-      ),
-    ]);
-
-    // Services for Shop 5
-    _mockServices.addAll([
-      BarbershopService(
-        id: 'srv_5_1',
-        shopId: shop5Id,
-        name: 'Gentleman Classic Trim',
-        description: 'Precision scissor comb, neck razor finish, and complimentary single malt refreshment.',
-        price: 55.0,
-        durationMinutes: 45,
-      ),
-      BarbershopService(
-        id: 'srv_5_2',
-        shopId: shop5Id,
-        name: 'Father & Son VIP Package',
-        description: 'Two deluxe cuts side by side with custom styling advice and refreshments.',
-        price: 85.0,
-        durationMinutes: 60,
-      ),
-    ]);
-
-    // Barbers for Shop 1
-    _mockBarbers.addAll([
-      Barber(
-        id: 'barber_1',
-        shopId: shop1Id,
-        name: 'Marcus Vance',
-        title: 'Master Barber / Fade Specialist',
-        rating: 4.9,
-        reviewCount: 88,
-        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
-        email: 'marcus.barber@gentlemansquarter.com',
-        phone: '+1 212-555-8901',
-        specialties: ['Skin Fade', 'Beard Sculpting', 'Hot Razor Shave'],
-      ),
-      Barber(
-        id: 'barber_2',
-        shopId: shop1Id,
-        name: 'David Rossi',
-        title: 'Senior Stylist & Shave Artist',
-        rating: 4.8,
-        reviewCount: 54,
-        avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
-        email: 'david.barber@gentlemansquarter.com',
-        phone: '+1 212-555-3344',
-        specialties: ['Scissor Cut', 'Hot Towel Shave', 'Kids Cuts'],
-      ),
-    ]);
-
-    // Barbers for Shop 2
-    _mockBarbers.addAll([
-      Barber(
-        id: 'barber_2_1',
-        shopId: shop2Id,
-        name: 'Leo Thorne',
-        title: 'Heritage Barber',
-        rating: 4.8,
-        reviewCount: 62,
-        avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
-        email: 'leo@classicblade.com',
-        phone: '+1 718-555-4321',
-        specialties: ['Traditional Shears', 'Beard Trim'],
-      ),
-    ]);
-
-    // Barbers for Shop 3
-    _mockBarbers.addAll([
-      Barber(
-        id: 'barber_3_1',
-        shopId: shop3Id,
-        name: 'Julian Hayes',
-        title: 'Creative Director / Master Barber',
-        rating: 5.0,
-        reviewCount: 140,
-        avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400',
-        email: 'julian@empirebarber.com',
-        phone: '+1 212-555-1212',
-        specialties: ['Executive Cut', 'Straight Razor', 'Hair Design'],
-      ),
-    ]);
-
-    // Barbers for Shop 4
-    _mockBarbers.addAll([
-      Barber(
-        id: 'barber_4_1',
-        shopId: shop4Id,
-        name: 'Samir Brooks',
-        title: 'Fade & Design Specialist',
-        rating: 4.9,
-        reviewCount: 78,
-        avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400',
-        email: 'samir@dumbosteel.com',
-        phone: '+1 718-555-9800',
-        specialties: ['Textured Crop', 'Low Taper Fade'],
-      ),
-    ]);
-
-    // Barbers for Shop 5
-    _mockBarbers.addAll([
-      Barber(
-        id: 'barber_5_1',
-        shopId: shop5Id,
-        name: 'Arthur Sterling',
-        title: 'Senior Barbering Craftsman',
-        rating: 4.9,
-        reviewCount: 92,
-        avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400',
-        email: 'arthur@upperwestclub.com',
-        phone: '+1 212-555-7733',
-        specialties: ['Executive Styling', 'Aromatic Shave'],
-      ),
-    ]);
-
-    // Demo Bookings
-    _mockBookings.addAll([
-      Booking(
-        id: 'book_1',
-        shopId: shop1Id,
-        shopName: "The Gentleman's Quarter",
-        barberId: 'barber_1',
-        barberName: 'Marcus Vance',
-        customerId: 'user_cust_1',
-        customerName: 'Alex Johnson',
-        customerPhone: '+1 555-0199',
-        serviceId: 'srv_1',
-        serviceName: 'Signature Skin Fade & Style',
-        price: 45.0,
-        date: DateTime.now().add(const Duration(days: 1)),
-        timeSlot: '11:00 AM',
-        status: BookingStatus.confirmed,
-        createdAt: DateTime.now().subtract(const Duration(hours: 3)),
-      ),
-      Booking(
-        id: 'book_2',
-        shopId: shop1Id,
-        shopName: "The Gentleman's Quarter",
-        barberId: 'barber_1',
-        barberName: 'Marcus Vance',
-        customerId: 'user_cust_2',
-        customerName: 'Michael Chang',
-        customerPhone: '+1 212-555-7890',
-        serviceId: 'srv_2',
-        serviceName: 'Beard Sculpt & Razor Edge',
-        price: 30.0,
-        date: DateTime.now(),
-        timeSlot: '02:30 PM',
-        status: BookingStatus.confirmed,
-        createdAt: DateTime.now().subtract(const Duration(days: 1)),
-      ),
-      Booking(
-        id: 'book_3',
-        shopId: shop1Id,
-        shopName: "The Gentleman's Quarter",
-        barberId: 'barber_1',
-        barberName: 'Marcus Vance',
-        customerId: 'user_cust_3',
-        customerName: 'Robert Martinez',
-        customerPhone: '+1 917-555-4422',
-        serviceId: 'srv_3',
-        serviceName: 'The Full Gentlemen Experience',
-        price: 75.0,
-        date: DateTime.now().subtract(const Duration(days: 2)),
-        timeSlot: '10:00 AM',
-        status: BookingStatus.completed,
-        createdAt: DateTime.now().subtract(const Duration(days: 3)),
-      ),
-      Booking(
-        id: 'book_4',
-        shopId: shop1Id,
-        shopName: "The Gentleman's Quarter",
-        barberId: 'barber_2',
-        barberName: 'David Rossi',
-        customerId: 'user_cust_4',
-        customerName: 'Ethan Wright',
-        customerPhone: '+1 646-555-8811',
-        serviceId: 'srv_1',
-        serviceName: 'Signature Skin Fade & Style',
-        price: 45.0,
-        date: DateTime.now(),
-        timeSlot: '04:00 PM',
-        status: BookingStatus.confirmed,
-        createdAt: DateTime.now().subtract(const Duration(days: 1)),
-      ),
-      Booking(
-        id: 'book_5',
-        shopId: shop2Id,
-        shopName: 'Classic Blade Barber Studio',
-        barberId: 'barber_2_1',
-        barberName: 'Leo Thorne',
-        customerId: 'user_cust_1',
-        customerName: 'Alex Johnson',
-        customerPhone: '+1 555-0199',
-        serviceId: 'srv_2_1',
-        serviceName: 'Traditional Scissor Cut',
-        price: 40.0,
-        date: DateTime.now().subtract(const Duration(days: 7)),
-        timeSlot: '01:00 PM',
-        status: BookingStatus.completed,
-        createdAt: DateTime.now().subtract(const Duration(days: 8)),
-      ),
-    ]);
-  }
+  final Set<String> _favoriteShopIds = {};
+  final Set<String> _favoriteBarberIds = {};
 
   // --- Auth & User Management ---
-  List<AppUser> getAllUsers() {
-    return List.unmodifiable(_mockUsers);
-  }
 
-  List<UserInvite> getPendingInvites() => List.unmodifiable(_mockInvites.values);
+  /// Users visible to the current user: everyone for the admin, the shop's
+  /// staff for an owner (plus themselves). All demo users in local mode.
+  List<AppUser> getAllUsers() => List.unmodifiable(_cache.users.values);
+
+  List<UserInvite> getPendingInvites() => List.unmodifiable(_cache.invites.values);
 
   /// The not-yet-accepted owner invite for a shop, if any.
   UserInvite? getPendingOwnerInvite(String shopId) {
-    return _mockInvites.values
+    return _cache.invites.values
         .where((i) => i.role == UserRole.barbershopOwner && i.shopId == shopId)
         .firstOrNull;
   }
 
   /// The not-yet-accepted login invite for a barber profile, if any.
   UserInvite? getPendingBarberInvite(String barberId) {
-    return _mockInvites.values.where((i) => i.role == UserRole.barber && i.barberId == barberId).firstOrNull;
+    return _cache.invites.values.where((i) => i.role == UserRole.barber && i.barberId == barberId).firstOrNull;
   }
 
   /// Sends a one-time SMS code to an Ethiopian mobile number.
@@ -625,14 +193,14 @@ class AppRepository extends ChangeNotifier {
       throw const FormatException('Wrong code. In demo mode the code is $kDemoOtpCode.');
     }
 
-    final existing = _mockUsers.where((u) => u.phone == phone).firstOrNull;
-    final invite = _mockInvites[phone];
+    final existing = _cache.users.values.where((u) => u.phone == phone).firstOrNull;
+    final invite = _cache.invites[phone];
     if (existing != null) {
       var user = existing;
       if (invite != null && existing.role == UserRole.customer) {
         user = _withInviteRole(existing, invite);
-        _mockInvites.remove(phone);
-        _upsertLocalUser(user);
+        _cache.invites.remove(phone);
+        _cache.users[user.uid] = user;
         _claimShopLocally(user);
       }
       _currentUser = user;
@@ -674,19 +242,50 @@ class AppRepository extends ChangeNotifier {
       if (invite != null) batch.delete(_db.collection('invites').doc(phone));
       await batch.commit();
       await _claimShopInCloud(user);
+      await _cloud!.start(user);
     } else {
-      _mockInvites.remove(phone);
+      _cache.invites.remove(phone);
+      _claimShopLocally(user);
     }
 
-    _upsertLocalUser(user);
-    _claimShopLocally(user);
+    _cache.users[user.uid] = user;
     _currentUser = user;
     _pendingInvite = null;
     _authStatus = AuthStatus.signedIn;
     notifyListeners();
   }
 
+  /// Updates the signed-in user's own name and/or language ('en' | 'am').
+  Future<void> updateMyProfile({String? name, String? language}) async {
+    final user = _currentUser;
+    if (user == null) throw StateError('Sign in first.');
+    final cleanName = name?.trim();
+    if (cleanName != null && (cleanName.isEmpty || cleanName.length > 100)) {
+      throw const FormatException('Enter your name (up to 100 characters).');
+    }
+    if (language != null && language != 'en' && language != 'am') {
+      throw ArgumentError.value(language, 'language', "must be 'en' or 'am'");
+    }
+    final updated = user.copyWith(name: cleanName, language: language);
+    _currentUser = updated;
+    final write = _store.updateUserProfile(user.uid, name: cleanName, language: language);
+    notifyListeners();
+    await write;
+  }
+
+  /// Runs at the start of [signOut] while the user is still authenticated
+  /// (NotificationService uses it to delete this device's push token).
+  Future<void> Function()? beforeSignOut;
+
   Future<void> signOut() async {
+    final hook = beforeSignOut;
+    if (hook != null && _currentUser != null) {
+      try {
+        await hook().timeout(const Duration(seconds: 5));
+      } catch (e) {
+        debugPrint('beforeSignOut failed: $e');
+      }
+    }
     _pendingPhone = null;
     _pendingInvite = null;
     _authError = null;
@@ -702,6 +301,7 @@ class AppRepository extends ChangeNotifier {
 
   Future<void> _onFirebaseAuthChanged(User? fbUser) async {
     if (fbUser == null) {
+      await _cloud?.stop();
       _currentUser = null;
       _pendingInvite = null;
       _authStatus = AuthStatus.signedOut;
@@ -743,9 +343,10 @@ class AppRepository extends ChangeNotifier {
         user = upgraded;
       }
 
-      _upsertLocalUser(user);
-      _claimShopLocally(user);
       _currentUser = user;
+      // Open the role-scoped listeners and wait for the first data so the
+      // dashboards do not flash empty.
+      await _cloud!.start(user);
       _authError = null;
       _authStatus = AuthStatus.signedIn;
       notifyListeners();
@@ -753,6 +354,22 @@ class AppRepository extends ChangeNotifier {
       debugPrint('Could not load user profile: $e');
       _authError = 'Could not load your account. Check your connection and try again.';
       await FirebaseAuth.instance.signOut();
+    }
+  }
+
+  /// The signed-in user's own profile document changed in Firestore.
+  void _onCurrentUserDocChanged(AppUser? user) {
+    final current = _currentUser;
+    if (current == null || _authStatus != AuthStatus.signedIn) return;
+    if (user == null) {
+      // Profile removed (e.g. by an admin): end the session.
+      signOut();
+      return;
+    }
+    _currentUser = user;
+    if (user.role != current.role || user.shopId != current.shopId || user.barberId != current.barberId) {
+      // Role or shop changed: re-scope the listeners.
+      _cloud?.start(user);
     }
   }
 
@@ -766,24 +383,16 @@ class AppRepository extends ChangeNotifier {
       shopId: invite.shopId,
       barberId: invite.barberId,
       createdAt: user.createdAt,
+      language: user.language,
     );
-  }
-
-  void _upsertLocalUser(AppUser user) {
-    final index = _mockUsers.indexWhere((u) => u.uid == user.uid);
-    if (index == -1) {
-      _mockUsers.add(user);
-    } else {
-      _mockUsers[index] = user;
-    }
   }
 
   /// Shops registered by the admin start with an empty ownerId; the invited
   /// owner fills it in on first sign-in.
   void _claimShopLocally(AppUser user) {
     if (user.role != UserRole.barbershopOwner || user.shopId == null) return;
-    final index = _mockShops.indexWhere((s) => s.id == user.shopId && s.ownerId.isEmpty);
-    if (index != -1) _mockShops[index] = _mockShops[index].copyWith(ownerId: user.uid);
+    final shop = _cache.shops[user.shopId];
+    if (shop != null && shop.ownerId.isEmpty) _cache.shops[shop.id] = shop.copyWith(ownerId: user.uid);
   }
 
   Future<void> _claimShopInCloud(AppUser user) async {
@@ -801,8 +410,12 @@ class AppRepository extends ChangeNotifier {
 
   /// Throws if [phone] already belongs to a staff, owner or admin account
   /// (an invite must never silently move that person to another role).
+  /// With Firestore this checks the users the caller can see (all for the
+  /// admin, the shop's staff for an owner); the security rules and the
+  /// sign-in flow enforce it for everyone else (invites only upgrade
+  /// customers).
   void _assertPhoneCanBeInvited(String phone) {
-    final existing = _mockUsers.where((u) => u.phone == phone).firstOrNull;
+    final existing = _cache.users.values.where((u) => u.phone == phone).firstOrNull;
     if (existing != null && existing.role != UserRole.customer) {
       throw FormatException('This phone number already belongs to a ${existing.role.displayName} account.');
     }
@@ -812,70 +425,33 @@ class AppRepository extends ChangeNotifier {
   /// Does nothing once Firebase is attached, so it cannot bypass real sign-in.
   void switchRole(UserRole role, {String? targetShopId, String? targetBarberId}) {
     if (_firebaseReady) return;
-    if (role == UserRole.admin) {
-      _currentUser = _mockUsers.firstWhere(
-        (u) => u.role == UserRole.admin,
-        orElse: () => AppUser(
-          uid: 'user_admin_1',
-          email: 'admin@crownblade.com',
-          name: 'System Platform Admin',
-          role: UserRole.admin,
-          createdAt: DateTime.now(),
-        ),
-      );
-    } else if (role == UserRole.barbershopOwner) {
-      final effectiveShopId = targetShopId ?? 'shop_1';
-      final matchingOwner = _mockUsers.firstWhere(
-        (u) => u.role == UserRole.barbershopOwner && (targetShopId == null || u.shopId == targetShopId),
-        orElse: () => _mockUsers.firstWhere(
-          (u) => u.role == UserRole.barbershopOwner,
-          orElse: () => AppUser(
-            uid: 'owner_1',
-            email: 'marcus@royalcuts.com',
-            name: 'Marcus Vance (Owner)',
-            role: UserRole.barbershopOwner,
-            shopId: effectiveShopId,
-            createdAt: DateTime.now(),
-          ),
-        ),
-      );
-      _currentUser = matchingOwner;
-    } else if (role == UserRole.barber) {
-      final effectiveBarberId = targetBarberId ?? 'barber_1';
-      final matchingBarber = _mockUsers.firstWhere(
-        (u) => u.role == UserRole.barber && (targetBarberId == null || u.barberId == targetBarberId),
-        orElse: () => _mockUsers.firstWhere(
-          (u) => u.role == UserRole.barber,
-          orElse: () => AppUser(
-            uid: 'barber_user_1',
-            email: 'marcus.barber@gentlemansquarter.com',
-            name: 'Marcus Vance',
-            phone: '+1 212-555-8901',
-            role: UserRole.barber,
-            shopId: 'shop_1',
-            barberId: effectiveBarberId,
-            createdAt: DateTime.now(),
-          ),
-        ),
-      );
-      _currentUser = matchingBarber;
-    } else {
-      _currentUser = _mockUsers.firstWhere(
-        (u) => u.role == UserRole.customer,
-        orElse: () => AppUser(
-          uid: 'user_cust_1',
-          email: 'alex@example.com',
-          name: 'Alex Johnson',
-          role: UserRole.customer,
-          createdAt: DateTime.now(),
-        ),
-      );
+    final users = _cache.users.values;
+    AppUser? match;
+    switch (role) {
+      case UserRole.admin:
+      case UserRole.customer:
+        match = users.where((u) => u.role == role).firstOrNull;
+      case UserRole.barbershopOwner:
+        match = users
+                .where((u) => u.role == role && (targetShopId == null || u.shopId == targetShopId))
+                .firstOrNull ??
+            users.where((u) => u.role == role).firstOrNull;
+      case UserRole.barber:
+        match = users
+                .where((u) => u.role == role && (targetBarberId == null || u.barberId == targetBarberId))
+                .firstOrNull ??
+            users.where((u) => u.role == role).firstOrNull;
     }
+    if (match == null) return; // No demo data loaded.
+    _currentUser = match;
     _authStatus = AuthStatus.signedIn;
     notifyListeners();
   }
 
   // --- Platform Admin: SaaS Barbershop Registration & Metrics ---
+
+  /// Length of the free trial given to newly registered shops.
+  static const Duration trialPeriod = Duration(days: 30);
 
   /// Registers a shop and invites its owner by phone number. The owner gets
   /// the barbershopOwner role when they first sign in with that number.
@@ -891,6 +467,9 @@ class AppRepository extends ChangeNotifier {
     required int closingHour,
     required List<int> workingDays,
     required bool isVerified,
+    String subCity = '',
+    String? landmark,
+    String? shopPhone,
   }) async {
     final phone = normalizeEthiopianPhone(ownerPhone);
     if (phone == null) {
@@ -909,31 +488,36 @@ class AppRepository extends ChangeNotifier {
       description: description,
       address: address,
       city: city,
-      phone: phone,
+      subCity: subCity,
+      landmark: (landmark == null || landmark.trim().isEmpty) ? null : landmark.trim(),
+      phone: (shopPhone == null || shopPhone.trim().isEmpty) ? phone : shopPhone.trim(),
       imageUrl: imageUrl.isNotEmpty ? imageUrl : 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800',
       rating: 5.0,
-      reviewCount: 1,
+      reviewCount: 0,
       openingHour: openingHour,
       closingHour: closingHour,
       workingDays: workingDays,
       isVerified: isVerified,
+      subscriptionPlan: 'trial',
+      subscriptionStatus: SubscriptionStatus.trialing,
+      subscriptionEndsAt: now.toUtc().add(trialPeriod),
     );
 
     final starterServices = [
       BarbershopService(
         id: _uuid.v4(),
         shopId: shopId,
-        name: 'Signature Haircut & Style',
-        description: 'Precision cut, neck razor cleanup, and bespoke styling with artisan product.',
-        price: 45.0,
+        name: 'Haircut & Style',
+        description: 'Precision cut, neck razor clean-up and styling.',
+        price: 400,
         durationMinutes: 40,
       ),
       BarbershopService(
         id: _uuid.v4(),
         shopId: shopId,
-        name: 'Beard Sculpt & Hot Towel',
-        description: 'Full beard shaping, warm aromatic towels, and straight razor line-up.',
-        price: 30.0,
+        name: 'Beard Trim & Hot Towel',
+        description: 'Beard shaping, hot towel and straight-razor line-up.',
+        price: 250,
         durationMinutes: 30,
       ),
     ];
@@ -958,89 +542,90 @@ class AppRepository extends ChangeNotifier {
       createdAt: now,
     );
 
-    if (_cloudEnabled) {
-      final shopRef = _db.collection('barbershops').doc(shopId);
-      final batch = _db.batch();
-      batch.set(shopRef, shop.toMap());
-      for (final service in starterServices) {
-        batch.set(shopRef.collection('services').doc(service.id), service.toMap());
-      }
-      batch.set(shopRef.collection('barbers').doc(leadBarberId), leadBarber.toMap());
-      batch.set(_db.collection('invites').doc(phone), ownerInvite.toMap());
-      await batch.commit();
-    }
-
-    _mockShops.insert(0, shop);
-    _mockServices.addAll(starterServices);
-    _mockBarbers.add(leadBarber);
-    _mockInvites[phone] = ownerInvite;
-
-    notifyListeners();
+    await _write(_store.createShop(
+      shop: shop,
+      services: starterServices,
+      barbers: [leadBarber],
+      ownerInvite: ownerInvite,
+    ));
     return shopId;
   }
 
+  /// Saves a shop's profile (name, description, address, sub-city, landmark,
+  /// phone, image, hours, working days). Ownership, verification, rating and
+  /// subscription fields in [updatedShop] are ignored.
   Future<void> updateShop(Barbershop updatedShop) async {
-    final index = _mockShops.indexWhere((s) => s.id == updatedShop.id);
-    if (index != -1) {
-      _mockShops[index] = updatedShop;
-      if (_cloudEnabled) {
-        await _db.collection('barbershops').doc(updatedShop.id).update(updatedShop.toMap());
-      }
-      notifyListeners();
-    }
+    if (!_cache.shops.containsKey(updatedShop.id)) return;
+    await _write(_store.updateShopProfile(updatedShop));
   }
 
   Future<void> toggleShopVerification(String shopId) async {
-    final index = _mockShops.indexWhere((s) => s.id == shopId);
-    if (index != -1) {
-      final old = _mockShops[index];
-      final updated = old.copyWith(isVerified: !old.isVerified);
-      _mockShops[index] = updated;
-      if (_cloudEnabled) {
-        await _db.collection('barbershops').doc(shopId).update({'isVerified': updated.isVerified});
-      }
-      notifyListeners();
-    }
+    final shop = _cache.shops[shopId];
+    if (shop == null) return;
+    await _write(_store.setShopVerified(shopId, !shop.isVerified));
+  }
+
+  /// Admin: sets a shop's plan and subscription status (normally the
+  /// payments Cloud Functions do this).
+  Future<void> updateShopSubscription(
+    String shopId, {
+    required String plan,
+    required SubscriptionStatus status,
+    DateTime? endsAt,
+  }) async {
+    if (!_cache.shops.containsKey(shopId)) return;
+    await _write(_store.updateShopSubscription(shopId, plan: plan, status: status, endsAt: endsAt));
   }
 
   Future<void> deleteShop(String shopId) async {
-    _mockShops.removeWhere((s) => s.id == shopId);
-    _mockBarbers.removeWhere((b) => b.shopId == shopId);
-    _mockServices.removeWhere((s) => s.shopId == shopId);
-    _mockBookings.removeWhere((b) => b.shopId == shopId);
-    _mockUsers.removeWhere((u) => u.shopId == shopId);
-    final shopInvites = _mockInvites.values.where((i) => i.shopId == shopId).map((i) => i.phone).toList();
-    shopInvites.forEach(_mockInvites.remove);
+    await _write(_store.deleteShop(shopId));
+  }
 
-    if (_cloudEnabled) {
-      final batch = _db.batch();
-      batch.delete(_db.collection('barbershops').doc(shopId));
-      for (final phone in shopInvites) {
-        batch.delete(_db.collection('invites').doc(phone));
-      }
-      await batch.commit();
+  // --- Plans ---
+
+  /// Subscription plans (loaded for owners and admins).
+  List<SubscriptionPlan> getPlans() => List.unmodifiable(_cache.plans.values);
+
+  SubscriptionPlan? getPlan(String planId) => _cache.plans[planId];
+
+  /// Admin: creates or replaces `plans/{plan.id}` (see PaymentService).
+  Future<void> savePlan(SubscriptionPlan plan) async {
+    if (_firebaseReady) {
+      await _db.collection('plans').doc(plan.id).set(plan.toMap());
+    } else {
+      _cache.plans[plan.id] = plan;
     }
+    notifyListeners();
+  }
+
+  /// Local mode only (demo builds, tests): records the outcome of a
+  /// simulated Chapa payment on a booking. With Firebase the payments Cloud
+  /// Functions write paymentStatus and this throws.
+  void applySimulatedBookingPayment(String bookingId, PaymentStatus status) {
+    if (_firebaseReady) throw StateError('Booking payments are recorded by the server.');
+    final booking = _cache.bookings[bookingId];
+    if (booking == null) return;
+    _cache.bookings[bookingId] = booking.copyWith(paymentStatus: status, paymentMethod: PaymentMethod.chapa);
     notifyListeners();
   }
 
   // --- Barbershop Management ---
+
+  /// Shops the current user may browse. Suspended shops are hidden from
+  /// everyone except the admin and the shop's own staff.
   List<Barbershop> getShops() {
-    return List.unmodifiable(_mockShops);
+    final user = _currentUser;
+    return _cache.shops.values
+        .where((s) => !s.isSuspended || user?.role == UserRole.admin || (user?.shopId != null && user!.shopId == s.id))
+        .toList(growable: false);
   }
 
-  Barbershop? getShopById(String shopId) {
-    try {
-      return _mockShops.firstWhere((s) => s.id == shopId);
-    } catch (_) {
-      return null;
-    }
-  }
+  Barbershop? getShopById(String shopId) => _cache.shops[shopId];
 
   List<BarberWithShop> getAllBarbersWithShops() {
     final list = <BarberWithShop>[];
-    for (final shop in _mockShops) {
-      final shopBarbers = _mockBarbers.where((b) => b.shopId == shop.id);
-      for (final b in shopBarbers) {
+    for (final shop in getShops()) {
+      for (final b in _cache.barbers.values.where((b) => b.shopId == shop.id)) {
         list.add(BarberWithShop(barber: b, shop: shop));
       }
     }
@@ -1049,8 +634,10 @@ class AppRepository extends ChangeNotifier {
 
   // --- Services ---
   List<BarbershopService> getServicesForShop(String shopId) {
-    return _mockServices.where((s) => s.shopId == shopId).toList();
+    return _cache.services.values.where((s) => s.shopId == shopId).toList();
   }
+
+  BarbershopService? getServiceById(String serviceId) => _cache.services[serviceId];
 
   Future<void> addService({
     required String shopId,
@@ -1059,61 +646,36 @@ class AppRepository extends ChangeNotifier {
     required double price,
     required int durationMinutes,
   }) async {
-    final id = _uuid.v4();
     final service = BarbershopService(
-      id: id,
+      id: _uuid.v4(),
       shopId: shopId,
       name: name,
       description: description,
       price: price,
       durationMinutes: durationMinutes,
     );
-
-    if (_cloudEnabled) {
-      await _db.collection('barbershops').doc(shopId).collection('services').doc(id).set(service.toMap());
-    }
-
-    _mockServices.add(service);
-    notifyListeners();
+    await _write(_store.addService(service));
   }
 
   Future<void> updateService(BarbershopService service) async {
-    final index = _mockServices.indexWhere((s) => s.id == service.id);
-    if (index != -1) {
-      _mockServices[index] = service;
-      if (_cloudEnabled) {
-        await _db.collection('barbershops').doc(service.shopId).collection('services').doc(service.id).update(service.toMap());
-      }
-      notifyListeners();
-    }
+    if (!_cache.services.containsKey(service.id)) return;
+    await _write(_store.updateService(service));
   }
 
   Future<void> deleteService(String serviceId) async {
-    final service = _mockServices.where((s) => s.id == serviceId).firstOrNull;
+    final service = _cache.services[serviceId];
     if (service == null) return;
-    if (_cloudEnabled) {
-      await _db.collection('barbershops').doc(service.shopId).collection('services').doc(serviceId).delete();
-    }
-    _mockServices.removeWhere((s) => s.id == serviceId);
-    notifyListeners();
+    await _write(_store.deleteService(service));
   }
 
   // --- Barbers & Staff ---
   List<Barber> getBarbersForShop(String shopId) {
-    return _mockBarbers.where((b) => b.shopId == shopId).toList();
+    return _cache.barbers.values.where((b) => b.shopId == shopId).toList();
   }
 
-  List<Barber> getAllBarbers() {
-    return List.unmodifiable(_mockBarbers);
-  }
+  List<Barber> getAllBarbers() => List.unmodifiable(_cache.barbers.values);
 
-  Barber? getBarberById(String barberId) {
-    try {
-      return _mockBarbers.firstWhere((b) => b.id == barberId);
-    } catch (_) {
-      return null;
-    }
-  }
+  Barber? getBarberById(String barberId) => _cache.barbers[barberId];
 
   /// The barber profile linked to the signed-in barber account, if any.
   Barber? getBarberForCurrentUser() {
@@ -1133,6 +695,9 @@ class AppRepository extends ChangeNotifier {
     String? phone,
     List<String>? specialties,
     String? avatarUrl,
+    List<int>? workingDays,
+    int? startHour,
+    int? endHour,
   }) async {
     String? normalizedPhone;
     if (phone != null && phone.trim().isNotEmpty) {
@@ -1153,6 +718,9 @@ class AppRepository extends ChangeNotifier {
       phone: normalizedPhone,
       specialties: specialties ?? const ['Skin Fade', 'Beard Trim'],
       avatarUrl: avatarUrl ?? 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
+      workingDays: workingDays,
+      startHour: startHour,
+      endHour: endHour,
     );
 
     final invite = normalizedPhone == null
@@ -1167,44 +735,19 @@ class AppRepository extends ChangeNotifier {
             createdAt: DateTime.now(),
           );
 
-    if (_cloudEnabled) {
-      final batch = _db.batch();
-      batch.set(_db.collection('barbershops').doc(shopId).collection('barbers').doc(id), barber.toMap());
-      if (invite != null) batch.set(_db.collection('invites').doc(invite.phone), invite.toMap());
-      await batch.commit();
-    }
-
-    _mockBarbers.add(barber);
-    if (invite != null) _mockInvites[invite.phone] = invite;
-    notifyListeners();
+    await _write(_store.addBarber(barber, invite));
   }
 
+  /// Saves a barber's profile fields (not shopId or ratings).
   Future<void> updateBarber(Barber barber) async {
-    final index = _mockBarbers.indexWhere((b) => b.id == barber.id);
-    if (index != -1) {
-      _mockBarbers[index] = barber;
-      if (_cloudEnabled) {
-        await _db.collection('barbershops').doc(barber.shopId).collection('barbers').doc(barber.id).update(barber.toMap());
-      }
-      notifyListeners();
-    }
+    if (!_cache.barbers.containsKey(barber.id)) return;
+    await _write(_store.updateBarberProfile(barber));
   }
 
   Future<void> updateBarberAvailability(String barberId, bool isAvailable) async {
-    final index = _mockBarbers.indexWhere((b) => b.id == barberId);
-    if (index != -1) {
-      final barber = _mockBarbers[index];
-      if (_cloudEnabled) {
-        await _db
-            .collection('barbershops')
-            .doc(barber.shopId)
-            .collection('barbers')
-            .doc(barberId)
-            .update({'isAvailable': isAvailable});
-      }
-      _mockBarbers[index] = barber.copyWith(isAvailable: isAvailable);
-      notifyListeners();
-    }
+    final barber = _cache.barbers[barberId];
+    if (barber == null) return;
+    await _write(_store.setBarberAvailability(barber, isAvailable));
   }
 
   /// Removes a barber profile. Deleting the profile also revokes the linked
@@ -1212,41 +755,37 @@ class AppRepository extends ChangeNotifier {
   Future<void> deleteBarber(String barberId) async {
     final barber = getBarberById(barberId);
     if (barber == null) return;
-    final invite = getPendingBarberInvite(barberId);
-
-    if (_cloudEnabled) {
-      final batch = _db.batch();
-      batch.delete(_db.collection('barbershops').doc(barber.shopId).collection('barbers').doc(barberId));
-      if (invite != null) batch.delete(_db.collection('invites').doc(invite.phone));
-      await batch.commit();
-    }
-
-    _mockBarbers.removeWhere((b) => b.id == barberId);
-    _mockUsers.removeWhere((u) => u.barberId == barberId);
-    if (invite != null) _mockInvites.remove(invite.phone);
-    notifyListeners();
+    await _write(_store.deleteBarber(barber, getPendingBarberInvite(barberId)));
   }
 
   // --- Bookings ---
-  List<Booking> getAllBookings() {
-    return List.unmodifiable(_mockBookings);
-  }
 
-  List<Booking> getCustomerBookings(String customerId) {
-    return _mockBookings.where((b) => b.customerId == customerId).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
-  }
+  /// Newest appointment first.
+  List<Booking> _sorted(Iterable<Booking> bookings) =>
+      bookings.toList()..sort((a, b) => b.startAt.compareTo(a.startAt));
 
-  List<Booking> getShopBookings(String shopId) {
-    return _mockBookings.where((b) => b.shopId == shopId).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
-  }
+  /// Every booking the current user can see (all for the admin, up to the
+  /// latest [FirestoreDataStore.adminBookingLimit] with Firebase).
+  List<Booking> getAllBookings() => List.unmodifiable(_cache.bookings.values);
 
-  List<Booking> getBookingsForBarber(String barberId) {
-    return _mockBookings.where((b) => b.barberId == barberId).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
-  }
+  Booking? getBookingById(String bookingId) => _cache.bookings[bookingId];
 
+  List<Booking> getCustomerBookings(String customerId) =>
+      _sorted(_cache.bookings.values.where((b) => b.customerId == customerId));
+
+  List<Booking> getShopBookings(String shopId) => _sorted(_cache.bookings.values.where((b) => b.shopId == shopId));
+
+  List<Booking> getBookingsForBarber(String barberId) =>
+      _sorted(_cache.bookings.values.where((b) => b.barberId == barberId));
+
+  /// Books an appointment for the signed-in customer.
+  ///
+  /// [date]'s calendar day and [timeSlot] (e.g. '02:30 PM') are read as Addis
+  /// Ababa local time; [startAt] (UTC) overrides them when given.
+  /// [durationMinutes] defaults to the service's duration.
+  ///
+  /// This builds the [Booking] and hands it to [DataStore.createBooking],
+  /// the single write path for new bookings (wrap that for slot locking).
   Future<Booking> createBooking({
     required String shopId,
     required String shopName,
@@ -1257,72 +796,129 @@ class AppRepository extends ChangeNotifier {
     required double price,
     required DateTime date,
     required String timeSlot,
+    DateTime? startAt,
+    int? durationMinutes,
+    PaymentMethod paymentMethod = PaymentMethod.cash,
   }) async {
-    final bookingId = _uuid.v4();
+    final user = _currentUser;
+    if (user == null) throw StateError('Sign in to book an appointment.');
+    final shop = _cache.shops[shopId];
+    if (shop != null && shop.isSuspended) {
+      throw StateError('This barbershop is not taking bookings right now.');
+    }
+    final barber = _cache.barbers[barberId];
+    if (barber != null && !barber.isAvailable) {
+      throw StateError('${barber.name} is not taking bookings right now.');
+    }
+    final start = (startAt ?? appointmentStartUtc(date, timeSlot))?.toUtc();
+    if (start == null) throw FormatException('Unrecognised time slot "$timeSlot".');
+    final duration = durationMinutes ?? _cache.services[serviceId]?.durationMinutes ?? 30;
+
     final booking = Booking(
-      id: bookingId,
+      id: _uuid.v4(),
       shopId: shopId,
       shopName: shopName,
       barberId: barberId,
       barberName: barberName,
-      customerId: _currentUser?.uid ?? 'anon_cust',
-      customerName: _currentUser?.name ?? 'Guest Client',
-      customerPhone: _currentUser?.phone ?? '+1 555-0000',
+      customerId: user.uid,
+      customerName: user.name,
+      customerPhone: user.phone ?? '',
       serviceId: serviceId,
       serviceName: serviceName,
       price: price,
       date: date,
       timeSlot: timeSlot,
       status: BookingStatus.confirmed,
-      createdAt: DateTime.now(),
+      createdAt: DateTime.now().toUtc(),
+      startAt: start,
+      endAt: start.add(Duration(minutes: duration)),
+      durationMinutes: duration,
+      paymentStatus: PaymentStatus.unpaid,
+      paymentMethod: paymentMethod,
     );
 
-    if (_cloudEnabled) {
-      await _db.collection('bookings').doc(bookingId).set(booking.toMap());
-    }
-
-    _mockBookings.insert(0, booking);
-    notifyListeners();
+    await _write(_store.createBooking(booking));
     return booking;
   }
 
-  void updateBookingStatus(String bookingId, BookingStatus newStatus) {
-    final index = _mockBookings.indexWhere((b) => b.id == bookingId);
-    if (index != -1) {
-      _mockBookings[index] = _mockBookings[index].copyWith(status: newStatus);
-
-      if (_cloudEnabled) {
-        _db.collection('bookings').doc(bookingId).update({'status': newStatus.name});
-      }
-
-      notifyListeners();
+  /// Live busy times of [barberId] on the Addis calendar day [addisDate]:
+  /// the barber's non-cancelled bookings visible to this user plus the
+  /// slot locks of everyone else's (Firestore mode). Emits again whenever
+  /// either changes. Feed it to `availableSlotStarts` (availability_service).
+  Stream<List<BusyInterval>> watchBarberBusyTimes(String shopId, String barberId, DateTime addisDate) {
+    late StreamController<List<BusyInterval>> controller;
+    StreamSubscription<List<SlotLock>>? lockSub;
+    var locks = const <SlotLock>[];
+    void emit() {
+      if (controller.isClosed) return;
+      controller.add([
+        ...busyIntervalsFromBookings(_cache.bookings.values, barberId),
+        for (final l in locks) l.interval,
+      ]);
     }
+
+    controller = StreamController<List<BusyInterval>>(
+      onListen: () {
+        addListener(emit);
+        lockSub = _store.watchSlotLocks(shopId, barberId, addisDate).listen(
+          (value) {
+            locks = value;
+            emit();
+          },
+          onError: (Object e) {
+            debugPrint('Slot lock listener error: $e');
+            emit();
+          },
+        );
+        emit();
+      },
+      onCancel: () async {
+        removeListener(emit);
+        await lockSub?.cancel();
+      },
+    );
+    return controller.stream;
   }
 
-  // --- Financial & SaaS Performance Metrics ---
-  double getPlatformTotalRevenue() {
-    return _mockBookings
-        .where((b) => b.status == BookingStatus.completed || b.status == BookingStatus.confirmed)
-        .fold(0.0, (total, b) => total + b.price);
+  /// Changes a booking's status. Cancelling also releases the booking's
+  /// slot locks. In local mode the change is visible immediately (before
+  /// the returned future completes).
+  Future<void> updateBookingStatus(String bookingId, BookingStatus newStatus) async {
+    final booking = _cache.bookings[bookingId];
+    if (booking == null) return;
+    await _write(_store.updateBookingStatus(
+      booking,
+      newStatus,
+      cancelledBy: newStatus == BookingStatus.cancelled ? _currentUser?.uid : null,
+    ));
   }
 
-  double getShopRevenue(String shopId) {
-    return _mockBookings
-        .where((b) => b.shopId == shopId && (b.status == BookingStatus.completed || b.status == BookingStatus.confirmed))
-        .fold(0.0, (total, b) => total + b.price);
+  /// Awaits a store write, then notifies listeners. (With Firestore the
+  /// listeners have usually notified already via latency compensation.)
+  Future<void> _write(Future<void> write) async {
+    await write;
+    notifyListeners();
   }
 
-  double getBarberTotalEarnings(String barberId) {
-    return _mockBookings
-        .where((b) => b.barberId == barberId && (b.status == BookingStatus.completed || b.status == BookingStatus.confirmed))
-        .fold(0.0, (total, b) => total + b.price);
-  }
+  // --- Financial & SaaS Performance Metrics (ETB) ---
+  static bool _countsAsRevenue(Booking b) =>
+      b.status == BookingStatus.completed || b.status == BookingStatus.confirmed;
 
-  int getBarberCompletedCutsCount(String barberId) {
-    return _mockBookings.where((b) => b.barberId == barberId && b.status == BookingStatus.completed).length;
-  }
+  double getPlatformTotalRevenue() =>
+      _cache.bookings.values.where(_countsAsRevenue).fold(0.0, (total, b) => total + b.price);
 
-  // --- Favorites Management ---
+  double getShopRevenue(String shopId) => _cache.bookings.values
+      .where((b) => b.shopId == shopId && _countsAsRevenue(b))
+      .fold(0.0, (total, b) => total + b.price);
+
+  double getBarberTotalEarnings(String barberId) => _cache.bookings.values
+      .where((b) => b.barberId == barberId && _countsAsRevenue(b))
+      .fold(0.0, (total, b) => total + b.price);
+
+  int getBarberCompletedCutsCount(String barberId) =>
+      _cache.bookings.values.where((b) => b.barberId == barberId && b.status == BookingStatus.completed).length;
+
+  // --- Favorites Management (kept on this device) ---
   bool isShopFavorite(String shopId) => _favoriteShopIds.contains(shopId);
   void toggleFavoriteShop(String shopId) {
     if (_favoriteShopIds.contains(shopId)) {

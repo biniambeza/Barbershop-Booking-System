@@ -1,0 +1,243 @@
+{
+  "_comment": "Crown & Blade demo dataset for Addis Ababa. Loaded by the app in DEMO_MODE (lib/data/seed_dataset.dart) and written to Firestore by tool/seed/seed.js. Times are relative so the demo never goes stale: 'createdDaysAgo', 'subscriptionEndsInDays' and, for bookings, 'dayOffset' (0 = today in Addis) + 'startTime' (Addis local, 24h). Booking names, phone, price and duration are copied from the referenced shop/barber/customer/service by the loaders. Prices are ETB.",
+  "version": 1,
+  "plans": [
+    {
+      "id": "trial",
+      "name": "Free trial",
+      "priceMonthlyEtb": 0,
+      "maxBarbers": 3,
+      "features": ["Online booking", "Up to 3 barbers", "30 days free"],
+      "active": true
+    },
+    {
+      "id": "basic",
+      "name": "Basic",
+      "priceMonthlyEtb": 500,
+      "maxBarbers": 3,
+      "features": ["Online booking", "Up to 3 barbers", "SMS reminders"],
+      "active": true
+    },
+    {
+      "id": "pro",
+      "name": "Pro",
+      "priceMonthlyEtb": 1200,
+      "maxBarbers": -1,
+      "features": ["Online booking", "Unlimited barbers", "SMS reminders", "Online payments (Chapa)", "Priority listing"],
+      "active": true
+    }
+  ],
+  "users": [
+    { "uid": "user_admin_1", "name": "Meron Haile", "phone": "+251911000001", "role": "admin", "email": "admin@crownblade.et", "language": "en", "createdDaysAgo": 120 },
+
+    { "uid": "owner_1", "name": "Abebe Kebede", "phone": "+251911000101", "role": "barbershopOwner", "shopId": "shop_1", "email": "abebe@crowncuts.et", "language": "am", "createdDaysAgo": 90 },
+    { "uid": "owner_2", "name": "Tewodros Alemu", "phone": "+251911000102", "role": "barbershopOwner", "shopId": "shop_2", "language": "am", "createdDaysAgo": 80 },
+    { "uid": "owner_3", "name": "Mulugeta Bekele", "phone": "+251911000103", "role": "barbershopOwner", "shopId": "shop_3", "language": "am", "createdDaysAgo": 70 },
+    { "uid": "owner_4", "name": "Henok Girma", "phone": "+251911000104", "role": "barbershopOwner", "shopId": "shop_4", "language": "en", "createdDaysAgo": 15 },
+    { "uid": "owner_5", "name": "Samuel Tesfaye", "phone": "+251911000105", "role": "barbershopOwner", "shopId": "shop_5", "language": "am", "createdDaysAgo": 60 },
+    { "uid": "owner_6", "name": "Bereket Wolde", "phone": "+251911000106", "role": "barbershopOwner", "shopId": "shop_6", "language": "am", "createdDaysAgo": 45 },
+
+    { "uid": "barber_user_1", "name": "Yonas Tadesse", "phone": "+251911000201", "role": "barber", "shopId": "shop_1", "barberId": "barber_1", "language": "am", "createdDaysAgo": 85 },
+    { "uid": "barber_user_2", "name": "Kaleab Mekonnen", "phone": "+251911000202", "role": "barber", "shopId": "shop_1", "barberId": "barber_2", "language": "am", "createdDaysAgo": 60 },
+
+    { "uid": "user_cust_1", "name": "Liya Getachew", "phone": "+251911000301", "role": "customer", "email": "liya@example.com", "language": "en", "createdDaysAgo": 30 },
+    { "uid": "user_cust_2", "name": "Natnael Assefa", "phone": "+251911000302", "role": "customer", "language": "am", "createdDaysAgo": 25 },
+    { "uid": "user_cust_3", "name": "Rahel Desta", "phone": "+251911000303", "role": "customer", "language": "am", "createdDaysAgo": 20 },
+    { "uid": "user_cust_4", "name": "Eyob Fikre", "phone": "+251911000304", "role": "customer", "language": "en", "createdDaysAgo": 10 }
+  ],
+  "shops": [
+    {
+      "id": "shop_1",
+      "ownerId": "owner_1",
+      "name": "Crown Cuts Bole",
+      "description": "Sharp skin fades, hot-towel shaves and beard grooming in the heart of Bole. Walk-ins welcome, appointments first.",
+      "address": "Bole Road, Getu Commercial Building, 2nd floor",
+      "city": "Addis Ababa",
+      "subCity": "Bole",
+      "landmark": "Near Edna Mall",
+      "phone": "+251911223301",
+      "imageUrl": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800",
+      "rating": 4.9,
+      "reviewCount": 142,
+      "openingHour": 8,
+      "closingHour": 20,
+      "workingDays": [1, 2, 3, 4, 5, 6, 7],
+      "isVerified": true,
+      "subscriptionPlan": "pro",
+      "subscriptionStatus": "active",
+      "subscriptionEndsInDays": 25,
+      "services": [
+        { "id": "srv_1_1", "name": "Signature Skin Fade", "description": "Precision skin fade with clipper and scissor blend, finished with styling.", "price": 450, "durationMinutes": 45 },
+        { "id": "srv_1_2", "name": "Beard Sculpt & Razor Line-up", "description": "Beard shaping, steam towel, straight-razor edges and beard oil.", "price": 300, "durationMinutes": 30 },
+        { "id": "srv_1_3", "name": "Full Grooming Package", "description": "Haircut, beard sculpt, hot-towel treatment, face mask and scalp massage.", "price": 1200, "durationMinutes": 90 },
+        { "id": "srv_1_4", "name": "Kids Cut (under 12)", "description": "Gentle, quick cut for children.", "price": 250, "durationMinutes": 30 }
+      ],
+      "barbers": [
+        { "id": "barber_1", "name": "Yonas Tadesse", "title": "Master Barber / Fade Specialist", "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400", "rating": 4.9, "reviewCount": 88, "phone": "+251911000201", "specialties": ["Skin Fade", "Beard Sculpting", "Hot Razor Shave"] },
+        { "id": "barber_2", "name": "Kaleab Mekonnen", "title": "Senior Stylist & Shave Artist", "avatarUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400", "rating": 4.8, "reviewCount": 54, "phone": "+251911000202", "specialties": ["Scissor Cut", "Hot Towel Shave", "Kids Cuts"] },
+        { "id": "barber_1_3", "name": "Biniyam Hailu", "title": "Barber", "avatarUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400", "rating": 4.7, "reviewCount": 21, "phone": "+251912450013", "specialties": ["Low Taper", "Line-up"], "workingDays": [2, 3, 4, 5, 6, 7], "startHour": 12, "endHour": 20 }
+      ]
+    },
+    {
+      "id": "shop_2",
+      "ownerId": "owner_2",
+      "name": "Kazanchis Classic Barbers",
+      "description": "Classic scissor cuts and traditional straight-razor shaves for the Kazanchis business crowd.",
+      "address": "Kazanchis, Africa Avenue, Ground floor",
+      "city": "Addis Ababa",
+      "subCity": "Kirkos",
+      "landmark": "Behind the Intercontinental Hotel",
+      "phone": "+251911223302",
+      "imageUrl": "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800",
+      "rating": 4.7,
+      "reviewCount": 98,
+      "openingHour": 8,
+      "closingHour": 19,
+      "workingDays": [1, 2, 3, 4, 5, 6],
+      "isVerified": true,
+      "subscriptionPlan": "basic",
+      "subscriptionStatus": "active",
+      "subscriptionEndsInDays": 12,
+      "services": [
+        { "id": "srv_2_1", "name": "Classic Scissor Cut", "description": "Shears cut with tapered neckline and hot-lather edge clean-up.", "price": 350, "durationMinutes": 40 },
+        { "id": "srv_2_2", "name": "Straight-Razor Hot Shave", "description": "Pre-shave oil, hot towels, brush lather and soothing balm.", "price": 250, "durationMinutes": 35 },
+        { "id": "srv_2_3", "name": "Executive Cut & Shave", "description": "Classic cut plus full hot-towel shave.", "price": 550, "durationMinutes": 70 }
+      ],
+      "barbers": [
+        { "id": "barber_2_1", "name": "Tewodros Alemu", "title": "Head Barber", "avatarUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400", "rating": 4.8, "reviewCount": 62, "phone": "+251911000102", "specialties": ["Scissor Cut", "Beard Trim"] },
+        { "id": "barber_2_2", "name": "Dagim Worku", "title": "Barber", "avatarUrl": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400", "rating": 4.6, "reviewCount": 30, "phone": "+251912450022", "specialties": ["Hot Shave", "Afro Shape-up"] }
+      ]
+    },
+    {
+      "id": "shop_3",
+      "ownerId": "owner_3",
+      "name": "Piassa Heritage Barbershop",
+      "description": "Serving Piassa since 1998. Old-school cuts, afro shape-ups and shaves at honest prices.",
+      "address": "Piassa, Cunningham Street",
+      "city": "Addis Ababa",
+      "subCity": "Arada",
+      "landmark": "Near Taitu Hotel",
+      "phone": "+251911223303",
+      "imageUrl": "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=800",
+      "rating": 4.8,
+      "reviewCount": 210,
+      "openingHour": 7,
+      "closingHour": 19,
+      "workingDays": [1, 2, 3, 4, 5, 6],
+      "isVerified": true,
+      "subscriptionPlan": "basic",
+      "subscriptionStatus": "active",
+      "subscriptionEndsInDays": 5,
+      "services": [
+        { "id": "srv_3_1", "name": "Afro Shape-up & Cut", "description": "Afro shaping, sponge twist finish and sharp line-up.", "price": 300, "durationMinutes": 40 },
+        { "id": "srv_3_2", "name": "Clean Shave", "description": "Straight-razor shave with hot towel.", "price": 150, "durationMinutes": 25 },
+        { "id": "srv_3_3", "name": "Cut & Beard Combo", "description": "Haircut plus beard trim and line-up.", "price": 400, "durationMinutes": 50 }
+      ],
+      "barbers": [
+        { "id": "barber_3_1", "name": "Mulugeta Bekele", "title": "Master Barber", "avatarUrl": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400", "rating": 5.0, "reviewCount": 140, "phone": "+251911000103", "specialties": ["Afro Shape-up", "Straight Razor"] }
+      ]
+    },
+    {
+      "id": "shop_4",
+      "ownerId": "owner_4",
+      "name": "Sarbet Fade Studio",
+      "description": "Modern textured crops, fades and hair designs. Quiet studio with Wi-Fi and macchiato while you wait.",
+      "address": "Sarbet, Old Airport Road",
+      "city": "Addis Ababa",
+      "subCity": "Kolfe Keranio",
+      "landmark": "Sarbet roundabout",
+      "phone": "+251911223304",
+      "imageUrl": "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=800",
+      "rating": 4.8,
+      "reviewCount": 37,
+      "openingHour": 9,
+      "closingHour": 20,
+      "workingDays": [1, 2, 3, 4, 5, 6, 7],
+      "isVerified": false,
+      "subscriptionPlan": "trial",
+      "subscriptionStatus": "trialing",
+      "subscriptionEndsInDays": 20,
+      "services": [
+        { "id": "srv_4_1", "name": "Textured Crop & Low Fade", "description": "Modern crop with texture powder and clean tapers.", "price": 500, "durationMinutes": 45 },
+        { "id": "srv_4_2", "name": "Hair Design / Part", "description": "Freehand razor design or hard part.", "price": 200, "durationMinutes": 20 },
+        { "id": "srv_4_3", "name": "Beard Trim & Hydration Mask", "description": "Conditioning treatment, shaping and razor edge.", "price": 350, "durationMinutes": 30 }
+      ],
+      "barbers": [
+        { "id": "barber_4_1", "name": "Henok Girma", "title": "Fade & Design Specialist", "avatarUrl": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400", "rating": 4.9, "reviewCount": 37, "phone": "+251911000104", "specialties": ["Textured Crop", "Low Taper Fade", "Hair Design"] }
+      ]
+    },
+    {
+      "id": "shop_5",
+      "ownerId": "owner_5",
+      "name": "CMC Gentlemen's Lounge",
+      "description": "Premium lounge for executive cuts, shaves and grooming packages. Free parking.",
+      "address": "CMC Road, Sunshine Building",
+      "city": "Addis Ababa",
+      "subCity": "Yeka",
+      "landmark": "Near St. Michael Church, CMC",
+      "phone": "+251911223305",
+      "imageUrl": "https://images.unsplash.com/photo-1512690459411-b9245aed614b?w=800",
+      "rating": 4.9,
+      "reviewCount": 168,
+      "openingHour": 9,
+      "closingHour": 21,
+      "workingDays": [1, 2, 3, 4, 5, 6, 7],
+      "isVerified": true,
+      "subscriptionPlan": "basic",
+      "subscriptionStatus": "past_due",
+      "subscriptionEndsInDays": -2,
+      "services": [
+        { "id": "srv_5_1", "name": "Executive Cut", "description": "Consultation, precision cut, wash and style.", "price": 800, "durationMinutes": 45 },
+        { "id": "srv_5_2", "name": "Royal Hot-Towel Shave", "description": "Double hot towels, straight-razor shave and cold-stone finish.", "price": 400, "durationMinutes": 40 },
+        { "id": "srv_5_3", "name": "Groom's Wedding Package", "description": "Cut, shave, facial and styling for your big day.", "price": 1500, "durationMinutes": 120 }
+      ],
+      "barbers": [
+        { "id": "barber_5_1", "name": "Samuel Tesfaye", "title": "Senior Barber", "avatarUrl": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400", "rating": 4.9, "reviewCount": 92, "phone": "+251911000105", "specialties": ["Executive Styling", "Hot Shave"] },
+        { "id": "barber_5_2", "name": "Abel Negash", "title": "Stylist", "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400", "rating": 4.7, "reviewCount": 40, "phone": "+251912450052", "specialties": ["Scissor Cut", "Facials"], "startHour": 13, "endHour": 21 }
+      ]
+    },
+    {
+      "id": "shop_6",
+      "ownerId": "owner_6",
+      "name": "Megenagna Express Cuts",
+      "description": "Fast, affordable cuts for commuters at Megenagna. No appointment longer than 30 minutes.",
+      "address": "Megenagna Square",
+      "city": "Addis Ababa",
+      "subCity": "Yeka",
+      "landmark": "Next to Zefmesh Mall",
+      "phone": "+251911223306",
+      "imageUrl": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800",
+      "rating": 4.5,
+      "reviewCount": 76,
+      "openingHour": 7,
+      "closingHour": 21,
+      "workingDays": [1, 2, 3, 4, 5, 6, 7],
+      "isVerified": true,
+      "subscriptionPlan": "trial",
+      "subscriptionStatus": "suspended",
+      "subscriptionEndsInDays": -10,
+      "services": [
+        { "id": "srv_6_1", "name": "Quick Cut", "description": "Clipper cut in under 30 minutes.", "price": 200, "durationMinutes": 25 },
+        { "id": "srv_6_2", "name": "Quick Shave", "description": "Clean shave.", "price": 150, "durationMinutes": 15 }
+      ],
+      "barbers": [
+        { "id": "barber_6_1", "name": "Bereket Wolde", "title": "Barber", "avatarUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400", "rating": 4.5, "reviewCount": 50, "phone": "+251911000106", "specialties": ["Clipper Cut"] }
+      ]
+    }
+  ],
+  "bookings": [
+    { "id": "book_1", "shopId": "shop_1", "barberId": "barber_1", "customerId": "user_cust_1", "serviceId": "srv_1_1", "dayOffset": 1, "startTime": "11:15", "status": "confirmed", "paymentStatus": "unpaid", "paymentMethod": "cash", "createdHoursAgo": 3 },
+    { "id": "book_2", "shopId": "shop_1", "barberId": "barber_1", "customerId": "user_cust_2", "serviceId": "srv_1_2", "dayOffset": 0, "startTime": "14:15", "status": "confirmed", "paymentStatus": "unpaid", "paymentMethod": "cash", "createdHoursAgo": 26 },
+    { "id": "book_3", "shopId": "shop_1", "barberId": "barber_1", "customerId": "user_cust_3", "serviceId": "srv_1_3", "dayOffset": -2, "startTime": "10:30", "status": "completed", "paymentStatus": "paid", "paymentMethod": "cash", "createdHoursAgo": 72 },
+    { "id": "book_4", "shopId": "shop_1", "barberId": "barber_2", "customerId": "user_cust_4", "serviceId": "srv_1_1", "dayOffset": 0, "startTime": "16:30", "status": "confirmed", "paymentStatus": "unpaid", "paymentMethod": "cash", "createdHoursAgo": 20 },
+    { "id": "book_5", "shopId": "shop_2", "barberId": "barber_2_1", "customerId": "user_cust_1", "serviceId": "srv_2_1", "dayOffset": -7, "startTime": "13:30", "status": "completed", "paymentStatus": "paid", "paymentMethod": "chapa", "createdHoursAgo": 192 },
+    { "id": "book_6", "shopId": "shop_3", "barberId": "barber_3_1", "customerId": "user_cust_2", "serviceId": "srv_3_2", "dayOffset": 2, "startTime": "09:45", "status": "pending", "paymentStatus": "unpaid", "paymentMethod": "cash", "createdHoursAgo": 5 },
+    { "id": "book_7", "shopId": "shop_1", "barberId": "barber_1", "customerId": "user_cust_1", "serviceId": "srv_1_2", "dayOffset": -14, "startTime": "12:00", "status": "cancelled", "paymentStatus": "unpaid", "paymentMethod": "cash", "createdHoursAgo": 360 },
+    { "id": "book_8", "shopId": "shop_5", "barberId": "barber_5_1", "customerId": "user_cust_4", "serviceId": "srv_5_1", "dayOffset": 3, "startTime": "15:00", "status": "confirmed", "paymentStatus": "pending", "paymentMethod": "chapa", "createdHoursAgo": 2 }
+  ],
+  "favorites": {
+    "_comment": "Demo-only favorites of the signed-in customer (favorites are kept on the device).",
+    "shopIds": ["shop_1"],
+    "barberIds": ["barber_1"]
+  }
+}

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/phone_utils.dart';
+import '../../../l10n/l10n.dart';
+import '../../shared/widgets/language_toggle.dart';
 import '../../../models/user_model.dart';
 import '../../../services/app_repository.dart';
-import '../../../services/phone_auth_service.dart';
 
 /// First sign-in: ask for the user's name and create their profile.
 ///
@@ -42,7 +43,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     try {
       await AppRepository.instance.completeProfile(name: _nameController.text);
     } catch (e) {
-      if (mounted) setState(() => _error = describeAuthError(e));
+      if (mounted) setState(() => _error = context.l10n.authError(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -55,18 +56,25 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     final phone = repo.pendingPhone;
     final shopName = invite?.shopId != null ? repo.getShopById(invite!.shopId!)?.name : null;
 
+    final l = context.l10n;
     final String roleMessage;
     if (invite == null) {
-      roleMessage = 'Create your account to book barbers across Addis Ababa.';
+      roleMessage = l.profileCustomerMessage;
     } else if (invite.role == UserRole.barbershopOwner) {
-      roleMessage = 'You have been invited to manage ${shopName ?? 'a barbershop'} as its owner.';
+      roleMessage = l.profileOwnerInvite(shopName ?? l.aBarbershop);
     } else if (invite.role == UserRole.barber) {
-      roleMessage = 'You have been invited to join ${shopName ?? 'a barbershop'} as a barber.';
+      roleMessage = l.profileBarberInvite(shopName ?? l.aBarbershop);
     } else {
-      roleMessage = 'You have been invited as ${invite.role.displayName}.';
+      roleMessage = l.profileRoleInvite(l.roleName(invite.role));
     }
 
     return Scaffold(
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: const [LanguageToggle(), SizedBox(width: 8)],
+      ),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -80,7 +88,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   const Icon(Icons.verified_user_outlined, size: 54, color: AppTheme.primaryGold),
                   const SizedBox(height: 12),
                   Text(
-                    'Welcome',
+                    l.welcome,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w900),
                   ),
@@ -108,9 +116,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     controller: _nameController,
                     textCapitalization: TextCapitalization.words,
                     maxLength: 100,
-                    decoration: const InputDecoration(
-                      labelText: 'Full Name',
-                      prefixIcon: Icon(Icons.person_outline),
+                    decoration: InputDecoration(
+                      labelText: l.fullName,
+                      prefixIcon: const Icon(Icons.person_outline),
                       counterText: '',
                     ),
                     onSubmitted: (_) => _isLoading ? null : _submit(),
@@ -124,11 +132,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                             width: 20,
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                           )
-                        : const Text('Continue'),
+                        : Text(l.continueLabel),
                   ),
                   TextButton(
                     onPressed: _isLoading ? null : () => repo.signOut(),
-                    child: const Text('Use a different number'),
+                    child: Text(l.useDifferentNumber),
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 8),
