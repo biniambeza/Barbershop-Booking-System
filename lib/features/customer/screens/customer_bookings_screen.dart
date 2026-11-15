@@ -6,6 +6,7 @@ import '../../../models/booking_model.dart';
 import '../../../models/service_model.dart';
 import '../../../services/app_repository.dart';
 import '../../../services/booking_policy.dart';
+import '../../../services/booking_acceptance.dart' as acceptance;
 import '../../../services/payment_service.dart';
 import '../../payments/payment_flow.dart';
 import '../../payments/widgets/payment_status_badge.dart';
@@ -109,9 +110,34 @@ class CustomerBookingsScreen extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              StatusChip(label: l.bookingStatus(booking.status).toUpperCase(), color: color),
+              StatusChip(
+                key: ValueKey('booking-status-${booking.id}'),
+                // barber acceptance: a pending booking waits for the barber
+                label: (acceptance.isAwaitingAcceptance(booking)
+                        ? l.acceptWaitingForBarber
+                        : l.bookingStatus(booking.status))
+                    .toUpperCase(),
+                color: color,
+                icon: acceptance.isAwaitingAcceptance(booking) ? Icons.hourglass_top_rounded : null,
+              ),
             ],
           ),
+          // --- barber acceptance: why a request ended ---
+          if (acceptance.isAwaitingAcceptance(booking)) ...[
+            const SizedBox(height: 6),
+            Text(l.acceptWaitingFor(booking.barberName),
+                style: const TextStyle(fontSize: 12, color: AppTheme.warning, fontWeight: FontWeight.w600)),
+          ] else if (acceptance.wasDeclined(booking) || acceptance.wasNotAccepted(booking)) ...[
+            const SizedBox(height: 6),
+            Text(
+              acceptance.wasDeclined(booking) ? l.acceptDeclinedNote : l.acceptExpiredNote,
+              key: ValueKey('request-ended-${booking.id}'),
+              style: const TextStyle(fontSize: 12, color: AppTheme.danger),
+            ),
+            if (booking.declineReason != null)
+              Text(l.acceptDeclineReasonNote(booking.declineReason!),
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+          ],
           const SizedBox(height: 8),
           Row(
             children: [

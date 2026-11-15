@@ -4457,7 +4457,7 @@ abstract class AppLocalizations {
   /// No description provided for @codeSentTo.
   ///
   /// In en, this message translates to:
-  /// **'We sent a 6-digit code to {email}'**
+  /// **'Enter the 6-digit code we sent to {email}'**
   String codeSentTo(String email);
 
   /// No description provided for @codeLabel.
@@ -4465,12 +4465,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'6-digit code'**
   String get codeLabel;
-
-  /// No description provided for @verifyAndCreate.
-  ///
-  /// In en, this message translates to:
-  /// **'Verify and create account'**
-  String get verifyAndCreate;
 
   /// No description provided for @resendCode.
   ///
@@ -4531,12 +4525,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enter your account email and we\'ll send you a 6-digit code.'**
   String get resetIntro;
-
-  /// No description provided for @resetButton.
-  ///
-  /// In en, this message translates to:
-  /// **'Reset password'**
-  String get resetButton;
 
   /// No description provided for @resetDone.
   ///
@@ -4646,11 +4634,1103 @@ abstract class AppLocalizations {
   /// **'That code is not correct. Attempts left: {count}.'**
   String emailErrInvalidCodeAttempts(int count);
 
+  /// No description provided for @registerEmailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email'**
+  String get registerEmailTitle;
+
+  /// No description provided for @registerEmailIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'ll send you a 6-digit code to confirm it\'s yours.'**
+  String get registerEmailIntro;
+
+  /// No description provided for @enterCodeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your email'**
+  String get enterCodeTitle;
+
+  /// No description provided for @verifyButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get verifyButton;
+
+  /// No description provided for @createPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Create your password'**
+  String get createPasswordTitle;
+
+  /// No description provided for @createAccountButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get createAccountButton;
+
+  /// No description provided for @newPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a new password'**
+  String get newPasswordTitle;
+
+  /// No description provided for @savePasswordButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get savePasswordButton;
+
+  /// No description provided for @emailVerifiedNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'{email} is verified.'**
+  String emailVerifiedNotice(String email);
+
+  /// No description provided for @authStepOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {step} of {total}'**
+  String authStepOf(int step, int total);
+
+  /// No description provided for @emailErrVerificationExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'This step took too long. Please request a new code.'**
+  String get emailErrVerificationExpired;
+
+  /// No description provided for @logInInstead.
+  ///
+  /// In en, this message translates to:
+  /// **'Log in instead'**
+  String get logInInstead;
+
+  /// No description provided for @acceptRequestsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New requests'**
+  String get acceptRequestsTitle;
+
+  /// No description provided for @acceptRequestsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} waiting'**
+  String acceptRequestsCount(int count);
+
+  /// No description provided for @acceptRequestsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept or decline each booking. Requests not answered 1 hour before the start are cancelled automatically.'**
+  String get acceptRequestsHelp;
+
+  /// No description provided for @acceptAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept'**
+  String get acceptAction;
+
+  /// No description provided for @acceptDeclineAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline'**
+  String get acceptDeclineAction;
+
+  /// No description provided for @acceptDeclineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline this booking?'**
+  String get acceptDeclineTitle;
+
+  /// No description provided for @acceptDeclineBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{customer} will be told you can\'t take it and asked to pick another time.'**
+  String acceptDeclineBody(String customer);
+
+  /// No description provided for @acceptDeclineReasonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason (optional)'**
+  String get acceptDeclineReasonLabel;
+
+  /// No description provided for @acceptDeclineConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline booking'**
+  String get acceptDeclineConfirm;
+
+  /// No description provided for @acceptDeclineCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get acceptDeclineCancel;
+
+  /// No description provided for @acceptAccepted.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking accepted. {customer} has been told.'**
+  String acceptAccepted(String customer);
+
+  /// No description provided for @acceptDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking declined.'**
+  String get acceptDeclined;
+
+  /// No description provided for @acceptFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t answer the request: {error}'**
+  String acceptFailed(String error);
+
+  /// No description provided for @acceptWaitingForBarber.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for barber'**
+  String get acceptWaitingForBarber;
+
+  /// No description provided for @acceptWaitingFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for {barber} to accept'**
+  String acceptWaitingFor(String barber);
+
+  /// No description provided for @acceptRequestSentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Request sent!'**
+  String get acceptRequestSentTitle;
+
+  /// No description provided for @acceptRequestSentBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{barber} will confirm your booking soon. We\'ll let you know when they accept.'**
+  String acceptRequestSentBody(String barber);
+
+  /// No description provided for @acceptPayAfterAcceptance.
+  ///
+  /// In en, this message translates to:
+  /// **'You can pay online once the barber accepts.'**
+  String get acceptPayAfterAcceptance;
+
+  /// No description provided for @acceptDeclinedNote.
+  ///
+  /// In en, this message translates to:
+  /// **'The barber couldn\'t take this booking. Please pick another time.'**
+  String get acceptDeclinedNote;
+
+  /// No description provided for @acceptExpiredNote.
+  ///
+  /// In en, this message translates to:
+  /// **'The barber didn\'t answer in time. Please pick another time.'**
+  String get acceptExpiredNote;
+
+  /// No description provided for @acceptDeclineReasonNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason: {reason}'**
+  String acceptDeclineReasonNote(String reason);
+
+  /// No description provided for @acceptPolicyToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Barbers accept each booking'**
+  String get acceptPolicyToggle;
+
+  /// No description provided for @acceptPolicyToggleHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'New bookings wait until the barber accepts them. Requests not answered 1 hour before the start are cancelled automatically.'**
+  String get acceptPolicyToggleHelp;
+
+  /// No description provided for @acceptErrNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the booked barber or the shop owner can answer this request.'**
+  String get acceptErrNotAllowed;
+
+  /// No description provided for @acceptErrReasonTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'The reason can be at most {max} characters.'**
+  String acceptErrReasonTooLong(int max);
+
+  /// No description provided for @payoutsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Barber payouts'**
+  String get payoutsTitle;
+
+  /// No description provided for @payoutsOpenButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Payouts & commission'**
+  String get payoutsOpenButton;
+
+  /// No description provided for @payoutsMonthLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get payoutsMonthLabel;
+
+  /// No description provided for @payoutsCompletedJobs.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed jobs'**
+  String get payoutsCompletedJobs;
+
+  /// No description provided for @payoutsGross.
+  ///
+  /// In en, this message translates to:
+  /// **'Gross'**
+  String get payoutsGross;
+
+  /// No description provided for @payoutsCommission.
+  ///
+  /// In en, this message translates to:
+  /// **'Commission'**
+  String get payoutsCommission;
+
+  /// No description provided for @payoutsCommissionLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Commission: {percent}%'**
+  String payoutsCommissionLine(int percent);
+
+  /// No description provided for @payoutsBarberShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Barber share'**
+  String get payoutsBarberShare;
+
+  /// No description provided for @payoutsAlreadyPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Already paid'**
+  String get payoutsAlreadyPaid;
+
+  /// No description provided for @payoutsBalanceOwed.
+  ///
+  /// In en, this message translates to:
+  /// **'Balance owed'**
+  String get payoutsBalanceOwed;
+
+  /// No description provided for @payoutsTotalShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Barbers\' share'**
+  String get payoutsTotalShare;
+
+  /// No description provided for @payoutsTotalPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid out'**
+  String get payoutsTotalPaid;
+
+  /// No description provided for @payoutsTotalOwed.
+  ///
+  /// In en, this message translates to:
+  /// **'Still owed'**
+  String get payoutsTotalOwed;
+
+  /// No description provided for @payoutsRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'Record payout'**
+  String get payoutsRecord;
+
+  /// No description provided for @payoutsRecordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay {name}'**
+  String payoutsRecordTitle(String name);
+
+  /// No description provided for @payoutsHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Payout history'**
+  String get payoutsHistory;
+
+  /// No description provided for @payoutsNoHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'No payouts recorded for this month.'**
+  String get payoutsNoHistory;
+
+  /// No description provided for @payoutsNoBarbers.
+  ///
+  /// In en, this message translates to:
+  /// **'Add barbers to track their commission and payouts.'**
+  String get payoutsNoBarbers;
+
+  /// No description provided for @payoutsAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount (Birr)'**
+  String get payoutsAmount;
+
+  /// No description provided for @payoutsMethod.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid by'**
+  String get payoutsMethod;
+
+  /// No description provided for @payoutsMethodCash.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash'**
+  String get payoutsMethodCash;
+
+  /// No description provided for @payoutsMethodTelebirr.
+  ///
+  /// In en, this message translates to:
+  /// **'telebirr'**
+  String get payoutsMethodTelebirr;
+
+  /// No description provided for @payoutsMethodBank.
+  ///
+  /// In en, this message translates to:
+  /// **'Bank transfer'**
+  String get payoutsMethodBank;
+
+  /// No description provided for @payoutsMethodOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get payoutsMethodOther;
+
+  /// No description provided for @payoutsNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note (optional)'**
+  String get payoutsNote;
+
+  /// No description provided for @payoutsPeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'Period: {range}'**
+  String payoutsPeriod(String range);
+
+  /// No description provided for @payoutsSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save payout'**
+  String get payoutsSave;
+
+  /// No description provided for @payoutsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Payout recorded.'**
+  String get payoutsSaved;
+
+  /// No description provided for @payoutsDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete payout'**
+  String get payoutsDelete;
+
+  /// No description provided for @payoutsDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the {amount} payout to {name}? Payouts can be deleted only within 24 hours of recording them.'**
+  String payoutsDeleteBody(String amount, String name);
+
+  /// No description provided for @payoutsDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Payout deleted.'**
+  String get payoutsDeleted;
+
+  /// No description provided for @payoutsYourShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Your share'**
+  String get payoutsYourShare;
+
+  /// No description provided for @payoutsPaidToYou.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid to you'**
+  String get payoutsPaidToYou;
+
+  /// No description provided for @payoutsThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'This month: {month}'**
+  String payoutsThisMonth(String month);
+
+  /// No description provided for @payoutsShareLine.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% of {jobs} completed jobs ({gross})'**
+  String payoutsShareLine(int percent, int jobs, String gross);
+
+  /// No description provided for @payoutsMyPayouts.
+  ///
+  /// In en, this message translates to:
+  /// **'My payouts'**
+  String get payoutsMyPayouts;
+
+  /// No description provided for @payoutsMyPayoutsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No payouts yet.'**
+  String get payoutsMyPayoutsEmpty;
+
+  /// No description provided for @payoutsSeeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'See all payouts'**
+  String get payoutsSeeAll;
+
+  /// No description provided for @payoutsSetCommission.
+  ///
+  /// In en, this message translates to:
+  /// **'Set commission'**
+  String get payoutsSetCommission;
+
+  /// No description provided for @payoutsCommissionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Commission for {name}'**
+  String payoutsCommissionTitle(String name);
+
+  /// No description provided for @payoutsCommissionHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'The barber\'s share of each completed booking\'s price.'**
+  String get payoutsCommissionHelp;
+
+  /// No description provided for @payoutsCommissionPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'Commission (%)'**
+  String get payoutsCommissionPercent;
+
+  /// No description provided for @payoutsCommissionSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Commission saved.'**
+  String get payoutsCommissionSaved;
+
+  /// No description provided for @payoutsRecordedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Recorded {date}'**
+  String payoutsRecordedOn(String date);
+
+  /// No description provided for @payoutsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load payouts. Please try again.'**
+  String get payoutsLoadFailed;
+
+  /// No description provided for @payoutsErrOwnerOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the shop owner can manage payouts and commission.'**
+  String get payoutsErrOwnerOnly;
+
+  /// No description provided for @payoutsErrNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This payout or barber no longer exists.'**
+  String get payoutsErrNotFound;
+
+  /// No description provided for @payoutsErrUnknownBarber.
+  ///
+  /// In en, this message translates to:
+  /// **'This barber is not part of your shop.'**
+  String get payoutsErrUnknownBarber;
+
+  /// No description provided for @payoutsErrInvalidAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an amount above 0 and up to {max} Birr.'**
+  String payoutsErrInvalidAmount(String max);
+
+  /// No description provided for @payoutsErrInvalidPeriod.
+  ///
+  /// In en, this message translates to:
+  /// **'The period must start on or before its end.'**
+  String get payoutsErrInvalidPeriod;
+
+  /// No description provided for @payoutsErrNoteTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the note to {max} characters or fewer.'**
+  String payoutsErrNoteTooLong(int max);
+
+  /// No description provided for @payoutsErrInvalidCommission.
+  ///
+  /// In en, this message translates to:
+  /// **'Commission must be a whole number from 0 to 100.'**
+  String get payoutsErrInvalidCommission;
+
+  /// No description provided for @payoutsErrDeleteWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Payouts can be deleted only within 24 hours of recording them.'**
+  String get payoutsErrDeleteWindow;
+
+  /// No description provided for @applRegisterShopTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Register your barbershop'**
+  String get applRegisterShopTitle;
+
+  /// No description provided for @applRegisterShopSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Own a barbershop? Apply to list it on Crown & Blade. We review every application.'**
+  String get applRegisterShopSubtitle;
+
+  /// No description provided for @applCtaApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply now'**
+  String get applCtaApply;
+
+  /// No description provided for @applCtaViewStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'View application'**
+  String get applCtaViewStatus;
+
+  /// No description provided for @applFormIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell us about your shop. When the admin approves it, this account becomes the shop\'s owner account.'**
+  String get applFormIntro;
+
+  /// No description provided for @applOwnerName.
+  ///
+  /// In en, this message translates to:
+  /// **'Your full name'**
+  String get applOwnerName;
+
+  /// No description provided for @applShopName.
+  ///
+  /// In en, this message translates to:
+  /// **'Barbershop name'**
+  String get applShopName;
+
+  /// No description provided for @applAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Street address'**
+  String get applAddress;
+
+  /// No description provided for @applSubCity.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub-city'**
+  String get applSubCity;
+
+  /// No description provided for @applPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Shop contact phone'**
+  String get applPhone;
+
+  /// No description provided for @applPhoneHint.
+  ///
+  /// In en, this message translates to:
+  /// **'09XX XXX XXX or 011 XXX XXXX'**
+  String get applPhoneHint;
+
+  /// No description provided for @applDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'About the shop (optional)'**
+  String get applDescription;
+
+  /// No description provided for @applSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit application'**
+  String get applSubmit;
+
+  /// No description provided for @applSaveChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes'**
+  String get applSaveChanges;
+
+  /// No description provided for @applResubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply again'**
+  String get applResubmit;
+
+  /// No description provided for @applSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Application submitted. We\'ll let you know once it\'s reviewed.'**
+  String get applSubmitted;
+
+  /// No description provided for @applUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Application updated.'**
+  String get applUpdated;
+
+  /// No description provided for @applEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit application'**
+  String get applEdit;
+
+  /// No description provided for @applWithdraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw application'**
+  String get applWithdraw;
+
+  /// No description provided for @applWithdrawTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw application?'**
+  String get applWithdrawTitle;
+
+  /// No description provided for @applWithdrawBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your application for {shop} will be deleted. You can apply again later.'**
+  String applWithdrawBody(String shop);
+
+  /// No description provided for @applWithdrawn.
+  ///
+  /// In en, this message translates to:
+  /// **'Application withdrawn.'**
+  String get applWithdrawn;
+
+  /// No description provided for @applStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Under review'**
+  String get applStatusPending;
+
+  /// No description provided for @applStatusApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved'**
+  String get applStatusApproved;
+
+  /// No description provided for @applStatusRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Not approved'**
+  String get applStatusRejected;
+
+  /// No description provided for @applPendingBody.
+  ///
+  /// In en, this message translates to:
+  /// **'We received your application on {date}. The admin will review it soon.'**
+  String applPendingBody(String date);
+
+  /// No description provided for @applApprovedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{shop} is approved! Your account is now the shop\'s owner account.'**
+  String applApprovedBody(String shop);
+
+  /// No description provided for @applOpenDashboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Open owner dashboard'**
+  String get applOpenDashboard;
+
+  /// No description provided for @applRejectedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your application was not approved.'**
+  String get applRejectedBody;
+
+  /// No description provided for @applRejectReasonLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason: {reason}'**
+  String applRejectReasonLine(String reason);
+
+  /// No description provided for @applRejectedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You can update the details and apply again.'**
+  String get applRejectedHint;
+
+  /// No description provided for @applSignUpOwnShop.
+  ///
+  /// In en, this message translates to:
+  /// **'I own a barbershop and want to list it'**
+  String get applSignUpOwnShop;
+
+  /// No description provided for @applSignUpOwnShopHint.
+  ///
+  /// In en, this message translates to:
+  /// **'After you continue, you can send your shop\'s details for approval.'**
+  String get applSignUpOwnShopHint;
+
+  /// No description provided for @applAdminTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shop applications'**
+  String get applAdminTitle;
+
+  /// No description provided for @applAdminPendingCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No pending applications} =1{1 pending application} other{{count} pending applications}}'**
+  String applAdminPendingCount(int count);
+
+  /// No description provided for @applAdminPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get applAdminPending;
+
+  /// No description provided for @applAdminRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently decided'**
+  String get applAdminRecent;
+
+  /// No description provided for @applAdminEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No shop applications yet.'**
+  String get applAdminEmpty;
+
+  /// No description provided for @applAdminSubmittedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted {date}'**
+  String applAdminSubmittedOn(String date);
+
+  /// No description provided for @applAdminReviewedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewed {date}'**
+  String applAdminReviewedOn(String date);
+
+  /// No description provided for @applAdminApprove.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get applAdminApprove;
+
+  /// No description provided for @applAdminReject.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get applAdminReject;
+
+  /// No description provided for @applAdminApproveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve {shop}?'**
+  String applAdminApproveTitle(String shop);
+
+  /// No description provided for @applAdminApproveBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This registers the shop on a free trial with two starter services and invites {email} as its owner.'**
+  String applAdminApproveBody(String email);
+
+  /// No description provided for @applAdminApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'{shop} approved and registered.'**
+  String applAdminApproved(String shop);
+
+  /// No description provided for @applAdminRejectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject {shop}?'**
+  String applAdminRejectTitle(String shop);
+
+  /// No description provided for @applAdminRejectReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason (the applicant sees this)'**
+  String get applAdminRejectReason;
+
+  /// No description provided for @applAdminRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Application rejected.'**
+  String get applAdminRejected;
+
+  /// No description provided for @applLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load applications. Please try again.'**
+  String get applLoadFailed;
+
+  /// No description provided for @applErrOwnerName.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your name (up to 100 characters).'**
+  String get applErrOwnerName;
+
+  /// No description provided for @applErrShopName.
+  ///
+  /// In en, this message translates to:
+  /// **'The shop name must be 2 to 80 characters.'**
+  String get applErrShopName;
+
+  /// No description provided for @applErrAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'The address must be 2 to 160 characters.'**
+  String get applErrAddress;
+
+  /// No description provided for @applErrSubCity.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a sub-city.'**
+  String get applErrSubCity;
+
+  /// No description provided for @applErrPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid Ethiopian phone number (09..., 07... or 011...).'**
+  String get applErrPhone;
+
+  /// No description provided for @applErrDescriptionTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the description to {max} characters or fewer.'**
+  String applErrDescriptionTooLong(int max);
+
+  /// No description provided for @applErrRejectReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a reason of up to {max} characters.'**
+  String applErrRejectReason(int max);
+
+  /// No description provided for @applErrCustomersOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only customer accounts can apply to register a barbershop.'**
+  String get applErrCustomersOnly;
+
+  /// No description provided for @applErrEmailMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account has no email address, which the owner invite needs.'**
+  String get applErrEmailMissing;
+
+  /// No description provided for @applErrAlreadyPending.
+  ///
+  /// In en, this message translates to:
+  /// **'You already have an application under review. Edit it instead.'**
+  String get applErrAlreadyPending;
+
+  /// No description provided for @applErrAlreadyApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Your application has already been approved.'**
+  String get applErrAlreadyApproved;
+
+  /// No description provided for @applErrNotPending.
+  ///
+  /// In en, this message translates to:
+  /// **'This application has already been reviewed.'**
+  String get applErrNotPending;
+
+  /// No description provided for @applErrNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This application no longer exists.'**
+  String get applErrNotFound;
+
+  /// No description provided for @applErrAdminOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the platform admin can review applications.'**
+  String get applErrAdminOnly;
+
   /// No description provided for @emailErrRateLimitedMinutes.
   ///
   /// In en, this message translates to:
   /// **'Too many attempts. Try again in {minutes} min.'**
   String emailErrRateLimitedMinutes(int minutes);
+
+  /// No description provided for @barberCancelAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get barberCancelAction;
+
+  /// No description provided for @barberCancelTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel this booking?'**
+  String get barberCancelTitle;
+
+  /// No description provided for @barberCancelBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{customer} will be told that you cancelled their {service} on {when}. This can\'t be undone.'**
+  String barberCancelBody(String customer, String service, String when);
+
+  /// No description provided for @barberCancelReasonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason (optional)'**
+  String get barberCancelReasonLabel;
+
+  /// No description provided for @barberCancelReasonHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. I\'m unwell today'**
+  String get barberCancelReasonHint;
+
+  /// No description provided for @barberCancelConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel booking'**
+  String get barberCancelConfirm;
+
+  /// No description provided for @barberCancelKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep booking'**
+  String get barberCancelKeep;
+
+  /// No description provided for @barberCancelDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Booking cancelled. The customer has been notified.'**
+  String get barberCancelDone;
+
+  /// No description provided for @barberCancelFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t cancel the booking: {error}'**
+  String barberCancelFailed(String error);
+
+  /// No description provided for @barberCancelErrNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'You can only cancel your own bookings.'**
+  String get barberCancelErrNotAllowed;
+
+  /// No description provided for @barberCancelErrAfterStart.
+  ///
+  /// In en, this message translates to:
+  /// **'This appointment has already started. Mark it as a no-show or finish it instead.'**
+  String get barberCancelErrAfterStart;
+
+  /// No description provided for @changePasswordMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Change password'**
+  String get changePasswordMenu;
+
+  /// No description provided for @setPasswordMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a password'**
+  String get setPasswordMenu;
+
+  /// No description provided for @changePasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change password'**
+  String get changePasswordTitle;
+
+  /// No description provided for @changePasswordIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your current password, then choose a new one.'**
+  String get changePasswordIntro;
+
+  /// No description provided for @currentPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password'**
+  String get currentPasswordLabel;
+
+  /// No description provided for @changePasswordSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Update password'**
+  String get changePasswordSave;
+
+  /// No description provided for @changePasswordDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Your password has been changed.'**
+  String get changePasswordDone;
+
+  /// No description provided for @changePasswordErrWrongCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Your current password is not correct.'**
+  String get changePasswordErrWrongCurrent;
+
+  /// No description provided for @changePasswordErrCurrentRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your current password.'**
+  String get changePasswordErrCurrentRequired;
+
+  /// No description provided for @changePasswordErrRecentLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'For your security, sign out and sign in again, then change your password.'**
+  String get changePasswordErrRecentLogin;
+
+  /// No description provided for @changePasswordErrNoPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'This account signs in with Google and has no password yet.'**
+  String get changePasswordErrNoPassword;
+
+  /// No description provided for @setPasswordTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a password'**
+  String get setPasswordTitle;
+
+  /// No description provided for @setPasswordBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You sign in with Google, so this account has no password yet. To create one, sign out, tap \"Forgot password?\" on the login screen and enter {email}. We\'ll email you a code, then you choose your password.'**
+  String setPasswordBody(String email);
+
+  /// No description provided for @setPasswordSignOutAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out and set a password'**
+  String get setPasswordSignOutAction;
+
+  /// No description provided for @setPasswordConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out now?'**
+  String get setPasswordConfirmTitle;
+
+  /// No description provided for @setPasswordConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll go to the login screen with \"Forgot password?\" open for your Gmail.'**
+  String get setPasswordConfirmBody;
+
+  /// No description provided for @barberInviteHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'ll email them an invitation. They open Crown & Blade, tap Register and use this Gmail to create their password.'**
+  String get barberInviteHelper;
+
+  /// No description provided for @barberInviteWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation sent — waiting for sign-up'**
+  String get barberInviteWaiting;
 }
 
 class _AppLocalizationsDelegate

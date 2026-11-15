@@ -38,6 +38,18 @@ class _AuthScreenState extends State<AuthScreen> {
   /// Bumped to rebuild the login form with a new prefilled email.
   int _loginFormVersion = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    // A Google-only user who signed out to create a password lands on
+    // "Forgot password" with their Gmail.
+    final setPasswordEmail = AppRepository.instance.takeSetPasswordEmail();
+    if (setPasswordEmail != null) {
+      _mode = _AuthMode.forgot;
+      _carryEmail = setPasswordEmail;
+    }
+  }
+
   void _setMode(_AuthMode mode) => setState(() {
         _mode = mode;
         _error = null;
@@ -195,7 +207,16 @@ class _AuthScreenState extends State<AuthScreen> {
           },
         );
       case _AuthMode.register:
-        return const EmailRegisterForm(key: ValueKey('register-form'));
+        return EmailRegisterForm(
+          key: const ValueKey('register-form'),
+          onLogInInstead: (email) => setState(() {
+            _carryEmail = email;
+            _passwordWasReset = false;
+            _loginFormVersion++;
+            _mode = _AuthMode.login;
+            _error = null;
+          }),
+        );
       case _AuthMode.forgot:
         return ForgotPasswordForm(
           key: const ValueKey('forgot-form'),

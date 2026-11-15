@@ -117,6 +117,24 @@ class Booking {
   /// Cloud Functions only, so never part of [toMap]).
   final String? cancelReason;
 
+  // --- barber acceptance ---
+  /// When the barber (or owner) accepted a pending request (UTC). Written
+  /// by the accept update only, so never part of [toMap].
+  final DateTime? acceptedAt;
+
+  /// Who cancelled: a uid, or a literal such as 'barber' (a declined
+  /// request) or 'system' (Cloud Functions). Never part of [toMap].
+  final String? cancelledBy;
+
+  /// Optional note the barber gave when declining (<= 200 characters).
+  final String? declineReason;
+
+  /// Optional note the barber gave when cancelling a booking of theirs
+  /// before it started (<= 200 characters). Written by that cancel only,
+  /// so never part of [toMap].
+  final String? cancelReasonNote;
+  // --- end barber acceptance ---
+
   /// If [startAt] is omitted it is derived from [date] + [timeSlot] (Addis
   /// local time); [endAt] defaults to [startAt] + [durationMinutes].
   Booking({
@@ -144,6 +162,10 @@ class Booking {
     this.rescheduleCount = 0,
     this.rescheduledAt,
     this.cancelReason,
+    this.acceptedAt,
+    this.cancelledBy,
+    this.declineReason,
+    this.cancelReasonNote,
   })  : startAt = (startAt ?? appointmentStartUtc(date, timeSlot) ?? addisLocalToUtc(date.year, date.month, date.day)).toUtc(),
         endAt = (endAt ??
                 (startAt ?? appointmentStartUtc(date, timeSlot) ?? addisLocalToUtc(date.year, date.month, date.day))
@@ -178,6 +200,10 @@ class Booking {
     int? rescheduleCount,
     DateTime? rescheduledAt,
     String? cancelReason,
+    DateTime? acceptedAt,
+    String? cancelledBy,
+    String? declineReason,
+    String? cancelReasonNote,
   }) {
     return Booking(
       id: id ?? this.id,
@@ -204,6 +230,10 @@ class Booking {
       rescheduleCount: rescheduleCount ?? this.rescheduleCount,
       rescheduledAt: rescheduledAt ?? this.rescheduledAt,
       cancelReason: cancelReason ?? this.cancelReason,
+      acceptedAt: acceptedAt ?? this.acceptedAt,
+      cancelledBy: cancelledBy ?? this.cancelledBy,
+      declineReason: declineReason ?? this.declineReason,
+      cancelReasonNote: cancelReasonNote ?? this.cancelReasonNote,
     );
   }
 
@@ -276,6 +306,10 @@ class Booking {
       rescheduleCount: (map['rescheduleCount'] as num?)?.toInt() ?? 0,
       rescheduledAt: _parseDate(map['rescheduledAt'])?.toUtc(),
       cancelReason: map['cancelReason'] as String?,
+      acceptedAt: _parseDate(map['acceptedAt'])?.toUtc(),
+      cancelledBy: map['cancelledBy'] is String ? map['cancelledBy'] as String : null,
+      declineReason: map['declineReason'] is String ? map['declineReason'] as String : null,
+      cancelReasonNote: map['cancelReasonNote'] is String ? map['cancelReasonNote'] as String : null,
     );
   }
 }

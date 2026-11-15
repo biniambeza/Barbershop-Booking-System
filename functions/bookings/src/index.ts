@@ -15,6 +15,12 @@
  *  - cleanupExpiredSlotLocks (daily, 04:00 Addis): deletes slot locks whose
  *    expiresAt (booking end + 1 day) has passed. Needs the collection-group
  *    single-field index on slotLocks.expiresAt (firestore.indexes.json).
+ *  - expirePendingBookings (every 15 minutes): barber acceptance. Booking
+ *    requests still 'pending' within 60 minutes of their start (or past it)
+ *    are cancelled (cancelledBy 'system', cancelReason 'not_accepted') and
+ *    their own slot locks deleted, one transaction per booking. Query:
+ *    bookings where status == 'pending' and startAt <= now + 60 min
+ *    (composite index status+startAt), re-checked in code and in the tx.
  */
 import { initializeApp } from 'firebase-admin/app';
 import { DocumentReference, getFirestore } from 'firebase-admin/firestore';
@@ -23,6 +29,7 @@ import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/fire
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 
 import { sweepExpiredLocks } from './logic/cleanup';
+import { EXPIRE_MAX_PER_RUN, expireRequestInTx, expiryCutoff, selectExpiredRequests } from './logic/expire';
 import { shouldVerifyUpdate } from './logic/reschedule';
 import { BookingData, LockData, verifyBookingLocksInTx } from './logic/verify';
 
@@ -106,5 +113,56 @@ export const cleanupExpiredSlotLocks = onSchedule(
       },
     });
     logger.info('expired slot locks deleted', result);
+  },
+);
+
+// --- barber acceptance: expire unanswered requests ---
+export const expirePendingBookings = onSchedule(
+  { schedule: 'every 15 minutes', timeZone: 'Africa/Addis_Ababa', retryCount: 1, timeoutSeconds: 300 },
+  async () => {
+    const now = new Date();
+    // Composite index bookings (status ASC, startAt ASC) (firestore.indexes.json).
+    const snap = await db()
+      .collection('bookings')
+      .where('status', '==', 'pending')
+      .where('startAt', '<=', expiryCutoff(now).toISOString())
+      .orderBy('startAt')
+      .limit(EXPIRE_MAX_PER_RUN)
+      .get();
+    const ids = selectExpiredRequests(
+      snap.docs.map((d) => ({ id: d.id, data: d.data() as BookingData })),
+      now,
+    );
+    let expired = 0;
+    let failed = 0;
+    for (const bookingId of ids) {
+      const bookingRef = db().doc(`bookings/${bookingId}`);
+      try {
+        const outcome = await db().runTransaction((tx) =>
+          expireRequestInTx(bookingId, now, {
+            async getBooking() {
+              const s = await tx.get(bookingRef);
+              return s.exists ? (s.data() as BookingData) : null;
+            },
+            async getLocks(shopId, barberId, lockIds) {
+              if (lockIds.length === 0) return [];
+              const snaps = await tx.getAll(...lockIds.map((id) => lockRef(shopId, barberId, id)));
+              return snaps.map((s) => (s.exists ? (s.data() as LockData) : null));
+            },
+            updateBooking(fields) {
+              tx.update(bookingRef, fields);
+            },
+            deleteLocks(shopId, barberId, lockIds) {
+              for (const id of lockIds) tx.delete(lockRef(shopId, barberId, id));
+            },
+          }),
+        );
+        if (outcome.result === 'expired') expired++;
+      } catch (e) {
+        failed++;
+        logger.error('expiring booking request failed', { bookingId, error: String(e) });
+      }
+    }
+    logger.info('pending booking requests expired', { scanned: snap.size, expired, failed });
   },
 );

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../l10n/l10n.dart';
 import '../../../models/booking_model.dart';
@@ -8,8 +7,7 @@ import '../../../services/app_repository.dart';
 import '../../../services/booking_policy.dart' show canMarkNoShow;
 import '../../shared/widgets/no_show_dialog.dart';
 import '../../notifications/widgets/notification_bell.dart';
-import '../../shared/widgets/language_toggle.dart';
-import '../../shared/widgets/persona_switcher.dart';
+import '../../shared/widgets/app_bar_menu.dart';
 import '../../shared/widgets/ui_kit.dart';
 import 'manage_services_screen.dart';
 import 'manage_barbers_screen.dart';
@@ -20,6 +18,8 @@ import '../../payments/widgets/subscription_banner.dart';
 import '../../queue/queue_dashboard_card.dart';
 import '../../reports/screens/owner_reports_screen.dart';
 import '../../reviews/widgets/reviews_dashboard_entries.dart';
+import '../../payouts/payouts_dashboard_entries.dart'; // barber payouts
+import '../../barber/widgets/booking_requests_section.dart';
 
 class OwnerDashboardScreen extends StatefulWidget {
   const OwnerDashboardScreen({super.key});
@@ -88,20 +88,11 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
             ),
           ],
         ),
-        actions: [
-          if (kDemoMode)
-            IconButton(
-              icon: const Icon(Icons.swap_horiz, color: AppTheme.textPrimary),
-              tooltip: l.switchRole,
-              onPressed: () => showPersonaSwitcher(context, current: UserRole.barbershopOwner),
-            ),
-          const LanguageToggle(),
-          const NotificationBell(),
-          IconButton(
-            tooltip: l.signOut,
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: () => repo.signOut(),
-          ),
+        // --- compact header: secondary actions live in AppBarMenu ---
+        actions: const [
+          NotificationBell(),
+          AppBarMenu(role: UserRole.barbershopOwner),
+          SizedBox(width: 4),
         ],
       ),
       body: SingleChildScrollView(
@@ -304,6 +295,9 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
             // Reviews and owner replies
             OwnerReviewsButton(shopId: shop.id),
 
+            // --- barber payouts: commission, balances, payout history ---
+            OwnerPayoutsButton(shopId: shop.id),
+
             // Platform subscription
             SizedBox(
               width: double.infinity,
@@ -365,6 +359,19 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               ),
             ),
             const SizedBox(height: 24),
+
+            // --- barber acceptance: owner answers on behalf of a barber ---
+            ListenableBuilder(
+              listenable: repo,
+              builder: (context, _) {
+                final requests = repo.getBookingRequestsForShop(shop.id);
+                if (requests.isEmpty) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: BookingRequestsSection(requests: requests, showBarber: true),
+                );
+              },
+            ),
 
             // Booking Management Section
             Row(

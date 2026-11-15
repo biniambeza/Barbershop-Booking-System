@@ -2649,3 +2649,735 @@ describe('email + password accounts', () => {
     await assertSucceeds(batch.commit());
   });
 });
+
+// =====================================================================
+// Barber acceptance: pending booking requests (booking_acceptance.dart,
+// FirestoreDataStore.acceptBookingRequest / declineBookingRequest)
+// =====================================================================
+
+// FirestoreDataStore.acceptBookingRequest: read the booking, then
+// update exactly {status: 'confirmed', acceptedAt}.
+function acceptTx(db, bookingId, fields = {}) {
+  return runTransaction(db, async (tx) => {
+    const ref = doc(db, 'bookings', bookingId);
+    const snap = await tx.get(ref);
+    if (snap.data()?.status !== 'pending') throw new Error('not pending');
+    tx.update(ref, { status: 'confirmed', acceptedAt: new Date().toISOString(), ...fields });
+  });
+}
+
+// FirestoreDataStore.declineBookingRequest: read the booking and its
+// locks, update {status: 'cancelled', cancelledBy, declineReason?} and
+// delete the booking's own locks.
+function declineTx(db, bookingId, startAt, minutes, fields = { cancelledBy: 'barber' }) {
+  return runTransaction(db, async (tx) => {
+    const ref = doc(db, 'bookings', bookingId);
+    const snap = await tx.get(ref);
+    if (snap.data()?.status !== 'pending') throw new Error('not pending');
+    const mine = [];
+    for (const s of blocks(startAt, minutes)) {
+      const lockRef = doc(locksOf(db), lockId(s));
+      const lock = await tx.get(lockRef);
+      if (lock.exists() && lock.data().bookingId === bookingId) mine.push(lockRef);
+    }
+    tx.update(ref, { status: 'cancelled', ...fields });
+    for (const r of mine) tx.delete(r);
+  });
+}
+
+describe('barber acceptance: creating requests', () => {
+  const cust = () => as('customer', EMAILS.customer);
+
+  test("a shop that requires acceptance gets 'pending' bookings only", async () => {
+    await env.withSecurityRulesDisabled((ctx) =>
+      updateDoc(doc(ctx.firestore(), 'barbershops', 'shop1'), { requireBarberAcceptance: true }));
+    await assertSucceeds(bookTx(cust(), 'req1', newBooking(addisSlot(3, 14), { status: 'pending' })));
+    await assertFails(bookBatch(cust(), 'req2', newBooking(addisSlot(3, 16), { status: 'confirmed' })));
+  });
+
+  test("other shops (flag false or absent) get 'confirmed' bookings only", async () => {
+    await assertFails(bookBatch(cust(), 'req3', newBooking(addisSlot(3, 14), { status: 'pending' })));
+    await assertSucceeds(bookBatch(cust(), 'req4', newBooking(addisSlot(3, 14), { status: 'confirmed' })));
+    await env.withSecurityRulesDisabled((ctx) =>
+      updateDoc(doc(ctx.firestore(), 'barbershops', 'shop1'), { requireBarberAcceptance: false }));
+    await assertFails(bookBatch(cust(), 'req5', newBooking(addisSlot(3, 16), { status: 'pending' })));
+    await assertSucceeds(bookBatch(cust(), 'req6', newBooking(addisSlot(3, 16), { status: 'confirmed' })));
+  });
+
+  test('acceptedAt and declineReason are never written on create', async () => {
+    await env.withSecurityRulesDisabled((ctx) =>
+      updateDoc(doc(ctx.firestore(), 'barbershops', 'shop1'), { requireBarberAcceptance: true }));
+    await assertFails(bookBatch(cust(), 'req7', newBooking(addisSlot(3, 14), { status: 'pending', acceptedAt: NOW })));
+    await assertFails(bookBatch(cust(), 'req8', newBooking(addisSlot(3, 14), { status: 'pending', declineReason: 'x' })));
+  });
+});
+
+describe('barber acceptance: shop setting', () => {
+  const policy = (requireBarberAcceptance) => ({ cancellationCutoffHours: 2, maxReschedules: 2, requireBarberAcceptance });
+
+  test('the owner (and admin) turn it on and off with the policy update', async () => {
+    const owner = doc(as('owner1', EMAILS.owner1), 'barbershops', 'shop1');
+    await assertSucceeds(updateDoc(owner, policy(true)));
+    await assertSucceeds(updateDoc(owner, policy(false)));
+    await assertSucceeds(updateDoc(doc(as('admin', EMAILS.admin), 'barbershops', 'shop1'), policy(true)));
+    await assertFails(updateDoc(owner, policy('yes')));
+    await assertFails(updateDoc(owner, policy(1)));
+  });
+
+  test('nobody else changes it', async () => {
+    await assertFails(updateDoc(doc(as('owner2', EMAILS.owner2), 'barbershops', 'shop1'), policy(true)));
+    await assertFails(updateDoc(doc(as('barber1', EMAILS.barber1), 'barbershops', 'shop1'), policy(true)));
+    await assertFails(updateDoc(doc(as('customer', EMAILS.customer), 'barbershops', 'shop1'), policy(true)));
+  });
+
+  test('admin may create a shop with it (bool only)', async () => {
+    const admin = as('admin', EMAILS.admin);
+    await assertSucceeds(setDoc(doc(admin, 'barbershops', 'acc1'), newShop('', { requireBarberAcceptance: true })));
+    await assertFails(setDoc(doc(admin, 'barbershops', 'acc2'), newShop('', { requireBarberAcceptance: 'true' })));
+  });
+});
+
+describe('barber acceptance: accept and decline', () => {
+  const at = addisSlot(2, 11);
+  const req = () => newBooking(at, { status: 'pending' });
+
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled((ctx) =>
+      updateDoc(doc(ctx.firestore(), 'barbershops', 'shop1'), { requireBarberAcceptance: true }));
+    await seedBookingWithLocks('req', req());
+  });
+
+  const reset = () => seedBookingWithLocks('req', req());
+
+  test('the booked barber, the owner and an admin accept', async () => {
+    for (const [uid, email] of [
+      ['barber1', EMAILS.barber1],
+      ['owner1', EMAILS.owner1],
+      ['admin', EMAILS.admin],
+    ]) {
+      await reset();
+      await assertSucceeds(acceptTx(as(uid, email), 'req'), uid);
+    }
+  });
+
+  test('nobody else accepts', async () => {
+    for (const [uid, email] of [
+      ['customer', EMAILS.customer],
+      ['customer2', EMAILS.customer2],
+      ['barber2', EMAILS.barber2],
+      ['owner2', EMAILS.owner2],
+    ]) {
+      await assertFails(acceptTx(as(uid, email), 'req'), uid);
+    }
+  });
+
+  test('accept writes exactly {status: confirmed, acceptedAt}, only from pending, before the start', async () => {
+    const barber = doc(as('barber1', EMAILS.barber1), 'bookings', 'req');
+    await assertFails(updateDoc(barber, { status: 'confirmed', acceptedAt: NOW, price: 1 }));
+    await assertFails(updateDoc(barber, { status: 'confirmed', acceptedAt: NOW, cancelledBy: 'barber' }));
+    await assertFails(updateDoc(barber, { status: 'confirmed', acceptedAt: 'yesterday' }));
+    await assertFails(updateDoc(barber, { status: 'inProgress', acceptedAt: NOW }));
+    await assertSucceeds(updateDoc(barber, { status: 'confirmed', acceptedAt: NOW }));
+    // Not again (it is confirmed now).
+    await assertFails(updateDoc(barber, { acceptedAt: new Date(Date.now() + 1000).toISOString() }));
+    // A cancelled request cannot be accepted.
+    await env.withSecurityRulesDisabled((ctx) =>
+      updateDoc(doc(ctx.firestore(), 'bookings', 'req'), { status: 'cancelled', cancelledBy: 'system', cancelReason: 'not_accepted' }));
+    await assertFails(updateDoc(barber, { status: 'confirmed', acceptedAt: NOW }));
+    // Nor one that has already started.
+    await seedBookingWithLocks('reqPast', newBooking(addisSlot(-1, 10), { status: 'pending' }));
+    await assertFails(updateDoc(doc(as('barber1', EMAILS.barber1), 'bookings', 'reqPast'), { status: 'confirmed', acceptedAt: NOW }));
+  });
+
+  test('the barber declines with a reason and releases the locks; the slot is free again', async () => {
+    await assertSucceeds(
+      declineTx(as('barber1', EMAILS.barber1), 'req', at, 40, { cancelledBy: 'barber', declineReason: 'Fully booked that morning' }));
+    let lockExists = true;
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      lockExists = (await getDoc(doc(locksOf(ctx.firestore()), lockId(at)))).exists();
+    });
+    assert.equal(lockExists, false);
+    await assertSucceeds(bookTx(as('customer2', EMAILS.customer2), 'again', newBooking(at, { customerId: 'customer2', status: 'pending' })));
+  });
+
+  test('the owner and an admin decline too (no reason)', async () => {
+    await assertSucceeds(declineTx(as('owner1', EMAILS.owner1), 'req', at, 40));
+    await reset();
+    await assertSucceeds(declineTx(as('owner1', EMAILS.owner1), 'req', at, 40, { cancelledBy: 'owner' }));
+    await reset();
+    await assertSucceeds(declineTx(as('admin', EMAILS.admin), 'req', at, 40));
+  });
+
+  test('nobody else declines', async () => {
+    for (const [uid, email] of [
+      ['customer', EMAILS.customer],
+      ['customer2', EMAILS.customer2],
+      ['barber2', EMAILS.barber2],
+      ['owner2', EMAILS.owner2],
+    ]) {
+      await assertFails(declineTx(as(uid, email), 'req', at, 40), uid);
+    }
+  });
+
+  test('decline fields: cancelledBy barber/owner, declineReason 1..200, nothing else', async () => {
+    const barber = doc(as('barber1', EMAILS.barber1), 'bookings', 'req');
+    await assertFails(updateDoc(barber, { status: 'cancelled', cancelledBy: 'system' }));
+    await assertFails(updateDoc(barber, { status: 'cancelled', cancelledBy: 'customer' }));
+    await assertFails(updateDoc(barber, { status: 'cancelled', cancelledBy: 'barber', declineReason: 'x'.repeat(201) }));
+    await assertFails(updateDoc(barber, { status: 'cancelled', cancelledBy: 'barber', declineReason: '' }));
+    await assertFails(updateDoc(barber, { status: 'cancelled', cancelledBy: 'barber', cancelReason: 'not_accepted' }));
+    await assertFails(updateDoc(barber, { status: 'cancelled', cancelledBy: 'barber', price: 1 }));
+    await assertFails(updateDoc(barber, { status: 'completed', cancelledBy: 'barber' }));
+    await assertSucceeds(updateDoc(barber, { status: 'cancelled', cancelledBy: 'barber', declineReason: 'x'.repeat(200) }));
+  });
+
+  test('a confirmed booking cannot be "declined" with a role literal or a reason', async () => {
+    const barber = doc(as('barber1', EMAILS.barber1), 'bookings', 'bk1');
+    await assertFails(updateDoc(barber, { status: 'cancelled', cancelledBy: 'barber' }));
+    await assertFails(updateDoc(barber, { status: 'cancelled', cancelledBy: 'barber1', declineReason: 'Busy' }));
+  });
+
+  test('the customer still cancels their own pending request (and releases the locks)', async () => {
+    await assertSucceeds(cancelTx(as('customer', EMAILS.customer), 'req', at, 40, { cancelledBy: 'customer' }));
+  });
+
+  test('declined and accepted bookings stay updatable (admin payment correction)', async () => {
+    await assertSucceeds(declineTx(as('barber1', EMAILS.barber1), 'req', at, 40, { cancelledBy: 'barber', declineReason: 'Sick' }));
+    await assertSucceeds(updateDoc(doc(as('admin', EMAILS.admin), 'bookings', 'req'), { paymentStatus: 'refunded' }));
+    await seedBookingWithLocks('req2', newBooking(addisSlot(2, 14), { status: 'pending' }));
+    await assertSucceeds(acceptTx(as('barber1', EMAILS.barber1), 'req2'));
+    await assertSucceeds(updateDoc(doc(as('barber1', EMAILS.barber1), 'bookings', 'req2'), { status: 'inProgress' }));
+  });
+});
+
+// =====================================================================
+// Payouts: barber commission and barbershops/{shopId}/payouts
+// =====================================================================
+
+describe('barber commission', () => {
+  const ref = (uid, email, barberId = 'b1') => doc(as(uid, email), 'barbershops/shop1/barbers', barberId);
+
+  test('the owner sets an int 0..100, or removes it', async () => {
+    for (const v of [0, 60, 100]) await assertSucceeds(updateDoc(ref('owner1', EMAILS.owner1), { commissionPercent: v }), String(v));
+    await assertSucceeds(updateDoc(ref('owner1', EMAILS.owner1), { commissionPercent: deleteField() }));
+    for (const v of [-1, 101, 50.5, '50', null]) {
+      await assertFails(updateDoc(ref('owner1', EMAILS.owner1), { commissionPercent: v }), String(v));
+    }
+  });
+
+  test("the owner's full profile update (toProfileMap) carries it", async () => {
+    await assertSucceeds(updateDoc(ref('owner1', EMAILS.owner1), {
+      name: 'Abel',
+      title: 'Senior Barber',
+      avatarUrl: deleteField(),
+      isAvailable: true,
+      email: deleteField(),
+      phone: deleteField(),
+      specialties: ['Fade'],
+      workingDays: [1, 2, 3],
+      startHour: 9,
+      endHour: 18,
+      commissionPercent: 55,
+    }));
+  });
+
+  test('the barber cannot change their own commission; nor can others or the admin', async () => {
+    await assertFails(updateDoc(ref('barber1', EMAILS.barber1), { commissionPercent: 90 }));
+    await assertFails(updateDoc(ref('barber1', EMAILS.barber1), { isAvailable: false, commissionPercent: 90 }));
+    await assertFails(updateDoc(ref('owner2', EMAILS.owner2), { commissionPercent: 90 }));
+    await assertFails(updateDoc(ref('customer', EMAILS.customer), { commissionPercent: 90 }));
+    await assertFails(updateDoc(ref('admin', EMAILS.admin), { commissionPercent: 90 }));
+    // The admin's other edits still work.
+    await assertSucceeds(updateDoc(ref('admin', EMAILS.admin), { title: 'Head Barber' }));
+  });
+
+  test('addBarber may include it', async () => {
+    await assertSucceeds(setDoc(doc(as('owner1', EMAILS.owner1), 'barbershops/shop1/barbers', 'bNew'),
+      { ...barber('shop1', 'Dawit'), commissionPercent: 40 }));
+    await assertFails(setDoc(doc(as('owner1', EMAILS.owner1), 'barbershops/shop1/barbers', 'bBad'),
+      { ...barber('shop1', 'Dawit'), commissionPercent: 140 }));
+  });
+});
+
+describe('payouts', () => {
+  const monthStart = (() => {
+    const d = new Date();
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString();
+  })();
+  const monthEnd = (() => {
+    const d = new Date();
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).toISOString();
+  })();
+  const hoursAgo = (h) => new Date(Date.now() - h * 3600 * 1000).toISOString();
+
+  // Payout.toMap as the app writes it.
+  const payout = (extra = {}) => ({
+    barberId: 'b1',
+    amount: 200,
+    periodStart: monthStart,
+    periodEnd: monthEnd,
+    method: 'cash',
+    createdBy: 'owner1',
+    createdAt: new Date().toISOString(),
+    ...extra,
+  });
+  const payoutsOf = (db, shopId = 'shop1') => collection(db, `barbershops/${shopId}/payouts`);
+  const owner = () => as('owner1', EMAILS.owner1);
+
+  beforeEach(async () => {
+    await seed('barbershops/shop1/payouts', 'pRecent', payout({ createdAt: hoursAgo(3) }));
+    await seed('barbershops/shop1/payouts', 'pOld', payout({ barberId: 'b2', method: 'telebirr', amount: 150, createdAt: hoursAgo(30) }));
+  });
+
+  test('the owner records a payout', async () => {
+    await assertSucceeds(setDoc(doc(payoutsOf(owner()), 'n1'), payout()));
+    await assertSucceeds(setDoc(doc(payoutsOf(owner()), 'n2'), payout({ amount: 150.25, method: 'telebirr', note: 'November share' })));
+    await assertSucceeds(setDoc(doc(payoutsOf(owner()), 'n3'), payout({ amount: 1000000, method: 'bank', barberId: 'b2' })));
+    // Dart's toIso8601String on native carries microseconds.
+    await assertSucceeds(setDoc(doc(payoutsOf(owner()), 'n4'), payout({ method: 'other', createdAt: new Date().toISOString().replace('Z', '456Z') })));
+  });
+
+  test('payout fields are validated', async () => {
+    const bad = [
+      { amount: 0 },
+      { amount: -5 },
+      { amount: 1000000.5 },
+      { amount: '200' },
+      { method: 'card' },
+      { barberId: 'nobody' },
+      { barberId: 'b3' }, // another shop's barber
+      { createdBy: 'owner2' },
+      { periodStart: '2026-11-01T00:00:00.000' },
+      { periodEnd: '2026-11-30T10:00:00.000Z' },
+      { periodStart: monthEnd, periodEnd: monthStart },
+      { note: '' },
+      { note: 'x'.repeat(201) },
+      { createdAt: 'today' },
+      { createdAt: new Date(Date.now() + 2 * 3600 * 1000).toISOString() },
+      { paidAt: NOW },
+    ];
+    for (const [i, extra] of bad.entries()) {
+      await assertFails(setDoc(doc(payoutsOf(owner()), `bad${i}`), payout(extra)), JSON.stringify(extra));
+    }
+    const missing = payout();
+    delete missing.method;
+    await assertFails(setDoc(doc(payoutsOf(owner()), 'badMissing'), missing));
+  });
+
+  test('only the shop owner records payouts', async () => {
+    for (const [uid, email] of [
+      ['owner2', EMAILS.owner2],
+      ['admin', EMAILS.admin],
+      ['barber1', EMAILS.barber1],
+      ['customer', EMAILS.customer],
+    ]) {
+      await assertFails(setDoc(doc(payoutsOf(as(uid, email)), `x_${uid}`), payout({ createdBy: uid })), uid);
+    }
+  });
+
+  test('payouts are never updated', async () => {
+    await assertFails(updateDoc(doc(payoutsOf(owner()), 'pRecent'), { amount: 300 }));
+    await assertFails(updateDoc(doc(payoutsOf(owner()), 'pRecent'), { createdAt: new Date().toISOString() }));
+    await assertFails(setDoc(doc(payoutsOf(owner()), 'pOld'), payout({ barberId: 'b2' })));
+  });
+
+  test('the owner deletes within 24 hours of createdAt only', async () => {
+    await assertFails(deleteDoc(doc(payoutsOf(owner()), 'pOld')));
+    await assertSucceeds(deleteDoc(doc(payoutsOf(owner()), 'pRecent')));
+  });
+
+  test('nobody else deletes a payout', async () => {
+    for (const [uid, email] of [
+      ['owner2', EMAILS.owner2],
+      ['admin', EMAILS.admin],
+      ['barber1', EMAILS.barber1],
+      ['customer', EMAILS.customer],
+    ]) {
+      await assertFails(deleteDoc(doc(payoutsOf(as(uid, email)), 'pRecent')), uid);
+    }
+  });
+
+  test("owner's month query and the admin read every payout of the shop", async () => {
+    const month = (db) => query(payoutsOf(db), where('periodStart', '>=', monthStart), where('periodStart', '<=', monthEnd));
+    const res = await assertSucceeds(getDocs(month(owner())));
+    assert.equal(res.size, 2);
+    await assertSucceeds(getDocs(query(payoutsOf(owner()), where('barberId', '==', 'b2'))));
+    await assertSucceeds(getDocs(month(as('admin', EMAILS.admin))));
+    await assertSucceeds(getDoc(doc(payoutsOf(as('admin', EMAILS.admin)), 'pOld')));
+    await assertFails(getDocs(month(as('owner2', EMAILS.owner2))));
+    await assertFails(getDocs(month(as('customer', EMAILS.customer))));
+  });
+
+  test('a barber reads only their own payouts (where barberId == own id)', async () => {
+    const b1 = as('barber1', EMAILS.barber1);
+    const mine = await assertSucceeds(getDocs(query(payoutsOf(b1), where('barberId', '==', 'b1'))));
+    assert.equal(mine.size, 1);
+    await assertSucceeds(getDoc(doc(payoutsOf(b1), 'pRecent')));
+    await assertFails(getDoc(doc(payoutsOf(b1), 'pOld')));
+    await assertFails(getDocs(query(payoutsOf(b1), where('barberId', '==', 'b2'))));
+    await assertFails(getDocs(payoutsOf(b1)));
+    await assertFails(getDocs(query(payoutsOf(b1), where('periodStart', '>=', monthStart))));
+    // barber2 sees theirs, not barber1's.
+    await assertSucceeds(getDocs(query(payoutsOf(as('barber2', EMAILS.barber2)), where('barberId', '==', 'b2'))));
+    await assertFails(getDoc(doc(payoutsOf(as('barber2', EMAILS.barber2)), 'pRecent')));
+  });
+
+  test("a removed barber profile loses access to its payouts", async () => {
+    await env.withSecurityRulesDisabled((ctx) => deleteDoc(doc(ctx.firestore(), 'barbershops/shop1/barbers', 'b1')));
+    await assertFails(getDocs(query(payoutsOf(as('barber1', EMAILS.barber1)), where('barberId', '==', 'b1'))));
+  });
+});
+
+// =====================================================================
+// Shop applications: shopApplications/{uid}
+// =====================================================================
+
+describe('shop applications', () => {
+  // ShopApplication.toMap for a new application.
+  const application = (uid = 'customer', extra = {}) => ({
+    uid,
+    email: EMAILS[uid] ?? `${uid}@example.com`,
+    ownerName: 'Selam Tesfaye',
+    shopName: 'Selam Cuts',
+    address: 'Bole Road, near Edna Mall',
+    subCity: 'Bole',
+    phone: '+251911223344',
+    description: 'Fades and beard trims',
+    status: 'pending',
+    createdAt: NOW,
+    ...extra,
+  });
+  const appRef = (db, uid = 'customer') => doc(db, 'shopApplications', uid);
+  const cust = () => as('customer', EMAILS.customer);
+  const admin = () => as('admin', EMAILS.admin);
+
+  const seedApp = (uid, extra = {}) => seed('shopApplications', uid, application(uid, extra));
+  const rejected = {
+    status: 'rejected',
+    reviewedBy: 'admin',
+    reviewedAt: NOW,
+    rejectReason: 'Please add the shop address',
+  };
+
+  test('a customer applies for themselves', async () => {
+    await assertSucceeds(setDoc(appRef(cust()), application()));
+    const noDescription = application('customer2');
+    delete noDescription.description;
+    await assertSucceeds(setDoc(appRef(as('customer2', EMAILS.customer2), 'customer2'), noDescription));
+  });
+
+  test('application fields are validated', async () => {
+    const bad = [
+      { uid: 'customer2' },
+      { email: EMAILS.customer2 },
+      { email: 'CUSTOMER@example.com' },
+      { status: 'approved' },
+      { reviewedBy: 'admin' },
+      { shopId: 'shop1' },
+      { ownerName: '' },
+      { shopName: 'A' },
+      { shopName: 'x'.repeat(81) },
+      { address: 'x'.repeat(161) },
+      { subCity: 'Piassa' },
+      { phone: '0911223344' },
+      { phone: '+251811223344' },
+      { description: '' },
+      { description: 'x'.repeat(501) },
+      { createdAt: 'now' },
+      { extra: true },
+    ];
+    for (const extra of bad) {
+      await assertFails(setDoc(appRef(cust()), application('customer', extra)), JSON.stringify(extra));
+    }
+    // A landline is a valid contact phone.
+    await assertSucceeds(setDoc(appRef(cust()), application('customer', { phone: '+251115512345' })));
+  });
+
+  test('only a customer, for their own uid and verified email', async () => {
+    await assertFails(setDoc(appRef(cust(), 'customer2'), application('customer2')));
+    await assertFails(setDoc(appRef(as('customer', EMAILS.customer, false)), application()));
+    await assertFails(setDoc(appRef(as('owner1', EMAILS.owner1), 'owner1'), application('owner1')));
+    await assertFails(setDoc(appRef(as('barber1', EMAILS.barber1), 'barber1'), application('barber1')));
+    await assertFails(setDoc(appRef(admin(), 'admin'), application('admin')));
+    // Signed in, but no profile yet.
+    await assertFails(setDoc(appRef(as('newPerson', EMAILS.newPerson), 'newPerson'), application('newPerson')));
+    await assertFails(setDoc(appRef(anon()), application()));
+  });
+
+  test('cannot create over an existing pending or approved application', async () => {
+    await seedApp('customer');
+    // A set() over a pending one is only an edit: status and createdAt stay.
+    await assertFails(setDoc(appRef(cust()), application('customer', { createdAt: new Date(Date.now() + 1000).toISOString() })));
+    await assertFails(setDoc(appRef(cust()), application('customer', { status: 'rejected' })));
+    await seedApp('customer', { status: 'approved', reviewedBy: 'admin', reviewedAt: NOW, shopId: 'shop1' });
+    await assertFails(setDoc(appRef(cust()), application()));
+  });
+
+  test('reads: the applicant and admins (get), admins list', async () => {
+    await seedApp('customer');
+    await seedApp('customer2', rejected);
+    await assertSucceeds(getDoc(appRef(cust())));
+    // Before applying (no document) the applicant can still check.
+    await assertSucceeds(getDoc(appRef(as('newPerson', EMAILS.newPerson), 'newPerson')));
+    await assertSucceeds(getDoc(appRef(admin(), 'customer2')));
+    await assertFails(getDoc(appRef(as('customer2', EMAILS.customer2), 'customer')));
+    await assertFails(getDoc(appRef(as('owner1', EMAILS.owner1), 'customer')));
+    await assertFails(getDoc(appRef(anon(), 'customer')));
+
+    const pending = (db) => query(collection(db, 'shopApplications'), where('status', '==', 'pending'));
+    const decided = (db) => query(collection(db, 'shopApplications'), orderBy('reviewedAt', 'desc'), limit(20));
+    assert.equal((await assertSucceeds(getDocs(pending(admin())))).size, 1);
+    assert.equal((await assertSucceeds(getDocs(decided(admin())))).size, 1);
+    await assertFails(getDocs(pending(cust())));
+    await assertFails(getDocs(query(collection(cust(), 'shopApplications'), where('uid', '==', 'customer'))));
+    await assertFails(getDocs(decided(as('owner1', EMAILS.owner1))));
+  });
+
+  test('the applicant edits the six fields while pending', async () => {
+    await seedApp('customer');
+    await assertSucceeds(updateDoc(appRef(cust()), {
+      ownerName: 'Selam T.',
+      shopName: 'Selam Cuts Bole',
+      address: 'Bole Road',
+      subCity: 'Kirkos',
+      phone: '+251911223355',
+      description: deleteField(),
+    }));
+    await assertFails(updateDoc(appRef(cust()), { status: 'approved' }));
+    await assertFails(updateDoc(appRef(cust()), { email: EMAILS.customer2 }));
+    await assertFails(updateDoc(appRef(cust()), { createdAt: NOW + 'x' }));
+    await assertFails(updateDoc(appRef(cust()), { shopId: 'shop1' }));
+    await assertFails(updateDoc(appRef(cust()), { subCity: 'Nowhere' }));
+    await assertFails(updateDoc(appRef(as('customer2', EMAILS.customer2), 'customer'), { shopName: 'Mine now' }));
+    await assertFails(updateDoc(appRef(admin(), 'customer'), { shopName: 'Admin edit' }));
+  });
+
+  test('no edits once reviewed; a rejected one may be resubmitted (full set, pending)', async () => {
+    await seedApp('customer', rejected);
+    await assertFails(updateDoc(appRef(cust()), { shopName: 'Edited' }));
+    await assertFails(setDoc(appRef(cust()), application('customer', { status: 'rejected' })));
+    await assertFails(setDoc(appRef(cust()), application('customer', { rejectReason: 'x' })));
+    await assertSucceeds(setDoc(appRef(cust()), application('customer', { shopName: 'Selam Cuts II', createdAt: new Date().toISOString() })));
+
+    await seedApp('customer', { status: 'approved', reviewedBy: 'admin', reviewedAt: NOW, shopId: 'shop1' });
+    await assertFails(updateDoc(appRef(cust()), { shopName: 'Edited' }));
+    await assertFails(setDoc(appRef(cust()), application()));
+  });
+
+  test('the applicant withdraws while pending only', async () => {
+    await seedApp('customer2');
+    await assertFails(deleteDoc(appRef(cust(), 'customer2')));
+    await assertFails(deleteDoc(appRef(admin(), 'customer2')));
+    await assertSucceeds(deleteDoc(appRef(as('customer2', EMAILS.customer2), 'customer2')));
+    await seedApp('customer', rejected);
+    await assertFails(deleteDoc(appRef(cust())));
+  });
+
+  test('the admin rejects a pending application with exactly the review fields', async () => {
+    await seedApp('customer');
+    const ref = appRef(admin(), 'customer');
+    await assertFails(updateDoc(ref, { ...rejected, reviewedBy: 'someone' }));
+    await assertFails(updateDoc(ref, { ...rejected, rejectReason: '' }));
+    await assertFails(updateDoc(ref, { ...rejected, rejectReason: 'x'.repeat(301) }));
+    await assertFails(updateDoc(ref, { ...rejected, shopId: 'shop1' }));
+    await assertFails(updateDoc(ref, { ...rejected, shopName: 'Renamed' }));
+    await assertFails(updateDoc(appRef(cust()), rejected));
+    await assertFails(updateDoc(appRef(as('owner1', EMAILS.owner1), 'customer'), { ...rejected, reviewedBy: 'owner1' }));
+    await assertSucceeds(updateDoc(ref, rejected));
+    // Only once (it is no longer pending).
+    await assertFails(updateDoc(ref, { ...rejected, rejectReason: 'Again' }));
+  });
+
+  // AppRepository._createShopForApplication: ONE batch with the shop, two
+  // services, the lead barber, the owner invite and the application update.
+  function approveBatch(db, { shopId = 'appShop', inviteEmail = EMAILS.customer, inviteShopId = shopId, withShop = true, withInvite = true, appFields = {} } = {}) {
+    const batch = writeBatch(db);
+    if (withShop) {
+      // The application had no description: the shop's is empty.
+      const shopDoc = newShop('', {
+        name: 'Selam Cuts',
+        description: '',
+        address: 'Bole Road, near Edna Mall',
+        phone: '+251911223344',
+        isVerified: true,
+      });
+      delete shopDoc.landmark;
+      batch.set(doc(db, 'barbershops', shopId), shopDoc);
+      batch.set(doc(db, `barbershops/${shopId}/services`, 's1'), { shopId, name: 'Haircut & Style', description: 'Cut', price: 400, durationMinutes: 40 });
+      batch.set(doc(db, `barbershops/${shopId}/services`, 's2'), { shopId, name: 'Beard Trim & Hot Towel', description: 'Beard', price: 250, durationMinutes: 30 });
+      batch.set(doc(db, `barbershops/${shopId}/barbers`, 'lead'), {
+        shopId, name: 'Selam Tesfaye', title: 'Master Barber / Lead Stylist', avatarUrl: 'https://example.com/a.jpg',
+        rating: 5, reviewCount: 0, isAvailable: true, phone: '+251911223344', specialties: ['Skin Fade'],
+      });
+    }
+    if (withInvite) {
+      batch.set(doc(db, 'invites', inviteEmail), invite(inviteEmail, 'barbershopOwner', { name: 'Selam Tesfaye', shopId: inviteShopId }));
+    }
+    batch.update(doc(db, 'shopApplications', 'customer'), {
+      status: 'approved',
+      reviewedBy: 'admin',
+      reviewedAt: new Date().toISOString(),
+      shopId,
+      ...appFields,
+    });
+    return batch.commit();
+  }
+
+  const stripUndefined = (o) => JSON.parse(JSON.stringify(o));
+
+  test('the admin approves in one batch; the applicant then becomes the owner without signing out', async () => {
+    await seed('shopApplications', 'customer', stripUndefined(application('customer', { description: undefined })));
+    await assertSucceeds(approveBatch(admin()));
+
+    // applyPendingInviteForCurrentUser: read the invite, then one batch
+    // (profile with the invite's role + delete the invite), then claim.
+    const db = cust();
+    await assertSucceeds(getDoc(doc(db, 'invites', EMAILS.customer)));
+    await assertSucceeds(getDoc(appRef(db)));
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'users', 'customer'), {
+      uid: 'customer', email: EMAILS.customer, name: 'customer', phone: PHONES.customer,
+      role: 'barbershopOwner', shopId: 'appShop', createdAt: NOW,
+    });
+    batch.delete(doc(db, 'invites', EMAILS.customer));
+    await assertSucceeds(batch.commit());
+    await assertSucceeds(updateDoc(doc(db, 'barbershops', 'appShop'), { ownerId: 'customer' }));
+    // The new owner still reads the (approved) application, but cannot change it.
+    await assertSucceeds(getDoc(appRef(db)));
+    await assertFails(updateDoc(appRef(db), { shopName: 'Changed' }));
+    await assertFails(deleteDoc(appRef(db)));
+  });
+
+  test('approval needs the shop and the applicant owner invite in the same batch', async () => {
+    await seedApp('customer');
+    await assertFails(approveBatch(admin(), { withShop: false, withInvite: false }));
+    await assertFails(approveBatch(admin(), { withInvite: false }));
+    await assertFails(approveBatch(admin(), { inviteEmail: EMAILS.newPerson }));
+    await assertFails(approveBatch(admin(), { inviteShopId: 'shop1' }));
+    await assertFails(approveBatch(admin(), { appFields: { reviewedBy: 'owner1' } }));
+    await assertFails(approveBatch(admin(), { appFields: { rejectReason: 'x' } }));
+    await assertSucceeds(approveBatch(admin()));
+  });
+
+  test('only a pending application is approved, and only by an admin', async () => {
+    await seedApp('customer', rejected);
+    await assertFails(approveBatch(admin()));
+    await seedApp('customer');
+    await assertFails(updateDoc(appRef(cust()), { status: 'approved', reviewedBy: 'customer', reviewedAt: NOW, shopId: 'shop1' }));
+    await assertFails(updateDoc(appRef(as('owner1', EMAILS.owner1), 'customer'), {
+      status: 'approved', reviewedBy: 'owner1', reviewedAt: NOW, shopId: 'shop1',
+    }));
+  });
+});
+
+// =====================================================================
+// Barber cancel (status 'cancelled', cancelledBy = own uid, optional
+// cancelReasonNote) and the functions-only inviteEmails collection.
+// =====================================================================
+
+describe('barber cancels their own booking', () => {
+  const b1 = () => as('barber1', EMAILS.barber1);
+  const past = addisSlot(-1, 10);
+
+  test('confirmed booking, before the start, with a note; the slot is free again', async () => {
+    await assertSucceeds(cancelTx(b1(), 'bk1', START, 40, { cancelledBy: 'barber1', cancelReasonNote: 'Sick today, sorry' }));
+    const snap = await getDoc(doc(b1(), 'bookings', 'bk1'));
+    assert.equal(snap.data().status, 'cancelled');
+    assert.equal(snap.data().cancelReasonNote, 'Sick today, sorry');
+    // Its locks were released: another customer books the same slot.
+    for (const b of blocks(START, 40)) {
+      assert.equal((await getDoc(doc(locksOf(b1()), lockId(b)))).exists(), false);
+    }
+    await assertSucceeds(bookTx(as('customer2', EMAILS.customer2), 'again', newBooking(START, { customerId: 'customer2' })));
+  });
+
+  test('pending booking, without a note', async () => {
+    const at = addisSlot(4, 14);
+    await seedBookingWithLocks('bkPending', newBooking(at, { status: 'pending' }));
+    await assertSucceeds(cancelTx(b1(), 'bkPending', at, 40, { cancelledBy: 'barber1' }));
+  });
+
+  test('cancelledBy must be the barber uid', async () => {
+    const ref = doc(b1(), 'bookings', 'bk1');
+    await assertFails(updateDoc(ref, { status: 'cancelled' }));
+    await assertFails(updateDoc(ref, { status: 'cancelled', cancelledBy: 'barber' }));
+    await assertFails(updateDoc(ref, { status: 'cancelled', cancelledBy: 'customer' }));
+    await assertSucceeds(updateDoc(ref, { status: 'cancelled', cancelledBy: 'barber1' }));
+  });
+
+  test('not after the start', async () => {
+    await seedBookingWithLocks('bkPast', newBooking(past));
+    await assertFails(cancelTx(b1(), 'bkPast', past, 40, { cancelledBy: 'barber1' }));
+    await assertFails(updateDoc(doc(b1(), 'bookings', 'bkPast'), { status: 'cancelled', cancelledBy: 'barber1', cancelReasonNote: 'Late' }));
+    // The owner still can.
+    await assertSucceeds(updateDoc(doc(as('owner1', EMAILS.owner1), 'bookings', 'bkPast'), { status: 'cancelled', cancelledBy: 'owner1' }));
+  });
+
+  test('only from pending or confirmed', async () => {
+    for (const status of ['inProgress', 'completed', 'noShow', 'cancelled']) {
+      await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'bookings', 'bk1'), { status }));
+      await assertFails(updateDoc(doc(b1(), 'bookings', 'bk1'), { status: 'cancelled', cancelledBy: 'barber1' }), status);
+    }
+  });
+
+  test('another barber, customers and other owners cannot cancel this booking', async () => {
+    for (const [uid, email] of [
+      ['barber2', EMAILS.barber2],
+      ['customer2', EMAILS.customer2],
+      ['owner2', EMAILS.owner2],
+    ]) {
+      await assertFails(updateDoc(doc(as(uid, email), 'bookings', 'bk1'), { status: 'cancelled', cancelledBy: uid }), uid);
+      await assertFails(updateDoc(doc(as(uid, email), 'bookings', 'bk1'), { status: 'cancelled', cancelledBy: uid, cancelReasonNote: 'x' }), uid);
+    }
+    await assertFails(cancelTx(as('barber2', EMAILS.barber2), 'bk1', START, 40, { cancelledBy: 'barber2' }));
+  });
+
+  test('cancelReasonNote: 1..200 characters, nothing else may change', async () => {
+    const ref = doc(b1(), 'bookings', 'bk1');
+    await assertFails(updateDoc(ref, { status: 'cancelled', cancelledBy: 'barber1', cancelReasonNote: '' }));
+    await assertFails(updateDoc(ref, { status: 'cancelled', cancelledBy: 'barber1', cancelReasonNote: 'x'.repeat(201) }));
+    await assertFails(updateDoc(ref, { status: 'cancelled', cancelledBy: 'barber1', cancelReasonNote: 42 }));
+    await assertFails(updateDoc(ref, { status: 'cancelled', cancelledBy: 'barber1', cancelReasonNote: 'ok', price: 1 }));
+    await assertFails(updateDoc(ref, { status: 'cancelled', cancelledBy: 'barber1', declineReason: 'ok' }));
+    await assertSucceeds(updateDoc(ref, { status: 'cancelled', cancelledBy: 'barber1', cancelReasonNote: 'x'.repeat(200) }));
+    // Not editable afterwards, by anyone.
+    await assertFails(updateDoc(ref, { cancelReasonNote: 'changed' }));
+    await assertFails(updateDoc(doc(as('owner1', EMAILS.owner1), 'bookings', 'bk1'), { cancelReasonNote: 'changed' }));
+    // The admin's payment correction still works on such a booking.
+    await assertSucceeds(updateDoc(doc(as('admin', EMAILS.admin), 'bookings', 'bk1'), { paymentStatus: 'refunded' }));
+  });
+
+  test('the note is staff-only: not on other transitions or for customers', async () => {
+    await assertFails(updateDoc(doc(b1(), 'bookings', 'bk1'), { status: 'inProgress', cancelReasonNote: 'x' }));
+    await assertFails(updateDoc(doc(as('customer', EMAILS.customer), 'bookings', 'bk1'), { status: 'cancelled', cancelledBy: 'customer', cancelReasonNote: 'x' }));
+    await assertFails(updateDoc(doc(as('customer', EMAILS.customer), 'bookings', 'bk1'), { cancelReasonNote: 'x' }));
+    await assertFails(updateDoc(doc(as('admin', EMAILS.admin), 'bookings', 'bk1'), { status: 'cancelled', cancelledBy: 'admin', cancelReasonNote: 'x' }));
+    await assertFails(bookBatch(as('customer', EMAILS.customer), 'cn1', newBooking(addisSlot(6, 13), { cancelReasonNote: 'x' })));
+    // The owner may add one when cancelling.
+    await assertSucceeds(updateDoc(doc(as('owner1', EMAILS.owner1), 'bookings', 'bk1'), { status: 'cancelled', cancelledBy: 'owner1', cancelReasonNote: 'Shop closed' }));
+  });
+
+  test('other barber status updates are unchanged', async () => {
+    await assertSucceeds(updateDoc(doc(b1(), 'bookings', 'bk1'), { status: 'inProgress' }));
+    await assertSucceeds(updateDoc(doc(b1(), 'bookings', 'bk1'), { status: 'completed' }));
+  });
+});
+
+describe('inviteEmails (functions only)', () => {
+  test('no client can read or write it', async () => {
+    await seed('inviteEmails', 'barber1@example.com_x', { role: 'barber', status: 'sent' });
+    for (const [uid, email] of [
+      ['admin', EMAILS.admin],
+      ['owner1', EMAILS.owner1],
+      ['barber1', EMAILS.barber1],
+      ['customer', EMAILS.customer],
+    ]) {
+      const db = as(uid, email);
+      await assertFails(getDoc(doc(db, 'inviteEmails', 'barber1@example.com_x')), uid);
+      await assertFails(getDocs(collection(db, 'inviteEmails')), uid);
+      await assertFails(setDoc(doc(db, 'inviteEmails', 'y'), { role: 'barber' }), uid);
+      await assertFails(deleteDoc(doc(db, 'inviteEmails', 'barber1@example.com_x')), uid);
+    }
+    await assertFails(getDoc(doc(anon(), 'inviteEmails', 'barber1@example.com_x')));
+  });
+});

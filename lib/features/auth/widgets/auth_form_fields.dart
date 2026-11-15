@@ -113,6 +113,76 @@ class CodeField extends StatelessWidget {
   }
 }
 
+/// "Step 2 of 3", a title and an optional subtitle above a step of a
+/// multi-step email form.
+class AuthStepHeader extends StatelessWidget {
+  const AuthStepHeader({
+    super.key,
+    required this.step,
+    required this.total,
+    required this.title,
+    this.subtitle,
+    this.subtitleKey,
+  });
+
+  final int step;
+  final int total;
+  final String title;
+  final String? subtitle;
+  final Key? subtitleKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context).textTheme;
+    final sub = subtitle;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            context.l10n.authStepOf(step, total),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 12,
+              letterSpacing: 0.5,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: theme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          if (sub != null) ...[
+            const SizedBox(height: 6),
+            Text(sub, key: subtitleKey, textAlign: TextAlign.center, style: theme.bodyMedium),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Green confirmation line under a form.
+class AuthInfoText extends StatelessWidget {
+  const AuthInfoText(this.message, {super.key});
+
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = message;
+    if (text == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.success, fontSize: 13)),
+    );
+  }
+}
+
 /// Red error line under a form.
 class AuthErrorText extends StatelessWidget {
   const AuthErrorText(this.message, {super.key});

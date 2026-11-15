@@ -74,6 +74,20 @@ enum AppErrorCode {
   timeOffConflict,
   timeOffNotAllowed,
 
+  // --- barber acceptance
+  /// Only the booked barber, the shop owner or an admin may answer a request.
+  bookingRequestNotAllowed,
+
+  /// args: [max characters].
+  declineReasonTooLong,
+
+  // --- barber cancel
+  /// Only the booked barber can cancel from the barber dashboard.
+  barberCancelNotAllowed,
+
+  /// The appointment already started: mark it no-show or finish it.
+  barberCancelAfterStart,
+
   // --- Subscription plans
   /// args: [comma-separated plan ids].
   planIdInvalid,
@@ -148,6 +162,15 @@ enum AppErrorCode {
         return 'This time overlaps a booking or other time off.';
       case AppErrorCode.timeOffNotAllowed:
         return 'You can only manage time off for your own schedule.';
+      // --- barber acceptance
+      case AppErrorCode.bookingRequestNotAllowed:
+        return 'Only the booked barber or the shop owner can answer this request.';
+      case AppErrorCode.declineReasonTooLong:
+        return 'The reason can be at most ${arg(0)} characters.';
+      case AppErrorCode.barberCancelNotAllowed:
+        return 'You can only cancel your own bookings.';
+      case AppErrorCode.barberCancelAfterStart:
+        return 'This appointment has already started. Mark it as a no-show or finish it instead.';
       case AppErrorCode.planIdInvalid:
         return 'Plan id must be one of ${arg(0)}.';
       case AppErrorCode.planNameRequired:

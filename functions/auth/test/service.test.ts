@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { beforeEach, describe, test } from 'node:test';
 
-import { CodeDoc, codeDocId, MAX_ATTEMPTS } from '../src/logic/codes';
+import { CodeDoc, codeDocId, MAX_ATTEMPTS, sha256Hex } from '../src/logic/codes';
 import { FlowError } from '../src/logic/errors';
 import { emailRateKey, RateDoc } from '../src/logic/rateLimit';
 import {
@@ -13,6 +13,7 @@ import {
   Mailer,
   requestEmailCode,
   resetPasswordWithCode,
+  verifyEmailCode,
 } from '../src/logic/service';
 import type { EmailMessage } from '../src/logic/templates';
 
@@ -38,6 +39,12 @@ class FakeStore implements AuthStore {
           const d = this.codes.get(id);
           assert.ok(d, 'update of a missing doc');
           this.codes.set(id, { ...d, attempts });
+        }),
+      updateCode: (id, patch) =>
+        write(() => {
+          const d = this.codes.get(id);
+          assert.ok(d, 'update of a missing doc');
+          this.codes.set(id, { ...d, ...patch });
         }),
       deleteCode: (id) => write(() => this.codes.delete(id)),
       setRate: (key, doc) => write(() => this.rates.set(key, { ...doc })),
@@ -398,5 +405,246 @@ describe('resetPasswordWithCode', () => {
       'invalid-code',
       { attemptsLeft: 4 },
     );
+  });
+});
+
+const verify = (email: string, code: string, purpose = 'register') => verifyEmailCode(deps, { email, code, purpose });
+const TOKEN_RE = /^[A-Za-z0-9_-]{43}$/;
+
+describe('verifyEmailCode', () => {
+  beforeEach(async () => {
+    nextCode = '123456';
+    await request('new@example.com', 'register');
+  });
+
+  test('right code: returns a token, keeps the doc and marks it verified for 15 minutes', async () => {
+    const res = await verify(' NEW@example.com ', '123456');
+    assert.equal(res.ok, true);
+    assert.equal(res.expiresInSeconds, 900);
+    assert.match(res.verificationToken, TOKEN_RE);
+    const doc = store.codes.get(codeDocId('register', 'new@example.com'))!;
+    assert.ok(doc, 'the code doc is kept');
+    assert.equal(doc.verifiedAt, T0.toISOString());
+    assert.equal(doc.expiresAt, '2026-11-20T07:15:00.000Z');
+    assert.equal(doc.tokenHash, sha256Hex(res.verificationToken));
+    assert.ok(!JSON.stringify(doc).includes(res.verificationToken), 'only the token hash is stored');
+    assert.equal(users.byEmail.size, 0, 'no account yet');
+  });
+
+  test('wrong code counts attempts; the fifth wrong one deletes the doc', async () => {
+    for (let left = MAX_ATTEMPTS - 1; left >= 1; left--) {
+      await rejectsWith(verify('new@example.com', '000000'), 'invalid-code', { attemptsLeft: left });
+    }
+    await rejectsWith(verify('new@example.com', '000000'), 'code-expired');
+    assert.equal(store.codes.size, 0);
+    await rejectsWith(verify('new@example.com', '123456'), 'code-expired');
+  });
+
+  test('expired after 10 minutes, or missing -> code-expired', async () => {
+    advance(600);
+    await rejectsWith(verify('new@example.com', '123456'), 'code-expired');
+    assert.equal(store.codes.size, 0);
+    await rejectsWith(verify('other@example.com', '123456'), 'code-expired');
+  });
+
+  test('malformed code and bad input do not use an attempt', async () => {
+    await rejectsWith(verify('new@example.com', '12345'), 'invalid-code');
+    await rejectsWith(verify('nope', '123456'), 'invalid-email');
+    await rejectsWith(verify('new@example.com', '123456', 'login'), 'invalid-input');
+    await rejectsWith(verifyEmailCode(deps, 'x'), 'invalid-input');
+    assert.equal(store.codes.get(codeDocId('register', 'new@example.com'))!.attempts, 0);
+  });
+
+  test('register: an existing account is refused before the code is checked', async () => {
+    users.add('new@example.com', ['google.com']);
+    await rejectsWith(verify('new@example.com', '000000'), 'email-already-registered');
+    assert.equal(store.codes.get(codeDocId('register', 'new@example.com'))!.attempts, 0);
+  });
+
+  test('re-verifying the same code rotates the token; the old one stops working', async () => {
+    const first = await verify('new@example.com', '123456');
+    advance(300);
+    const second = await verify('new@example.com', '123456');
+    assert.notEqual(first.verificationToken, second.verificationToken);
+    assert.equal(store.codes.get(codeDocId('register', 'new@example.com'))!.expiresAt, '2026-11-20T07:20:00.000Z');
+    const body = { email: 'new@example.com', password: 'secret123' };
+    await rejectsWith(
+      completeEmailRegistration(deps, { ...body, verificationToken: first.verificationToken }),
+      'verification-expired',
+    );
+    await completeEmailRegistration(deps, { ...body, verificationToken: second.verificationToken });
+  });
+
+  test('purpose separation: register and reset codes and tokens do not mix', async () => {
+    await rejectsWith(verify('new@example.com', '123456', 'reset'), 'code-expired');
+    users.add('pw@example.com', ['password']);
+    nextCode = '654321';
+    await request('pw@example.com', 'reset');
+    users.byEmail.delete('pw@example.com');
+    await rejectsWith(verify('pw@example.com', '654321', 'register'), 'code-expired');
+    assert.ok(store.codes.has(codeDocId('reset', 'pw@example.com')));
+    // A register token does not unlock a reset.
+    const { verificationToken } = await verify('new@example.com', '123456');
+    users.add('new@example.com', ['password'], 'oldpass11');
+    await rejectsWith(
+      resetPasswordWithCode(deps, { email: 'new@example.com', verificationToken, newPassword: 'newpass22' }),
+      'verification-expired',
+    );
+    assert.equal(users.byEmail.get('new@example.com')!.password, 'oldpass11');
+  });
+
+  test('reset: an unknown account behaves like a real one (no existence leak)', async () => {
+    users.add('pw@example.com', ['password']);
+    nextCode = '777777';
+    await request('pw@example.com', 'reset');
+    await request('ghost@example.com', 'reset');
+    assert.equal(mailer.sent.length, 2, 'register mail + the real reset mail only');
+    await rejectsWith(verify('pw@example.com', '000000', 'reset'), 'invalid-code', { attemptsLeft: 4 });
+    await rejectsWith(verify('ghost@example.com', '000000', 'reset'), 'invalid-code', { attemptsLeft: 4 });
+    const real = await verify('pw@example.com', '777777', 'reset');
+    const ghost = await verify('ghost@example.com', '777777', 'reset');
+    assert.deepEqual(Object.keys(real).sort(), Object.keys(ghost).sort());
+    assert.equal(real.expiresInSeconds, ghost.expiresInSeconds);
+    assert.match(ghost.verificationToken, TOKEN_RE);
+  });
+});
+
+describe('finishing with a verification token', () => {
+  beforeEach(async () => {
+    nextCode = '123456';
+    await request('new@example.com', 'register');
+  });
+
+  test('register: creates the account and consumes the token and the code', async () => {
+    const { verificationToken } = await verify('new@example.com', '123456');
+    const res = await completeEmailRegistration(deps, {
+      email: 'new@example.com',
+      verificationToken,
+      password: 'secret123',
+      name: 'Abebe',
+    });
+    assert.deepEqual(res, { ok: true });
+    const u = users.byEmail.get('new@example.com')!;
+    assert.equal(u.password, 'secret123');
+    assert.equal(u.displayName, 'Abebe');
+    assert.equal(u.emailVerified, true);
+    assert.equal(store.codes.size, 0);
+    users.byEmail.clear();
+    await rejectsWith(
+      completeEmailRegistration(deps, { email: 'new@example.com', verificationToken, password: 'secret123' }),
+      'verification-expired',
+    );
+    await rejectsWith(
+      completeEmailRegistration(deps, { email: 'new@example.com', code: '123456', password: 'secret123' }),
+      'code-expired',
+    );
+  });
+
+  test('token required and must match: unverified doc, missing doc, wrong or malformed token', async () => {
+    const body = { email: 'new@example.com', password: 'secret123' };
+    const fake = 'A'.repeat(43);
+    await rejectsWith(completeEmailRegistration(deps, { ...body, verificationToken: fake }), 'verification-expired');
+    await rejectsWith(
+      completeEmailRegistration(deps, { ...body, email: 'none@example.com', verificationToken: fake }),
+      'verification-expired',
+    );
+    await rejectsWith(completeEmailRegistration(deps, { ...body, verificationToken: 'short' }), 'verification-expired');
+    await rejectsWith(completeEmailRegistration(deps, { ...body, verificationToken: 42 }), 'verification-expired');
+    await verify('new@example.com', '123456');
+    await rejectsWith(completeEmailRegistration(deps, { ...body, verificationToken: fake }), 'verification-expired');
+    // A wrong token neither deletes the doc nor uses an attempt.
+    const doc = store.codes.get(codeDocId('register', 'new@example.com'))!;
+    assert.ok(doc.verifiedAt);
+    assert.equal(doc.attempts, 0);
+    assert.equal(users.byEmail.size, 0);
+  });
+
+  test('the token expires 15 minutes after verification', async () => {
+    advance(540); // the code itself had 60 s left
+    const { verificationToken } = await verify('new@example.com', '123456');
+    advance(899);
+    assert.ok(store.codes.has(codeDocId('register', 'new@example.com')));
+    advance(1);
+    await rejectsWith(
+      completeEmailRegistration(deps, { email: 'new@example.com', verificationToken, password: 'secret123' }),
+      'verification-expired',
+    );
+    assert.equal(store.codes.size, 0, 'the expired doc is deleted');
+    assert.equal(users.byEmail.size, 0);
+  });
+
+  test('weak password is checked first and does not consume the token', async () => {
+    const { verificationToken } = await verify('new@example.com', '123456');
+    await rejectsWith(
+      completeEmailRegistration(deps, { email: 'new@example.com', verificationToken, password: 'short' }),
+      'weak-password',
+    );
+    await rejectsWith(
+      completeEmailRegistration(deps, { email: 'new@example.com', verificationToken: 'bad', password: 'short' }),
+      'weak-password',
+    );
+    await completeEmailRegistration(deps, { email: 'new@example.com', verificationToken, password: 'secret123' });
+  });
+
+  test('code and token together are refused', async () => {
+    const { verificationToken } = await verify('new@example.com', '123456');
+    await rejectsWith(
+      completeEmailRegistration(deps, {
+        email: 'new@example.com',
+        code: '123456',
+        verificationToken,
+        password: 'secret123',
+      }),
+      'invalid-input',
+      { field: 'verificationToken' },
+    );
+  });
+
+  test('the old one-step code path still works, also after verification', async () => {
+    const { verificationToken } = await verify('new@example.com', '123456');
+    await completeEmailRegistration(deps, { email: 'new@example.com', code: '123456', password: 'secret123' });
+    assert.equal(store.codes.size, 0);
+    users.byEmail.clear();
+    await rejectsWith(
+      completeEmailRegistration(deps, { email: 'new@example.com', verificationToken, password: 'secret123' }),
+      'verification-expired',
+    );
+  });
+
+  test('register: the account was created between verify and complete', async () => {
+    const { verificationToken } = await verify('new@example.com', '123456');
+    users.raceOnCreate = true;
+    await rejectsWith(
+      completeEmailRegistration(deps, { email: 'new@example.com', verificationToken, password: 'secret123' }),
+      'email-already-registered',
+    );
+  });
+
+  test('reset: sets the password, revokes sessions, consumes the token', async () => {
+    const u = users.add('pw@example.com', ['password'], 'oldpass11');
+    nextCode = '777777';
+    await request('pw@example.com', 'reset');
+    const { verificationToken } = await verify('pw@example.com', '777777', 'reset');
+    const res = await resetPasswordWithCode(deps, { email: 'pw@example.com', verificationToken, newPassword: 'newpass22' });
+    assert.deepEqual(res, { ok: true });
+    assert.equal(u.password, 'newpass22');
+    assert.equal(u.revoked, 1);
+    assert.equal(store.codes.has(codeDocId('reset', 'pw@example.com')), false);
+    await rejectsWith(
+      resetPasswordWithCode(deps, { email: 'pw@example.com', verificationToken, newPassword: 'newpass33' }),
+      'verification-expired',
+    );
+    assert.equal(u.password, 'newpass22');
+  });
+
+  test('reset: an unknown account fails only at the last step, as an expired verification', async () => {
+    nextCode = '777777';
+    await request('ghost@example.com', 'reset');
+    const { verificationToken } = await verify('ghost@example.com', '777777', 'reset');
+    await rejectsWith(
+      resetPasswordWithCode(deps, { email: 'ghost@example.com', verificationToken, newPassword: 'newpass22' }),
+      'verification-expired',
+    );
+    assert.equal(users.byEmail.has('ghost@example.com'), false);
   });
 });

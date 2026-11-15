@@ -75,9 +75,9 @@
         { "id": "srv_1_4", "name": "Kids Cut (under 12)", "description": "Gentle, quick cut for children.", "price": 250, "durationMinutes": 30 }
       ],
       "barbers": [
-        { "id": "barber_1", "name": "Yonas Tadesse", "title": "Master Barber / Fade Specialist", "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400", "rating": 5.0, "reviewCount": 2, "phone": "+251911000201", "specialties": ["Skin Fade", "Beard Sculpting", "Hot Razor Shave"] },
-        { "id": "barber_2", "name": "Kaleab Mekonnen", "title": "Senior Stylist & Shave Artist", "avatarUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400", "rating": 3.5, "reviewCount": 2, "phone": "+251911000202", "specialties": ["Scissor Cut", "Hot Towel Shave", "Kids Cuts"] },
-        { "id": "barber_1_3", "name": "Biniyam Hailu", "title": "Barber", "avatarUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400", "rating": 4.0, "reviewCount": 1, "phone": "+251912450013", "specialties": ["Low Taper", "Line-up"], "workingDays": [2, 3, 4, 5, 6, 7], "startHour": 12, "endHour": 20 }
+        { "id": "barber_1", "name": "Yonas Tadesse", "title": "Master Barber / Fade Specialist", "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400", "rating": 5.0, "reviewCount": 2, "phone": "+251911000201", "specialties": ["Skin Fade", "Beard Sculpting", "Hot Razor Shave"], "commissionPercent": 60 },
+        { "id": "barber_2", "name": "Kaleab Mekonnen", "title": "Senior Stylist & Shave Artist", "avatarUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400", "rating": 3.5, "reviewCount": 2, "phone": "+251911000202", "specialties": ["Scissor Cut", "Hot Towel Shave", "Kids Cuts"], "commissionPercent": 50 },
+        { "id": "barber_1_3", "name": "Biniyam Hailu", "title": "Barber", "avatarUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400", "rating": 4.0, "reviewCount": 1, "phone": "+251912450013", "specialties": ["Low Taper", "Line-up"], "workingDays": [2, 3, 4, 5, 6, 7], "startHour": 12, "endHour": 20, "commissionPercent": 40 }
       ]
     },
     {
@@ -102,6 +102,7 @@
       "subscriptionEndsInDays": 12,
       "cancellationCutoffHours": 24,
       "maxReschedules": 1,
+      "requireBarberAcceptance": true,
       "services": [
         { "id": "srv_2_1", "name": "Classic Scissor Cut", "description": "Shears cut with tapered neckline and hot-lather edge clean-up.", "price": 350, "durationMinutes": 40 },
         { "id": "srv_2_2", "name": "Straight-Razor Hot Shave", "description": "Pre-shave oil, hot towels, brush lather and soothing balm.", "price": 250, "durationMinutes": 35 },
@@ -257,7 +258,8 @@
     { "id": "book_17", "shopId": "shop_4", "barberId": "barber_4_1", "customerId": "user_cust_4", "serviceId": "srv_4_1", "dayOffset": -115, "startTime": "17:00", "status": "completed", "paymentStatus": "paid", "paymentMethod": "cash", "createdHoursAgo": 2790 },
     { "id": "book_18", "shopId": "shop_5", "barberId": "barber_5_1", "customerId": "user_cust_1", "serviceId": "srv_5_1", "dayOffset": -100, "startTime": "12:00", "status": "completed", "paymentStatus": "paid", "paymentMethod": "cash", "createdHoursAgo": 2430 },
     { "id": "book_19", "shopId": "shop_5", "barberId": "barber_5_2", "customerId": "user_cust_2", "serviceId": "srv_5_2", "dayOffset": -150, "startTime": "18:00", "status": "completed", "paymentStatus": "paid", "paymentMethod": "cash", "createdHoursAgo": 3630 },
-    { "id": "book_20", "shopId": "shop_6", "barberId": "barber_6_1", "customerId": "user_cust_4", "serviceId": "srv_6_1", "dayOffset": -120, "startTime": "08:30", "status": "completed", "paymentStatus": "paid", "paymentMethod": "cash", "createdHoursAgo": 2910 }
+    { "id": "book_20", "shopId": "shop_6", "barberId": "barber_6_1", "customerId": "user_cust_4", "serviceId": "srv_6_1", "dayOffset": -120, "startTime": "08:30", "status": "completed", "paymentStatus": "paid", "paymentMethod": "cash", "createdHoursAgo": 2910 },
+    { "id": "book_21", "_comment": "barber acceptance: shop_2 requires it, so this request waits for Dagim (barber_2_2) to accept or decline", "shopId": "shop_2", "barberId": "barber_2_2", "customerId": "user_cust_3", "serviceId": "srv_2_2", "dayOffset": 2, "startTime": "10:00", "status": "pending", "paymentStatus": "unpaid", "paymentMethod": "cash", "createdHoursAgo": 1 }
   ],
   "timeOff": [
     { "_comment": "barbershops/{shopId}/barbers/{barberId}/timeOff/{id}; dayOffset + startTime/endTime in Addis local time. Both loaders also block the matching 15-minute slot locks ({timeOffId, startAt, expiresAt}).", "id": "timeoff_1", "shopId": "shop_1", "barberId": "barber_2", "dayOffset": 1, "startTime": "13:00", "endTime": "15:00", "reason": "Family event", "createdBy": "owner_1", "createdHoursAgo": 6 }
@@ -283,6 +285,14 @@
     { "bookingId": "book_18", "rating": 5, "comment": "Calm, premium place near CMC. Booked online, started on time, great result.", "hoursAfterVisit": 9, "reply": "Thank you! We look forward to your next visit.", "replyHoursAfterVisit": 28 },
     { "bookingId": "book_19", "rating": 4, "comment": "ምቹ ቦታ ነው፤ የሙቅ ፎጣ ላጨቱ ዘና አድርጎኛል።", "hoursAfterVisit": 12 },
     { "bookingId": "book_20", "rating": 4, "hoursAfterVisit": 1 }
+  ],
+  "payouts": [
+    { "id": "payout_seed_1", "shopId": "shop_1", "barberId": "barber_1", "amount": 200, "method": "cash", "monthOffset": 0, "note": "Mid-month cash", "createdBy": "owner_1", "createdHoursAgo": 30 },
+    { "id": "payout_seed_2", "shopId": "shop_1", "barberId": "barber_2", "amount": 150, "method": "telebirr", "monthOffset": 0, "note": "Advance", "createdBy": "owner_1", "createdHoursAgo": 3 }
+  ],
+  "shopApplications": [
+    { "_comment": "shopApplications/{uid}: a customer's request to list their shop (doc id = applicant uid). email comes from the user (lowercased), ownerName defaults to the user's name, createdAt = now - createdHoursAgo. Loaded by lib/features/applications/shop_applications_service.dart (shopApplicationsFromSeedJson) and tool/seed/seed.js." },
+    { "uid": "user_cust_2", "ownerName": "Natnael Assefa", "shopName": "Natty's Fade Studio", "address": "Near Edna Mall, Africa Avenue", "subCity": "Bole", "phone": "+251911223344", "description": "Two chairs, fades and beard work. Open every day.", "status": "pending", "createdHoursAgo": 20 }
   ],
   "favorites": {
     "_comment": "Demo-only favorites of the signed-in customer (favorites are kept on the device).",

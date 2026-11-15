@@ -29,6 +29,18 @@ abstract final class NotificationTypes {
   /// Carries shopId and queueEntryId instead of a bookingId.
   static const queueNext = 'queueNext';
 
+  // --- shop applications --- the applicant's shop application was
+  // reviewed (functions/notifications applications.ts). Carry shopId when
+  // approved; no bookingId.
+  static const applicationApproved = 'applicationApproved';
+  static const applicationRejected = 'applicationRejected';
+
+  // --- barber acceptance --- outcome of a 'pending' booking request
+  // (functions/notifications events.ts).
+  static const accepted = 'accepted';
+  static const requestDeclined = 'requestDeclined';
+  static const requestExpired = 'requestExpired';
+
   static const all = [
     created,
     confirmed,
@@ -46,6 +58,11 @@ abstract final class NotificationTypes {
     rescheduled,
     noShow,
     queueNext,
+    applicationApproved, // shop applications
+    applicationRejected, // shop applications
+    accepted, // barber acceptance
+    requestDeclined, // barber acceptance
+    requestExpired, // barber acceptance
   ];
 }
 

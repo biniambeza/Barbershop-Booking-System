@@ -457,7 +457,8 @@ class FirestoreDataStore implements DataStore {
   /// booking, and missing locks of legacy bookings are skipped). Any other
   /// status change is a plain `update({status})`.
   @override
-  Future<void> updateBookingStatus(Booking booking, BookingStatus status, {String? cancelledBy}) async {
+  Future<void> updateBookingStatus(Booking booking, BookingStatus status,
+      {String? cancelledBy, String? cancelReasonNote}) async {
     final bookingRef = _bookings.doc(booking.id);
     if (status != BookingStatus.cancelled) {
       await bookingRef.update({'status': status.name});
@@ -474,6 +475,7 @@ class FirestoreDataStore implements DataStore {
       tx.update(bookingRef, {
         'status': status.name,
         if (cancelledBy != null) 'cancelledBy': cancelledBy,
+        if (cancelReasonNote != null) 'cancelReasonNote': cancelReasonNote,
       });
       for (final ref in mine) {
         tx.delete(ref);
@@ -578,10 +580,13 @@ class FirestoreDataStore implements DataStore {
 
   /// Only the two policy fields (the rules let the owner change them).
   @override
-  Future<void> updateShopPolicy(String shopId, {required int cancellationCutoffHours, required int maxReschedules}) {
+  Future<void> updateShopPolicy(String shopId,
+      {required int cancellationCutoffHours, required int maxReschedules, bool? requireBarberAcceptance}) {
     return _shops.doc(shopId).update({
       'cancellationCutoffHours': cancellationCutoffHours,
       'maxReschedules': maxReschedules,
+      // barber acceptance (bool), only when the caller sets it
+      if (requireBarberAcceptance != null) 'requireBarberAcceptance': requireBarberAcceptance,
     });
   }
 
@@ -658,4 +663,58 @@ class FirestoreDataStore implements DataStore {
     batch.delete(_timeOffOf(timeOff.shopId, timeOff.barberId).doc(timeOff.id));
     await batch.commit();
   }
+
+  // --- barber acceptance (see booking_acceptance.dart) ---
+
+  /// One transaction: read the booking; abort with
+  /// [AppErrorCode.bookingNotChangeable] unless it is still 'pending' (the
+  /// expiry function may have cancelled it); then `update` exactly
+  /// `{status: 'confirmed', acceptedAt}`. The slot locks stay as they are.
+  @override
+  Future<void> acceptBookingRequest(Booking booking, {required DateTime acceptedAt}) async {
+    final bookingRef = _bookings.doc(booking.id);
+    await _db.runTransaction<void>((tx) async {
+      final snap = await tx.get(bookingRef);
+      if (snap.data()?['status'] != BookingStatus.pending.name) {
+        throw AppStateException(AppErrorCode.bookingNotChangeable);
+      }
+      tx.update(bookingRef, {
+        'status': BookingStatus.confirmed.name,
+        'acceptedAt': acceptedAt.toUtc().toIso8601String(),
+      });
+    });
+  }
+
+  /// One transaction, like a cancel ([updateBookingStatus]): read the
+  /// booking (must still be 'pending') and every lock of its interval;
+  /// `update` the booking with exactly `{status: 'cancelled', cancelledBy:
+  /// 'barber', declineReason?}` and `delete` each lock whose `bookingId` is
+  /// this booking.
+  @override
+  Future<void> declineBookingRequest(Booking booking, {String? reason}) async {
+    final bookingRef = _bookings.doc(booking.id);
+    final locksRef = _slotLocksOf(booking.shopId, booking.barberId);
+    await _db.runTransaction<void>((tx) async {
+      final snap = await tx.get(bookingRef);
+      final data = snap.data();
+      if (data == null || data['status'] != BookingStatus.pending.name) {
+        throw AppStateException(AppErrorCode.bookingNotChangeable);
+      }
+      final fresh = Booking.fromMap(data, snap.id);
+      final mine = <DocumentReference<Map<String, dynamic>>>[];
+      for (final id in slotLockIdsFor(fresh.startAt, fresh.endAt)) {
+        final lock = await tx.get(locksRef.doc(id));
+        if (lock.exists && lock.data()?['bookingId'] == booking.id) mine.add(lock.reference);
+      }
+      tx.update(bookingRef, {
+        'status': BookingStatus.cancelled.name,
+        'cancelledBy': 'barber',
+        if (reason != null) 'declineReason': reason,
+      });
+      for (final ref in mine) {
+        tx.delete(ref);
+      }
+    });
+  }
+  // --- end barber acceptance ---
 }

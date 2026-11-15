@@ -4,14 +4,20 @@ import { test } from 'node:test';
 import {
   buildCodeDoc,
   checkCode,
+  checkToken,
   CODE_TTL_SECONDS,
   codeDocId,
   codeMatches,
   generateCode,
+  generateVerificationToken,
+  hashToken,
   hashCode,
   MAX_ATTEMPTS,
   newSalt,
   sha256Hex,
+  tokenMatches,
+  VERIFIED_TTL_SECONDS,
+  verifiedPatch,
 } from '../src/logic/codes';
 
 const NOW = new Date('2026-11-20T07:00:00.000Z');
@@ -105,4 +111,52 @@ test('checkCode: wrong codes count attempts; the fifth wrong one expires the cod
   // Out of attempts: even the right code no longer works.
   doc.attempts = MAX_ATTEMPTS;
   assert.deepEqual(checkCode(doc, 'reset', '111111', NOW), { result: 'expired' });
+});
+
+test('verification tokens: 32 random bytes as base64url, stored only as SHA-256', () => {
+  const t = generateVerificationToken();
+  assert.match(t, /^[A-Za-z0-9_-]{43}$/);
+  assert.equal(Buffer.from(t, 'base64url').length, 32);
+  assert.notEqual(generateVerificationToken(), t);
+  assert.equal(hashToken(t), sha256Hex(t));
+  assert.equal(tokenMatches(t, hashToken(t)), true);
+  assert.equal(tokenMatches(generateVerificationToken(), hashToken(t)), false);
+  assert.equal(tokenMatches(t, undefined), false);
+  assert.equal(tokenMatches(t, ''), false);
+  assert.equal(tokenMatches(t, 'abcd'), false);
+});
+
+test('verifiedPatch: token hash, verifiedAt and a 15-minute expiry', () => {
+  const p = verifiedPatch('h'.repeat(64), NOW);
+  assert.deepEqual(p, {
+    tokenHash: 'h'.repeat(64),
+    verifiedAt: NOW.toISOString(),
+    expiresAt: at(VERIFIED_TTL_SECONDS).toISOString(),
+  });
+  assert.equal(VERIFIED_TTL_SECONDS, 900);
+});
+
+test('checkToken: verified, matching and unexpired only', () => {
+  const token = generateVerificationToken();
+  const base = buildCodeDoc('register', 'a@b.co', '111111', NOW);
+  const doc = { ...base, ...verifiedPatch(hashToken(token), at(60)) };
+  assert.deepEqual(checkToken(doc, 'register', token, at(60 + VERIFIED_TTL_SECONDS - 1)), { result: 'ok' });
+  // expired: the doc should be deleted
+  assert.deepEqual(checkToken(doc, 'register', token, at(60 + VERIFIED_TTL_SECONDS)), {
+    result: 'invalid',
+    deleteDoc: true,
+  });
+  // wrong token, wrong purpose, unverified, missing: rejected, doc kept
+  const keep = { result: 'invalid', deleteDoc: false };
+  assert.deepEqual(checkToken(doc, 'register', generateVerificationToken(), at(60)), keep);
+  assert.deepEqual(checkToken(doc, 'reset', token, at(60)), keep);
+  assert.deepEqual(checkToken(base, 'register', token, at(60)), keep);
+  assert.deepEqual(checkToken({ ...base, tokenHash: hashToken(token) }, 'register', token, at(60)), keep);
+  assert.deepEqual(checkToken(null, 'register', token, at(60)), keep);
+});
+
+test('checkCode still accepts the right code on a verified doc until its new expiry', () => {
+  const doc = { ...buildCodeDoc('reset', 'a@b.co', '111111', NOW), ...verifiedPatch('h'.repeat(64), at(500)) };
+  assert.deepEqual(checkCode(doc, 'reset', '111111', at(500 + VERIFIED_TTL_SECONDS - 1)), { result: 'ok' });
+  assert.deepEqual(checkCode(doc, 'reset', '111111', at(500 + VERIFIED_TTL_SECONDS)), { result: 'expired' });
 });

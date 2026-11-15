@@ -21,6 +21,11 @@ export function checkBookingPayable(booking: BookingData | undefined, uid: strin
   if (booking.status === 'cancelled') {
     return { code: 'failed-precondition', message: 'This booking was cancelled.' };
   }
+  // Barber acceptance: a request may still be declined or expire, so it is
+  // paid only once the barber accepts it (status 'confirmed').
+  if (booking.status === 'pending') {
+    return { code: 'failed-precondition', message: 'This booking is waiting for the barber to accept it.' };
+  }
   const ps = booking.paymentStatus ?? 'unpaid';
   if (ps === 'paid') return { code: 'already-exists', message: 'This booking is already paid.' };
   if (ps === 'refunded') return { code: 'failed-precondition', message: 'This booking was refunded.' };

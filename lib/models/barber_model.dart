@@ -18,6 +18,15 @@ class Barber {
   final int? startHour;
   final int? endHour;
 
+  // --- barber commission ---
+  /// The barber's share of each completed booking's price, 0..100. Null =
+  /// not set ([effectiveCommissionPercent] then uses 50). Set by the owner.
+  final int? commissionPercent;
+
+  /// [commissionPercent], or the default 50 when it is not set.
+  int get effectiveCommissionPercent => (commissionPercent ?? 50).clamp(0, 100);
+  // --- end barber commission ---
+
   Barber({
     required this.id,
     required this.shopId,
@@ -33,6 +42,7 @@ class Barber {
     this.workingDays,
     this.startHour,
     this.endHour,
+    this.commissionPercent, // barber commission
   });
 
   /// Full document, used when the profile is created.
@@ -51,6 +61,7 @@ class Barber {
       if (workingDays != null) 'workingDays': workingDays,
       if (startHour != null) 'startHour': startHour,
       if (endHour != null) 'endHour': endHour,
+      if (commissionPercent != null) 'commissionPercent': commissionPercent, // barber commission
     };
   }
 
@@ -69,6 +80,7 @@ class Barber {
       'workingDays': workingDays,
       'startHour': startHour,
       'endHour': endHour,
+      'commissionPercent': commissionPercent, // barber commission (null = field delete)
     };
   }
 
@@ -88,6 +100,7 @@ class Barber {
     int? startHour,
     int? endHour,
     bool clearSchedule = false,
+    int? commissionPercent, // barber commission
   }) {
     return Barber(
       id: id ?? this.id,
@@ -104,6 +117,7 @@ class Barber {
       workingDays: clearSchedule ? null : (workingDays ?? this.workingDays),
       startHour: clearSchedule ? null : (startHour ?? this.startHour),
       endHour: clearSchedule ? null : (endHour ?? this.endHour),
+      commissionPercent: commissionPercent ?? this.commissionPercent, // barber commission
     );
   }
 
@@ -124,6 +138,7 @@ class Barber {
       workingDays: (map['workingDays'] as List<dynamic>?)?.map((e) => (e as num).toInt()).toList(),
       startHour: (map['startHour'] as num?)?.toInt(),
       endHour: (map['endHour'] as num?)?.toInt(),
+      commissionPercent: (map['commissionPercent'] as num?)?.toInt(), // barber commission
     );
   }
 }

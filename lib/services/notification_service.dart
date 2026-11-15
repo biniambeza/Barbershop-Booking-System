@@ -667,8 +667,9 @@ String? cancelActorFor(AppUser actor, Booking booking, List<NotificationRecipien
     case NotificationTypes.created:
       return customer
           ? (
-              title: 'Booking request received',
-              body: 'Your $service with $barber at $shop on $when is waiting for confirmation.$price'
+              // barber acceptance: matches templates.ts 'created'
+              title: 'Booking request sent',
+              body: "Your request for $service with $barber at $shop on $when has been sent. We'll let you know when $barber accepts.$price"
             )
           : (title: 'New booking request', body: '$client booked $service with $barber on $when.');
     case NotificationTypes.confirmed:
@@ -729,8 +730,8 @@ String? cancelActorFor(AppUser actor, Booking booking, List<NotificationRecipien
     case NotificationTypes.created:
       return customer
           ? (
-              title: 'የቀጠሮ ጥያቄዎ ደርሷል',
-              body: '$shop ላይ ከ$barber ጋር $when ለ$service ያቀረቡት ጥያቄ ማረጋገጫ በመጠባበቅ ላይ ነው።$price'
+              title: 'የቀጠሮ ጥያቄዎ ተልኳል',
+              body: '$shop ላይ ከ$barber ጋር $when ለ$service ያቀረቡት ጥያቄ ተልኳል። $barber ሲቀበሉ እናሳውቅዎታለን።$price'
             )
           : (title: 'አዲስ የቀጠሮ ጥያቄ', body: '$client ከ$barber ጋር $when ለ$service ቀጠሮ ጠይቀዋል።');
     case NotificationTypes.confirmed:

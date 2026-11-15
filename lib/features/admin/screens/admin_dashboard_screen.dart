@@ -7,9 +7,9 @@ import '../../../models/barbershop_model.dart';
 import '../../../models/booking_model.dart';
 import '../../../models/user_model.dart';
 import '../../../services/app_repository.dart';
+import '../../applications/widgets/shop_application_entries.dart'; // shop applications
 import '../../notifications/widgets/notification_bell.dart';
-import '../../shared/widgets/language_toggle.dart';
-import '../../shared/widgets/persona_switcher.dart';
+import '../../shared/widgets/app_bar_menu.dart';
 import '../../shared/widgets/ui_kit.dart';
 import 'admin_payment_review_screen.dart';
 import 'admin_subscriptions_screen.dart';
@@ -124,31 +124,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             ),
           ],
         ),
+        // --- compact header: secondary actions live in AppBarMenu ---
         actions: [
-          if (kDemoMode)
-            TextButton.icon(
-              onPressed: () => showPersonaSwitcher(context, current: UserRole.admin),
-              icon: const Icon(Icons.swap_horiz, size: 18, color: AppTheme.ink),
-              label: Text(context.l10n.switchRole,
-                  style: const TextStyle(color: AppTheme.ink, fontSize: 13, fontWeight: FontWeight.w600)),
-            ),
-          IconButton(
-            key: const ValueKey('open-admin-subscriptions'),
-            tooltip: context.l10n.subscriptionsAndPlansTooltip,
-            icon: const Icon(Icons.workspace_premium_rounded, color: AppTheme.textPrimary),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AdminSubscriptionsScreen()),
-            ),
-          ),
           const PaymentsToReviewButton(),
-          const LanguageToggle(),
           const NotificationBell(),
-          IconButton(
-            tooltip: context.l10n.signOut,
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: () => repo.signOut(),
+          AppBarMenu(
+            role: UserRole.admin,
+            entries: [
+              AppBarMenuEntry(
+                key: const ValueKey('open-admin-subscriptions'),
+                icon: Icons.workspace_premium_rounded,
+                color: AppTheme.purple,
+                label: context.l10n.subscriptionsAndPlansTooltip,
+                onSelected: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminSubscriptionsScreen()),
+                ),
+              ),
+            ],
           ),
+          const SizedBox(width: 4),
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -264,6 +259,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             ),
           ),
           const SizedBox(height: 18),
+
+          // --- shop applications ---
+          const AdminShopApplicationsButton(),
 
           // Search and Filter Bar
           TextField(

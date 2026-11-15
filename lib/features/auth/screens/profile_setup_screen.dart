@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/phone_utils.dart';
 import '../../../l10n/l10n.dart';
+import '../../applications/shop_applications_service.dart'; // shop applications
 import '../../shared/widgets/language_toggle.dart';
 import '../../../models/user_model.dart';
 import '../../../services/app_repository.dart';
@@ -154,6 +155,23 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     ),
                     onSubmitted: (_) => _isLoading ? null : _submit(),
                   ),
+                  // --- shop applications: "I own a barbershop" ---
+                  if (invite == null) ...[
+                    const SizedBox(height: 4),
+                    CheckboxListTile(
+                      key: const ValueKey('profile-own-shop'),
+                      value: ShopApplicationsService.instance.openFormAfterSignUp,
+                      onChanged: _isLoading
+                          ? null
+                          : (v) => setState(() => ShopApplicationsService.instance.openFormAfterSignUp = v ?? false),
+                      controlAffinity: ListTileControlAffinity.leading,
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: AppTheme.green,
+                      title: Text(l.applSignUpOwnShop, style: const TextStyle(fontSize: 14)),
+                      subtitle: Text(l.applSignUpOwnShopHint, style: const TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                  // --- end shop applications ---
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: _isLoading ? null : _submit,

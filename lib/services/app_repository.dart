@@ -19,8 +19,10 @@ import '../models/booking_model.dart';
 import '../models/invite_model.dart';
 import '../models/plan_model.dart';
 import '../models/review_model.dart' show RatingSummary;
+import '../models/shop_application.dart' show ShopApplicationApproval; // shop applications
 import 'availability_service.dart';
 import 'booking_policy.dart' as policy;
+import 'booking_acceptance.dart' as acceptance;
 import 'data_cache.dart';
 import 'data_store.dart';
 import 'email_auth_service.dart';
@@ -29,7 +31,7 @@ import 'google_auth_service.dart';
 import 'time_off_service.dart';
 
 export '../models/app_exception.dart';
-export 'email_auth_service.dart' show EmailAuthException, EmailAuthErrorCode, EmailCodeSent;
+export 'email_auth_service.dart' show EmailAuthException, EmailAuthErrorCode, EmailCodeSent, EmailCodeVerified;
 
 /// Where the signed-in session currently stands.
 enum AuthStatus {
@@ -230,6 +232,8 @@ class AppRepository extends ChangeNotifier {
     if (identity == null) return; // Cancelled (or redirecting on web).
     // With Firebase, _onFirebaseAuthChanged loads the profile.
     if (_firebaseReady) return;
+    final emailAuth = _emailAuth;
+    if (emailAuth is LocalEmailAuthService) emailAuth.noteGoogleSignIn(identity.email);
     _signInLocally(identity.email, identity.displayName);
   }
 
@@ -251,31 +255,38 @@ class AppRepository extends ChangeNotifier {
     return valid;
   }
 
-  /// Registration step 1: checks [email] and [password] locally, then emails
-  /// a 6-digit code. [language] ('en' | 'am') picks the email's language.
-  Future<EmailCodeSent> registerRequestCode({
-    required String email,
-    required String password,
-    String language = 'en',
-  }) async {
+  /// Registration step 1: checks [email] locally, then emails a 6-digit
+  /// code. [language] ('en' | 'am') picks the email's language.
+  Future<EmailCodeSent> registerRequestCode({required String email, String language = 'en'}) async {
     final normalized = _validEmailOrThrow(email);
-    _checkPassword(password);
     return _emailAuth.requestCode(email: normalized, purpose: EmailCodePurpose.register, language: language);
   }
 
-  /// Registration step 2: verifies [code], creates the account (its email is
-  /// verified by the code) and signs in. A new account continues at
-  /// [AuthStatus.needsProfile], where email invites apply as usual.
+  /// Registration step 2: checks the emailed [code]. A correct code returns
+  /// the verification token for [registerComplete].
+  Future<EmailCodeVerified> registerVerifyCode({required String email, required String code}) async {
+    final normalized = _validEmailOrThrow(email);
+    final validCode = _codeOrThrow(code);
+    return _emailAuth.verifyCode(email: normalized, code: validCode, purpose: EmailCodePurpose.register);
+  }
+
+  /// Registration step 3: creates the account with [password] (its email is
+  /// verified by [verificationToken]) and signs in. A new account continues
+  /// at [AuthStatus.needsProfile], where email invites apply as usual.
   Future<void> registerComplete({
     required String email,
-    required String code,
+    required String verificationToken,
     required String password,
     String? name,
   }) async {
     final normalized = _validEmailOrThrow(email);
     _checkPassword(password);
-    final validCode = _codeOrThrow(code);
-    await _emailAuth.completeRegistration(email: normalized, code: validCode, password: password, name: name);
+    await _emailAuth.completeRegistration(
+      email: normalized,
+      verificationToken: verificationToken,
+      password: password,
+      name: name,
+    );
     await loginWithEmail(email: normalized, password: password);
   }
 
@@ -298,14 +309,66 @@ class AppRepository extends ChangeNotifier {
     return _emailAuth.requestCode(email: normalized, purpose: EmailCodePurpose.reset, language: language);
   }
 
-  /// Forgot password step 2: verifies [code] and sets [newPassword]. Does not
-  /// sign in.
-  Future<void> resetComplete({required String email, required String code, required String newPassword}) async {
+  /// Forgot password step 2: checks the emailed [code]. A correct code
+  /// returns the verification token for [resetComplete].
+  Future<EmailCodeVerified> resetVerifyCode({required String email, required String code}) async {
+    final normalized = _validEmailOrThrow(email);
+    final validCode = _codeOrThrow(code);
+    return _emailAuth.verifyCode(email: normalized, code: validCode, purpose: EmailCodePurpose.reset);
+  }
+
+  /// Forgot password step 3: sets [newPassword] with the token from
+  /// [resetVerifyCode]. Does not sign in.
+  Future<void> resetComplete({
+    required String email,
+    required String verificationToken,
+    required String newPassword,
+  }) async {
     final normalized = _validEmailOrThrow(email);
     _checkPassword(newPassword);
-    final validCode = _codeOrThrow(code);
-    await _emailAuth.resetPassword(email: normalized, code: validCode, newPassword: newPassword);
+    await _emailAuth.resetPassword(email: normalized, verificationToken: verificationToken, newPassword: newPassword);
   }
+
+  // --- change password ---
+
+  /// Whether the signed-in account has a password (email/password
+  /// provider) that [changePassword] can change. Google-only accounts get
+  /// the "Set a password" guidance instead.
+  bool get canChangePassword {
+    final email = _currentUser?.email;
+    if (email == null || email.isEmpty) return false;
+    return _emailAuth.hasPassword(email);
+  }
+
+  /// Signed-in user: re-authenticates with [currentPassword], then sets
+  /// [newPassword] (8–128 characters with a letter and a digit).
+  Future<void> changePassword({required String currentPassword, required String newPassword}) async {
+    final email = _currentUser?.email;
+    if (email == null || email.isEmpty) throw AppStateException(AppErrorCode.signInRequired);
+    if (currentPassword.isEmpty) throw const EmailAuthException(EmailAuthErrorCode.wrongCredentials);
+    _checkPassword(newPassword);
+    await _emailAuth.changePassword(email: email, currentPassword: currentPassword, newPassword: newPassword);
+  }
+
+  /// Email to open "Forgot password" with after [signOutToSetPassword].
+  String? _setPasswordEmail;
+
+  /// The auth screen: the email of a Google-only user who signed out to
+  /// create a password (read once), else null.
+  String? takeSetPasswordEmail() {
+    final email = _setPasswordEmail;
+    _setPasswordEmail = null;
+    return email;
+  }
+
+  /// Google-only user: signs out so the login screen opens "Forgot
+  /// password" with their Gmail, which emails a code to create a password.
+  Future<void> signOutToSetPassword() async {
+    // Set first: the auth screen may appear before signOut returns.
+    _setPasswordEmail = _currentUser?.email;
+    await signOut();
+  }
+  // --- end change password ---
 
   /// Demo builds: one-tap sign-in as the seeded account with [email] (the
   /// "Continue as ..." persona buttons). Does nothing once Firebase is
@@ -632,6 +695,9 @@ class AppRepository extends ChangeNotifier {
     String subCity = '',
     String? landmark,
     String? shopPhone,
+    // --- shop applications --- set when approving a ShopApplication: the
+    // application update is committed with the shop.
+    ShopApplicationApproval? fromApplication,
   }) async {
     final email = validEmailOrNull(ownerEmail);
     if (email == null) {
@@ -707,6 +773,13 @@ class AppRepository extends ChangeNotifier {
       createdAt: now,
     );
 
+    // --- shop applications ---
+    if (fromApplication != null) {
+      await _createShopForApplication(fromApplication,
+          shop: shop, services: starterServices, barbers: [leadBarber], ownerInvite: ownerInvite);
+      return shopId;
+    }
+    // --- end shop applications ---
     await _write(_store.createShop(
       shop: shop,
       services: starterServices,
@@ -1041,7 +1114,8 @@ class AppRepository extends ChangeNotifier {
       price: price,
       date: date,
       timeSlot: timeSlot,
-      status: BookingStatus.confirmed,
+      // barber acceptance: 'pending' when the shop requires it.
+      status: acceptance.initialBookingStatus(shop),
       createdAt: DateTime.now().toUtc(),
       startAt: start,
       endAt: start.add(Duration(minutes: duration)),
@@ -1142,6 +1216,45 @@ class AppRepository extends ChangeNotifier {
     if (newStatus == BookingStatus.noShow) policy.assertCanMarkNoShow(booking, _nowUtc());
   }
 
+  // --- barber cancel ---
+
+  /// Whether the signed-in barber may cancel [booking] now: their own
+  /// pending/confirmed booking, before it starts.
+  bool canBarberCancelBooking(Booking booking) {
+    final user = _currentUser;
+    return user != null &&
+        user.role == UserRole.barber &&
+        user.barberId != null &&
+        user.barberId == booking.barberId &&
+        policy.canBarberCancel(booking, _nowUtc());
+  }
+
+  /// Barber: cancels one of their own pending/confirmed bookings before it
+  /// starts, with an optional [reason] (<= 200 characters). Same write as
+  /// any other cancel ([DataStore.updateBookingStatus]: status 'cancelled',
+  /// cancelledBy = the barber's uid, slot locks released) plus
+  /// `cancelReasonNote` when a reason is given. The customer is notified
+  /// through the usual 'cancelled' path.
+  Future<void> cancelBookingAsBarber(String bookingId, {String? reason}) async {
+    final booking = _cache.bookings[bookingId];
+    if (booking == null) throw AppStateException(AppErrorCode.bookingNotChangeable);
+    final user = _currentUser;
+    if (user == null || user.role != UserRole.barber || user.barberId == null || user.barberId != booking.barberId) {
+      throw AppStateException(AppErrorCode.barberCancelNotAllowed);
+    }
+    policy.assertBarberCanCancel(booking, _nowUtc());
+    final note = policy.normalizeCancelReasonNote(reason);
+    final gate = debugWriteGate;
+    if (gate != null) await gate();
+    await _write(_store.updateBookingStatus(
+      booking,
+      BookingStatus.cancelled,
+      cancelledBy: user.uid,
+      cancelReasonNote: note,
+    ));
+  }
+  // --- end barber cancel ---
+
   /// Staff: marks a pending/confirmed booking whose start has passed as a
   /// no-show. Its slot locks are kept (they expire on their own).
   Future<void> markNoShow(String bookingId) => updateBookingStatus(bookingId, BookingStatus.noShow);
@@ -1165,12 +1278,53 @@ class AppRepository extends ChangeNotifier {
   }
 
   /// Owner: sets the shop's cancellation cutoff and reschedule limit.
-  Future<void> updateShopPolicy(String shopId, {required int cancellationCutoffHours, required int maxReschedules}) async {
+  /// [requireBarberAcceptance] (barber acceptance) is written with them when given.
+  Future<void> updateShopPolicy(String shopId,
+      {required int cancellationCutoffHours, required int maxReschedules, bool? requireBarberAcceptance}) async {
     policy.validatePolicy(cancellationCutoffHours: cancellationCutoffHours, maxReschedules: maxReschedules);
     if (!_cache.shops.containsKey(shopId)) return;
     await _write(_store.updateShopPolicy(shopId,
-        cancellationCutoffHours: cancellationCutoffHours, maxReschedules: maxReschedules));
+        cancellationCutoffHours: cancellationCutoffHours,
+        maxReschedules: maxReschedules,
+        requireBarberAcceptance: requireBarberAcceptance));
   }
+
+  // --- barber acceptance (rules in booking_acceptance.dart) ---
+
+  /// Pending requests of [barberId] that can still be accepted, soonest first.
+  List<Booking> getBookingRequestsForBarber(String barberId) =>
+      acceptance.openRequestsForBarber(_cache.bookings.values, barberId, _nowUtc());
+
+  /// Pending requests of [shopId] that can still be accepted, soonest first.
+  List<Booking> getBookingRequestsForShop(String shopId) =>
+      acceptance.openRequestsForShop(_cache.bookings.values, shopId, _nowUtc());
+
+  /// Whether the signed-in user may accept/decline [booking] (its barber,
+  /// the shop owner or an admin).
+  bool canRespondToBookingRequest(Booking booking) => acceptance.canRespondToRequest(_currentUser, booking);
+
+  /// Barber/owner: confirms a pending request (status 'confirmed' +
+  /// acceptedAt). Throws [AppStateException] if not allowed, no longer
+  /// pending or already inside the expiry window.
+  Future<void> acceptBookingRequest(String bookingId) async {
+    final booking = _cache.bookings[bookingId];
+    if (booking == null) throw AppStateException(AppErrorCode.bookingNotChangeable);
+    final now = _nowUtc();
+    acceptance.assertCanRespond(_currentUser, booking, now, accept: true);
+    await _write(_store.acceptBookingRequest(booking, acceptedAt: now));
+  }
+
+  /// Barber/owner: declines a pending request (status 'cancelled',
+  /// cancelledBy 'barber', optional [reason] up to 200 characters) and
+  /// releases its slot locks.
+  Future<void> declineBookingRequest(String bookingId, {String? reason}) async {
+    final booking = _cache.bookings[bookingId];
+    if (booking == null) throw AppStateException(AppErrorCode.bookingNotChangeable);
+    acceptance.assertCanRespond(_currentUser, booking, _nowUtc(), accept: false);
+    final note = acceptance.normalizeDeclineReason(reason);
+    await _write(_store.declineBookingRequest(booking, reason: note));
+  }
+  // --- end barber acceptance ---
 
   /// Live time off of one barber (soonest first).
   Stream<List<TimeOff>> watchTimeOff(String shopId, String barberId) => _store.watchTimeOff(shopId, barberId);
@@ -1262,6 +1416,81 @@ class AppRepository extends ChangeNotifier {
 
   int getBarberCompletedCutsCount(String barberId) =>
       _cache.bookings.values.where((b) => b.barberId == barberId && b.status == BookingStatus.completed).length;
+
+  // --- shop applications (lib/features/applications) ---
+
+  /// registerBarbershopByAdmin for an approved application. Firestore: ONE
+  /// batch with the same writes as [FirestoreDataStore.createShop] (shop,
+  /// services, lead barber, owner invite) plus the update of
+  /// `shopApplications/{uid}` ([ShopApplicationApproval.fieldsFor]).
+  /// Local mode: the local createShop, then [ShopApplicationApproval.applyLocally].
+  Future<void> _createShopForApplication(
+    ShopApplicationApproval approval, {
+    required Barbershop shop,
+    required List<BarbershopService> services,
+    required List<Barber> barbers,
+    required UserInvite ownerInvite,
+  }) async {
+    if (_firebaseReady) {
+      Map<String, dynamic> noNulls(Map<String, dynamic> m) => {
+            for (final e in m.entries)
+              if (e.value != null) e.key: e.value,
+          };
+      final shopRef = _db.collection('barbershops').doc(shop.id);
+      final batch = _db.batch();
+      batch.set(shopRef, noNulls(shop.toMap()));
+      for (final s in services) {
+        batch.set(shopRef.collection('services').doc(s.id), s.toMap());
+      }
+      for (final b in barbers) {
+        batch.set(shopRef.collection('barbers').doc(b.id), noNulls(b.toMap()));
+      }
+      batch.set(_db.collection('invites').doc(ownerInvite.email), ownerInvite.toMap());
+      batch.update(_db.doc(approval.path), approval.fieldsFor(shop.id));
+      await batch.commit();
+    } else {
+      await _store.createShop(shop: shop, services: services, barbers: barbers, ownerInvite: ownerInvite);
+      await approval.applyLocally?.call(shop.id);
+    }
+    notifyListeners();
+  }
+
+  /// A signed-in customer who has just been invited (e.g. their shop
+  /// application was approved) gets the invite's role now, without signing
+  /// out: the same one-time upgrade as at sign-in (users/{uid} rewritten with
+  /// the invite's role/shopId/barberId and invites/{email} deleted in one
+  /// batch, then the shop's empty ownerId claimed). Returns true when the
+  /// role changed; RootGate then shows the new dashboard.
+  Future<bool> applyPendingInviteForCurrentUser() async {
+    final user = _currentUser;
+    if (user == null || user.role != UserRole.customer || _authStatus != AuthStatus.signedIn) return false;
+    final rawEmail = user.email;
+    if (rawEmail == null || rawEmail.trim().isEmpty) return false;
+    final email = normalizeEmail(rawEmail);
+    if (_firebaseReady) {
+      final snap = await _db.collection('invites').doc(email).get();
+      if (!snap.exists) return false;
+      final upgraded = _withInviteRole(user, UserInvite.fromMap(snap.data()!, snap.id));
+      final batch = _db.batch();
+      batch.set(_db.collection('users').doc(user.uid), upgraded.toMap());
+      batch.delete(_db.collection('invites').doc(email));
+      await batch.commit();
+      _currentUser = upgraded;
+      await _claimShopInCloud(upgraded);
+      await _cloud!.start(upgraded);
+    } else {
+      final invite = _cache.invites[email];
+      if (invite == null) return false;
+      final upgraded = _withInviteRole(user, invite);
+      _cache.invites.remove(email);
+      _cache.users[upgraded.uid] = upgraded;
+      _claimShopLocally(upgraded);
+      _currentUser = upgraded;
+    }
+    notifyListeners();
+    return true;
+  }
+  // --- end shop applications ---
 
   // --- Favorites Management (kept on this device) ---
   bool isShopFavorite(String shopId) => _favoriteShopIds.contains(shopId);

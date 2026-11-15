@@ -1,8 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Push notifications (Android 13+ asks the user at runtime). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Needed in release builds to reach Firebase. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="barbershop_booking"
+        android:label="Crown &amp; Blade"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

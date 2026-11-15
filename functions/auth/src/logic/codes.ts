@@ -8,6 +8,8 @@ import type { Purpose } from './input';
 
 export const CODE_TTL_SECONDS = 600;
 export const MAX_ATTEMPTS = 5;
+/** How long a verified code's token can be used to finish the flow. */
+export const VERIFIED_TTL_SECONDS = 900;
 
 /** emailCodes/{purpose}_{sha256(email)} */
 export interface CodeDoc {
@@ -19,6 +21,9 @@ export interface CodeDoc {
   attempts: number;
   createdAt: string;
   lastSentAt: string;
+  /** Set by verifyEmailCode: SHA-256 hex of the current verification token. */
+  tokenHash?: string;
+  verifiedAt?: string;
 }
 
 export function sha256Hex(value: string): string {
@@ -80,4 +85,48 @@ export function checkCode(doc: CodeDoc | null, purpose: Purpose, code: string, n
   const next = attempts + 1;
   if (next >= MAX_ATTEMPTS) return { result: 'expired' };
   return { result: 'wrong', attempts: next, attemptsLeft: MAX_ATTEMPTS - next };
+}
+
+/** 32 random bytes, base64url (43 characters). Only its SHA-256 is stored. */
+export function generateVerificationToken(): string {
+  return randomBytes(32).toString('base64url');
+}
+
+export function hashToken(token: string): string {
+  return sha256Hex(token);
+}
+
+/** Constant-time comparison of sha256(token) with the stored hex hash. */
+export function tokenMatches(token: string, storedHash: unknown): boolean {
+  if (typeof storedHash !== 'string' || !/^[0-9a-f]{64}$/.test(storedHash)) return false;
+  const actual = Buffer.from(hashToken(token), 'hex');
+  const expected = Buffer.from(storedHash, 'hex');
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
+/**
+ * Fields written when a code is verified. The doc is kept (attempts and code
+ * hash unchanged) and gets a fresh 15-minute expiry; re-verifying the same
+ * code inside that window rotates the token and restarts the 15 minutes.
+ */
+export function verifiedPatch(tokenHash: string, now: Date): Pick<CodeDoc, 'tokenHash' | 'verifiedAt' | 'expiresAt'> {
+  return {
+    tokenHash,
+    verifiedAt: now.toISOString(),
+    expiresAt: new Date(now.getTime() + VERIFIED_TTL_SECONDS * 1000).toISOString(),
+  };
+}
+
+export type TokenCheck =
+  | { result: 'ok' }
+  | { result: 'invalid'; deleteDoc: boolean }; // verification-expired; delete only an expired doc
+
+/** Decides whether a verification token may finish the flow for this doc. */
+export function checkToken(doc: CodeDoc | null, purpose: Purpose, token: string, now: Date): TokenCheck {
+  if (!doc) return { result: 'invalid', deleteDoc: false };
+  const expiresAt = Date.parse(doc.expiresAt);
+  if (!Number.isFinite(expiresAt) || now.getTime() >= expiresAt) return { result: 'invalid', deleteDoc: true };
+  if (doc.purpose !== purpose || !doc.verifiedAt) return { result: 'invalid', deleteDoc: false };
+  if (!tokenMatches(token, doc.tokenHash)) return { result: 'invalid', deleteDoc: false };
+  return { result: 'ok' };
 }

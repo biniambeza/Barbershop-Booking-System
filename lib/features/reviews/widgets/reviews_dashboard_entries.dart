@@ -10,7 +10,9 @@ import '../screens/reviews_screen.dart';
 import '../../shared/widgets/ui_kit.dart';
 
 /// Owner dashboard: opens the shop's reviews, where the owner replies
-/// (key `open-reviews`). Includes its own bottom spacing.
+/// (key `open-reviews`). Same full-width row style as its neighbours
+/// ("Reports & clients", "Subscription & billing"): leading icon, left-aligned
+/// title, the rating, and a chevron. Includes its own bottom spacing.
 class OwnerReviewsButton extends StatelessWidget {
   const OwnerReviewsButton({super.key, required this.shopId});
 
@@ -34,14 +36,32 @@ class OwnerReviewsButton extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => ReviewsScreen(shopId: shopId)),
               ),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                foregroundColor: AppTheme.textPrimary,
+                backgroundColor: AppTheme.card,
+                side: const BorderSide(color: AppTheme.hairline),
+                minimumSize: const Size(0, 54),
+                alignment: Alignment.centerLeft,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               ),
-              icon: const Icon(Icons.reviews_outlined, size: 18),
-              label: Text(
-                summary.count == 0
-                    ? l.reviewsOpenButton
-                    : '${l.reviewsOpenButton} · ${summary.rating.toStringAsFixed(1)} ★',
-                style: const TextStyle(fontSize: 13),
+              icon: const Icon(Icons.reviews_outlined, size: 18, color: AppTheme.blue),
+              label: Row(
+                children: [
+                  Expanded(
+                    child: Text(l.reviewsOpenButton,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                  ),
+                  if (summary.count > 0) ...[
+                    const Icon(Icons.star_rounded, size: 16, color: AppTheme.orange),
+                    const SizedBox(width: 3),
+                    Text(
+                      summary.rating.toStringAsFixed(1),
+                      style: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.textSecondary),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  const Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.textSecondary),
+                ],
               ),
             );
           },

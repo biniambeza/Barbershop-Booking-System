@@ -162,8 +162,8 @@ type Table = Record<NotificationType, { customer: Builder; staff: Builder }>;
 const EN: Table = {
   created: {
     customer: (v) => ({
-      title: 'Booking request received',
-      body: `Your ${v.service} with ${v.barber} at ${v.shop} on ${v.when} is waiting for confirmation.${priceSuffix(v, 'en')}`,
+      title: 'Booking request sent',
+      body: `Your request for ${v.service} with ${v.barber} at ${v.shop} on ${v.when} has been sent. We'll let you know when ${v.barber} accepts.${priceSuffix(v, 'en')}`,
     }),
     staff: (v) => ({
       title: 'New booking request',
@@ -298,6 +298,37 @@ const EN: Table = {
       body: `${v.customer} did not come to ${v.service} with ${v.barber} on ${v.when}.`,
     }),
   },
+  // --- barber acceptance ---
+  accepted: {
+    customer: (v) => ({
+      title: 'Your booking is confirmed',
+      body: `${v.barber} accepted your ${v.service} at ${v.shop} on ${v.when}. See you there!${priceSuffix(v, 'en')}`,
+    }),
+    staff: (v) => ({
+      title: 'Booking request accepted',
+      body: `${v.customer} - ${v.service} with ${v.barber} on ${v.when} is confirmed.`,
+    }),
+  },
+  requestDeclined: {
+    customer: (v) => ({
+      title: "Barber couldn't take your booking",
+      body: `${v.barber} couldn't take your ${v.service} at ${v.shop} on ${v.when}. Please pick another time.`,
+    }),
+    staff: (v) => ({
+      title: 'Booking request declined',
+      body: `${v.customer}'s request for ${v.service} with ${v.barber} on ${v.when} was declined.`,
+    }),
+  },
+  requestExpired: {
+    customer: (v) => ({
+      title: "Barber couldn't take your booking",
+      body: `${v.barber} couldn't confirm your ${v.service} at ${v.shop} on ${v.when} in time, so the request was cancelled. Please pick another time.`,
+    }),
+    staff: (v) => ({
+      title: 'Booking request expired',
+      body: `${v.customer}'s request for ${v.service} with ${v.barber} on ${v.when} was not accepted in time and was cancelled automatically.`,
+    }),
+  },
 };
 
 function subscriptionPaidEn(v: Vars): RenderedMessage {
@@ -331,8 +362,8 @@ function subscriptionFailedAm(v: Vars): RenderedMessage {
 const AM: Table = {
   created: {
     customer: (v) => ({
-      title: 'የቀጠሮ ጥያቄዎ ደርሷል',
-      body: `${v.shop} ላይ ከ${v.barber} ጋር ${v.when} ለ${v.service} ያቀረቡት ጥያቄ ማረጋገጫ በመጠባበቅ ላይ ነው።${priceSuffix(v, 'am')}`,
+      title: 'የቀጠሮ ጥያቄዎ ተልኳል',
+      body: `${v.shop} ላይ ከ${v.barber} ጋር ${v.when} ለ${v.service} ያቀረቡት ጥያቄ ተልኳል። ${v.barber} ሲቀበሉ እናሳውቅዎታለን።${priceSuffix(v, 'am')}`,
     }),
     staff: (v) => ({
       title: 'አዲስ የቀጠሮ ጥያቄ',
@@ -467,6 +498,37 @@ const AM: Table = {
       body: `${v.customer} ከ${v.barber} ጋር ${v.when} ለነበረው የ${v.service} ቀጠሮ አልመጡም።`,
     }),
   },
+  // --- barber acceptance ---
+  accepted: {
+    customer: (v) => ({
+      title: 'ቀጠሮዎ ተረጋግጧል',
+      body: `${v.barber} ${v.shop} ላይ ${v.when} ያለዎትን የ${v.service} ቀጠሮ ተቀብለዋል። እንጠብቅዎታለን!${priceSuffix(v, 'am')}`,
+    }),
+    staff: (v) => ({
+      title: 'የቀጠሮ ጥያቄ ተቀባይነት አግኝቷል',
+      body: `${v.customer} - ${v.service} ከ${v.barber} ጋር ${v.when} ተረጋግጧል።`,
+    }),
+  },
+  requestDeclined: {
+    customer: (v) => ({
+      title: 'ፀጉር አስተካካዩ ቀጠሮዎን መውሰድ አልቻሉም',
+      body: `${v.barber} ${v.shop} ላይ ${v.when} የጠየቁትን የ${v.service} ቀጠሮ መውሰድ አልቻሉም። እባክዎ ሌላ ሰዓት ይምረጡ።`,
+    }),
+    staff: (v) => ({
+      title: 'የቀጠሮ ጥያቄ ውድቅ ተደርጓል',
+      body: `${v.customer} ከ${v.barber} ጋር ${v.when} ለ${v.service} ያቀረቡት ጥያቄ ውድቅ ተደርጓል።`,
+    }),
+  },
+  requestExpired: {
+    customer: (v) => ({
+      title: 'ፀጉር አስተካካዩ ቀጠሮዎን መውሰድ አልቻሉም',
+      body: `${v.barber} ${v.shop} ላይ ${v.when} የጠየቁትን የ${v.service} ቀጠሮ በጊዜው ስላላረጋገጡ ጥያቄዎ ተሰርዟል። እባክዎ ሌላ ሰዓት ይምረጡ።`,
+    }),
+    staff: (v) => ({
+      title: 'የቀጠሮ ጥያቄ ጊዜው አልፏል',
+      body: `${v.customer} ከ${v.barber} ጋር ${v.when} ለ${v.service} ያቀረቡት ጥያቄ በጊዜው ተቀባይነት ስላላገኘ በራስ-ሰር ተሰርዟል።`,
+    }),
+  },
 };
 
 /** Title and body for push notifications and the in-app inbox. */
@@ -496,6 +558,9 @@ export type SmsType = Extract<
   | 'paymentReceived'
   | 'subscriptionPaid'
   | 'rescheduled'
+  | 'accepted'
+  | 'requestDeclined'
+  | 'requestExpired'
 >;
 
 export function isSmsType(type: NotificationType): type is SmsType {
@@ -523,6 +588,12 @@ export function renderSms(type: SmsType, lang: Language, ctx: TemplateContext): 
         return `${APP_NAME}፦ የ${v.shop} የደንበኝነት ክፍያ${v.amount ? ` ${v.amount}` : ''} ደርሷል።${v.until ? ` እስከ ${v.until} ንቁ ነው።` : ''}`;
       case 'rescheduled':
         return `${APP_NAME}፦ ${v.shop} ቀጠሮዎ ወደ ${v.when} ተዛውሯል፣ ${v.barber}።`;
+      // barber acceptance
+      case 'accepted':
+        return `${APP_NAME}፦ ${v.shop} ቀጠሮዎ ተረጋግጧል - ${v.when}፣ ${v.barber}።${price}`;
+      case 'requestDeclined':
+      case 'requestExpired':
+        return `${APP_NAME}፦ ${v.barber} ${v.shop} ${v.when} ቀጠሮዎን መውሰድ አልቻሉም። እባክዎ ሌላ ሰዓት ይምረጡ።`;
     }
   }
   const price = v.price ? ` ${v.price}.` : '';
@@ -543,5 +614,11 @@ export function renderSms(type: SmsType, lang: Language, ctx: TemplateContext): 
       return `${APP_NAME}: ${v.shop} subscription payment${v.amount ? ` of ${v.amount}` : ''} received.${v.until ? ` Active until ${v.until}.` : ''}`;
     case 'rescheduled':
       return `${APP_NAME}: Your booking at ${v.shop} was moved to ${v.when} with ${v.barber}.`;
+    // barber acceptance
+    case 'accepted':
+      return `${APP_NAME}: Your booking is confirmed - ${v.shop}, ${v.when} with ${v.barber}.${price}`;
+    case 'requestDeclined':
+    case 'requestExpired':
+      return `${APP_NAME}: ${v.barber} couldn't take your booking at ${v.shop} on ${v.when}. Please pick another time.`;
   }
 }

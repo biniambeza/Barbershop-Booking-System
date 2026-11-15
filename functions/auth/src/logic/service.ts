@@ -1,8 +1,20 @@
 /**
- * The three email-code flows, written against small ports (store, users,
+ * The email-code flows, written against small ports (store, users,
  * mailer) so they can be tested with in-memory fakes.
  */
-import { buildCodeDoc, checkCode, CODE_TTL_SECONDS, codeDocId, CodeDoc, generateCode } from './codes';
+import {
+  buildCodeDoc,
+  checkCode,
+  checkToken,
+  CODE_TTL_SECONDS,
+  codeDocId,
+  CodeDoc,
+  generateCode,
+  generateVerificationToken,
+  hashToken,
+  VERIFIED_TTL_SECONDS,
+  verifiedPatch,
+} from './codes';
 import { FlowError } from './errors';
 import {
   asObject,
@@ -11,7 +23,9 @@ import {
   parseLanguage,
   parseName,
   parsePassword,
+  parseProof,
   parsePurpose,
+  Proof,
   Purpose,
 } from './input';
 import {
@@ -34,6 +48,8 @@ export interface AuthTx {
   getRate(key: string): Promise<RateDoc | null>;
   setCode(id: string, doc: CodeDoc): void;
   setCodeAttempts(id: string, attempts: number): void;
+  /** Merges fields into an existing code doc. */
+  updateCode(id: string, patch: Partial<CodeDoc>): void;
   deleteCode(id: string): void;
   setRate(key: string, doc: RateDoc): void;
 }
@@ -73,6 +89,7 @@ export interface Deps {
   mailer: Mailer | null;
   now?: () => Date;
   randomCode?: () => string;
+  randomToken?: () => string;
   log?: Logger;
 }
 
@@ -141,16 +158,25 @@ export async function requestEmailCode(deps: Deps, data: unknown, ip: string | n
   return { ok: true, resendAfterSeconds: RESEND_COOLDOWN_SECONDS, expiresInSeconds: CODE_TTL_SECONDS };
 }
 
-/** Checks and consumes the code in one transaction (single use). */
-async function consumeCode(deps: Deps, purpose: Purpose, email: string, code: string): Promise<void> {
+/**
+ * Checks a code in one transaction. Wrong attempts must be stored even though
+ * the call then fails, so the transaction returns the outcome and the error is
+ * thrown afterwards. A missing, expired or exhausted code doc is deleted.
+ */
+async function checkCodeTx(
+  deps: Deps,
+  purpose: Purpose,
+  email: string,
+  code: string,
+  onOk: (tx: AuthTx, id: string, now: Date) => void,
+): Promise<void> {
   const now = (deps.now ?? (() => new Date()))();
   const id = codeDocId(purpose, email);
-  // Wrong attempts must be stored even though the call then fails, so the
-  // transaction returns the outcome and the error is thrown afterwards.
   const outcome = await deps.store.run(async (tx) => {
     const doc = await tx.getCode(id);
     const check = checkCode(doc, purpose, code, now);
-    if (check.result === 'ok' || (check.result === 'expired' && doc)) tx.deleteCode(id);
+    if (check.result === 'ok') onOk(tx, id, now);
+    if (check.result === 'expired' && doc) tx.deleteCode(id);
     if (check.result === 'wrong') tx.setCodeAttempts(id, check.attempts);
     return check;
   });
@@ -158,31 +184,85 @@ async function consumeCode(deps: Deps, purpose: Purpose, email: string, code: st
   if (outcome.result === 'wrong') throw new FlowError('invalid-code', { attemptsLeft: outcome.attemptsLeft });
 }
 
+export interface VerifyCodeResult {
+  ok: true;
+  verificationToken: string;
+  expiresInSeconds: number;
+}
+
+/**
+ * Step 2 of the split flow (email -> code -> password): checks the code
+ * without consuming it, marks the doc verified and returns a single-use
+ * verification token for completeEmailRegistration / resetPasswordWithCode.
+ * Re-verifying the same correct code while the doc is still valid returns a
+ * new token (the previous one stops working) and restarts the 15 minutes.
+ * Reset: an unknown account is treated exactly like a real one here.
+ */
+export async function verifyEmailCode(deps: Deps, data: unknown): Promise<VerifyCodeResult> {
+  const input = asObject(data);
+  const email = normalizeEmail(input.email);
+  const purpose = parsePurpose(input.purpose);
+  const code = parseCode(input.code);
+
+  if (purpose === 'register' && (await deps.users.findByEmail(email))) {
+    throw new FlowError('email-already-registered');
+  }
+  const token = (deps.randomToken ?? generateVerificationToken)();
+  await checkCodeTx(deps, purpose, email, code, (tx, id, now) =>
+    tx.updateCode(id, verifiedPatch(hashToken(token), now)),
+  );
+  (deps.log ?? silent).info('email code verified', { purpose });
+  return { ok: true, verificationToken: token, expiresInSeconds: VERIFIED_TTL_SECONDS };
+}
+
+/** Checks and consumes a verification token (single use). */
+async function consumeToken(deps: Deps, purpose: Purpose, email: string, token: string): Promise<void> {
+  const now = (deps.now ?? (() => new Date()))();
+  const id = codeDocId(purpose, email);
+  const outcome = await deps.store.run(async (tx) => {
+    const doc = await tx.getCode(id);
+    const check = checkToken(doc, purpose, token, now);
+    if (check.result === 'ok' || check.deleteDoc) tx.deleteCode(id);
+    return check;
+  });
+  if (outcome.result !== 'ok') throw new FlowError('verification-expired');
+}
+
+/** Consumes a code (one-step flow) or a verification token (split flow). */
+async function consumeProof(deps: Deps, purpose: Purpose, email: string, proof: Proof): Promise<void> {
+  if (proof.kind === 'token') return consumeToken(deps, purpose, email, proof.token);
+  return checkCodeTx(deps, purpose, email, proof.code, (tx, id) => tx.deleteCode(id));
+}
+
 export async function completeEmailRegistration(deps: Deps, data: unknown): Promise<{ ok: true }> {
   const input = asObject(data);
   const email = normalizeEmail(input.email);
-  const code = parseCode(input.code);
   const password = parsePassword(input.password);
   const name = parseName(input.name);
+  const proof = parseProof(input);
 
-  await consumeCode(deps, 'register', email, code);
+  await consumeProof(deps, 'register', email, proof);
   const created = await deps.users.create({ email, password, displayName: name });
   if (created === 'exists') throw new FlowError('email-already-registered');
-  (deps.log ?? silent).info('email account registered');
+  (deps.log ?? silent).info('email account registered', { via: proof.kind });
   return { ok: true };
 }
 
 export async function resetPasswordWithCode(deps: Deps, data: unknown): Promise<{ ok: true }> {
   const input = asObject(data);
   const email = normalizeEmail(input.email);
-  const code = parseCode(input.code);
   const password = parsePassword(input.newPassword);
+  const proof = parseProof(input);
 
-  await consumeCode(deps, 'reset', email, code);
+  await consumeProof(deps, 'reset', email, proof);
   const user = await deps.users.findByEmail(email);
-  if (!user) throw new FlowError('invalid-code', { attemptsLeft: 0 });
+  if (!user) {
+    // No account behind this reset doc: the same answer as a bad code / token.
+    if (proof.kind === 'token') throw new FlowError('verification-expired');
+    throw new FlowError('invalid-code', { attemptsLeft: 0 });
+  }
   await deps.users.setPassword(user.uid, password);
   await deps.users.revokeSessions(user.uid);
-  (deps.log ?? silent).info('password reset with email code', { uid: user.uid });
+  (deps.log ?? silent).info('password reset with email code', { uid: user.uid, via: proof.kind });
   return { ok: true };
 }

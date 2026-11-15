@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:math';
 
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -20,6 +22,17 @@ class EmailCodeSent {
   final int resendAfterSeconds;
 
   /// Seconds the code stays valid.
+  final int expiresInSeconds;
+}
+
+/// Result of a correct code: a short-lived token that proves the email was
+/// verified. It replaces the code in the final registration / reset call.
+class EmailCodeVerified {
+  const EmailCodeVerified({required this.verificationToken, this.expiresInSeconds = 900});
+
+  final String verificationToken;
+
+  /// Seconds the token stays valid.
   final int expiresInSeconds;
 }
 
@@ -47,6 +60,10 @@ enum EmailAuthErrorCode {
   codeExpired,
   emailAlreadyRegistered,
 
+  /// The verification token from [EmailAuthService.verifyCode] expired (or is
+  /// unknown): start again with a new code.
+  verificationExpired,
+
   /// A code was sent moments ago; see [EmailAuthException.retryAfterSeconds].
   tooSoon,
   rateLimited,
@@ -71,6 +88,12 @@ enum EmailAuthErrorCode {
 
   /// The auth callables are not deployed or failed internally.
   serviceUnavailable,
+
+  /// Firebase wants a fresh sign-in before changing the password.
+  requiresRecentLogin,
+
+  /// The signed-in account has no password (Google-only).
+  noPassword,
   unknown,
 }
 
@@ -104,19 +127,43 @@ abstract class EmailAuthService {
     String language = 'en',
   });
 
-  /// Checks the registration code and creates the (verified) account. Does
+  /// Checks the emailed [code]. A correct code returns a verification token
+  /// for [completeRegistration] / [resetPassword].
+  Future<EmailCodeVerified> verifyCode({
+    required String email,
+    required String code,
+    required EmailCodePurpose purpose,
+  });
+
+  /// Creates the (verified) account with the token from [verifyCode]. Does
   /// not sign in.
   Future<void> completeRegistration({
     required String email,
-    required String code,
+    required String verificationToken,
     required String password,
     String? name,
   });
 
-  /// Checks the reset code and sets a new password.
-  Future<void> resetPassword({required String email, required String code, required String newPassword});
+  /// Sets a new password with the token from [verifyCode].
+  Future<void> resetPassword({
+    required String email,
+    required String verificationToken,
+    required String newPassword,
+  });
 
   Future<EmailIdentity> signIn({required String email, required String password});
+
+  /// Whether the signed-in account [email] can sign in with a password
+  /// (has the email/password provider), i.e. can change it.
+  bool hasPassword(String email);
+
+  /// Signed-in user: proves [currentPassword] (re-authentication), then
+  /// sets [newPassword]. Wrong current password → wrongCredentials.
+  Future<void> changePassword({
+    required String email,
+    required String currentPassword,
+    required String newPassword,
+  });
 
   Future<void> signOut();
 }
@@ -164,25 +211,48 @@ class FirebaseEmailAuthService implements EmailAuthService {
   }
 
   @override
-  Future<void> completeRegistration({
+  Future<EmailCodeVerified> verifyCode({
     required String email,
     required String code,
+    required EmailCodePurpose purpose,
+  }) async {
+    final data = await _call('verifyEmailCode', {
+      'email': normalizeEmail(email),
+      'code': code,
+      'purpose': purpose.name,
+    });
+    final token = data['verificationToken'];
+    if (token is! String || token.isEmpty) {
+      throw const EmailAuthException(EmailAuthErrorCode.unknown, rawCode: 'missing-verification-token');
+    }
+    final expires = data['expiresInSeconds'];
+    return EmailCodeVerified(verificationToken: token, expiresInSeconds: expires is num ? expires.toInt() : 900);
+  }
+
+  @override
+  Future<void> completeRegistration({
+    required String email,
+    required String verificationToken,
     required String password,
     String? name,
   }) async {
     await _call('completeEmailRegistration', {
       'email': normalizeEmail(email),
-      'code': code,
+      'verificationToken': verificationToken,
       'password': password,
       if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
     });
   }
 
   @override
-  Future<void> resetPassword({required String email, required String code, required String newPassword}) async {
+  Future<void> resetPassword({
+    required String email,
+    required String verificationToken,
+    required String newPassword,
+  }) async {
     await _call('resetPasswordWithCode', {
       'email': normalizeEmail(email),
-      'code': code,
+      'verificationToken': verificationToken,
       'newPassword': newPassword,
     });
   }
@@ -193,6 +263,31 @@ class FirebaseEmailAuthService implements EmailAuthService {
       final credential = await _auth.signInWithEmailAndPassword(email: normalizeEmail(email), password: password);
       final user = credential.user;
       return EmailIdentity(email: user?.email ?? email, displayName: user?.displayName, uid: user?.uid);
+    } catch (e) {
+      throw emailAuthExceptionFrom(e);
+    }
+  }
+
+  @override
+  bool hasPassword(String email) {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+    return user.providerData.any((p) => p.providerId == EmailAuthProvider.PROVIDER_ID);
+  }
+
+  @override
+  Future<void> changePassword({
+    required String email,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) throw const EmailAuthException(EmailAuthErrorCode.requiresRecentLogin, rawCode: 'no-current-user');
+    if (!hasPassword(email)) throw const EmailAuthException(EmailAuthErrorCode.noPassword);
+    try {
+      final credential = EmailAuthProvider.credential(email: user.email ?? normalizeEmail(email), password: currentPassword);
+      await user.reauthenticateWithCredential(credential).timeout(_timeout);
+      await user.updatePassword(newPassword).timeout(_timeout);
     } catch (e) {
       throw emailAuthExceptionFrom(e);
     }
@@ -211,6 +306,7 @@ const _serverCodes = {
   'code-expired': EmailAuthErrorCode.codeExpired,
   'email-already-registered': EmailAuthErrorCode.emailAlreadyRegistered,
   'email-already-in-use': EmailAuthErrorCode.emailAlreadyRegistered,
+  'verification-expired': EmailAuthErrorCode.verificationExpired,
   'too-soon': EmailAuthErrorCode.tooSoon,
   'rate-limited': EmailAuthErrorCode.rateLimited,
   'email-not-configured': EmailAuthErrorCode.emailNotConfigured,
@@ -228,6 +324,10 @@ const _authCodes = {
   'user-disabled': EmailAuthErrorCode.userDisabled,
   'network-request-failed': EmailAuthErrorCode.network,
   'operation-not-allowed': EmailAuthErrorCode.notEnabled,
+  'weak-password': EmailAuthErrorCode.weakPassword,
+  'requires-recent-login': EmailAuthErrorCode.requiresRecentLogin,
+  'user-mismatch': EmailAuthErrorCode.wrongCredentials,
+  'user-token-expired': EmailAuthErrorCode.requiresRecentLogin,
   'configuration-not-found': EmailAuthErrorCode.notEnabled,
 };
 
@@ -240,7 +340,11 @@ EmailAuthException emailAuthExceptionFrom(Object error) {
     final details = error.details;
     if (details is Map) {
       final serverCode = details['code'];
-      final known = serverCode is String ? _serverCodes[serverCode] : null;
+      var known = serverCode is String ? _serverCodes[serverCode] : null;
+      if (known == EmailAuthErrorCode.invalidInput &&
+          (details['field'] == 'password' || details['field'] == 'newPassword')) {
+        known = EmailAuthErrorCode.weakPassword;
+      }
       if (known != null) {
         final retry = details['retryAfterSeconds'];
         final attempts = details['attemptsLeft'];
@@ -289,7 +393,9 @@ EmailAuthException emailAuthExceptionFrom(Object error) {
 // ---------------------------------------------------------------------------
 
 /// Offline stand-in for the auth callables (same rules and error codes):
-/// accounts live in memory and the emailed code is always [demoCode].
+/// accounts live in memory and the emailed code is always [demoCode]; a
+/// correct code returns a random verification token valid for
+/// [verificationLifetime].
 /// Seeded demo accounts (see [isExistingAccount]) log in with
 /// [demoPassword].
 class LocalEmailAuthService implements EmailAuthService {
@@ -300,6 +406,7 @@ class LocalEmailAuthService implements EmailAuthService {
   static const resendAfter = Duration(seconds: 60);
   static const codeLifetime = Duration(minutes: 10);
   static const maxAttempts = 5;
+  static const verificationLifetime = Duration(minutes: 15);
 
   /// Whether a seeded account (one without a stored password) uses [email].
   final bool Function(String email)? isExistingAccount;
@@ -308,10 +415,36 @@ class LocalEmailAuthService implements EmailAuthService {
   /// email → password.
   final Map<String, String> _passwords = {};
 
+  /// Accounts created through Google sign-in: no password until one is set
+  /// with "Forgot password" (like Firebase linking the password provider).
+  final Set<String> _googleOnly = {};
+
+  /// Local mode: records a Google sign-in. A new account (not seeded and
+  /// without a password) is Google-only.
+  void noteGoogleSignIn(String email) {
+    final normalized = normalizeEmail(email);
+    if (!_exists(normalized)) _googleOnly.add(normalized);
+  }
+
   /// '${purpose.name}:email' → the outstanding code.
   final Map<String, _PendingCode> _codes = {};
 
-  bool _exists(String email) => _passwords.containsKey(email) || (isExistingAccount?.call(email) ?? false);
+  /// '${purpose.name}:email' → the token issued for a correct code.
+  final Map<String, _Verification> _verifications = {};
+
+  final Random _random = Random.secure();
+
+  bool _exists(String email) =>
+      _passwords.containsKey(email) || _googleOnly.contains(email) || (isExistingAccount?.call(email) ?? false);
+
+  /// Seeded accounts use [demoPassword] until changed; Google-only ones
+  /// have none.
+  String? _passwordOf(String email) {
+    final stored = _passwords[email];
+    if (stored != null) return stored;
+    if (_googleOnly.contains(email)) return null;
+    return (isExistingAccount?.call(email) ?? false) ? demoPassword : null;
+  }
 
   String _validEmail(String email) {
     final valid = validEmailOrNull(email);
@@ -358,32 +491,76 @@ class LocalEmailAuthService implements EmailAuthService {
         throw EmailAuthException(EmailAuthErrorCode.tooSoon, retryAfterSeconds: (wait.inMilliseconds / 1000).ceil());
       }
     }
-    // Reset never reveals whether the account exists.
-    if (purpose == EmailCodePurpose.register || _exists(normalized)) _codes[key] = _PendingCode(now);
+    // Reset never reveals whether the account exists: unknown emails get a
+    // (never delivered) code that verifies but fails at the last step.
+    _codes[key] = _PendingCode(now);
     return EmailCodeSent(resendAfterSeconds: resendAfter.inSeconds, expiresInSeconds: codeLifetime.inSeconds);
+  }
+
+  @override
+  Future<EmailCodeVerified> verifyCode({
+    required String email,
+    required String code,
+    required EmailCodePurpose purpose,
+  }) async {
+    final normalized = _validEmail(email);
+    if (normalizeEmailCode(code) == null) throw const EmailAuthException(EmailAuthErrorCode.invalidInput);
+    // Like the server: checked before the code.
+    if (purpose == EmailCodePurpose.register && _exists(normalized)) {
+      throw const EmailAuthException(EmailAuthErrorCode.emailAlreadyRegistered);
+    }
+    _checkCode(purpose, normalized, code);
+    // The code stays valid until the last step; verifying it again issues a
+    // new token and the previous one stops working.
+    final bytes = List<int>.generate(32, (_) => _random.nextInt(256));
+    final token = base64Url.encode(bytes).replaceAll('=', '');
+    _verifications['${purpose.name}:$normalized'] = _Verification(token, _clock());
+    return EmailCodeVerified(verificationToken: token, expiresInSeconds: verificationLifetime.inSeconds);
+  }
+
+  /// Like the server: an unknown, mismatched or expired token is
+  /// 'verification-expired'.
+  void _checkToken(EmailCodePurpose purpose, String email, String token) {
+    final key = '${purpose.name}:$email';
+    final verification = _verifications[key];
+    if (verification == null || verification.token != token) {
+      throw const EmailAuthException(EmailAuthErrorCode.verificationExpired);
+    }
+    if (_clock().difference(verification.issuedAt) > verificationLifetime) {
+      _verifications.remove(key);
+      throw const EmailAuthException(EmailAuthErrorCode.verificationExpired);
+    }
   }
 
   @override
   Future<void> completeRegistration({
     required String email,
-    required String code,
+    required String verificationToken,
     required String password,
     String? name,
   }) async {
     final normalized = _validEmail(email);
     if (!isValidPassword(password)) throw const EmailAuthException(EmailAuthErrorCode.weakPassword);
-    _checkCode(EmailCodePurpose.register, normalized, code);
-    if (_exists(normalized)) throw const EmailAuthException(EmailAuthErrorCode.emailAlreadyRegistered);
+    _checkToken(EmailCodePurpose.register, normalized, verificationToken);
+    _verifications.remove('${EmailCodePurpose.register.name}:$normalized');
     _codes.remove('${EmailCodePurpose.register.name}:$normalized');
+    if (_exists(normalized)) throw const EmailAuthException(EmailAuthErrorCode.emailAlreadyRegistered);
     _passwords[normalized] = password;
   }
 
   @override
-  Future<void> resetPassword({required String email, required String code, required String newPassword}) async {
+  Future<void> resetPassword({
+    required String email,
+    required String verificationToken,
+    required String newPassword,
+  }) async {
     final normalized = _validEmail(email);
     if (!isValidPassword(newPassword)) throw const EmailAuthException(EmailAuthErrorCode.weakPassword);
-    _checkCode(EmailCodePurpose.reset, normalized, code);
+    _checkToken(EmailCodePurpose.reset, normalized, verificationToken);
+    _verifications.remove('${EmailCodePurpose.reset.name}:$normalized');
     _codes.remove('${EmailCodePurpose.reset.name}:$normalized');
+    // Unknown accounts fail only here, like an expired verification.
+    if (!_exists(normalized)) throw const EmailAuthException(EmailAuthErrorCode.verificationExpired);
     _passwords[normalized] = newPassword;
   }
 
@@ -391,12 +568,26 @@ class LocalEmailAuthService implements EmailAuthService {
   Future<EmailIdentity> signIn({required String email, required String password}) async {
     final normalized = validEmailOrNull(email);
     if (normalized == null) throw const EmailAuthException(EmailAuthErrorCode.invalidEmail);
-    final stored = _passwords[normalized];
-    final ok = stored != null
-        ? stored == password
-        : (isExistingAccount?.call(normalized) ?? false) && password == demoPassword;
-    if (!ok) throw const EmailAuthException(EmailAuthErrorCode.wrongCredentials);
+    final stored = _passwordOf(normalized);
+    if (stored == null || stored != password) throw const EmailAuthException(EmailAuthErrorCode.wrongCredentials);
     return EmailIdentity(email: normalized);
+  }
+
+  @override
+  bool hasPassword(String email) => _passwordOf(normalizeEmail(email)) != null;
+
+  @override
+  Future<void> changePassword({
+    required String email,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final normalized = _validEmail(email);
+    final stored = _passwordOf(normalized);
+    if (stored == null) throw const EmailAuthException(EmailAuthErrorCode.noPassword);
+    if (stored != currentPassword) throw const EmailAuthException(EmailAuthErrorCode.wrongCredentials);
+    if (!isValidPassword(newPassword)) throw const EmailAuthException(EmailAuthErrorCode.weakPassword);
+    _passwords[normalized] = newPassword;
   }
 
   @override
@@ -408,4 +599,11 @@ class _PendingCode {
 
   final DateTime sentAt;
   int failures = 0;
+}
+
+class _Verification {
+  const _Verification(this.token, this.issuedAt);
+
+  final String token;
+  final DateTime issuedAt;
 }

@@ -250,3 +250,25 @@ test('no-show (both languages)', () => {
   assert.equal(am.title, 'ቀጠሮ አምልጦዎታል');
   assert.match(am.body, /እንዳልመጡ ተመዝግቧል/);
 });
+
+// --- barber acceptance ---
+test('barber acceptance copy (EN + AM)', () => {
+  const created = renderNotification('created', 'customer', 'en', ctx);
+  assert.equal(created.title, 'Booking request sent');
+  assert.match(created.body, /has been sent/);
+  assert.equal(renderNotification('created', 'barber', 'en', ctx).title, 'New booking request');
+  assert.equal(renderNotification('created', 'customer', 'am', ctx).title, 'የቀጠሮ ጥያቄዎ ተልኳል');
+
+  assert.equal(renderNotification('accepted', 'customer', 'en', ctx).title, 'Your booking is confirmed');
+  assert.equal(renderNotification('accepted', 'customer', 'am', ctx).title, 'ቀጠሮዎ ተረጋግጧል');
+  for (const type of ['requestDeclined', 'requestExpired'] as const) {
+    const en = renderNotification(type, 'customer', 'en', ctx);
+    assert.equal(en.title, "Barber couldn't take your booking");
+    assert.match(en.body, /Please pick another time\.$/);
+    assert.match(renderNotification(type, 'customer', 'am', ctx).body, /እባክዎ ሌላ ሰዓት ይምረጡ/);
+    assert.match(renderSms(type, 'en', ctx), /couldn't take your booking/);
+    assert.match(renderSms(type, 'am', ctx), /ሌላ ሰዓት ይምረጡ/);
+  }
+  assert.match(renderNotification('requestExpired', 'owner', 'en', ctx).body, /cancelled automatically/);
+  assert.match(renderSms('accepted', 'en', ctx), /Your booking is confirmed/);
+});

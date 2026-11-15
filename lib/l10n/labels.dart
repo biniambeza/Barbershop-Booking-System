@@ -235,6 +235,16 @@ extension AppLabels on AppLocalizations {
         return timeOffErrConflict;
       case AppErrorCode.timeOffNotAllowed:
         return timeOffErrNotAllowed;
+      // --- barber acceptance
+      case AppErrorCode.bookingRequestNotAllowed:
+        return acceptErrNotAllowed;
+      case AppErrorCode.declineReasonTooLong:
+        final max = arg(0);
+        return acceptErrReasonTooLong(max is int ? max : 0);
+      case AppErrorCode.barberCancelNotAllowed:
+        return barberCancelErrNotAllowed;
+      case AppErrorCode.barberCancelAfterStart:
+        return barberCancelErrAfterStart;
       case AppErrorCode.planIdInvalid:
         return errPlanIdInvalid('${arg(0) ?? ''}');
       case AppErrorCode.planNameRequired:
@@ -368,6 +378,8 @@ extension AppLabels on AppLocalizations {
         return emailErrCodeExpired;
       case EmailAuthErrorCode.emailAlreadyRegistered:
         return emailErrAlreadyRegistered;
+      case EmailAuthErrorCode.verificationExpired:
+        return emailErrVerificationExpired;
       case EmailAuthErrorCode.tooSoon:
         final seconds = error.retryAfterSeconds;
         return seconds != null && seconds > 0 ? emailErrTooSoonSeconds(seconds) : emailErrTooSoon;
@@ -388,6 +400,10 @@ extension AppLabels on AppLocalizations {
         return authErrUserDisabled;
       case EmailAuthErrorCode.network:
         return authErrNetwork;
+      case EmailAuthErrorCode.requiresRecentLogin:
+        return changePasswordErrRecentLogin;
+      case EmailAuthErrorCode.noPassword:
+        return changePasswordErrNoPassword;
       case EmailAuthErrorCode.notEnabled:
         return emailErrNotEnabled;
       case EmailAuthErrorCode.serviceUnavailable:

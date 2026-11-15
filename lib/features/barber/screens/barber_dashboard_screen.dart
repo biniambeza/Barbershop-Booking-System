@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/phone_utils.dart';
 import '../../../data/addis_time.dart';
@@ -11,15 +10,17 @@ import '../../../models/barber_model.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../services/app_repository.dart';
 import '../../notifications/widgets/notification_bell.dart';
-import '../../shared/widgets/language_toggle.dart';
-import '../../shared/widgets/persona_switcher.dart';
+import '../../shared/widgets/app_bar_menu.dart';
 import '../../payments/widgets/payment_status_badge.dart';
 import 'barber_schedule_screen.dart';
 import '../../queue/queue_dashboard_card.dart';
 import '../../reviews/widgets/reviews_dashboard_entries.dart';
+import '../../payouts/payouts_dashboard_entries.dart'; // barber payouts
 import '../../../services/booking_policy.dart';
 import '../../shared/widgets/no_show_dialog.dart';
 import '../../shared/widgets/ui_kit.dart';
+import '../widgets/barber_cancel_dialog.dart';
+import '../widgets/booking_requests_section.dart';
 
 class BarberDashboardScreen extends StatefulWidget {
   const BarberDashboardScreen({super.key});
@@ -61,6 +62,25 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
     }
   }
 
+  /// Barber cancel: confirm dialog (optional reason), then the cancel
+  /// write; a snackbar reports the outcome.
+  Future<void> _cancelBooking(AppRepository repo, Booking booking) async {
+    if (_busy.contains(booking.id)) return;
+    final reason = await showBarberCancelDialog(context, booking);
+    if (reason == null || !mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    final l = context.l10n;
+    setState(() => _busy.add(booking.id));
+    try {
+      await repo.cancelBookingAsBarber(booking.id, reason: reason);
+      messenger.showSnackBar(SnackBar(content: Text(l.barberCancelDone)));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(l.barberCancelFailed(l.errorText(e)))));
+    } finally {
+      if (mounted) setState(() => _busy.remove(booking.id));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final repo = AppRepository.instance;
@@ -76,42 +96,42 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
         final inProgressBookings = bookings.where((b) => b.status == BookingStatus.inProgress).toList();
         final completedBookings = bookings.where((b) => b.status == BookingStatus.completed).toList();
         final totalEarnings = barber != null ? repo.getBarberTotalEarnings(barber.id) : 0.0;
+        // --- barber acceptance ---
+        final requests = barber != null ? repo.getBookingRequestsForBarber(barber.id) : const <Booking>[];
 
         final l = context.l10n;
         return Scaffold(
           appBar: AppBar(
             centerTitle: false,
+            // --- compact header: secondary actions live in AppBarMenu ---
             title: Row(
               children: [
                 const IconTile(icon: Icons.content_cut, size: 36),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Flexible(
-                  child: Text(l.barberWorkspace,
-                      overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l.barberWorkspace,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 16, color: AppTheme.textPrimary)),
+                      if (shop != null)
+                        Text(shop.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: AppTheme.textSecondary, fontSize: 11.5, fontWeight: FontWeight.w500)),
+                    ],
+                  ),
                 ),
               ],
             ),
-            actions: [
-              if (kDemoMode)
-                TextButton.icon(
-                  style: TextButton.styleFrom(
-                    backgroundColor: AppTheme.tealSoft,
-                    shape: const StadiumBorder(),
-                  ),
-                  onPressed: () => showPersonaSwitcher(context, current: UserRole.barber),
-                  icon: const Icon(Icons.swap_horiz, size: 16, color: AppTheme.teal),
-                  label: Text(
-                    l.roleBarber,
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.teal),
-                  ),
-                ),
-              const LanguageToggle(),
-              const NotificationBell(),
-              IconButton(
-                tooltip: l.signOut,
-                icon: const Icon(Icons.logout, size: 20),
-                onPressed: () => repo.signOut(),
-              ),
+            actions: const [
+              NotificationBell(),
+              AppBarMenu(role: UserRole.barber),
+              SizedBox(width: 4),
             ],
           ),
           body: barber == null
@@ -125,6 +145,11 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // --- barber acceptance: pending requests first ---
+                              if (requests.isNotEmpty) ...[
+                                BookingRequestsSection(requests: requests),
+                                const SizedBox(height: 12),
+                              ],
                               _buildBarberProfileCard(barber, shop, repo),
                               const SizedBox(height: 16),
                               _buildMetricOverview(
@@ -134,6 +159,8 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                                 totalEarnings: totalEarnings,
                               ),
                               const SizedBox(height: 16),
+                              // --- barber payouts: this month's share, paid, balance ---
+                              BarberPayoutsCard(barber: barber),
                               _buildScheduleQuickAction(context, barber),
                               const SizedBox(height: 12),
                               QueueDashboardCard(shopId: barber.shopId),
@@ -572,49 +599,79 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
           const Divider(height: 1, color: AppTheme.hairline),
           const SizedBox(height: 10),
 
-          // Dynamic Action Buttons according to workflow
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+          // Dynamic Action Buttons according to workflow. Before the start
+          // the barber may cancel (secondary, red outline); after it, mark a
+          // no-show. Start / Finish are the primary pills.
+          Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              if (booking.status == BookingStatus.confirmed) ...[
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.danger,
-                    side: const BorderSide(color: AppTheme.hairline),
-                    minimumSize: const Size(0, 40),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              if (booking.status == BookingStatus.confirmed || booking.status == BookingStatus.pending) ...[
+                if (booking.status == BookingStatus.pending)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    // --- barber acceptance: answered from the "New requests" section ---
+                    child: Text(l.acceptWaitingForBarber, style: const TextStyle(fontSize: 11, color: AppTheme.warning)),
                   ),
-                  icon: Icon(canMarkNoShow(booking, repo.nowUtc()) ? Icons.person_off_rounded : Icons.close, size: 15),
-                  label: Text(canMarkNoShow(booking, repo.nowUtc()) ? l.noShowAction : l.cancelBooking,
-                      style: const TextStyle(fontSize: 11)),
-                  key: ValueKey('barber-no-show-${booking.id}'),
-                  onPressed: _busy.contains(booking.id)
-                      ? null
-                      : () async {
-                          if (!canMarkNoShow(booking, repo.nowUtc())) {
-                            await _setStatus(repo, booking.id, BookingStatus.cancelled);
-                          } else if (await confirmNoShow(context, booking) && mounted) {
-                            await _setStatus(repo, booking.id, BookingStatus.noShow);
-                          }
-                        },
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(0, 40),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                if (repo.canBarberCancelBooking(booking))
+                  OutlinedButton.icon(
+                    key: ValueKey('barber-cancel-${booking.id}'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.danger,
+                      side: const BorderSide(color: AppTheme.danger),
+                      minimumSize: const Size(0, 40),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      shape: const StadiumBorder(),
+                    ),
+                    icon: const Icon(Icons.close_rounded, size: 16),
+                    label: Text(l.barberCancelAction, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                    onPressed: _busy.contains(booking.id) ? null : () => _cancelBooking(repo, booking),
+                  )
+                else if (canMarkNoShow(booking, repo.nowUtc()))
+                  OutlinedButton.icon(
+                    key: ValueKey('barber-no-show-${booking.id}'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.slate,
+                      side: const BorderSide(color: AppTheme.hairline),
+                      minimumSize: const Size(0, 40),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      shape: const StadiumBorder(),
+                    ),
+                    icon: const Icon(Icons.person_off_rounded, size: 15),
+                    label: Text(l.noShowAction, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                    onPressed: _busy.contains(booking.id)
+                        ? null
+                        : () async {
+                            if (await confirmNoShow(context, booking) && mounted) {
+                              await _setStatus(repo, booking.id, BookingStatus.noShow);
+                            }
+                          },
                   ),
-                  icon: const Icon(Icons.chair, size: 16),
-                  label: Text(l.startService, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  onPressed: _busy.contains(booking.id) ? null : () => _setStatus(repo, booking.id, BookingStatus.inProgress),
-                ),
+                if (booking.status == BookingStatus.confirmed)
+                  ElevatedButton.icon(
+                    key: ValueKey('barber-start-${booking.id}'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.ink,
+                      foregroundColor: AppTheme.onInk,
+                      minimumSize: const Size(0, 40),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      shape: const StadiumBorder(),
+                    ),
+                    icon: const Icon(Icons.chair, size: 16),
+                    label: Text(l.startService, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    onPressed:
+                        _busy.contains(booking.id) ? null : () => _setStatus(repo, booking.id, BookingStatus.inProgress),
+                  ),
               ] else if (booking.status == BookingStatus.inProgress) ...[
                 ElevatedButton.icon(
+                  key: ValueKey('barber-finish-${booking.id}'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.success,
                     foregroundColor: AppTheme.onInk,
                     minimumSize: const Size(0, 40),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                    shape: const StadiumBorder(),
                   ),
                   icon: const Icon(Icons.check_circle, size: 16),
                   label: Text(l.markCompleted, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),

@@ -62,12 +62,16 @@ rules_version = '2';
 //                              reviewCount, openingHour, closingHour,
 //                              workingDays, isVerified, subscriptionPlan?,
 //                              subscriptionStatus?, subscriptionEndsAt?,
-//                              createdAt?
+//                              createdAt?, requireBarberAcceptance? (bool,
+//                              absent = false: new bookings are 'pending'
+//                              until the barber/owner accepts)
 //     /services/{serviceId}    shopId, name, description, price (ETB),
 //                              durationMinutes
 //     /barbers/{barberId}      shopId, name, title, avatarUrl, rating,
 //                              reviewCount, isAvailable, email, phone,
-//                              specialties, workingDays?, startHour?, endHour?
+//                              specialties, workingDays?, startHour?, endHour?,
+//                              commissionPercent? (int 0..100, absent = 50;
+//                              owner only)
 //       /slotLocks/{lockId}    booking lock: bookingId, startAt, expiresAt
 //                              (booking endAt + 1 day); time-off lock:
 //                              timeOffId, startAt, expiresAt (time-off endAt
@@ -87,6 +91,12 @@ rules_version = '2';
 //                              customer; the owner sets reply/replyAt
 //     /stats/{yyyy-MM}         functions only; owner/admin read
 //     /clients/{customerId}    functions only; owner/admin read
+//     /payouts/{payoutId}      barberId, amount (0 < ETB <= 1,000,000),
+//                              periodStart, periodEnd (UTC-midnight ISO),
+//                              method, note?, createdBy, createdAt (ISO).
+//                              Owner creates; owner deletes within 24 h of
+//                              createdAt; never updated. Read by the owner,
+//                              admins and the barber it pays.
 //   Shop policy (owner-editable): cancellationCutoffHours (0..72, default 2),
 //   maxReschedules (0..5, default 2). rating/reviewCount on shops and
 //   barbers are written by functions/insights only.
@@ -97,10 +107,20 @@ rules_version = '2';
 //                              durationMinutes, paymentStatus, paymentMethod,
 //                              rescheduleCount? (1..5, absent = 0),
 //                              rescheduledAt?,
-//                              cancelledBy? ('system' when functions/bookings
-//                              cancels it); functions only: paymentId?,
+//                              cancelledBy? (a uid; 'barber'/'owner' when a
+//                              booking request is declined; 'system' when
+//                              functions/bookings cancels it),
+//                              acceptedAt? (request accepted), declineReason?
+//                              (1..200), cancelReasonNote? (1..200, staff
+//                              cancel only, see isStaffCancel); functions only: paymentId?,
 //                              paidAt?, reminder24hSentAt?, reminder2hSentAt?,
-//                              cancelReason? ('slot_conflict')
+//                              cancelReason? ('slot_conflict', 'not_accepted')
+//   shopApplications/{uid}     a customer's request to register a shop: uid,
+//                              email, ownerName, shopName, address, subCity,
+//                              phone, description?, status ('pending' |
+//                              'approved' | 'rejected'), createdAt; set by
+//                              the admin: reviewedBy, reviewedAt, shopId?
+//                              (approved), rejectReason? (rejected)
 //   insightsApplied/{id}       functions only (no client access)
 //   plans/{planId}             name, priceMonthlyEtb, maxBarbers, features,
 //                              active   (public read, admin write)
@@ -114,6 +134,9 @@ rules_version = '2';
 //                              attempts, lastSentAt
 //   authRateLimits/{key}       functions/auth only (no client access):
 //                              per-email / per-IP send counters
+//   inviteEmails/{email}_{createdAt}
+//                              functions/auth only (no client access):
+//                              marks an invite whose email was sent
 // =====================================================================
 
 service cloud.firestore {
@@ -348,6 +371,19 @@ service cloud.firestore {
       return addisDayOf(a) + '-' + hhmm(a.hours() * 60 + a.minutes());
     }
 
+    // A UTC instant as Dart's DateTime.toUtc().toIso8601String() writes it
+    // (seconds, optional 1..6 fraction digits, 'Z').
+    function isIsoInstant(s) {
+      return s is string &&
+        s.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]{1,6})?Z$');
+    }
+
+    // Parses an isIsoInstant string (to the second).
+    function isoToTs(s) {
+      return timestamp.date(int(s[0:4]), int(s[5:7]), int(s[8:10])) +
+        duration.value(int(s[11:13]) * 3600 + int(s[14:16]) * 60 + int(s[17:19]), 's');
+    }
+
     // A stored instant (ISO string or legacy timestamp) as a timestamp.
     function instantOf(v) {
       return v is timestamp ? v : utcMinuteToTs(v);
@@ -450,14 +486,17 @@ service cloud.firestore {
           'landmark', 'phone', 'imageUrl', 'rating', 'reviewCount',
           'openingHour', 'closingHour', 'workingDays', 'isVerified',
           'subscriptionPlan', 'subscriptionStatus', 'subscriptionEndsAt',
-          'createdAt', 'cancellationCutoffHours', 'maxReschedules'
+          'createdAt', 'cancellationCutoffHours', 'maxReschedules',
+          'requireBarberAcceptance'
         ]) &&
         optInt(d, 'cancellationCutoffHours', 0, 72) &&
         optInt(d, 'maxReschedules', 0, 5) &&
+        (!('requireBarberAcceptance' in d) || d.requireBarberAcceptance is bool) &&
         d.keys().hasAll(['ownerId', 'name', 'description', 'address', 'city', 'phone', 'imageUrl']) &&
         isString(d.ownerId, 0, 128) &&
         isString(d.name, 1, 120) &&
-        isString(d.description, 1, 1000) &&
+        // May be empty: a shop approved from an application without one.
+        isString(d.description, 0, 1000) &&
         isString(d.address, 1, 200) &&
         isString(d.city, 1, 100) &&
         (!('subCity' in d) || isString(d.subCity, 0, 60)) &&
@@ -505,7 +544,7 @@ service cloud.firestore {
       return d.keys().hasOnly([
           'shopId', 'name', 'title', 'avatarUrl', 'rating', 'reviewCount',
           'isAvailable', 'email', 'phone', 'specialties', 'workingDays',
-          'startHour', 'endHour'
+          'startHour', 'endHour', 'commissionPercent'
         ]) &&
         d.keys().hasAll(['shopId', 'name', 'title']) &&
         d.shopId == shopId &&
@@ -520,7 +559,8 @@ service cloud.firestore {
         (!('specialties' in d) || (d.specialties is list && d.specialties.size() <= 20)) &&
         optWorkingDays(d) &&
         optInt(d, 'startHour', 0, 23) &&
-        optInt(d, 'endHour', 1, 24);
+        optInt(d, 'endHour', 1, 24) &&
+        optInt(d, 'commissionPercent', 0, 100);
     }
 
     // Field types shared by every booking document.
@@ -550,6 +590,7 @@ service cloud.firestore {
           'price', 'date', 'timeSlot', 'status', 'createdAt',
           'startAt', 'endAt', 'durationMinutes', 'paymentStatus',
           'paymentMethod', 'cancelledBy', 'rescheduleCount', 'rescheduledAt',
+          'acceptedAt', 'declineReason', 'cancelReasonNote',
           // Written by Cloud Functions only.
           'paymentId', 'paidAt', 'reminder24hSentAt', 'reminder2hSentAt',
           'cancelReason'
@@ -568,7 +609,11 @@ service cloud.firestore {
         optString(d, 'cancelledBy', 1, 128) &&
         optString(d, 'cancelReason', 1, 64) &&
         optInt(d, 'rescheduleCount', 0, 5) &&
-        (!('rescheduledAt' in d) || isValidDateString(d.rescheduledAt));
+        (!('rescheduledAt' in d) || isValidDateString(d.rescheduledAt)) &&
+        (!('acceptedAt' in d) || isValidDateString(d.acceptedAt)) &&
+        optString(d, 'declineReason', 1, 200);
+      // cancelReasonNote is validated by isStaffCancel, the only update
+      // that may write it (kept out of here for the expression budget).
     }
 
     // The slot lock `id` exists after this write and belongs to the booking.
@@ -645,9 +690,14 @@ service cloud.firestore {
     // five slot locks, shop, barber and service = 9 (limit 10 per document
     // write, 20 per transaction; each of the at most 8 lock writes reads
     // the booking once more: 17 even if nothing is shared).
+    //
+    // Barber acceptance: the booking starts 'pending' exactly when the shop
+    // has requireBarberAcceptance == true, else 'confirmed'.
     function isBookable(d) {
       let svc = get(servicePath(d.shopId, d.serviceId)).data;
-      return get(shopPath(d.shopId)).data.get('subscriptionStatus', 'trialing') != 'suspended' &&
+      let shop = get(shopPath(d.shopId)).data;
+      return shop.get('subscriptionStatus', 'trialing') != 'suspended' &&
+        d.status == (shop.get('requireBarberAcceptance', false) == true ? 'pending' : 'confirmed') &&
         get(barberPath(d.shopId, d.barberId)).data.get('isAvailable', true) == true &&
         svc.price == d.price &&
         svc.durationMinutes == d.durationMinutes;
@@ -886,6 +936,161 @@ service cloud.firestore {
     }
 
     // -----------------------------------------------------------------
+    // Barber acceptance (booking requests)
+    // -----------------------------------------------------------------
+
+    // The booked barber, the shop's owner or an admin answers a request.
+    function canAnswerRequest() {
+      return isBarberProfile(resource.data.shopId, resource.data.barberId) ||
+        isOwnerOf(resource.data.shopId) ||
+        isAdmin();
+    }
+
+    // pending -> confirmed with exactly {status, acceptedAt}, before the
+    // appointment starts. The slot locks stay.
+    function isAcceptRequest() {
+      let d = request.resource.data;
+      return resource.data.status == 'pending' &&
+        changedKeys().hasOnly(['status', 'acceptedAt']) &&
+        d.status == 'confirmed' &&
+        isValidDateString(d.get('acceptedAt', null)) &&
+        (!('startAt' in resource.data) || request.time < instantOf(resource.data.startAt)) &&
+        canAnswerRequest();
+    }
+
+    // pending -> cancelled with {status, cancelledBy: 'barber' | 'owner'
+    // (a role literal), declineReason? (1..200)}. Its slot locks are
+    // released in the same transaction (canReleaseSlotLock).
+    function isDeclineRequest() {
+      let d = request.resource.data;
+      return resource.data.status == 'pending' &&
+        changedKeys().hasOnly(['status', 'cancelledBy', 'declineReason']) &&
+        d.status == 'cancelled' &&
+        d.get('cancelledBy', null) in ['barber', 'owner'] &&
+        (!('declineReason' in d) || isString(d.declineReason, 1, 200)) &&
+        canAnswerRequest();
+    }
+
+    // Staff cancel: the booked barber (only before the appointment
+    // starts) or the shop's owner cancels a pending or confirmed booking
+    // with exactly {status: 'cancelled', cancelledBy: <own uid>,
+    // cancelReasonNote? (1..200)}. Its slot locks are released in the same
+    // transaction (canReleaseSlotLock). cancelReasonNote can be written
+    // only here.
+    function isStaffCancel() {
+      let d = request.resource.data;
+      let r = resource.data;
+      // Cheapest check first: every other update (customer, admin) passes
+      // through here, and the booking rule runs close to the budget of
+      // 1000 evaluated expressions per request.
+      return d.status == 'cancelled' &&
+        me().role in ['barber', 'barbershopOwner'] &&
+        d.get('cancelledBy', null) == request.auth.uid &&
+        r.status in ['pending', 'confirmed'] &&
+        changedKeys().hasOnly(['status', 'cancelledBy', 'cancelReasonNote']) &&
+        (!('cancelReasonNote' in d) || isString(d.cancelReasonNote, 1, 200)) &&
+        (
+          (isBarberProfile(r.shopId, r.barberId) &&
+            (!('startAt' in r) || request.time < instantOf(r.startAt))) ||
+          isOwnerOf(r.shopId)
+        );
+    }
+
+    // -----------------------------------------------------------------
+    // Payouts (barbershops/{shopId}/payouts)
+    // -----------------------------------------------------------------
+
+    function isUtcMidnight(s) {
+      return s is string && s.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}T00:00:00[.]000Z$');
+    }
+
+    // Recorded by the owner for a barber of the shop. createdAt (client
+    // clock) may not lie more than an hour in the future: it opens the
+    // 24-hour delete window.
+    function isValidNewPayout(shopId, d) {
+      return d.keys().hasOnly(['barberId', 'amount', 'periodStart', 'periodEnd', 'method', 'note', 'createdBy', 'createdAt']) &&
+        d.keys().hasAll(['barberId', 'amount', 'periodStart', 'periodEnd', 'method', 'createdBy', 'createdAt']) &&
+        isString(d.barberId, 1, 128) &&
+        d.amount is number && d.amount > 0 && d.amount <= 1000000 &&
+        isUtcMidnight(d.periodStart) &&
+        isUtcMidnight(d.periodEnd) &&
+        d.periodStart <= d.periodEnd &&
+        d.method in ['cash', 'telebirr', 'bank', 'other'] &&
+        (!('note' in d) || isString(d.note, 1, 200)) &&
+        d.createdBy == request.auth.uid &&
+        isIsoInstant(d.createdAt) &&
+        isoToTs(d.createdAt) <= request.time + duration.value(1, 'h') &&
+        exists(barberPath(shopId, d.barberId));
+    }
+
+    // The signed-in barber whose barber profile `resource` pays (written so
+    // the barber's `where barberId == own id` listener is provable).
+    function isPaidBarber(shopId) {
+      return isRole('barber') &&
+        me().get('shopId', '') == shopId &&
+        resource.data.barberId == me().get('barberId', '') &&
+        exists(barberPath(shopId, me().get('barberId', '')));
+    }
+
+    // -----------------------------------------------------------------
+    // Shop applications (shopApplications/{uid})
+    // -----------------------------------------------------------------
+
+    function addisSubCities() {
+      return ['Addis Ketema', 'Akaky Kaliti', 'Arada', 'Bole', 'Gullele', 'Kirkos',
+        'Kolfe Keranio', 'Lemi Kura', 'Lideta', 'Nifas Silk-Lafto', 'Yeka'];
+    }
+
+    // The fields the applicant fills in.
+    function isValidApplicationFields(d) {
+      return isString(d.ownerName, 1, 100) &&
+        isString(d.shopName, 2, 80) &&
+        isString(d.address, 2, 160) &&
+        d.subCity in addisSubCities() &&
+        isEthiopianContactPhone(d.phone) &&
+        (!('description' in d) || isString(d.description, 1, 500));
+    }
+
+    // A new (or resubmitted) application: pending, no review fields, for
+    // the caller's own uid and verified email.
+    function isValidNewApplication(uid, d) {
+      return d.keys().hasOnly(['uid', 'email', 'ownerName', 'shopName', 'address', 'subCity', 'phone', 'description', 'status', 'createdAt']) &&
+        d.keys().hasAll(['uid', 'email', 'ownerName', 'shopName', 'address', 'subCity', 'phone', 'status', 'createdAt']) &&
+        d.uid == uid &&
+        myEmail() != '' &&
+        d.email == myEmail() &&
+        d.status == 'pending' &&
+        isValidDateString(d.createdAt) &&
+        isValidApplicationFields(d);
+    }
+
+    // Admin: pending -> rejected with exactly {status, reviewedBy,
+    // reviewedAt, rejectReason}.
+    function isApplicationReject() {
+      let d = request.resource.data;
+      return changedKeys().hasOnly(['status', 'reviewedBy', 'reviewedAt', 'rejectReason']) &&
+        d.status == 'rejected' &&
+        d.get('reviewedBy', null) == request.auth.uid &&
+        isValidDateString(d.get('reviewedAt', null)) &&
+        isString(d.get('rejectReason', null), 1, 300);
+    }
+
+    // Admin: pending -> approved with exactly {status, reviewedBy,
+    // reviewedAt, shopId}, in the batch that creates the shop and the
+    // applicant's owner invite for it.
+    function isApplicationApprove() {
+      let d = request.resource.data;
+      return changedKeys().hasOnly(['status', 'reviewedBy', 'reviewedAt', 'shopId']) &&
+        d.status == 'approved' &&
+        d.get('reviewedBy', null) == request.auth.uid &&
+        isValidDateString(d.get('reviewedAt', null)) &&
+        isString(d.get('shopId', null), 1, 128) &&
+        existsAfter(shopPath(d.shopId)) &&
+        getAfter(invitePath(resource.data.email)).data.get('shopId', '') == d.shopId &&
+        getAfter(invitePath(resource.data.email)).data.role == 'barbershopOwner';
+    }
+
+    // -----------------------------------------------------------------
     // users/{uid}
     // -----------------------------------------------------------------
     match /users/{userId} {
@@ -1031,9 +1236,10 @@ service cloud.firestore {
           request.resource.data.get('reviewCount', 0) == 0;
 
         // rating/reviewCount are written by functions/insights only.
+        // commissionPercent (payouts) is set by the shop's owner only.
         allow update: if isValidBarber(request.resource.data, shopId) && (
-          (isAdmin() && !changedKeys().hasAny(['rating', 'reviewCount'])) ||
-          // Owners manage profiles and working hours but not ratings.
+          (isAdmin() && !changedKeys().hasAny(['rating', 'reviewCount', 'commissionPercent'])) ||
+          // Owners manage profiles, working hours and commission but not ratings.
           (isOwnerOf(shopId) && !changedKeys().hasAny(['rating', 'reviewCount'])) ||
           // A barber can only toggle their own availability.
           (isBarberProfile(shopId, barberId) && changedKeys().hasOnly(['isAvailable']))
@@ -1156,6 +1362,51 @@ service cloud.firestore {
         allow read: if canManageShop(shopId);
         allow write: if false;
       }
+
+      // Barber payouts. The owner records them (never edits) and may
+      // delete one within 24 hours of its createdAt. The barber reads
+      // their own (listener: where barberId == own barber id).
+      match /payouts/{payoutId} {
+        allow read: if signedIn() && (canManageShop(shopId) || isPaidBarber(shopId));
+        allow create: if isOwnerOf(shopId) && isValidNewPayout(shopId, request.resource.data);
+        allow update: if false;
+        allow delete: if isOwnerOf(shopId) &&
+          isIsoInstant(resource.data.get('createdAt', null)) &&
+          request.time < isoToTs(resource.data.createdAt) + duration.value(24, 'h');
+      }
+    }
+
+    // -----------------------------------------------------------------
+    // shopApplications/{uid} - a customer applies to register a shop
+    // -----------------------------------------------------------------
+    match /shopApplications/{uid} {
+      // The applicant (any role: they become an owner on approval) and
+      // admins. Admin listeners: where status == 'pending', and orderBy
+      // reviewedAt desc limit n.
+      allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow list: if isAdmin();
+
+      allow create: if signedIn() &&
+        request.auth.uid == uid &&
+        isRole('customer') &&
+        isValidNewApplication(uid, request.resource.data);
+
+      allow update: if signedIn() && (
+        (request.auth.uid == uid && isRole('customer') &&
+          (
+            // Apply again after a rejection (set() overwrites it).
+            (resource.data.status == 'rejected' && isValidNewApplication(uid, request.resource.data)) ||
+            // Edit while pending: only the fields the applicant fills in.
+            (resource.data.status == 'pending' &&
+              changedKeys().hasOnly(['ownerName', 'shopName', 'address', 'subCity', 'phone', 'description']) &&
+              isValidApplicationFields(request.resource.data))
+          )) ||
+        (isAdmin() && resource.data.status == 'pending' &&
+          (isApplicationReject() || isApplicationApprove()))
+      );
+
+      // Withdraw while pending.
+      allow delete: if signedIn() && request.auth.uid == uid && resource.data.status == 'pending';
     }
 
     // -----------------------------------------------------------------
@@ -1191,8 +1442,20 @@ service cloud.firestore {
       // may change (the rest is unchanged): it shares one budget of 1000
       // evaluated expressions with up to 16 slot-lock writes, and
       // isValidBooking's key lists alone would use a large part of it.
+      //
+      // Barber acceptance: the booked barber, the owner or an admin
+      // accepts (isAcceptRequest) or declines (isDeclineRequest) a
+      // 'pending' request.
+      //
+      // Staff cancel (isStaffCancel): the booked barber cancels their own
+      // pending/confirmed booking before it starts (cancelledBy = their
+      // uid, optional cancelReasonNote); the owner may too. Barbers have
+      // no other way to cancel.
       allow update: if signedIn() && (
-        isValidReschedule(bookingId) || (
+        isValidReschedule(bookingId) ||
+        isAcceptRequest() ||
+        isDeclineRequest() ||
+        isStaffCancel() || (
         isValidBooking(request.resource.data) &&
         cancelledByOk() &&
         statusTransitionOk() &&
@@ -1205,11 +1468,14 @@ service cloud.firestore {
                 resource.data.status in ['pending', 'confirmed'] &&
                 request.resource.data.status == 'cancelled' &&
                 beforeCutoff(resource.data)) ||
-              // Assigned barber or shop owner: run the shop's queue. A
-              // cancelled booking has released its slot, so it stays
-              // cancelled.
-              ((isBarberProfile(resource.data.shopId, resource.data.barberId) ||
-                  isOwnerOf(resource.data.shopId)) &&
+              // Assigned barber: run the queue (in progress, completed,
+              // no-show); cancelling goes through isStaffCancel only.
+              (isBarberProfile(resource.data.shopId, resource.data.barberId) &&
+                resource.data.status != 'cancelled' &&
+                request.resource.data.status != 'cancelled') ||
+              // Shop owner: run the shop's queue. A cancelled booking has
+              // released its slot, so it stays cancelled.
+              (isOwnerOf(resource.data.shopId) &&
                 (resource.data.status != 'cancelled' || request.resource.data.status == 'cancelled')) ||
               isAdmin()
             )) ||
@@ -1250,6 +1516,11 @@ service cloud.firestore {
     }
 
     match /authRateLimits/{docId=**} {
+      allow read, write: if false;
+    }
+
+    // Written by functions/auth (onInviteCreated) only.
+    match /inviteEmails/{docId=**} {
       allow read, write: if false;
     }
 

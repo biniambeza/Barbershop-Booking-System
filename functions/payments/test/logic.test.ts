@@ -279,6 +279,8 @@ test('checkBookingPayable', () => {
   assert.equal(checkBookingPayable(undefined, 'u1')?.code, 'not-found');
   assert.equal(checkBookingPayable(b, 'u2')?.code, 'permission-denied');
   assert.equal(checkBookingPayable({ ...b, status: 'cancelled' }, 'u1')?.code, 'failed-precondition');
+  // barber acceptance: not payable until accepted
+  assert.equal(checkBookingPayable({ ...b, status: 'pending' }, 'u1')?.code, 'failed-precondition');
   assert.equal(checkBookingPayable({ ...b, paymentStatus: 'paid' }, 'u1')?.code, 'already-exists');
   assert.equal(checkBookingPayable({ ...b, paymentStatus: 'refunded' }, 'u1')?.code, 'failed-precondition');
 });

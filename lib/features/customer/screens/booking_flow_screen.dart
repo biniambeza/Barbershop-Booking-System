@@ -10,6 +10,7 @@ import '../../../models/barber_model.dart';
 import '../../../models/booking_model.dart';
 import '../../../services/app_repository.dart';
 import '../../../services/availability_service.dart';
+import '../../../services/booking_acceptance.dart' show isAwaitingAcceptance;
 import '../../payments/payment_flow.dart';
 
 /// Pick barber, service, day and a real free time, then book.
@@ -269,7 +270,9 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
 
   void _showConfirmation(String shopName, String barberName, String serviceName, DateTime startUtc, double price,
       {Booking? booking}) {
-    final payOnline = booking != null && _paymentMethod == PaymentMethod.chapa;
+    // --- barber acceptance: a 'pending' booking is a request; pay after accept ---
+    final awaiting = booking != null && isAwaitingAcceptance(booking);
+    final payOnline = booking != null && _paymentMethod == PaymentMethod.chapa && !awaiting;
     final local = toAddisWallClock(startUtc);
     final l = context.l10n;
     final fmt = context.fmt;
@@ -285,19 +288,22 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.greenSoft,
+                color: awaiting ? AppTheme.warning.withValues(alpha: 0.14) : AppTheme.greenSoft,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check_circle_rounded, size: 54, color: AppTheme.green),
+              child: awaiting
+                  ? const Icon(Icons.hourglass_top_rounded, size: 54, color: AppTheme.warning)
+                  : const Icon(Icons.check_circle_rounded, size: 54, color: AppTheme.green),
             ),
             const SizedBox(height: 16),
             Text(
-              l.bookingConfirmed,
+              awaiting ? l.acceptRequestSentTitle : l.bookingConfirmed,
+              key: const ValueKey('booking-result-title'),
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
             ),
             const SizedBox(height: 8),
             Text(
-              l.seatReserved(barberName),
+              awaiting ? l.acceptRequestSentBody(barberName) : l.seatReserved(barberName),
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
             ),
@@ -316,6 +322,12 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               ),
             ),
             const SizedBox(height: 20),
+            if (awaiting && _paymentMethod == PaymentMethod.chapa) ...[
+              Text(l.acceptPayAfterAcceptance,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
+              const SizedBox(height: 12),
+            ],
             if (payOnline) ...[
               SizedBox(
                 width: double.infinity,

@@ -160,6 +160,17 @@ class _NotificationTile extends StatelessWidget {
       return (Icons.person_off_rounded, AppTheme.danger);
     case NotificationTypes.queueNext:
       return (Icons.groups_rounded, AppTheme.success);
+    // --- shop applications ---
+    case NotificationTypes.applicationApproved:
+      return (Icons.add_business_rounded, AppTheme.success);
+    case NotificationTypes.applicationRejected:
+      return (Icons.assignment_late_outlined, AppTheme.danger);
+    // --- barber acceptance ---
+    case NotificationTypes.accepted:
+      return (Icons.event_available_rounded, AppTheme.success);
+    case NotificationTypes.requestDeclined:
+    case NotificationTypes.requestExpired:
+      return (Icons.event_busy_rounded, AppTheme.danger);
     default:
       return (Icons.notifications_rounded, AppTheme.textSecondary);
   }

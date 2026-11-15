@@ -13,7 +13,11 @@ export type BookingEvent =
   | 'completed'
   | 'slotTaken'
   | 'rescheduled'
-  | 'noShow';
+  | 'noShow'
+  // --- barber acceptance ---
+  | 'accepted'
+  | 'requestDeclined'
+  | 'requestExpired';
 
 /** Payment events seen on a booking (paymentStatus changes). */
 export type BookingPaymentEvent = 'paymentReceived' | 'paymentRefunded';
@@ -39,6 +43,10 @@ export const ALL_NOTIFICATION_TYPES: readonly NotificationType[] = [
   'subscriptionFailed',
   'rescheduled',
   'noShow',
+  // barber acceptance
+  'accepted',
+  'requestDeclined',
+  'requestExpired',
 ];
 
 /** Who cancelled, as far as we can tell. 'system' = a Cloud Function. */
@@ -47,6 +55,12 @@ export type CancelActor = 'customer' | 'barber' | 'shop' | 'admin' | 'system' | 
 /** cancelledBy / cancelReason written by the booking-integrity function. */
 export const SYSTEM_CANCEL = 'system';
 export const SLOT_CONFLICT_REASON = 'slot_conflict';
+
+// --- barber acceptance (functions/bookings expire.ts, lib/services/booking_acceptance.dart) ---
+/** cancelReason of a request that expired unanswered (cancelledBy 'system'). */
+export const NOT_ACCEPTED_REASON = 'not_accepted';
+/** cancelledBy of a request the barber (or the owner for them) declined. */
+export const DECLINED_BY = 'barber';
 
 export interface BookingDoc {
   shopId?: string;
@@ -74,6 +88,10 @@ export interface BookingDoc {
   cancelledBy?: string;
   /** Optional machine reason, e.g. 'slot_conflict' (with cancelledBy 'system'). */
   cancelReason?: string;
+  /** Barber acceptance: UTC ISO time the barber accepted a pending request. */
+  acceptedAt?: string;
+  /** Barber acceptance: optional note given when declining. */
+  declineReason?: string;
   reminder24hSentAt?: string;
   reminder2hSentAt?: string;
   /** Times the customer moved the booking (absent = 0). */
@@ -124,6 +142,9 @@ export function isSlotConflictCancel(booking: BookingDoc): boolean {
  * - create with status confirmed      -> 'confirmed' (auto-confirmed shops)
  * - update whose status changed to X  -> event for X (pending -> nothing);
  *   a system cancel for a slot conflict -> 'slotTaken' instead of 'cancelled'
+ * - barber acceptance: pending -> confirmed with acceptedAt -> 'accepted';
+ *   pending -> cancelled by 'barber' -> 'requestDeclined'; pending ->
+ *   cancelled by 'system' with cancelReason 'not_accepted' -> 'requestExpired'
  * - delete, or update without a status change (e.g. our own reminder flags,
  *   payment fields) -> null
  */
@@ -140,6 +161,14 @@ export function detectBookingEvent(
   if (before.status === after.status) return null;
   const event = STATUS_EVENT[after.status ?? ''] ?? null;
   if (event === 'cancelled' && isSlotConflictCancel(after)) return 'slotTaken';
+  // --- barber acceptance ---
+  if (before.status === 'pending') {
+    if (event === 'confirmed' && typeof after.acceptedAt === 'string' && after.acceptedAt) return 'accepted';
+    if (event === 'cancelled' && after.cancelledBy === DECLINED_BY) return 'requestDeclined';
+    if (event === 'cancelled' && after.cancelledBy === SYSTEM_CANCEL && after.cancelReason === NOT_ACCEPTED_REASON) {
+      return 'requestExpired';
+    }
+  }
   return event;
 }
 
@@ -296,6 +325,10 @@ export const SMS_TYPES: ReadonlySet<NotificationType> = new Set<NotificationType
   'reminder2h',
   'paymentReceived',
   'subscriptionPaid',
+  // barber acceptance: the customer learns the outcome of their request
+  'accepted',
+  'requestDeclined',
+  'requestExpired',
 ]);
 
 export type RecipientRole = 'customer' | 'barber' | 'owner';
@@ -319,6 +352,12 @@ export const RECIPIENT_ROLES: Record<NotificationType, readonly RecipientRole[]>
   rescheduled: ['customer', 'barber', 'owner'],
   // Inbox/push only, to the customer.
   noShow: ['customer'],
+  // --- barber acceptance ---
+  // The barber/owner answered it themselves; only the customer is told.
+  accepted: ['customer'],
+  requestDeclined: ['customer'],
+  // Nobody answered: the customer and the staff hear about it.
+  requestExpired: ['customer', 'barber', 'owner'],
 };
 
 /** Who gets the SMS for a type, or null when the type has no SMS. */

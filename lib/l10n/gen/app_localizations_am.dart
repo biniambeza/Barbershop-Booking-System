@@ -2613,14 +2613,11 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String codeSentTo(String email) {
-    return 'ባለ 6 አሃዝ ኮድ ወደ $email ልከናል';
+    return 'ወደ $email የላክነውን ባለ 6 አሃዝ ኮድ ያስገቡ';
   }
 
   @override
   String get codeLabel => 'ባለ 6 አሃዝ ኮድ';
-
-  @override
-  String get verifyAndCreate => 'አረጋግጥ እና መለያ ፍጠር';
 
   @override
   String get resendCode => 'ኮዱን እንደገና ላክ';
@@ -2653,9 +2650,6 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get resetIntro => 'የመለያዎን ኢሜይል ያስገቡ፤ ባለ 6 አሃዝ ኮድ እንልክልዎታለን።';
-
-  @override
-  String get resetButton => 'የይለፍ ቃል ቀይር';
 
   @override
   String get resetDone => 'የይለፍ ቃልዎ ተቀይሯል። በአዲሱ የይለፍ ቃል ይግቡ።';
@@ -2721,7 +2715,652 @@ class AppLocalizationsAm extends AppLocalizations {
   }
 
   @override
+  String get registerEmailTitle => 'ኢሜይልዎን ያስገቡ';
+
+  @override
+  String get registerEmailIntro => 'የእርስዎ መሆኑን ለማረጋገጥ ባለ 6 አሃዝ ኮድ እንልክልዎታለን።';
+
+  @override
+  String get enterCodeTitle => 'ኢሜይልዎን ይመልከቱ';
+
+  @override
+  String get verifyButton => 'አረጋግጥ';
+
+  @override
+  String get createPasswordTitle => 'የይለፍ ቃልዎን ይፍጠሩ';
+
+  @override
+  String get createAccountButton => 'መለያ ፍጠር';
+
+  @override
+  String get newPasswordTitle => 'አዲስ የይለፍ ቃል ይምረጡ';
+
+  @override
+  String get savePasswordButton => 'አስቀምጥ';
+
+  @override
+  String emailVerifiedNotice(String email) {
+    return '$email ተረጋግጧል።';
+  }
+
+  @override
+  String authStepOf(int step, int total) {
+    return 'ደረጃ $step ከ$total';
+  }
+
+  @override
+  String get emailErrVerificationExpired =>
+      'ይህ ደረጃ ብዙ ጊዜ ወሰደ። እባክዎ አዲስ ኮድ ይጠይቁ።';
+
+  @override
+  String get logInInstead => 'በምትኩ ይግቡ';
+
+  @override
+  String get acceptRequestsTitle => 'አዲስ ጥያቄዎች';
+
+  @override
+  String acceptRequestsCount(int count) {
+    return '$count በመጠባበቅ ላይ';
+  }
+
+  @override
+  String get acceptRequestsHelp =>
+      'እያንዳንዱን ቀጠሮ ይቀበሉ ወይም ውድቅ ያድርጉ። ከመጀመሪያው 1 ሰዓት በፊት ምላሽ ያላገኙ ጥያቄዎች በራስ-ሰር ይሰረዛሉ።';
+
+  @override
+  String get acceptAction => 'ተቀበል';
+
+  @override
+  String get acceptDeclineAction => 'ውድቅ አድርግ';
+
+  @override
+  String get acceptDeclineTitle => 'ይህን ቀጠሮ ውድቅ ያደርጋሉ?';
+
+  @override
+  String acceptDeclineBody(String customer) {
+    return 'ለ$customer ቀጠሮውን መውሰድ እንደማይችሉ ይነገራቸዋል፤ ሌላ ሰዓት እንዲመርጡም ይጠየቃሉ።';
+  }
+
+  @override
+  String get acceptDeclineReasonLabel => 'ምክንያት (አማራጭ)';
+
+  @override
+  String get acceptDeclineConfirm => 'ቀጠሮውን ውድቅ አድርግ';
+
+  @override
+  String get acceptDeclineCancel => 'ተመለስ';
+
+  @override
+  String acceptAccepted(String customer) {
+    return 'ቀጠሮው ተቀባይነት አግኝቷል። ለ$customer ተነግሯቸዋል።';
+  }
+
+  @override
+  String get acceptDeclined => 'ቀጠሮው ውድቅ ተደርጓል።';
+
+  @override
+  String acceptFailed(String error) {
+    return 'ለጥያቄው ምላሽ መስጠት አልተቻለም፦ $error';
+  }
+
+  @override
+  String get acceptWaitingForBarber => 'ፀጉር አስተካካዩን በመጠበቅ ላይ';
+
+  @override
+  String acceptWaitingFor(String barber) {
+    return '$barber እስኪቀበሉ በመጠበቅ ላይ';
+  }
+
+  @override
+  String get acceptRequestSentTitle => 'ጥያቄዎ ተልኳል!';
+
+  @override
+  String acceptRequestSentBody(String barber) {
+    return '$barber ቀጠሮዎን በቅርቡ ያረጋግጣሉ። ሲቀበሉ እናሳውቅዎታለን።';
+  }
+
+  @override
+  String get acceptPayAfterAcceptance =>
+      'ፀጉር አስተካካዩ ከተቀበለ በኋላ በኦንላይን መክፈል ይችላሉ።';
+
+  @override
+  String get acceptDeclinedNote =>
+      'ፀጉር አስተካካዩ ይህን ቀጠሮ መውሰድ አልቻሉም። እባክዎ ሌላ ሰዓት ይምረጡ።';
+
+  @override
+  String get acceptExpiredNote =>
+      'ፀጉር አስተካካዩ በጊዜው ምላሽ አልሰጡም። እባክዎ ሌላ ሰዓት ይምረጡ።';
+
+  @override
+  String acceptDeclineReasonNote(String reason) {
+    return 'ምክንያት፦ $reason';
+  }
+
+  @override
+  String get acceptPolicyToggle => 'ፀጉር አስተካካዮች እያንዳንዱን ቀጠሮ ይቀበላሉ';
+
+  @override
+  String get acceptPolicyToggleHelp =>
+      'አዲስ ቀጠሮዎች ፀጉር አስተካካዩ እስኪቀበላቸው ድረስ ይጠብቃሉ። ከመጀመሪያው 1 ሰዓት በፊት ምላሽ ያላገኙ ጥያቄዎች በራስ-ሰር ይሰረዛሉ።';
+
+  @override
+  String get acceptErrNotAllowed =>
+      'ይህን ጥያቄ መመለስ የሚችሉት የተያዘው ፀጉር አስተካካይ ወይም የፀጉር ቤቱ ባለቤት ብቻ ናቸው።';
+
+  @override
+  String acceptErrReasonTooLong(int max) {
+    return 'ምክንያቱ ቢበዛ $max ፊደላት ሊሆን ይችላል።';
+  }
+
+  @override
+  String get payoutsTitle => 'የባርበሮች ክፍያ';
+
+  @override
+  String get payoutsOpenButton => 'ክፍያዎችና ኮሚሽን';
+
+  @override
+  String get payoutsMonthLabel => 'ወር';
+
+  @override
+  String get payoutsCompletedJobs => 'የተጠናቀቁ ሥራዎች';
+
+  @override
+  String get payoutsGross => 'ጠቅላላ ገቢ';
+
+  @override
+  String get payoutsCommission => 'ኮሚሽን';
+
+  @override
+  String payoutsCommissionLine(int percent) {
+    return 'ኮሚሽን፦ $percent%';
+  }
+
+  @override
+  String get payoutsBarberShare => 'የባርበሩ ድርሻ';
+
+  @override
+  String get payoutsAlreadyPaid => 'የተከፈለ';
+
+  @override
+  String get payoutsBalanceOwed => 'ቀሪ ዕዳ';
+
+  @override
+  String get payoutsTotalShare => 'የባርበሮች ድርሻ';
+
+  @override
+  String get payoutsTotalPaid => 'የተከፈለ';
+
+  @override
+  String get payoutsTotalOwed => 'ገና ያልተከፈለ';
+
+  @override
+  String get payoutsRecord => 'ክፍያ መዝግብ';
+
+  @override
+  String payoutsRecordTitle(String name) {
+    return 'ለ$name ክፈል';
+  }
+
+  @override
+  String get payoutsHistory => 'የክፍያ ታሪክ';
+
+  @override
+  String get payoutsNoHistory => 'ለዚህ ወር የተመዘገበ ክፍያ የለም።';
+
+  @override
+  String get payoutsNoBarbers => 'ኮሚሽናቸውንና ክፍያቸውን ለመከታተል ባርበሮችን ያክሉ።';
+
+  @override
+  String get payoutsAmount => 'መጠን (ብር)';
+
+  @override
+  String get payoutsMethod => 'የተከፈለበት መንገድ';
+
+  @override
+  String get payoutsMethodCash => 'ጥሬ ገንዘብ';
+
+  @override
+  String get payoutsMethodTelebirr => 'ቴሌብር';
+
+  @override
+  String get payoutsMethodBank => 'የባንክ ዝውውር';
+
+  @override
+  String get payoutsMethodOther => 'ሌላ';
+
+  @override
+  String get payoutsNote => 'ማስታወሻ (አማራጭ)';
+
+  @override
+  String payoutsPeriod(String range) {
+    return 'ጊዜ፦ $range';
+  }
+
+  @override
+  String get payoutsSave => 'ክፍያውን አስቀምጥ';
+
+  @override
+  String get payoutsSaved => 'ክፍያው ተመዝግቧል።';
+
+  @override
+  String get payoutsDelete => 'ክፍያውን ሰርዝ';
+
+  @override
+  String payoutsDeleteBody(String amount, String name) {
+    return 'ለ$name የተከፈለውን $amount ይሰርዙ? ክፍያን መሰረዝ የሚቻለው ከተመዘገበ በ24 ሰዓት ውስጥ ብቻ ነው።';
+  }
+
+  @override
+  String get payoutsDeleted => 'ክፍያው ተሰርዟል።';
+
+  @override
+  String get payoutsYourShare => 'የእርስዎ ድርሻ';
+
+  @override
+  String get payoutsPaidToYou => 'የተከፈለዎት';
+
+  @override
+  String payoutsThisMonth(String month) {
+    return 'በዚህ ወር፦ $month';
+  }
+
+  @override
+  String payoutsShareLine(int percent, int jobs, String gross) {
+    return 'ከ$jobs የተጠናቀቁ ሥራዎች ($gross) $percent%';
+  }
+
+  @override
+  String get payoutsMyPayouts => 'የእኔ ክፍያዎች';
+
+  @override
+  String get payoutsMyPayoutsEmpty => 'እስካሁን ምንም ክፍያ የለም።';
+
+  @override
+  String get payoutsSeeAll => 'ሁሉንም ክፍያዎች ይመልከቱ';
+
+  @override
+  String get payoutsSetCommission => 'ኮሚሽን ያስተካክሉ';
+
+  @override
+  String payoutsCommissionTitle(String name) {
+    return 'የ$name ኮሚሽን';
+  }
+
+  @override
+  String get payoutsCommissionHelp => 'ባርበሩ ከእያንዳንዱ የተጠናቀቀ ቀጠሮ ዋጋ የሚያገኘው ድርሻ።';
+
+  @override
+  String get payoutsCommissionPercent => 'ኮሚሽን (%)';
+
+  @override
+  String get payoutsCommissionSaved => 'ኮሚሽኑ ተቀምጧል።';
+
+  @override
+  String payoutsRecordedOn(String date) {
+    return 'የተመዘገበው $date';
+  }
+
+  @override
+  String get payoutsLoadFailed => 'ክፍያዎችን መጫን አልተቻለም። እባክዎ እንደገና ይሞክሩ።';
+
+  @override
+  String get payoutsErrOwnerOnly =>
+      'ክፍያዎችንና ኮሚሽንን ማስተዳደር የሚችለው የሱቁ ባለቤት ብቻ ነው።';
+
+  @override
+  String get payoutsErrNotFound => 'ይህ ክፍያ ወይም ባርበር ከአሁን በኋላ የለም።';
+
+  @override
+  String get payoutsErrUnknownBarber => 'ይህ ባርበር የሱቅዎ አባል አይደለም።';
+
+  @override
+  String payoutsErrInvalidAmount(String max) {
+    return 'ከ0 በላይ እና እስከ $max ብር የሆነ መጠን ያስገቡ።';
+  }
+
+  @override
+  String get payoutsErrInvalidPeriod => 'ጊዜው ከመጨረሻው በፊት ወይም በዚያው ቀን መጀመር አለበት።';
+
+  @override
+  String payoutsErrNoteTooLong(int max) {
+    return 'ማስታወሻው ቢበዛ $max ፊደላት ሊሆን ይችላል።';
+  }
+
+  @override
+  String get payoutsErrInvalidCommission =>
+      'ኮሚሽኑ ከ0 እስከ 100 ያለ ሙሉ ቁጥር መሆን አለበት።';
+
+  @override
+  String get payoutsErrDeleteWindow =>
+      'ክፍያን መሰረዝ የሚቻለው ከተመዘገበ በ24 ሰዓት ውስጥ ብቻ ነው።';
+
+  @override
+  String get applRegisterShopTitle => 'የፀጉር ቤትዎን ያስመዝግቡ';
+
+  @override
+  String get applRegisterShopSubtitle =>
+      'የፀጉር ቤት ባለቤት ነዎት? በክራውን ኤንድ ብሌድ ላይ ለመመዝገብ ያመልክቱ። እያንዳንዱን ማመልከቻ እንገመግማለን።';
+
+  @override
+  String get applCtaApply => 'አሁን ያመልክቱ';
+
+  @override
+  String get applCtaViewStatus => 'ማመልከቻውን ይመልከቱ';
+
+  @override
+  String get applFormIntro =>
+      'ስለ ሱቅዎ ይንገሩን። አስተዳዳሪው ሲያጸድቀው ይህ መለያ የሱቁ ባለቤት መለያ ይሆናል።';
+
+  @override
+  String get applOwnerName => 'ሙሉ ስምዎ';
+
+  @override
+  String get applShopName => 'የፀጉር ቤቱ ስም';
+
+  @override
+  String get applAddress => 'የመንገድ አድራሻ';
+
+  @override
+  String get applSubCity => 'ክፍለ ከተማ';
+
+  @override
+  String get applPhone => 'የሱቁ መገናኛ ስልክ';
+
+  @override
+  String get applPhoneHint => '09XX XXX XXX ወይም 011 XXX XXXX';
+
+  @override
+  String get applDescription => 'ስለ ሱቁ (አማራጭ)';
+
+  @override
+  String get applSubmit => 'ማመልከቻውን ይላኩ';
+
+  @override
+  String get applSaveChanges => 'ለውጦቹን ያስቀምጡ';
+
+  @override
+  String get applResubmit => 'እንደገና ያመልክቱ';
+
+  @override
+  String get applSubmitted => 'ማመልከቻው ተልኳል። ሲገመገም እናሳውቅዎታለን።';
+
+  @override
+  String get applUpdated => 'ማመልከቻው ተዘምኗል።';
+
+  @override
+  String get applEdit => 'ማመልከቻውን ያስተካክሉ';
+
+  @override
+  String get applWithdraw => 'ማመልከቻውን ይሰርዙ';
+
+  @override
+  String get applWithdrawTitle => 'ማመልከቻውን ይሰርዙ?';
+
+  @override
+  String applWithdrawBody(String shop) {
+    return 'ለ$shop ያቀረቡት ማመልከቻ ይሰረዛል። በኋላ እንደገና ማመልከት ይችላሉ።';
+  }
+
+  @override
+  String get applWithdrawn => 'ማመልከቻው ተሰርዟል።';
+
+  @override
+  String get applStatusPending => 'በግምገማ ላይ';
+
+  @override
+  String get applStatusApproved => 'ጸድቋል';
+
+  @override
+  String get applStatusRejected => 'አልጸደቀም';
+
+  @override
+  String applPendingBody(String date) {
+    return 'ማመልከቻዎን በ$date ተቀብለናል። አስተዳዳሪው በቅርቡ ይገመግመዋል።';
+  }
+
+  @override
+  String applApprovedBody(String shop) {
+    return '$shop ጸድቋል! መለያዎ አሁን የሱቁ ባለቤት መለያ ነው።';
+  }
+
+  @override
+  String get applOpenDashboard => 'የባለቤት ዳሽቦርድን ይክፈቱ';
+
+  @override
+  String get applRejectedBody => 'ማመልከቻዎ አልጸደቀም።';
+
+  @override
+  String applRejectReasonLine(String reason) {
+    return 'ምክንያት፦ $reason';
+  }
+
+  @override
+  String get applRejectedHint => 'ዝርዝሩን አስተካክለው እንደገና ማመልከት ይችላሉ።';
+
+  @override
+  String get applSignUpOwnShop => 'የፀጉር ቤት አለኝ፤ ማስመዝገብ እፈልጋለሁ';
+
+  @override
+  String get applSignUpOwnShopHint => 'ከቀጠሉ በኋላ የሱቅዎን ዝርዝር ለማጽደቅ መላክ ይችላሉ።';
+
+  @override
+  String get applAdminTitle => 'የሱቅ ማመልከቻዎች';
+
+  @override
+  String applAdminPendingCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count በመጠባበቅ ላይ ያሉ ማመልከቻዎች',
+      one: '1 በመጠባበቅ ላይ ያለ ማመልከቻ',
+      zero: 'በመጠባበቅ ላይ ያለ ማመልከቻ የለም',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get applAdminPending => 'በመጠባበቅ ላይ';
+
+  @override
+  String get applAdminRecent => 'በቅርቡ የተወሰኑ';
+
+  @override
+  String get applAdminEmpty => 'እስካሁን የሱቅ ማመልከቻ የለም።';
+
+  @override
+  String applAdminSubmittedOn(String date) {
+    return 'የቀረበው $date';
+  }
+
+  @override
+  String applAdminReviewedOn(String date) {
+    return 'የተገመገመው $date';
+  }
+
+  @override
+  String get applAdminApprove => 'አጽድቅ';
+
+  @override
+  String get applAdminReject => 'ውድቅ አድርግ';
+
+  @override
+  String applAdminApproveTitle(String shop) {
+    return '$shop ይጽደቅ?';
+  }
+
+  @override
+  String applAdminApproveBody(String email) {
+    return 'ይህ ሱቁን በነጻ የሙከራ ጊዜ ከሁለት መነሻ አገልግሎቶች ጋር ይመዘግባል፤ $emailን እንደ ባለቤት ይጋብዛል።';
+  }
+
+  @override
+  String applAdminApproved(String shop) {
+    return '$shop ጸድቆ ተመዝግቧል።';
+  }
+
+  @override
+  String applAdminRejectTitle(String shop) {
+    return '$shop ውድቅ ይደረግ?';
+  }
+
+  @override
+  String get applAdminRejectReason => 'ምክንያት (አመልካቹ ያየዋል)';
+
+  @override
+  String get applAdminRejected => 'ማመልከቻው ውድቅ ተደርጓል።';
+
+  @override
+  String get applLoadFailed => 'ማመልከቻዎችን መጫን አልተቻለም። እባክዎ እንደገና ይሞክሩ።';
+
+  @override
+  String get applErrOwnerName => 'ስምዎን ያስገቡ (እስከ 100 ፊደላት)።';
+
+  @override
+  String get applErrShopName => 'የሱቁ ስም ከ2 እስከ 80 ፊደላት መሆን አለበት።';
+
+  @override
+  String get applErrAddress => 'አድራሻው ከ2 እስከ 160 ፊደላት መሆን አለበት።';
+
+  @override
+  String get applErrSubCity => 'ክፍለ ከተማ ይምረጡ።';
+
+  @override
+  String get applErrPhone =>
+      'ትክክለኛ የኢትዮጵያ ስልክ ቁጥር ያስገቡ (09...፣ 07... ወይም 011...)።';
+
+  @override
+  String applErrDescriptionTooLong(int max) {
+    return 'መግለጫው ቢበዛ $max ፊደላት ሊሆን ይችላል።';
+  }
+
+  @override
+  String applErrRejectReason(int max) {
+    return 'እስከ $max ፊደላት የሚሆን ምክንያት ይጻፉ።';
+  }
+
+  @override
+  String get applErrCustomersOnly =>
+      'የፀጉር ቤት ለማስመዝገብ ማመልከት የሚችሉት የደንበኛ መለያዎች ብቻ ናቸው።';
+
+  @override
+  String get applErrEmailMissing =>
+      'መለያዎ የኢሜይል አድራሻ የለውም፤ የባለቤት ግብዣው ኢሜይል ያስፈልገዋል።';
+
+  @override
+  String get applErrAlreadyPending => 'በግምገማ ላይ ያለ ማመልከቻ አለዎት። እሱን ያስተካክሉ።';
+
+  @override
+  String get applErrAlreadyApproved => 'ማመልከቻዎ አስቀድሞ ጸድቋል።';
+
+  @override
+  String get applErrNotPending => 'ይህ ማመልከቻ አስቀድሞ ተገምግሟል።';
+
+  @override
+  String get applErrNotFound => 'ይህ ማመልከቻ ከአሁን በኋላ የለም።';
+
+  @override
+  String get applErrAdminOnly => 'ማመልከቻዎችን መገምገም የሚችለው የመድረኩ አስተዳዳሪ ብቻ ነው።';
+
+  @override
   String emailErrRateLimitedMinutes(int minutes) {
     return 'በጣም ብዙ ሙከራዎች። ከ$minutes ደቂቃ በኋላ እንደገና ይሞክሩ።';
   }
+
+  @override
+  String get barberCancelAction => 'ሰርዝ';
+
+  @override
+  String get barberCancelTitle => 'ይህን ቀጠሮ ይሰርዛሉ?';
+
+  @override
+  String barberCancelBody(String customer, String service, String when) {
+    return '$customer $when ያለውን የ$service ቀጠሮአቸውን እንደሰረዙ ይነገራቸዋል። ይህ ሊቀለበስ አይችልም።';
+  }
+
+  @override
+  String get barberCancelReasonLabel => 'ምክንያት (አማራጭ)';
+
+  @override
+  String get barberCancelReasonHint => 'ለምሳሌ፦ ዛሬ አሞኛል';
+
+  @override
+  String get barberCancelConfirm => 'ቀጠሮውን ሰርዝ';
+
+  @override
+  String get barberCancelKeep => 'ቀጠሮውን አቆይ';
+
+  @override
+  String get barberCancelDone => 'ቀጠሮው ተሰርዟል። ለደንበኛው ተነግሯል።';
+
+  @override
+  String barberCancelFailed(String error) {
+    return 'ቀጠሮውን መሰረዝ አልተቻለም፦ $error';
+  }
+
+  @override
+  String get barberCancelErrNotAllowed => 'መሰረዝ የሚችሉት የራስዎን ቀጠሮዎች ብቻ ነው።';
+
+  @override
+  String get barberCancelErrAfterStart =>
+      'ይህ ቀጠሮ ቀድሞ ጀምሯል። በምትኩ \"አልመጡም\" ብለው ምልክት ያድርጉ ወይም ያጠናቅቁት።';
+
+  @override
+  String get changePasswordMenu => 'የይለፍ ቃል ቀይር';
+
+  @override
+  String get setPasswordMenu => 'የይለፍ ቃል አዘጋጅ';
+
+  @override
+  String get changePasswordTitle => 'የይለፍ ቃል ቀይር';
+
+  @override
+  String get changePasswordIntro => 'የአሁኑን የይለፍ ቃልዎን ያስገቡ፣ ከዚያ አዲስ ይምረጡ።';
+
+  @override
+  String get currentPasswordLabel => 'የአሁኑ የይለፍ ቃል';
+
+  @override
+  String get changePasswordSave => 'የይለፍ ቃሉን አዘምን';
+
+  @override
+  String get changePasswordDone => 'የይለፍ ቃልዎ ተቀይሯል።';
+
+  @override
+  String get changePasswordErrWrongCurrent => 'የአሁኑ የይለፍ ቃልዎ ትክክል አይደለም።';
+
+  @override
+  String get changePasswordErrCurrentRequired => 'የአሁኑን የይለፍ ቃልዎን ያስገቡ።';
+
+  @override
+  String get changePasswordErrRecentLogin =>
+      'ለደህንነትዎ ሲባል ወጥተው እንደገና ይግቡ፣ ከዚያ የይለፍ ቃልዎን ይቀይሩ።';
+
+  @override
+  String get changePasswordErrNoPassword =>
+      'ይህ መለያ በGoogle ይገባል፤ እስካሁን የይለፍ ቃል የለውም።';
+
+  @override
+  String get setPasswordTitle => 'የይለፍ ቃል አዘጋጅ';
+
+  @override
+  String setPasswordBody(String email) {
+    return 'በGoogle ስለሚገቡ ይህ መለያ እስካሁን የይለፍ ቃል የለውም። የይለፍ ቃል ለመፍጠር ይውጡ፣ በመግቢያ ገጹ ላይ \"የይለፍ ቃልዎን ረሱት?\" የሚለውን ይንኩ እና $email ያስገቡ። ኮድ በኢሜይል እንልክልዎታለን፤ ከዚያ የይለፍ ቃልዎን ይመርጣሉ።';
+  }
+
+  @override
+  String get setPasswordSignOutAction => 'ውጣ እና የይለፍ ቃል አዘጋጅ';
+
+  @override
+  String get setPasswordConfirmTitle => 'አሁን ይውጣሉ?';
+
+  @override
+  String get setPasswordConfirmBody =>
+      'ለGmailዎ \"የይለፍ ቃልዎን ረሱት?\" ተከፍቶ ወደ መግቢያ ገጹ ይወሰዳሉ።';
+
+  @override
+  String get barberInviteHelper =>
+      'የግብዣ ኢሜይል እንልክላቸዋለን። Crown & Bladeን ከፍተው \"ተመዝገብ\" የሚለውን ይንኩ እና የይለፍ ቃላቸውን ለመፍጠር ይህን Gmail ይጠቀሙ።';
+
+  @override
+  String get barberInviteWaiting => 'ግብዣ ተልኳል — ምዝገባቸውን በመጠባበቅ ላይ';
 }

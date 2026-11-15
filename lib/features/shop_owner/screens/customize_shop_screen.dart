@@ -36,6 +36,8 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
   /// Booking policy (saved with its own write, see AppRepository.updateShopPolicy).
   late int _cutoffHours;
   late int _maxReschedules;
+  // --- barber acceptance (saved with the policy write) ---
+  late bool _requireAcceptance;
 
   /// Cutoff choices (hours before the start); the current value is kept
   /// even if it is not one of them.
@@ -78,6 +80,7 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
     _workingDays = List<int>.from(s.workingDays);
     _cutoffHours = s.cancellationCutoffHours;
     _maxReschedules = s.maxReschedules;
+    _requireAcceptance = s.requireBarberAcceptance;
   }
 
   @override
@@ -126,6 +129,7 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
       workingDays: _workingDays,
       cancellationCutoffHours: _cutoffHours,
       maxReschedules: _maxReschedules,
+      requireBarberAcceptance: _requireAcceptance,
     );
   }
 
@@ -138,11 +142,14 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
     final updated = _edited();
     try {
       await AppRepository.instance.updateShop(updated);
-      if (_cutoffHours != widget.shop.cancellationCutoffHours || _maxReschedules != widget.shop.maxReschedules) {
+      if (_cutoffHours != widget.shop.cancellationCutoffHours ||
+          _maxReschedules != widget.shop.maxReschedules ||
+          _requireAcceptance != widget.shop.requireBarberAcceptance) {
         await AppRepository.instance.updateShopPolicy(
           widget.shop.id,
           cancellationCutoffHours: _cutoffHours,
           maxReschedules: _maxReschedules,
+          requireBarberAcceptance: _requireAcceptance,
         );
       }
     } catch (e) {
@@ -430,6 +437,25 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
                     DropdownMenuItem(value: n, child: Text(l.policyMaxReschedulesValue(n))),
                 ],
                 onChanged: (val) => setState(() => _maxReschedules = val ?? _maxReschedules),
+              ),
+              // --- barber acceptance ---
+              const SizedBox(height: 12),
+              Container(
+                decoration: AppTheme.cardDecoration(),
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: SwitchListTile(
+                  key: const ValueKey('policy-require-acceptance'),
+                  value: _requireAcceptance,
+                  activeTrackColor: AppTheme.green,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                  title: Text(l.acceptPolicyToggle,
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textPrimary)),
+                  subtitle: Text(l.acceptPolicyToggleHelp,
+                      style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  onChanged: (val) => setState(() => _requireAcceptance = val),
+                  ),
+                ),
               ),
               const SizedBox(height: 60),
             ],

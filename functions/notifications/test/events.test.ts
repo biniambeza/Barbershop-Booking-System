@@ -66,7 +66,8 @@ test('cancel actor from cancelledBy uid', () => {
 
 test('SMS only for the booking essentials, booking payment success and subscription success', () => {
   assert.deepEqual([...SMS_TYPES].sort(), [
-    'cancelled', 'confirmed', 'paymentReceived', 'reminder24h', 'reminder2h', 'rescheduled', 'slotTaken', 'subscriptionPaid',
+    'accepted', 'cancelled', 'confirmed', 'paymentReceived', 'reminder24h', 'reminder2h', 'requestDeclined',
+    'requestExpired', 'rescheduled', 'slotTaken', 'subscriptionPaid',
   ]);
   assert.equal(smsRecipientRole('rescheduled'), 'customer');
   assert.equal(smsRecipientRole('noShow'), null);
@@ -193,4 +194,30 @@ test('staleReminderFlags: only reminders sent before the reschedule', () => {
   );
   assert.deepEqual(staleReminderFlags({ reminder2hSentAt: '2026-11-20T09:30:00.000Z' }), ['reminder2hSentAt']);
   assert.deepEqual(staleReminderFlags({ rescheduledAt: '2026-11-20T09:00:00.000Z' }), []);
+});
+
+// --- barber acceptance ---
+test('barber acceptance: accepted, declined and expired requests', () => {
+  const before = { status: 'pending' };
+  assert.equal(
+    detectBookingEvent(before, { status: 'confirmed', acceptedAt: '2026-11-13T07:00:00.000Z' }),
+    'accepted',
+  );
+  // A pending booking confirmed without acceptedAt (legacy) stays generic.
+  assert.equal(detectBookingEvent(before, { status: 'confirmed' }), 'confirmed');
+  assert.equal(detectBookingEvent(before, { status: 'cancelled', cancelledBy: 'barber' }), 'requestDeclined');
+  assert.equal(
+    detectBookingEvent(before, { status: 'cancelled', cancelledBy: 'system', cancelReason: 'not_accepted' }),
+    'requestExpired',
+  );
+  // The customer withdrawing their own request is an ordinary cancel.
+  assert.equal(detectBookingEvent(before, { status: 'cancelled', cancelledBy: 'c1' }), 'cancelled');
+  // Only from pending.
+  assert.equal(detectBookingEvent({ status: 'confirmed' }, { status: 'cancelled', cancelledBy: 'barber' }), 'cancelled');
+  assert.deepEqual(RECIPIENT_ROLES.accepted, ['customer']);
+  assert.deepEqual(RECIPIENT_ROLES.requestDeclined, ['customer']);
+  assert.deepEqual(RECIPIENT_ROLES.requestExpired, ['customer', 'barber', 'owner']);
+  assert.equal(smsRecipientRole('accepted'), 'customer');
+  assert.equal(smsRecipientRole('requestDeclined'), 'customer');
+  assert.ok(ALL_NOTIFICATION_TYPES.includes('requestExpired'));
 });

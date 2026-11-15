@@ -10,7 +10,9 @@ import {
   parseLanguage,
   parseName,
   parsePassword,
+  parseProof,
   parsePurpose,
+  parseVerificationToken,
 } from '../src/logic/input';
 
 function throwsCode(fn: () => unknown, code: string) {
@@ -71,4 +73,19 @@ test('names are optional, trimmed and at most 80 characters', () => {
 test('data must be an object', () => {
   for (const bad of [null, undefined, 'x', [1]]) throwsCode(() => asObject(bad), 'invalid-input');
   assert.deepEqual(asObject({ a: 1 }), { a: 1 });
+});
+
+test('parseProof: code or verificationToken, not both', () => {
+  const token = 'a'.repeat(43);
+  assert.deepEqual(parseProof({ code: ' 123456 ' }), { kind: 'code', code: '123456' });
+  assert.deepEqual(parseProof({ verificationToken: token }), { kind: 'token', token });
+  assert.deepEqual(parseProof({ code: null, verificationToken: token }), { kind: 'token', token });
+  const err = (fn: () => unknown, code: string) =>
+    assert.throws(fn, (e: unknown) => e instanceof FlowError && e.code === code);
+  err(() => parseProof({}), 'invalid-code');
+  err(() => parseProof({ code: '123456', verificationToken: token }), 'invalid-input');
+  err(() => parseProof({ verificationToken: 'short' }), 'verification-expired');
+  err(() => parseProof({ verificationToken: 'a'.repeat(42) + '=' }), 'verification-expired');
+  err(() => parseProof({ verificationToken: 5 }), 'verification-expired');
+  err(() => parseVerificationToken(''), 'verification-expired');
 });

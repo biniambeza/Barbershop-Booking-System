@@ -9,6 +9,8 @@ import '../../../models/barbershop_model.dart';
 import '../../../services/app_repository.dart';
 import '../../../services/availability_service.dart' show WorkingSchedule;
 import '../../shared/widgets/ui_kit.dart';
+import '../../payouts/payouts_screen.dart' show showCommissionDialog; // barber commission
+import '../../../services/payout_service.dart' show commissionOf; // barber commission
 
 class ManageBarbersScreen extends StatefulWidget {
   final String shopId;
@@ -68,7 +70,8 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                   decoration: InputDecoration(
                     labelText: l.emailForLogin,
                     hintText: 'barber@gmail.com',
-                    helperText: l.barberEmailHelper,
+                    helperText: l.barberInviteHelper,
+                    helperMaxLines: 4,
                     errorText: emailError,
                     prefixIcon: const Icon(Icons.alternate_email),
                   ),
@@ -206,6 +209,15 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
     }
   }
 
+  // --- barber commission ---
+  Future<void> _editCommission(Barber barber) async {
+    final saved = await showCommissionDialog(context, barber);
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.l10n.payoutsCommissionSaved)));
+      setState(() {});
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final barbers = AppRepository.instance.getBarbersForShop(widget.shopId);
@@ -272,11 +284,28 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                               barber.title,
                               style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
                             ),
+                            // A pending invite = the barber has not signed up yet.
                             if (AppRepository.instance.getPendingBarberInvite(barber.id) case final invite?) ...[
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 6),
+                              Row(
+                                key: ValueKey('barber-invite-waiting-${barber.id}'),
+                                children: [
+                                  const Icon(Icons.mark_email_unread_outlined, size: 14, color: AppTheme.warning),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      context.l10n.barberInviteWaiting,
+                                      style: const TextStyle(
+                                          color: AppTheme.warning, fontSize: 12, fontWeight: FontWeight.w600),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
                               Text(
-                                context.l10n.loginInvitePending(invite.email),
-                                style: const TextStyle(color: AppTheme.blue, fontSize: 12, fontWeight: FontWeight.w500),
+                                invite.email,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11.5),
                               ),
                             ],
                             if (shop != null) ...[
@@ -287,6 +316,14 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                                 style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                               ),
                             ],
+                            // --- barber commission ---
+                            const SizedBox(height: 4),
+                            Text(
+                              context.l10n.payoutsCommissionLine(commissionOf(barber)),
+                              key: ValueKey('barber-commission-${barber.id}'),
+                              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                            ),
+                            // --- end barber commission ---
                             const SizedBox(height: 6),
                             Row(
                               children: [
@@ -312,6 +349,13 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                           tooltip: context.l10n.editWorkingHours,
                           onPressed: () => _editSchedule(barber, shop),
                         ),
+                      // --- barber commission ---
+                      IconButton(
+                        key: ValueKey('edit-commission-${barber.id}'),
+                        icon: const Icon(Icons.percent_rounded, size: 20, color: AppTheme.ink),
+                        tooltip: context.l10n.payoutsSetCommission,
+                        onPressed: () => _editCommission(barber),
+                      ),
                       IconButton(
                         icon: const Icon(Icons.delete_outline, size: 20, color: AppTheme.danger),
                         tooltip: context.l10n.removeBarber,

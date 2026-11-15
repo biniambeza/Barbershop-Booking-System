@@ -358,6 +358,7 @@ export async function notifyBooking(
   if (type === 'cancelled' || type === 'slotTaken') {
     const by = typeof booking.cancelledBy === 'string' ? booking.cancelledBy : '';
     let byIsAdmin = false;
+    let byIsBarber = false;
     if (
       by &&
       !isCancelActorLiteral(by) &&
@@ -365,10 +366,14 @@ export async function notifyBooking(
       !people.barberUids.includes(by) &&
       by !== people.ownerUid
     ) {
-      byIsAdmin = (await getUser(db, by))?.role === 'admin';
+      const byRole = (await getUser(db, by))?.role;
+      byIsAdmin = byRole === 'admin';
+      // The barber's own cancel (cancelledBy = their uid) when the barber
+      // accounts were not resolved; the rules let only the booked barber do it.
+      byIsBarber = byRole === 'barber';
     }
     cancelActor = deriveCancelActor(booking, {
-      barberUids: people.barberUids,
+      barberUids: byIsBarber ? [...people.barberUids, by] : people.barberUids,
       ownerUid: people.ownerUid,
       isAdmin: () => byIsAdmin,
     });

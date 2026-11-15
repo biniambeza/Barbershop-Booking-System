@@ -82,6 +82,37 @@ void assertCanMarkNoShow(Booking booking, DateTime nowUtc) {
   if (nowUtc.toUtc().isBefore(booking.startAt.toUtc())) throw AppStateException(AppErrorCode.noShowTooEarly);
 }
 
+// --- barber cancel ---
+
+/// Longest note a barber can give when cancelling.
+const int kMaxCancelReasonNoteLength = 200;
+
+/// Whether the barber may cancel [booking] at [nowUtc]: still pending or
+/// confirmed and strictly before its start (after that it is a no-show or
+/// it gets started and finished).
+bool canBarberCancel(Booking booking, DateTime nowUtc) =>
+    isChangeableStatus(booking.status) && nowUtc.toUtc().isBefore(booking.startAt.toUtc());
+
+/// Throws unless the barber may cancel [booking] at [nowUtc].
+void assertBarberCanCancel(Booking booking, DateTime nowUtc) {
+  if (!isChangeableStatus(booking.status)) throw AppStateException(AppErrorCode.bookingNotChangeable);
+  if (!nowUtc.toUtc().isBefore(booking.startAt.toUtc())) {
+    throw AppStateException(AppErrorCode.barberCancelAfterStart);
+  }
+}
+
+/// The trimmed note, or null when empty. Throws [AppFormatException]
+/// ([AppErrorCode.declineReasonTooLong]) above [kMaxCancelReasonNoteLength].
+String? normalizeCancelReasonNote(String? raw) {
+  final text = raw?.trim() ?? '';
+  if (text.isEmpty) return null;
+  if (text.length > kMaxCancelReasonNoteLength) {
+    throw AppFormatException(AppErrorCode.declineReasonTooLong, [kMaxCancelReasonNoteLength]);
+  }
+  return text;
+}
+// --- end barber cancel ---
+
 /// The booking as it is after moving it to [newStartUtc]: same barber,
 /// service and duration; new interval, display date and slot (Addis time),
 /// `rescheduleCount + 1` and `rescheduledAt = nowUtc`.

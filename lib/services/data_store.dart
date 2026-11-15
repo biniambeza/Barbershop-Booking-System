@@ -71,8 +71,11 @@ abstract class DataStore {
 
   /// Changes a booking's status. Cancelling also releases its slot locks in
   /// the same write and records [cancelledBy] (the caller's uid) so the
-  /// notification backend can say who cancelled.
-  Future<void> updateBookingStatus(Booking booking, BookingStatus status, {String? cancelledBy});
+  /// notification backend can say who cancelled. [cancelReasonNote] (the
+  /// barber's optional note, already trimmed and <= 200 characters) is
+  /// written with a cancel only.
+  Future<void> updateBookingStatus(Booking booking, BookingStatus status,
+      {String? cancelledBy, String? cancelReasonNote});
 
   /// Live slot locks of one barber on one Addis calendar day. These cover
   /// other customers' bookings, which customers cannot read directly.
@@ -96,8 +99,10 @@ abstract class DataStore {
   /// (another booking or time off).
   Future<void> rescheduleBooking(Booking original, Booking updated);
 
-  /// Owner: writes only `cancellationCutoffHours` and `maxReschedules`.
-  Future<void> updateShopPolicy(String shopId, {required int cancellationCutoffHours, required int maxReschedules});
+  /// Owner: writes only `cancellationCutoffHours` and `maxReschedules`
+  /// (plus `requireBarberAcceptance` when given).
+  Future<void> updateShopPolicy(String shopId,
+      {required int cancellationCutoffHours, required int maxReschedules, bool? requireBarberAcceptance});
 
   /// Live time-off ranges of one barber (soonest first).
   Stream<List<TimeOff>> watchTimeOff(String shopId, String barberId);
@@ -109,6 +114,19 @@ abstract class DataStore {
 
   /// Deletes the time-off doc and its slot locks in one batch.
   Future<void> deleteTimeOff(TimeOff timeOff);
+
+  // --- barber acceptance (see booking_acceptance.dart) ---
+
+  /// Barber/owner: a still-pending request becomes confirmed
+  /// ([acceptFields]: status + acceptedAt). Throws [AppStateException]
+  /// ([AppErrorCode.bookingNotChangeable]) if it is no longer pending.
+  Future<void> acceptBookingRequest(Booking booking, {required DateTime acceptedAt});
+
+  /// Barber/owner: a still-pending request is cancelled ([declineFields]:
+  /// status, cancelledBy 'barber', declineReason?) and its own slot locks
+  /// are released in the same write, as a cancel does.
+  Future<void> declineBookingRequest(Booking booking, {String? reason});
+  // --- end barber acceptance ---
 }
 
 /// In-memory [DataStore] used when Firebase is not attached.
@@ -265,6 +283,7 @@ class LocalDataStore implements DataStore {
       workingDays: barber.workingDays,
       startHour: barber.startHour,
       endHour: barber.endHour,
+      commissionPercent: barber.commissionPercent, // barber commission
     );
   }
 
@@ -296,9 +315,16 @@ class LocalDataStore implements DataStore {
   }
 
   @override
-  Future<void> updateBookingStatus(Booking booking, BookingStatus status, {String? cancelledBy}) async {
+  Future<void> updateBookingStatus(Booking booking, BookingStatus status,
+      {String? cancelledBy, String? cancelReasonNote}) async {
     final old = cache.bookings[booking.id];
-    if (old != null) cache.bookings[booking.id] = old.copyWith(status: status);
+    if (old == null) return;
+    final cancelled = status == BookingStatus.cancelled;
+    cache.bookings[booking.id] = old.copyWith(
+      status: status,
+      cancelledBy: cancelled ? cancelledBy : null,
+      cancelReasonNote: cancelled ? cancelReasonNote : null,
+    );
   }
 
   /// Booking locks are not stored locally (every booking is in the cache);
@@ -336,10 +362,15 @@ class LocalDataStore implements DataStore {
   }
 
   @override
-  Future<void> updateShopPolicy(String shopId, {required int cancellationCutoffHours, required int maxReschedules}) async {
+  Future<void> updateShopPolicy(String shopId,
+      {required int cancellationCutoffHours, required int maxReschedules, bool? requireBarberAcceptance}) async {
     final old = cache.shops[shopId];
     if (old == null) return;
-    cache.shops[shopId] = old.copyWith(cancellationCutoffHours: cancellationCutoffHours, maxReschedules: maxReschedules);
+    cache.shops[shopId] = old.copyWith(
+      cancellationCutoffHours: cancellationCutoffHours,
+      maxReschedules: maxReschedules,
+      requireBarberAcceptance: requireBarberAcceptance,
+    );
   }
 
   @override
@@ -360,4 +391,28 @@ class LocalDataStore implements DataStore {
   Future<void> deleteTimeOff(TimeOff entry) async {
     if (timeOff.remove(entry.id) != null) _timeOffChanges.add(null);
   }
+
+  // --- barber acceptance ---
+
+  @override
+  Future<void> acceptBookingRequest(Booking booking, {required DateTime acceptedAt}) async {
+    final current = cache.bookings[booking.id];
+    if (current == null || current.status != BookingStatus.pending) {
+      throw AppStateException(AppErrorCode.bookingNotChangeable);
+    }
+    cache.bookings[booking.id] = current.copyWith(status: BookingStatus.confirmed, acceptedAt: acceptedAt.toUtc());
+  }
+
+  /// The local database has no lock documents: a cancelled booking simply
+  /// stops occupying its blocks.
+  @override
+  Future<void> declineBookingRequest(Booking booking, {String? reason}) async {
+    final current = cache.bookings[booking.id];
+    if (current == null || current.status != BookingStatus.pending) {
+      throw AppStateException(AppErrorCode.bookingNotChangeable);
+    }
+    cache.bookings[booking.id] =
+        current.copyWith(status: BookingStatus.cancelled, cancelledBy: 'barber', declineReason: reason);
+  }
+  // --- end barber acceptance ---
 }

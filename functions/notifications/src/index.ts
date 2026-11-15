@@ -8,6 +8,8 @@
  *   onPaymentWritten        Firestore trigger on payments/{paymentId}
  *                           (booking payment failed, subscription paid/failed)
  *   sendBookingReminders    every 15 minutes (Africa/Addis_Ababa)
+ *   onShopApplicationWritten Firestore trigger on shopApplications/{uid}
+ *                           (applicationApproved / applicationRejected)
  *
  * Secrets (firebase functions:secrets:set NAME). Set AFROMESSAGE_TOKEN to
  * "none" to keep SMS in log-only mode:
@@ -34,6 +36,7 @@ import {
 import { parseIso } from './time';
 import { runReminderSweep } from './reminders';
 import { createSmsProvider, type SmsProvider } from './sms';
+import { detectApplicationEvent, notifyApplication, type ShopApplicationDoc } from './applications'; // shop applications
 
 if (getApps().length === 0) initializeApp();
 
@@ -115,3 +118,22 @@ export const sendBookingReminders = onSchedule(
     logger.info('reminder sweep done', result);
   },
 );
+
+// --- shop applications ---
+export const onShopApplicationWritten = onDocumentWritten(
+  { document: 'shopApplications/{uid}', retry: false },
+  async (event) => {
+    const before = event.data?.before.exists ? (event.data.before.data() as ShopApplicationDoc) : null;
+    const after = event.data?.after.exists ? (event.data.after.data() as ShopApplicationDoc) : null;
+    const type = detectApplicationEvent(before, after);
+    if (!type || !after) return;
+    const uid = event.params.uid;
+    logger.info('shop application event', { uid, type });
+    try {
+      await notifyApplication(getFirestore(), uid, after, type);
+    } catch (err) {
+      logger.error('shop application notification failed', { uid, type, err: String(err) });
+    }
+  },
+);
+// --- end shop applications ---

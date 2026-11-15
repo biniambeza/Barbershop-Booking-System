@@ -203,6 +203,8 @@ function buildDocuments(seed, { now = new Date(), mode = 'users' } = {}) {
   if (mode === 'users') docs.push(...buildTimeOffDocuments(seed, { nowMs, barbers }));
   if (mode === 'users') docs.push(...buildQueueDocuments(seed, { nowMs, services, barbers }));
   if (mode === 'users') docs.push(...buildReviewDocuments(seed, { docs }));
+  if (mode === 'users') docs.push(...buildPayoutDocuments(seed, { nowMs, barbers })); // barber payouts
+  if (mode === 'users') docs.push(...buildShopApplicationDocuments(seed, { nowMs })); // shop applications
   return docs;
 }
 
@@ -332,6 +334,80 @@ function buildReviewDocuments(seed, { docs }) {
   }
   return out;
 }
+
+// --- barber payouts ---
+/**
+ * Barber payouts (users mode only: createdBy is a demo owner uid):
+ * barbershops/{shop}/payouts/{id} {barberId, amount, periodStart, periodEnd,
+ * method, note?, createdBy, createdAt} per seed.payouts entry, resolved like
+ * payoutsFromSeedJson in lib/features/payouts/payouts_manager.dart: the
+ * period is the whole Addis calendar month `monthOffset` months from the
+ * current one (UTC-midnight ISO dates), createdAt = now - createdHoursAgo.
+ */
+function buildPayoutDocuments(seed, { nowMs, barbers }) {
+  const iso = (ms) => new Date(ms).toISOString();
+  const addisNow = new Date(nowMs + ADDIS_OFFSET_MS);
+  const docs = [];
+  for (const p of seed.payouts || []) {
+    const barber = barbers.get(p.barberId);
+    if (!barber || barber.shopId !== p.shopId) throw new Error(`Payout ${p.id} references missing data`);
+    const offset = p.monthOffset || 0;
+    const start = Date.UTC(addisNow.getUTCFullYear(), addisNow.getUTCMonth() + offset, 1);
+    const end = Date.UTC(addisNow.getUTCFullYear(), addisNow.getUTCMonth() + offset + 1, 0);
+    const data = {
+      barberId: p.barberId,
+      amount: p.amount,
+      periodStart: iso(start),
+      periodEnd: iso(end),
+      method: p.method,
+      createdBy: p.createdBy,
+      createdAt: iso(nowMs - Math.round((p.createdHoursAgo || 0) * 60) * 60 * 1000),
+    };
+    if (p.note && p.note.trim()) data.note = p.note.trim();
+    docs.push({ path: `barbershops/${p.shopId}/payouts/${p.id}`, data });
+  }
+  return docs;
+}
+// --- end barber payouts ---
+
+// --- shop applications ---
+/**
+ * Shop applications (users mode only, demo data): one doc
+ * shopApplications/{uid} {uid, email, ownerName, shopName, address, subCity,
+ * phone, description?, status, createdAt} per seed.shopApplications entry
+ * (entries without a uid, e.g. `_comment`, are skipped), resolved like
+ * shopApplicationsFromSeedJson in
+ * lib/features/applications/shop_applications_service.dart: email = the
+ * user's lowercased email, ownerName defaults to the user's name, createdAt =
+ * now - createdHoursAgo. Review fields are copied when present.
+ */
+function buildShopApplicationDocuments(seed, { nowMs }) {
+  const usersById = new Map(seed.users.map((u) => [u.uid, u]));
+  const docs = [];
+  for (const a of seed.shopApplications || []) {
+    if (!a.uid) continue;
+    const user = usersById.get(a.uid);
+    if (!user) throw new Error(`Shop application ${a.uid} references a missing user`);
+    const data = {
+      uid: a.uid,
+      email: emailOf(user),
+      ownerName: a.ownerName || user.name,
+      shopName: a.shopName,
+      address: a.address,
+      subCity: a.subCity,
+      phone: a.phone,
+      status: a.status || 'pending',
+      createdAt: new Date(nowMs - Math.round((a.createdHoursAgo || 0) * 60) * 60 * 1000).toISOString(),
+    };
+    if (a.description && a.description.trim()) data.description = a.description.trim();
+    for (const k of ['reviewedBy', 'reviewedAt', 'shopId', 'rejectReason']) {
+      if (a[k] !== undefined && a[k] !== null) data[k] = a[k];
+    }
+    docs.push({ path: `shopApplications/${a.uid}`, data });
+  }
+  return docs;
+}
+// --- end shop applications ---
 
 function summarize(docs) {
   const summary = {};

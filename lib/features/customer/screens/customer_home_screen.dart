@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../l10n/l10n.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../models/user_model.dart';
 import '../../../services/app_repository.dart';
+import '../../applications/widgets/shop_application_entries.dart'; // shop applications
 import '../../notifications/widgets/notification_bell.dart';
-import '../../shared/widgets/language_toggle.dart';
-import '../../shared/widgets/persona_switcher.dart';
+import '../../shared/widgets/app_bar_menu.dart';
 import '../../shared/widgets/ui_kit.dart';
 import 'barbershop_detail_screen.dart';
 
@@ -97,27 +96,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             ),
           ],
         ),
-        actions: [
-          if (kDemoMode)
-            TextButton.icon(
-              style: TextButton.styleFrom(
-                backgroundColor: AppTheme.blueSoft,
-                shape: const StadiumBorder(),
-              ),
-              onPressed: () => showPersonaSwitcher(context, current: UserRole.customer),
-              icon: const Icon(Icons.swap_horiz, size: 16, color: AppTheme.blue),
-              label: Text(
-                l.roleCustomer,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.blue),
-              ),
-            ),
-          const LanguageToggle(),
-          const NotificationBell(),
-          IconButton(
-            tooltip: l.signOut,
-            icon: const Icon(Icons.logout_rounded, size: 20),
-            onPressed: () => repo.signOut(),
-          ),
+        // --- compact header: secondary actions live in AppBarMenu ---
+        actions: const [
+          NotificationBell(),
+          AppBarMenu(role: UserRole.customer),
+          SizedBox(width: 4),
         ],
       ),
       body: CustomScrollView(
@@ -192,6 +175,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     ),
                   ),
 
+                  const SizedBox(height: 18),
+                  // --- shop applications: "Register your barbershop" ---
+                  const ShopApplicationEntryCard(),
                   const SizedBox(height: 18),
                   // City Filter Chips
                   Row(

@@ -233,6 +233,10 @@ PaymentException? checkBookingPayable(Booking? booking, String uid) {
   if (booking.status == BookingStatus.cancelled) {
     return PaymentException.of('failed-precondition', 'This booking was cancelled.');
   }
+  // Barber acceptance: paid only once the barber accepts (see booking_acceptance.dart).
+  if (booking.status == BookingStatus.pending) {
+    return PaymentException.of('failed-precondition', 'This booking is waiting for the barber to accept it.');
+  }
   if (booking.paymentStatus == PaymentStatus.paid) return PaymentException.of('already-exists');
   if (booking.paymentStatus == PaymentStatus.refunded) {
     return PaymentException.of('failed-precondition', 'This booking was refunded.');
@@ -246,6 +250,7 @@ PaymentException? checkBookingPayable(Booking? booking, String uid) {
 bool canPayBookingOnline(Booking booking) =>
     booking.status != BookingStatus.cancelled &&
     booking.status != BookingStatus.completed &&
+    booking.status != BookingStatus.pending && // barber acceptance: pay after accept
     booking.price > 0 &&
     (booking.paymentStatus == PaymentStatus.unpaid || booking.paymentStatus == PaymentStatus.pending);
 

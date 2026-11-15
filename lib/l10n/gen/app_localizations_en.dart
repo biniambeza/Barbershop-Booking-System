@@ -2713,14 +2713,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String codeSentTo(String email) {
-    return 'We sent a 6-digit code to $email';
+    return 'Enter the 6-digit code we sent to $email';
   }
 
   @override
   String get codeLabel => '6-digit code';
-
-  @override
-  String get verifyAndCreate => 'Verify and create account';
 
   @override
   String get resendCode => 'Resend code';
@@ -2755,9 +2752,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get resetIntro =>
       'Enter your account email and we\'ll send you a 6-digit code.';
-
-  @override
-  String get resetButton => 'Reset password';
 
   @override
   String get resetDone =>
@@ -2831,7 +2825,665 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get registerEmailTitle => 'Enter your email';
+
+  @override
+  String get registerEmailIntro =>
+      'We\'ll send you a 6-digit code to confirm it\'s yours.';
+
+  @override
+  String get enterCodeTitle => 'Check your email';
+
+  @override
+  String get verifyButton => 'Verify';
+
+  @override
+  String get createPasswordTitle => 'Create your password';
+
+  @override
+  String get createAccountButton => 'Create account';
+
+  @override
+  String get newPasswordTitle => 'Choose a new password';
+
+  @override
+  String get savePasswordButton => 'Save';
+
+  @override
+  String emailVerifiedNotice(String email) {
+    return '$email is verified.';
+  }
+
+  @override
+  String authStepOf(int step, int total) {
+    return 'Step $step of $total';
+  }
+
+  @override
+  String get emailErrVerificationExpired =>
+      'This step took too long. Please request a new code.';
+
+  @override
+  String get logInInstead => 'Log in instead';
+
+  @override
+  String get acceptRequestsTitle => 'New requests';
+
+  @override
+  String acceptRequestsCount(int count) {
+    return '$count waiting';
+  }
+
+  @override
+  String get acceptRequestsHelp =>
+      'Accept or decline each booking. Requests not answered 1 hour before the start are cancelled automatically.';
+
+  @override
+  String get acceptAction => 'Accept';
+
+  @override
+  String get acceptDeclineAction => 'Decline';
+
+  @override
+  String get acceptDeclineTitle => 'Decline this booking?';
+
+  @override
+  String acceptDeclineBody(String customer) {
+    return '$customer will be told you can\'t take it and asked to pick another time.';
+  }
+
+  @override
+  String get acceptDeclineReasonLabel => 'Reason (optional)';
+
+  @override
+  String get acceptDeclineConfirm => 'Decline booking';
+
+  @override
+  String get acceptDeclineCancel => 'Back';
+
+  @override
+  String acceptAccepted(String customer) {
+    return 'Booking accepted. $customer has been told.';
+  }
+
+  @override
+  String get acceptDeclined => 'Booking declined.';
+
+  @override
+  String acceptFailed(String error) {
+    return 'Couldn\'t answer the request: $error';
+  }
+
+  @override
+  String get acceptWaitingForBarber => 'Waiting for barber';
+
+  @override
+  String acceptWaitingFor(String barber) {
+    return 'Waiting for $barber to accept';
+  }
+
+  @override
+  String get acceptRequestSentTitle => 'Request sent!';
+
+  @override
+  String acceptRequestSentBody(String barber) {
+    return '$barber will confirm your booking soon. We\'ll let you know when they accept.';
+  }
+
+  @override
+  String get acceptPayAfterAcceptance =>
+      'You can pay online once the barber accepts.';
+
+  @override
+  String get acceptDeclinedNote =>
+      'The barber couldn\'t take this booking. Please pick another time.';
+
+  @override
+  String get acceptExpiredNote =>
+      'The barber didn\'t answer in time. Please pick another time.';
+
+  @override
+  String acceptDeclineReasonNote(String reason) {
+    return 'Reason: $reason';
+  }
+
+  @override
+  String get acceptPolicyToggle => 'Barbers accept each booking';
+
+  @override
+  String get acceptPolicyToggleHelp =>
+      'New bookings wait until the barber accepts them. Requests not answered 1 hour before the start are cancelled automatically.';
+
+  @override
+  String get acceptErrNotAllowed =>
+      'Only the booked barber or the shop owner can answer this request.';
+
+  @override
+  String acceptErrReasonTooLong(int max) {
+    return 'The reason can be at most $max characters.';
+  }
+
+  @override
+  String get payoutsTitle => 'Barber payouts';
+
+  @override
+  String get payoutsOpenButton => 'Payouts & commission';
+
+  @override
+  String get payoutsMonthLabel => 'Month';
+
+  @override
+  String get payoutsCompletedJobs => 'Completed jobs';
+
+  @override
+  String get payoutsGross => 'Gross';
+
+  @override
+  String get payoutsCommission => 'Commission';
+
+  @override
+  String payoutsCommissionLine(int percent) {
+    return 'Commission: $percent%';
+  }
+
+  @override
+  String get payoutsBarberShare => 'Barber share';
+
+  @override
+  String get payoutsAlreadyPaid => 'Already paid';
+
+  @override
+  String get payoutsBalanceOwed => 'Balance owed';
+
+  @override
+  String get payoutsTotalShare => 'Barbers\' share';
+
+  @override
+  String get payoutsTotalPaid => 'Paid out';
+
+  @override
+  String get payoutsTotalOwed => 'Still owed';
+
+  @override
+  String get payoutsRecord => 'Record payout';
+
+  @override
+  String payoutsRecordTitle(String name) {
+    return 'Pay $name';
+  }
+
+  @override
+  String get payoutsHistory => 'Payout history';
+
+  @override
+  String get payoutsNoHistory => 'No payouts recorded for this month.';
+
+  @override
+  String get payoutsNoBarbers =>
+      'Add barbers to track their commission and payouts.';
+
+  @override
+  String get payoutsAmount => 'Amount (Birr)';
+
+  @override
+  String get payoutsMethod => 'Paid by';
+
+  @override
+  String get payoutsMethodCash => 'Cash';
+
+  @override
+  String get payoutsMethodTelebirr => 'telebirr';
+
+  @override
+  String get payoutsMethodBank => 'Bank transfer';
+
+  @override
+  String get payoutsMethodOther => 'Other';
+
+  @override
+  String get payoutsNote => 'Note (optional)';
+
+  @override
+  String payoutsPeriod(String range) {
+    return 'Period: $range';
+  }
+
+  @override
+  String get payoutsSave => 'Save payout';
+
+  @override
+  String get payoutsSaved => 'Payout recorded.';
+
+  @override
+  String get payoutsDelete => 'Delete payout';
+
+  @override
+  String payoutsDeleteBody(String amount, String name) {
+    return 'Delete the $amount payout to $name? Payouts can be deleted only within 24 hours of recording them.';
+  }
+
+  @override
+  String get payoutsDeleted => 'Payout deleted.';
+
+  @override
+  String get payoutsYourShare => 'Your share';
+
+  @override
+  String get payoutsPaidToYou => 'Paid to you';
+
+  @override
+  String payoutsThisMonth(String month) {
+    return 'This month: $month';
+  }
+
+  @override
+  String payoutsShareLine(int percent, int jobs, String gross) {
+    return '$percent% of $jobs completed jobs ($gross)';
+  }
+
+  @override
+  String get payoutsMyPayouts => 'My payouts';
+
+  @override
+  String get payoutsMyPayoutsEmpty => 'No payouts yet.';
+
+  @override
+  String get payoutsSeeAll => 'See all payouts';
+
+  @override
+  String get payoutsSetCommission => 'Set commission';
+
+  @override
+  String payoutsCommissionTitle(String name) {
+    return 'Commission for $name';
+  }
+
+  @override
+  String get payoutsCommissionHelp =>
+      'The barber\'s share of each completed booking\'s price.';
+
+  @override
+  String get payoutsCommissionPercent => 'Commission (%)';
+
+  @override
+  String get payoutsCommissionSaved => 'Commission saved.';
+
+  @override
+  String payoutsRecordedOn(String date) {
+    return 'Recorded $date';
+  }
+
+  @override
+  String get payoutsLoadFailed => 'Couldn\'t load payouts. Please try again.';
+
+  @override
+  String get payoutsErrOwnerOnly =>
+      'Only the shop owner can manage payouts and commission.';
+
+  @override
+  String get payoutsErrNotFound => 'This payout or barber no longer exists.';
+
+  @override
+  String get payoutsErrUnknownBarber => 'This barber is not part of your shop.';
+
+  @override
+  String payoutsErrInvalidAmount(String max) {
+    return 'Enter an amount above 0 and up to $max Birr.';
+  }
+
+  @override
+  String get payoutsErrInvalidPeriod =>
+      'The period must start on or before its end.';
+
+  @override
+  String payoutsErrNoteTooLong(int max) {
+    return 'Keep the note to $max characters or fewer.';
+  }
+
+  @override
+  String get payoutsErrInvalidCommission =>
+      'Commission must be a whole number from 0 to 100.';
+
+  @override
+  String get payoutsErrDeleteWindow =>
+      'Payouts can be deleted only within 24 hours of recording them.';
+
+  @override
+  String get applRegisterShopTitle => 'Register your barbershop';
+
+  @override
+  String get applRegisterShopSubtitle =>
+      'Own a barbershop? Apply to list it on Crown & Blade. We review every application.';
+
+  @override
+  String get applCtaApply => 'Apply now';
+
+  @override
+  String get applCtaViewStatus => 'View application';
+
+  @override
+  String get applFormIntro =>
+      'Tell us about your shop. When the admin approves it, this account becomes the shop\'s owner account.';
+
+  @override
+  String get applOwnerName => 'Your full name';
+
+  @override
+  String get applShopName => 'Barbershop name';
+
+  @override
+  String get applAddress => 'Street address';
+
+  @override
+  String get applSubCity => 'Sub-city';
+
+  @override
+  String get applPhone => 'Shop contact phone';
+
+  @override
+  String get applPhoneHint => '09XX XXX XXX or 011 XXX XXXX';
+
+  @override
+  String get applDescription => 'About the shop (optional)';
+
+  @override
+  String get applSubmit => 'Submit application';
+
+  @override
+  String get applSaveChanges => 'Save changes';
+
+  @override
+  String get applResubmit => 'Apply again';
+
+  @override
+  String get applSubmitted =>
+      'Application submitted. We\'ll let you know once it\'s reviewed.';
+
+  @override
+  String get applUpdated => 'Application updated.';
+
+  @override
+  String get applEdit => 'Edit application';
+
+  @override
+  String get applWithdraw => 'Withdraw application';
+
+  @override
+  String get applWithdrawTitle => 'Withdraw application?';
+
+  @override
+  String applWithdrawBody(String shop) {
+    return 'Your application for $shop will be deleted. You can apply again later.';
+  }
+
+  @override
+  String get applWithdrawn => 'Application withdrawn.';
+
+  @override
+  String get applStatusPending => 'Under review';
+
+  @override
+  String get applStatusApproved => 'Approved';
+
+  @override
+  String get applStatusRejected => 'Not approved';
+
+  @override
+  String applPendingBody(String date) {
+    return 'We received your application on $date. The admin will review it soon.';
+  }
+
+  @override
+  String applApprovedBody(String shop) {
+    return '$shop is approved! Your account is now the shop\'s owner account.';
+  }
+
+  @override
+  String get applOpenDashboard => 'Open owner dashboard';
+
+  @override
+  String get applRejectedBody => 'Your application was not approved.';
+
+  @override
+  String applRejectReasonLine(String reason) {
+    return 'Reason: $reason';
+  }
+
+  @override
+  String get applRejectedHint => 'You can update the details and apply again.';
+
+  @override
+  String get applSignUpOwnShop => 'I own a barbershop and want to list it';
+
+  @override
+  String get applSignUpOwnShopHint =>
+      'After you continue, you can send your shop\'s details for approval.';
+
+  @override
+  String get applAdminTitle => 'Shop applications';
+
+  @override
+  String applAdminPendingCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pending applications',
+      one: '1 pending application',
+      zero: 'No pending applications',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get applAdminPending => 'Pending';
+
+  @override
+  String get applAdminRecent => 'Recently decided';
+
+  @override
+  String get applAdminEmpty => 'No shop applications yet.';
+
+  @override
+  String applAdminSubmittedOn(String date) {
+    return 'Submitted $date';
+  }
+
+  @override
+  String applAdminReviewedOn(String date) {
+    return 'Reviewed $date';
+  }
+
+  @override
+  String get applAdminApprove => 'Approve';
+
+  @override
+  String get applAdminReject => 'Reject';
+
+  @override
+  String applAdminApproveTitle(String shop) {
+    return 'Approve $shop?';
+  }
+
+  @override
+  String applAdminApproveBody(String email) {
+    return 'This registers the shop on a free trial with two starter services and invites $email as its owner.';
+  }
+
+  @override
+  String applAdminApproved(String shop) {
+    return '$shop approved and registered.';
+  }
+
+  @override
+  String applAdminRejectTitle(String shop) {
+    return 'Reject $shop?';
+  }
+
+  @override
+  String get applAdminRejectReason => 'Reason (the applicant sees this)';
+
+  @override
+  String get applAdminRejected => 'Application rejected.';
+
+  @override
+  String get applLoadFailed => 'Couldn\'t load applications. Please try again.';
+
+  @override
+  String get applErrOwnerName => 'Enter your name (up to 100 characters).';
+
+  @override
+  String get applErrShopName => 'The shop name must be 2 to 80 characters.';
+
+  @override
+  String get applErrAddress => 'The address must be 2 to 160 characters.';
+
+  @override
+  String get applErrSubCity => 'Choose a sub-city.';
+
+  @override
+  String get applErrPhone =>
+      'Enter a valid Ethiopian phone number (09..., 07... or 011...).';
+
+  @override
+  String applErrDescriptionTooLong(int max) {
+    return 'Keep the description to $max characters or fewer.';
+  }
+
+  @override
+  String applErrRejectReason(int max) {
+    return 'Write a reason of up to $max characters.';
+  }
+
+  @override
+  String get applErrCustomersOnly =>
+      'Only customer accounts can apply to register a barbershop.';
+
+  @override
+  String get applErrEmailMissing =>
+      'Your account has no email address, which the owner invite needs.';
+
+  @override
+  String get applErrAlreadyPending =>
+      'You already have an application under review. Edit it instead.';
+
+  @override
+  String get applErrAlreadyApproved =>
+      'Your application has already been approved.';
+
+  @override
+  String get applErrNotPending => 'This application has already been reviewed.';
+
+  @override
+  String get applErrNotFound => 'This application no longer exists.';
+
+  @override
+  String get applErrAdminOnly =>
+      'Only the platform admin can review applications.';
+
+  @override
   String emailErrRateLimitedMinutes(int minutes) {
     return 'Too many attempts. Try again in $minutes min.';
   }
+
+  @override
+  String get barberCancelAction => 'Cancel';
+
+  @override
+  String get barberCancelTitle => 'Cancel this booking?';
+
+  @override
+  String barberCancelBody(String customer, String service, String when) {
+    return '$customer will be told that you cancelled their $service on $when. This can\'t be undone.';
+  }
+
+  @override
+  String get barberCancelReasonLabel => 'Reason (optional)';
+
+  @override
+  String get barberCancelReasonHint => 'e.g. I\'m unwell today';
+
+  @override
+  String get barberCancelConfirm => 'Cancel booking';
+
+  @override
+  String get barberCancelKeep => 'Keep booking';
+
+  @override
+  String get barberCancelDone =>
+      'Booking cancelled. The customer has been notified.';
+
+  @override
+  String barberCancelFailed(String error) {
+    return 'Couldn\'t cancel the booking: $error';
+  }
+
+  @override
+  String get barberCancelErrNotAllowed =>
+      'You can only cancel your own bookings.';
+
+  @override
+  String get barberCancelErrAfterStart =>
+      'This appointment has already started. Mark it as a no-show or finish it instead.';
+
+  @override
+  String get changePasswordMenu => 'Change password';
+
+  @override
+  String get setPasswordMenu => 'Set a password';
+
+  @override
+  String get changePasswordTitle => 'Change password';
+
+  @override
+  String get changePasswordIntro =>
+      'Enter your current password, then choose a new one.';
+
+  @override
+  String get currentPasswordLabel => 'Current password';
+
+  @override
+  String get changePasswordSave => 'Update password';
+
+  @override
+  String get changePasswordDone => 'Your password has been changed.';
+
+  @override
+  String get changePasswordErrWrongCurrent =>
+      'Your current password is not correct.';
+
+  @override
+  String get changePasswordErrCurrentRequired => 'Enter your current password.';
+
+  @override
+  String get changePasswordErrRecentLogin =>
+      'For your security, sign out and sign in again, then change your password.';
+
+  @override
+  String get changePasswordErrNoPassword =>
+      'This account signs in with Google and has no password yet.';
+
+  @override
+  String get setPasswordTitle => 'Set a password';
+
+  @override
+  String setPasswordBody(String email) {
+    return 'You sign in with Google, so this account has no password yet. To create one, sign out, tap \"Forgot password?\" on the login screen and enter $email. We\'ll email you a code, then you choose your password.';
+  }
+
+  @override
+  String get setPasswordSignOutAction => 'Sign out and set a password';
+
+  @override
+  String get setPasswordConfirmTitle => 'Sign out now?';
+
+  @override
+  String get setPasswordConfirmBody =>
+      'You\'ll go to the login screen with \"Forgot password?\" open for your Gmail.';
+
+  @override
+  String get barberInviteHelper =>
+      'We\'ll email them an invitation. They open Crown & Blade, tap Register and use this Gmail to create their password.';
+
+  @override
+  String get barberInviteWaiting => 'Invitation sent — waiting for sign-up';
 }

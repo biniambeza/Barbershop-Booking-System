@@ -1,14 +1,18 @@
 /**
  * Crown & Blade auth codebase: email + password accounts verified by a
- * 6-digit code sent by email.
+ * 6-digit code sent by email. App order: email -> code (verifyEmailCode) ->
+ * password (completeEmailRegistration / resetPasswordWithCode with the token).
  *
  *  - requestEmailCode({email, purpose: 'register'|'reset', language?})
  *      -> {ok, resendAfterSeconds: 60, expiresInSeconds: 600}
- *  - completeEmailRegistration({email, code, password, name?}) -> {ok}
+ *  - verifyEmailCode({email, code, purpose}) -> {ok, verificationToken, expiresInSeconds: 900}
+ *      checks the code without using it up and marks it verified; the
+ *      token then finishes one of the two flows below within 15 minutes.
+ *  - completeEmailRegistration({email, code | verificationToken, password, name?}) -> {ok}
  *      creates a verified email/password Auth user. The app then signs in
  *      with signInWithEmailAndPassword and runs its normal profile setup
  *      (users/{uid}, invites) - this function does not touch users/*.
- *  - resetPasswordWithCode({email, code, newPassword}) -> {ok}
+ *  - resetPasswordWithCode({email, code | verificationToken, newPassword}) -> {ok}
  *      sets the password and revokes existing sessions.
  *  - cleanupEmailCodes (daily, 04:30 Addis): deletes expired emailCodes and
  *    authRateLimits documents.
@@ -19,6 +23,11 @@
  * authRateLimits/{email_|ip_}{sha256}. Both collections are closed to
  * clients by firestore.rules.
  *
+ * onInviteCreated (Firestore trigger on invites/{email}) emails the invited
+ * person how to register (bilingual, see src/logic/inviteEmail.ts). One
+ * email per invite document: inviteEmails/{email}_{createdAt} is created
+ * before sending (closed to clients by firestore.rules).
+ *
  * Email goes out over SMTP using the secrets SMTP_HOST, SMTP_PORT,
  * SMTP_USER, SMTP_PASS and MAIL_FROM (see readme.md).
  */
@@ -28,11 +37,13 @@ import { DocumentReference, getFirestore } from 'firebase-admin/firestore';
 import { defineSecret } from 'firebase-functions/params';
 import { logger, setGlobalOptions } from 'firebase-functions/v2';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
+import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 
 import { sweepExpired } from './logic/cleanup';
 import type { CodeDoc } from './logic/codes';
 import { FlowError } from './logic/errors';
+import { buildInviteEmail, inviteEmailDocId, isInviteRole } from './logic/inviteEmail';
 import type { RateDoc } from './logic/rateLimit';
 import {
   AuthStore,
@@ -42,6 +53,7 @@ import {
   Mailer,
   requestEmailCode as requestCodeFlow,
   resetPasswordWithCode as resetPasswordFlow,
+  verifyEmailCode as verifyCodeFlow,
 } from './logic/service';
 import { smtpConfigFrom, smtpMailer } from './mailer';
 
@@ -77,6 +89,9 @@ const store: AuthStore = {
         },
         setCodeAttempts(id, attempts) {
           tx.update(codeRef(id), { attempts });
+        },
+        updateCode(id, patch) {
+          tx.update(codeRef(id), patch);
         },
         deleteCode(id) {
           tx.delete(codeRef(id));
@@ -122,20 +137,21 @@ const users: AuthUsers = {
   },
 };
 
+function configuredMailer(context: string): Mailer | null {
+  const { config, missing } = smtpConfigFrom({
+    SMTP_HOST: SMTP_HOST.value(),
+    SMTP_PORT: SMTP_PORT.value(),
+    SMTP_USER: SMTP_USER.value(),
+    SMTP_PASS: SMTP_PASS.value(),
+    MAIL_FROM: MAIL_FROM.value(),
+  });
+  if (config) return smtpMailer(config);
+  logger.error(`${context}: missing SMTP secrets - set them with \`firebase functions:secrets:set\``, { missing });
+  return null;
+}
+
 function deps(withMailer: boolean): Deps {
-  let mailer: Mailer | null = null;
-  if (withMailer) {
-    const { config, missing } = smtpConfigFrom({
-      SMTP_HOST: SMTP_HOST.value(),
-      SMTP_PORT: SMTP_PORT.value(),
-      SMTP_USER: SMTP_USER.value(),
-      SMTP_PASS: SMTP_PASS.value(),
-      MAIL_FROM: MAIL_FROM.value(),
-    });
-    if (config) mailer = smtpMailer(config);
-    else logger.error('email codes: missing SMTP secrets - set them with `firebase functions:secrets:set`', { missing });
-  }
-  return { store, users, mailer, log: logger };
+  return { store, users, mailer: withMailer ? configuredMailer('email codes') : null, log: logger };
 }
 
 function callerIp(req: CallableRequest): string | null {
@@ -162,6 +178,10 @@ export const requestEmailCode = onCall(
   (req) => handle('requestEmailCode', () => requestCodeFlow(deps(true), req.data, callerIp(req))),
 );
 
+export const verifyEmailCode = onCall(callableOptions, (req) =>
+  handle('verifyEmailCode', () => verifyCodeFlow(deps(false), req.data)),
+);
+
 export const completeEmailRegistration = onCall(callableOptions, (req) =>
   handle('completeEmailRegistration', () => completeRegistrationFlow(deps(false), req.data)),
 );
@@ -185,5 +205,54 @@ export const cleanupEmailCodes = onSchedule(
       },
     });
     logger.info('expired email codes and rate limits deleted', result);
+  },
+);
+
+const str = (v: unknown): string | null => (typeof v === 'string' && v.trim() !== '' ? v : null);
+
+export const onInviteCreated = onDocumentCreated(
+  { document: 'invites/{email}', secrets: [SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM], timeoutSeconds: 60 },
+  async (event) => {
+    const invite = event.data?.data();
+    const email = event.params.email;
+    if (!invite || !isInviteRole(invite.role) || invite.email !== email) {
+      logger.warn('invite email: skipped (not a valid invite)', { role: invite?.role ?? null });
+      return;
+    }
+    const mailer = configuredMailer('invite email');
+    if (!mailer) return; // logged above; nothing is recorded so a later invite can still be emailed
+
+    const [shopSnap, inviterSnap] = await Promise.all([
+      str(invite.shopId) ? db().doc(`barbershops/${invite.shopId}`).get() : Promise.resolve(null),
+      str(invite.createdBy) ? db().doc(`users/${invite.createdBy}`).get() : Promise.resolve(null),
+    ]);
+    const message = buildInviteEmail({
+      role: invite.role,
+      email,
+      shopName: str(shopSnap?.get('name')),
+      inviterName: str(inviterSnap?.get('name')),
+      inviterLanguage: str(inviterSnap?.get('language')),
+    });
+
+    // Idempotency: claim the marker first; a retry or duplicate event finds it.
+    const marker = db().doc(`inviteEmails/${inviteEmailDocId(email, invite.createdAt)}`);
+    try {
+      await marker.create({ role: invite.role, shopId: str(invite.shopId), status: 'sending', createdAt: new Date().toISOString() });
+    } catch (e) {
+      if (authCode(e) === '6' || /already exists/i.test(String(e))) {
+        logger.info('invite email: already sent for this invite', { role: invite.role });
+        return;
+      }
+      throw e;
+    }
+    try {
+      await mailer.send(email, message);
+    } catch (e) {
+      await marker.delete().catch(() => undefined); // let a retry send it
+      logger.error('invite email: sending failed', { role: invite.role, error: String(e) });
+      throw e;
+    }
+    await marker.update({ status: 'sent', sentAt: new Date().toISOString() });
+    logger.info('invite email sent', { role: invite.role, eventId: event.id });
   },
 );

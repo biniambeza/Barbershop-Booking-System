@@ -69,6 +69,11 @@ class Barbershop {
   /// How many times a customer may move one booking (0..5).
   final int maxReschedules;
 
+  // --- barber acceptance ---
+  /// New customer bookings start 'pending' until the barber accepts them
+  /// (owner-editable with the booking policy; absent = false).
+  final bool requireBarberAcceptance;
+
   Barbershop({
     required this.id,
     required this.ownerId,
@@ -91,6 +96,7 @@ class Barbershop {
     this.subscriptionEndsAt,
     this.cancellationCutoffHours = kDefaultCancellationCutoffHours,
     this.maxReschedules = kDefaultMaxReschedules,
+    this.requireBarberAcceptance = false,
   });
 
   String get fullAddress {
@@ -120,6 +126,9 @@ class Barbershop {
       'subscriptionStatus': subscriptionStatus.value,
       if (subscriptionEndsAt != null) 'subscriptionEndsAt': subscriptionEndsAt!.toUtc().toIso8601String(),
       ...toPolicyMap(),
+      // Barber acceptance: only written when on, so the default create
+      // shape is unchanged.
+      if (requireBarberAcceptance) 'requireBarberAcceptance': true,
     };
   }
 
@@ -170,6 +179,7 @@ class Barbershop {
     DateTime? subscriptionEndsAt,
     int? cancellationCutoffHours,
     int? maxReschedules,
+    bool? requireBarberAcceptance,
     bool clearLandmark = false,
   }) {
     return Barbershop(
@@ -194,6 +204,7 @@ class Barbershop {
       subscriptionEndsAt: subscriptionEndsAt ?? this.subscriptionEndsAt,
       cancellationCutoffHours: cancellationCutoffHours ?? this.cancellationCutoffHours,
       maxReschedules: maxReschedules ?? this.maxReschedules,
+      requireBarberAcceptance: requireBarberAcceptance ?? this.requireBarberAcceptance,
     );
   }
 
@@ -222,6 +233,7 @@ class Barbershop {
       cancellationCutoffHours: _intIn(map['cancellationCutoffHours'], 0, kMaxCancellationCutoffHours) ??
           kDefaultCancellationCutoffHours,
       maxReschedules: _intIn(map['maxReschedules'], 0, kMaxMaxReschedules) ?? kDefaultMaxReschedules,
+      requireBarberAcceptance: map['requireBarberAcceptance'] == true,
     );
   }
 }
