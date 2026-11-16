@@ -18,6 +18,14 @@ const String kSeedAssetPath = 'assets/seed/addis_seed.json';
 /// `owner_2@demo.crownblade.et`).
 String demoEmailForUid(String uid) => '${uid.toLowerCase()}@demo.crownblade.et';
 
+/// The `barberPhone` a seeded booking carries: the barber's private phone
+/// for a confirmed or in-progress booking (what the staff app copies in when
+/// it confirms), else none. tool/seed/seed.js applies the same rule.
+String? seedBarberPhoneFor(BookingStatus status, String? phone) =>
+    (status == BookingStatus.confirmed || status == BookingStatus.inProgress) && phone != null && phone.isNotEmpty
+        ? phone
+        : null;
+
 /// The demo dataset, resolved into models.
 ///
 /// Relative fields in the JSON (`createdDaysAgo`, `subscriptionEndsInDays`,
@@ -32,6 +40,10 @@ class SeedDataset {
   final List<BarbershopService> services;
   final List<Barber> barbers;
   final List<Booking> bookings;
+
+  /// Private barber phones by barber id (the JSON's barber `phone`): written
+  /// to `barbers/{id}/private/contact`, never to the public barber doc.
+  final Map<String, String> barberPhones;
   final Set<String> favoriteShopIds;
   final Set<String> favoriteBarberIds;
 
@@ -42,6 +54,7 @@ class SeedDataset {
     required this.services,
     required this.barbers,
     required this.bookings,
+    this.barberPhones = const {},
     this.favoriteShopIds = const {},
     this.favoriteBarberIds = const {},
   });
@@ -78,6 +91,7 @@ class SeedDataset {
     final shops = <Barbershop>[];
     final services = <BarbershopService>[];
     final barbers = <Barber>[];
+    final barberPhones = <String, String>{};
     for (final s in _list(json['shops'])) {
       final shopId = s['id'] as String;
       final endsInDays = (s['subscriptionEndsInDays'] as num?)?.toInt();
@@ -91,7 +105,10 @@ class SeedDataset {
         services.add(BarbershopService.fromMap({...sv, 'shopId': shopId}, sv['id'] as String));
       }
       for (final b in _list(s['barbers'])) {
-        barbers.add(Barber.fromMap({...b, 'shopId': shopId}, b['id'] as String));
+        // The phone is private (barbers/{id}/private/contact).
+        final phone = b['phone'];
+        if (phone is String && phone.isNotEmpty) barberPhones[b['id'] as String] = phone;
+        barbers.add(Barber.fromMap({...b, 'shopId': shopId}..remove('phone'), b['id'] as String));
       }
     }
 
@@ -105,6 +122,7 @@ class SeedDataset {
       final day = DateTime.utc(addisToday.year, addisToday.month, addisToday.day)
           .add(Duration(days: (b['dayOffset'] as num).toInt()));
       final time = parseTimeSlot(b['startTime'] as String)!;
+      final status = BookingStatus.fromString(b['status'] as String?);
       final startAt = addisLocalToUtc(day.year, day.month, day.day, time.$1, time.$2);
       bookings.add(Booking(
         id: b['id'] as String,
@@ -120,12 +138,14 @@ class SeedDataset {
         price: service.price,
         date: DateTime(day.year, day.month, day.day),
         timeSlot: formatTimeSlot(time.$1, time.$2),
-        status: BookingStatus.fromString(b['status'] as String?),
+        status: status,
         createdAt: nowUtc.subtract(Duration(hours: (b['createdHoursAgo'] as num?)?.toInt() ?? 0)),
         startAt: startAt,
         durationMinutes: service.durationMinutes,
         paymentStatus: PaymentStatus.fromString(b['paymentStatus'] as String?),
         paymentMethod: PaymentMethod.fromString(b['paymentMethod'] as String?),
+        // Shared by the staff app once confirmed (see seedBarberPhoneFor).
+        barberPhone: seedBarberPhoneFor(status, barberPhones[barber.id]),
       ));
     }
 
@@ -137,6 +157,7 @@ class SeedDataset {
       services: services,
       barbers: barbers,
       bookings: bookings,
+      barberPhones: barberPhones,
       favoriteShopIds: {for (final id in (favorites['shopIds'] as List<dynamic>? ?? const [])) id as String},
       favoriteBarberIds: {for (final id in (favorites['barberIds'] as List<dynamic>? ?? const [])) id as String},
     );

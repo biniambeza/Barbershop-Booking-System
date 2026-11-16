@@ -9,8 +9,9 @@ import '../shared/widgets/ui_kit.dart';
 import 'payouts_l10n.dart';
 import 'payouts_manager.dart';
 
-/// Owner: per-barber commission, share, payouts and balance for one month,
-/// with "Record payout" and the month's payout history.
+/// Owner: per-barber commission, share, payouts and balance for one month
+/// (including what carried over from earlier months), with "Record payout"
+/// and the month's payout history.
 class PayoutsScreen extends StatefulWidget {
   const PayoutsScreen({super.key, required this.shopId, this.manager});
 
@@ -28,6 +29,7 @@ class _PayoutsScreenState extends State<PayoutsScreen> {
   late PayoutMonth _month = _m.currentMonth();
   late Future<List<Booking>> _bookings;
   late Stream<List<Payout>> _payouts;
+  late Future<Map<String, PayoutCarryOver>> _carry;
 
   @override
   void initState() {
@@ -38,6 +40,7 @@ class _PayoutsScreenState extends State<PayoutsScreen> {
   void _load() {
     _bookings = _m.loadMonthBookings(widget.shopId, _month);
     _payouts = _m.watchShopPayouts(widget.shopId, _month);
+    _carry = _m.loadShopCarryOver(widget.shopId, _month);
   }
 
   void _selectMonth(PayoutMonth month) {
@@ -69,16 +72,29 @@ class _PayoutsScreenState extends State<PayoutsScreen> {
             if (!payoutSnap.hasData || !bookingSnap.hasData) {
               return const Center(child: CircularProgressIndicator());
             }
-            return ListenableBuilder(
-              listenable: AppRepository.instance,
-              builder: (context, _) {
-                final bookings = mergeBookings(
-                  bookingSnap.data!,
-                  _m.cachedMonthBookings(widget.shopId, _month),
+            // carry-over: earlier unpaid balances (a failed load shows this month only)
+            return FutureBuilder<Map<String, PayoutCarryOver>>(
+              future: _carry,
+              builder: (context, carrySnap) {
+                if (carrySnap.connectionState != ConnectionState.done) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                return ListenableBuilder(
+                  listenable: AppRepository.instance,
+                  builder: (context, _) {
+                    final bookings = mergeBookings(
+                      bookingSnap.data!,
+                      _m.cachedMonthBookings(widget.shopId, _month),
+                    );
+                    final payouts = payoutSnap.data!;
+                    final rows = withCarryOver(
+                      _m.summarizeMonth(widget.shopId, _month, bookings: bookings, payouts: payouts),
+                      carrySnap.data ?? const {},
+                      _month,
+                    );
+                    return _content(context, rows, payouts, carryFailed: carrySnap.hasError);
+                  },
                 );
-                final payouts = payoutSnap.data!;
-                final rows = _m.summarizeMonth(widget.shopId, _month, bookings: bookings, payouts: payouts);
-                return _content(context, rows, payouts);
               },
             );
           },
@@ -104,11 +120,11 @@ class _PayoutsScreenState extends State<PayoutsScreen> {
     );
   }
 
-  Widget _content(BuildContext context, List<BarberPayoutSummary> rows, List<Payout> payouts) {
+  Widget _content(BuildContext context, List<BarberBalance> rows, List<Payout> payouts, {bool carryFailed = false}) {
     final l = context.l10n;
     final fmt = context.fmt;
-    final totals = ShopPayoutTotals.of(rows);
-    final names = {for (final r in rows) r.barberId: r.barberName};
+    final totals = ShopBalanceTotals.of(rows);
+    final names = {for (final r in rows) r.barberId: r.summary.barberName};
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       children: [
@@ -135,6 +151,22 @@ class _PayoutsScreenState extends State<PayoutsScreen> {
             ],
           ),
         ),
+        if (totals.carriedOver != 0) ...[
+          const SizedBox(height: 8),
+          Text(
+            '${l.payoutsTotalCarried}: ${fmt.birr(totals.carriedOver)} · ${l.payoutsCarryHint}',
+            key: const ValueKey('payouts-total-carried'),
+            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+          ),
+        ],
+        if (carryFailed) ...[
+          const SizedBox(height: 8),
+          Text(
+            l.payoutsCarryUnavailable,
+            key: const ValueKey('payouts-carry-failed'),
+            style: const TextStyle(color: AppTheme.warning, fontSize: 12),
+          ),
+        ],
         const SizedBox(height: 18),
         if (rows.isEmpty)
           AppCard(
@@ -143,7 +175,7 @@ class _PayoutsScreenState extends State<PayoutsScreen> {
         else
           for (final r in rows) ...[
             _BarberRow(
-              summary: r,
+              row: r,
               onRecord: () => _record(r),
               onCommission: () => _commission(r.barberId),
             ),
@@ -165,7 +197,7 @@ class _PayoutsScreenState extends State<PayoutsScreen> {
     );
   }
 
-  Future<void> _record(BarberPayoutSummary summary) async {
+  Future<void> _record(BarberBalance row) async {
     final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -175,7 +207,8 @@ class _PayoutsScreenState extends State<PayoutsScreen> {
         manager: _m,
         shopId: widget.shopId,
         month: _month,
-        summary: summary,
+        summary: row.summary,
+        carriedOver: row.carriedOver,
       ),
     );
     if (saved == true && mounted) {
@@ -339,9 +372,9 @@ class PayoutFigureLine extends StatelessWidget {
 }
 
 class _BarberRow extends StatelessWidget {
-  const _BarberRow({required this.summary, required this.onRecord, required this.onCommission});
+  const _BarberRow({required this.row, required this.onRecord, required this.onCommission});
 
-  final BarberPayoutSummary summary;
+  final BarberBalance row;
   final VoidCallback onRecord;
   final VoidCallback onCommission;
 
@@ -349,8 +382,9 @@ class _BarberRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = context.l10n;
     final fmt = context.fmt;
-    final r = summary;
-    final owed = r.balance;
+    final r = row.summary;
+    final owed = row.balance;
+    final carry = row.carry;
     return AppCard(
       key: ValueKey('payout-row-${r.barberId}'),
       child: Column(
@@ -381,6 +415,13 @@ class _BarberRow extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
+          if (!carry.isZero)
+            PayoutFigureLine(
+              key: ValueKey('payout-carried-${r.barberId}'),
+              label: l.payoutsCarriedOver(payoutMonthLabel(fmt, carry.from)),
+              value: fmt.birr(carry.amount),
+              color: carry.amount < 0 ? AppTheme.danger : null,
+            ),
           PayoutFigureLine(label: l.payoutsCompletedJobs, value: '${r.completedJobs}'),
           PayoutFigureLine(label: l.payoutsGross, value: fmt.birr(r.gross)),
           PayoutFigureLine(label: l.payoutsBarberShare, value: fmt.birr(r.share)),
@@ -464,7 +505,9 @@ class PayoutTile extends StatelessWidget {
 }
 
 /// Owner: records a payout to one barber for [month] (whole month period).
-/// Pops `true` when saved.
+/// The amount is prefilled with the balance owed, including what carried
+/// over from earlier months; paying part of it leaves the rest for the next
+/// month. Pops `true` when saved.
 class RecordPayoutSheet extends StatefulWidget {
   const RecordPayoutSheet({
     super.key,
@@ -472,6 +515,7 @@ class RecordPayoutSheet extends StatefulWidget {
     required this.shopId,
     required this.month,
     required this.summary,
+    this.carriedOver = 0,
   });
 
   final PayoutsManager manager;
@@ -479,12 +523,19 @@ class RecordPayoutSheet extends StatefulWidget {
   final PayoutMonth month;
   final BarberPayoutSummary summary;
 
+  /// Unpaid (or, negative, overpaid) amount carried in from earlier months.
+  final double carriedOver;
+
+  /// What is owed in total for [month].
+  double get balance => carriedOver + summary.balance;
+
   @override
   State<RecordPayoutSheet> createState() => _RecordPayoutSheetState();
 }
 
 class _RecordPayoutSheetState extends State<RecordPayoutSheet> {
-  late final TextEditingController _amount = TextEditingController(text: _amountText(widget.summary.suggestedPayout));
+  late final TextEditingController _amount =
+      TextEditingController(text: _amountText(widget.balance > 0 ? widget.balance : 0));
   final TextEditingController _note = TextEditingController();
   PayoutMethod _method = PayoutMethod.cash;
   String? _error;
@@ -550,8 +601,18 @@ class _RecordPayoutSheetState extends State<RecordPayoutSheet> {
             const SizedBox(height: 4),
             Text(l.payoutsPeriod(period), style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
             const SizedBox(height: 4),
-            Text('${l.payoutsBalanceOwed}: ${fmt.birr(widget.summary.balance)}',
+            Text('${l.payoutsBalanceOwed}: ${fmt.birr(widget.balance)}',
+                key: const ValueKey('payout-sheet-balance'),
                 style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+            if (widget.carriedOver != 0) ...[
+              const SizedBox(height: 4),
+              Text(
+                '${l.payoutsCarriedOver(payoutMonthLabel(fmt, widget.month.previous()))}: '
+                '${fmt.birr(widget.carriedOver)}. ${l.payoutsCarryHint}',
+                key: const ValueKey('payout-sheet-carry'),
+                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              ),
+            ],
             const SizedBox(height: 16),
             TextField(
               key: const ValueKey('payout-amount-field'),

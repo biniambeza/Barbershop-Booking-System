@@ -52,6 +52,9 @@ class _AdminPricingScreenState extends State<AdminPricingScreen> {
   final _cbeName = TextEditingController();
   bool _saving = false;
 
+  /// Receipt photos in Firebase Storage (Blaze only); off = inline.
+  bool _storageReceipts = false;
+
   /// Receiver problems found by the last save (shown under the fields).
   ReceiverCheck _telebirrCheck = const ReceiverCheck();
   ReceiverCheck _cbeCheck = const ReceiverCheck();
@@ -79,6 +82,7 @@ class _AdminPricingScreenState extends State<AdminPricingScreen> {
       _telebirrName.text = p.telebirr.name;
       _cbeAccount.text = isPlaceholderReceiverAccount(p.cbe.account) ? '' : p.cbe.account;
       _cbeName.text = p.cbe.name;
+      _storageReceipts = p.storageReceipts;
       _telebirrCheck = const ReceiverCheck();
       _cbeCheck = const ReceiverCheck();
     });
@@ -118,6 +122,7 @@ class _AdminPricingScreenState extends State<AdminPricingScreen> {
       tiers: tiers.cast<PricingTier>(),
       telebirr: telebirr.receiver,
       cbe: cbe.receiver,
+      storageReceipts: _storageReceipts,
     );
     setState(() => _saving = true);
     try {
@@ -275,6 +280,25 @@ class _AdminPricingScreenState extends State<AdminPricingScreen> {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SectionHeader(title: l.rcptStorageTitle),
+                    const SizedBox(height: 8),
+                    AppCard(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Material(
+                        type: MaterialType.transparency,
+                        child: SwitchListTile(
+                          key: const ValueKey('pricing-storage-receipts'),
+                          value: _storageReceipts,
+                          onChanged: _saving ? null : (v) => setState(() => _storageReceipts = v),
+                          title: Text(l.rcptStorageToggle,
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                          subtitle: Text(l.rcptStorageHelp,
+                              style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                          isThreeLine: true,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 20),

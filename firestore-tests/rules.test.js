@@ -14,6 +14,9 @@ import {
   deleteDoc,
   deleteField,
   doc,
+  arrayUnion,
+  count,
+  getAggregateFromServer,
   getCountFromServer,
   getDoc,
   getDocs,
@@ -22,6 +25,7 @@ import {
   query,
   runTransaction,
   setDoc,
+  sum,
   updateDoc,
   where,
   writeBatch,
@@ -1225,12 +1229,14 @@ describe('booking listeners (list queries)', () => {
 
   // Admin shop management: the admin dashboard has no bookings list any
   // more, so admins cannot list bookings (single gets still work).
-  test('admin: cannot list bookings, can still get one', async () => {
+  test('admin: lists bookings (refunds due, shop deletion, disabled accounts) and gets one', async () => {
     const db = as('admin', EMAILS.admin);
-    await assertFails(getDocs(query(bookings(db), orderBy('createdAt', 'desc'), limit(500))));
-    await assertFails(getDocs(bookings(db)));
-    await assertFails(getDocs(query(bookings(db), where('shopId', '==', 'shop1'))));
+    await assertSucceeds(getDocs(query(bookings(db), where('shopId', '==', 'shop1'), where('startAt', '>=', NOW))));
+    await assertSucceeds(getDocs(query(bookings(db), where('customerId', '==', 'customer'))));
+    await assertSucceeds(getDocs(query(bookings(db), where('refundStatus', '==', 'due'), limit(200))));
     await assertSucceeds(getDoc(doc(db, 'bookings', 'bkShop2')));
+    // Owners and customers still list only their own.
+    await assertFails(getDocs(query(bookings(as('customer', EMAILS.customer)), where('refundStatus', '==', 'due'))));
     await assertFails(getDocs(query(bookings(as('owner1', EMAILS.owner1)), orderBy('createdAt', 'desc'), limit(500))));
   });
 });
@@ -1404,7 +1410,9 @@ describe('barbershops: Addis location and subscriptions', () => {
     batch.set(doc(db, 'barbershops', 'reg'), newShop(''));
     batch.set(doc(db, 'barbershops/reg/services', 's1'), { shopId: 'reg', name: 'Haircut', description: 'Cut', price: 300, durationMinutes: 30 });
     batch.set(doc(db, 'barbershops/reg/services', 's2'), { shopId: 'reg', name: 'Shave', description: 'Shave', price: 200, durationMinutes: 20 });
-    batch.set(doc(db, 'barbershops/reg/barbers', 'lead'), { shopId: 'reg', name: 'Lead', title: 'Owner', rating: 5, reviewCount: 0, isAvailable: true, phone: PHONES.newPerson, specialties: [] });
+    batch.set(doc(db, 'barbershops/reg/barbers', 'lead'), { shopId: 'reg', name: 'Lead', title: 'Owner', rating: 5, reviewCount: 0, isAvailable: true, specialties: [] });
+    // The lead barber's phone is private.
+    batch.set(doc(db, 'barbershops/reg/barbers/lead/private', 'contact'), { phone: PHONES.newPerson });
     batch.set(doc(db, 'invites', EMAILS.newPerson), invite(EMAILS.newPerson, 'barbershopOwner', { shopId: 'reg' }));
     await assertSucceeds(batch.commit());
   });
@@ -1520,7 +1528,7 @@ describe('barber working hours', () => {
         avatarUrl: deleteField(),
         isAvailable: true,
         email: deleteField(),
-        phone: '+251911000201',
+        phone: deleteField(),
         specialties: ['Fade'],
         workingDays: [2, 3, 4, 5, 6],
         startHour: 10,
@@ -3355,8 +3363,9 @@ describe('shop applications', () => {
       batch.set(doc(db, `barbershops/${shopId}/services`, 's2'), { shopId, name: 'Beard Trim & Hot Towel', description: 'Beard', price: 250, durationMinutes: 30 });
       batch.set(doc(db, `barbershops/${shopId}/barbers`, 'lead'), {
         shopId, name: 'Selam Tesfaye', title: 'Master Barber / Lead Stylist', avatarUrl: 'https://example.com/a.jpg',
-        rating: 5, reviewCount: 0, isAvailable: true, phone: '+251911223344', specialties: ['Skin Fade'],
+        rating: 5, reviewCount: 0, isAvailable: true, specialties: ['Skin Fade'],
       });
+      batch.set(doc(db, `barbershops/${shopId}/barbers/lead/private`, 'contact'), { phone: '+251911223344' });
     }
     if (withInvite) {
       batch.set(doc(db, 'invites', inviteEmail), invite(inviteEmail, 'barbershopOwner', { name: 'Selam Tesfaye', shopId: inviteShopId }));
@@ -4219,5 +4228,810 @@ describe('free plan: pricing receivers', () => {
     await assertSucceeds(setDoc(ref(admin()), pricing(tb('+251911223344', 'Ab'), cbe('1000123456789', 'N'.repeat(80)))));
     // Still admin only.
     await assertFails(setDoc(ref(as('owner1', EMAILS.owner1)), { ...pricing(tb('+251911223344'), ok), updatedBy: 'owner1' }));
+  });
+});
+
+// =====================================================================
+// Barber phones, refunds, shop deletion, review edits, vacations,
+// disabled accounts, receipt photos and earnings aggregates.
+// =====================================================================
+
+const isoNow = () => new Date().toISOString();
+
+// Sets fields on a document without the rules.
+async function patch(path, id, fields) {
+  await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), path, id), fields));
+}
+
+describe('barber phones: private contact and barberPhone', () => {
+  const contact = (db, shopId = 'shop1', barberId = 'b1') => doc(db, `barbershops/${shopId}/barbers/${barberId}/private`, 'contact');
+  const barberRef = (db, id) => doc(db, 'barbershops/shop1/barbers', id);
+  const publicBarber = (name) => {
+    const { phone, email, ...rest } = barber('shop1', name);
+    return rest;
+  };
+
+  beforeEach(async () => {
+    await seed('barbershops/shop1/barbers/b1/private', 'contact', { phone: PHONES.barber1 });
+  });
+
+  test('the owner, admins and that barber read and write the contact', async () => {
+    for (const [uid, email] of [['owner1', EMAILS.owner1], ['admin', EMAILS.admin], ['barber1', EMAILS.barber1]]) {
+      const db = as(uid, email);
+      await assertSucceeds(getDoc(contact(db)), uid);
+      await assertSucceeds(setDoc(contact(db), { phone: '+251911000222' }), uid);
+      await assertSucceeds(updateDoc(contact(db), { phone: '+251711000222' }), uid);
+    }
+    await assertSucceeds(deleteDoc(contact(as('barber1', EMAILS.barber1))));
+    await assertSucceeds(setDoc(contact(as('owner1', EMAILS.owner1)), { phone: PHONES.barber1 }));
+    await assertSucceeds(deleteDoc(contact(as('owner1', EMAILS.owner1))));
+  });
+
+  test('signed-out users, customers and other staff can neither read nor write it', async () => {
+    for (const [label, db] of [
+      ['anon', anon()],
+      ['customer', as('customer', EMAILS.customer)],
+      ['other shop owner', as('owner2', EMAILS.owner2)],
+      ['other barber', as('barber2', EMAILS.barber2)],
+    ]) {
+      await assertFails(getDoc(contact(db)), label);
+      await assertFails(getDocs(collection(db, 'barbershops/shop1/barbers/b1/private')), label);
+      await assertFails(setDoc(contact(db), { phone: '+251911000222' }), label);
+      await assertFails(deleteDoc(contact(db)), label);
+    }
+    // Not through the public collection-group listener either.
+    await assertFails(getDocs(collectionGroup(as('customer', EMAILS.customer), 'private')));
+  });
+
+  test('exactly {phone}, an Ethiopian mobile, only at private/contact', async () => {
+    const db = as('owner1', EMAILS.owner1);
+    await assertFails(setDoc(contact(db), { phone: '0911000222' }));
+    await assertFails(setDoc(contact(db), { phone: '+251111000222' }));
+    await assertFails(setDoc(contact(db), { phone: '+251911000222', email: 'a@example.com' }));
+    await assertFails(setDoc(contact(db), {}));
+    await assertFails(setDoc(doc(db, 'barbershops/shop1/barbers/b1/private', 'other'), { phone: '+251911000222' }));
+  });
+
+  test('a new public barber doc carries no phone or email; the add batch writes the contact', async () => {
+    const db = as('owner1', EMAILS.owner1);
+    await assertFails(setDoc(barberRef(db, 'b9'), { ...publicBarber('New'), phone: '+251911000223' }));
+    await assertFails(setDoc(barberRef(db, 'b9'), { ...publicBarber('New'), email: 'new@example.com' }));
+    const batch = writeBatch(db);
+    batch.set(barberRef(db, 'b9'), publicBarber('New'));
+    batch.set(contact(db, 'shop1', 'b9'), { phone: '+251911000223' });
+    await assertSucceeds(batch.commit());
+    // deleteBarber: the doc and its contact in one batch.
+    const del = writeBatch(db);
+    del.delete(barberRef(db, 'b9'));
+    del.delete(contact(db, 'shop1', 'b9'));
+    await assertSucceeds(del.commit());
+  });
+
+  test('a public phone or email is never added or changed; other updates of old docs still work', async () => {
+    const owner = as('owner1', EMAILS.owner1);
+    await assertFails(updateDoc(barberRef(owner, 'b1'), { phone: '+251911000223' }));
+    await assertFails(updateDoc(barberRef(owner, 'b1'), { email: 'abel@example.com' }));
+    await seed('barbershops/shop1/barbers', 'old', { ...barber('shop1', 'Old'), phone: '+251911000224', email: 'old@example.com' });
+    await assertFails(updateDoc(barberRef(owner, 'old'), { phone: '+251911000225' }));
+    await assertFails(updateDoc(barberRef(as('admin', EMAILS.admin), 'old'), { email: 'new@example.com' }));
+    await assertSucceeds(updateDoc(barberRef(owner, 'old'), { title: 'Senior Barber', isAvailable: false }));
+    // The barber's availability toggle on an old doc.
+    await patch('users', 'barber2', { barberId: 'old' });
+    await assertSucceeds(updateDoc(barberRef(as('barber2', EMAILS.barber2), 'old'), { isAvailable: true }));
+    await assertFails(updateDoc(barberRef(as('barber2', EMAILS.barber2), 'old'), { isAvailable: 'yes' }));
+  });
+
+  test('the legacy move: contact plus removing the public phone and email in one batch', async () => {
+    await seed('barbershops/shop1/barbers', 'old', { ...barber('shop1', 'Old'), phone: '+251911000224', email: 'old@example.com' });
+    const owner = as('owner1', EMAILS.owner1);
+    assert.equal((await assertSucceeds(getDoc(contact(owner, 'shop1', 'old')))).exists(), false);
+    const batch = writeBatch(owner);
+    batch.set(contact(owner, 'shop1', 'old'), { phone: '+251911000224' });
+    batch.update(barberRef(owner, 'old'), { phone: deleteField(), email: deleteField() });
+    await assertSucceeds(batch.commit());
+    // One field at a time, by an admin.
+    await seed('barbershops/shop1/barbers', 'old2', { ...barber('shop1', 'Old2'), phone: '+251911000226', email: 'old2@example.com' });
+    const admin = as('admin', EMAILS.admin);
+    await assertSucceeds(updateDoc(barberRef(admin, 'old2'), { phone: deleteField() }));
+    await assertSucceeds(updateDoc(barberRef(admin, 'old2'), { email: deleteField() }));
+  });
+
+  test('the booked barber or the owner shares the phone on a confirmed or in-progress booking', async () => {
+    await assertSucceeds(updateDoc(doc(as('barber1', EMAILS.barber1), 'bookings', 'bk1'), { barberPhone: PHONES.barber1 }));
+    await assertSucceeds(updateDoc(doc(as('owner1', EMAILS.owner1), 'bookings', 'bk1'), { barberPhone: PHONES.barber1 }));
+    // The customer reads it on their own booking; nobody else does.
+    const mine = await assertSucceeds(getDoc(doc(as('customer', EMAILS.customer), 'bookings', 'bk1')));
+    assert.equal(mine.data().barberPhone, PHONES.barber1);
+    await assertFails(getDoc(doc(as('customer2', EMAILS.customer2), 'bookings', 'bk1')));
+    await assertFails(getDoc(doc(anon(), 'bookings', 'bk1')));
+    await seed('bookings', 'bkRun', booking({ status: 'inProgress' }));
+    await assertSucceeds(updateDoc(doc(as('barber1', EMAILS.barber1), 'bookings', 'bkRun'), { barberPhone: PHONES.barber1 }));
+  });
+
+  test('barberPhone: not by customers or other staff, not another number, not on other statuses or at create', async () => {
+    const set = (db, id = 'bk1', phone = PHONES.barber1) => updateDoc(doc(db, 'bookings', id), { barberPhone: phone });
+    await assertFails(set(as('customer', EMAILS.customer)));
+    await assertFails(set(as('barber2', EMAILS.barber2)));
+    await assertFails(set(as('owner2', EMAILS.owner2)));
+    await assertFails(set(as('barber1', EMAILS.barber1), 'bk1', '+251911000999'));
+    await assertFails(set(as('barber1', EMAILS.barber1), 'bk1', 'call me'));
+    await assertFails(updateDoc(doc(as('barber1', EMAILS.barber1), 'bookings', 'bk1'), { barberPhone: PHONES.barber1, status: 'inProgress' }));
+    for (const status of ['pending', 'completed', 'cancelled', 'noShow']) {
+      await seed('bookings', `bk_${status}`, booking({ status }));
+      await assertFails(set(as('barber1', EMAILS.barber1), `bk_${status}`), status);
+    }
+    // Without a private contact there is nothing to share.
+    await env.withSecurityRulesDisabled((ctx) => deleteDoc(contact(ctx.firestore())));
+    await assertFails(set(as('owner1', EMAILS.owner1)));
+    // Booking create never carries it, and the customer cannot change it.
+    const at = addisSlot(7, 9);
+    await assertFails(bookBatch(as('customer', EMAILS.customer), 'withPhone', newBooking(at, { barberPhone: PHONES.barber1 })));
+    await patch('bookings', 'bk1', { barberPhone: PHONES.barber1 });
+    await assertFails(set(as('customer', EMAILS.customer), 'bk1', PHONES.customer));
+    await assertFails(updateDoc(doc(as('customer', EMAILS.customer), 'bookings', 'bk1'), { barberPhone: deleteField() }));
+  });
+});
+
+describe('refunds', () => {
+  const flag = (amount = 450, reason = 'customer_cancelled') => ({
+    refundStatus: 'due', refundAmount: amount, refundReason: reason, refundFlaggedAt: isoNow(),
+  });
+  const dueNotice = (bookingId = 'bk1', extra = {}) => ({
+    type: 'refundDue', title: 'Refund due', body: 'You will get ETB 450.00 back.', bookingId, read: false, createdAt: isoNow(), ...extra,
+  });
+  const refundedNotice = (bookingId, extra = {}) => ({
+    type: 'paymentRefunded', title: 'Refunded', body: 'ETB 450.00 was sent back.', bookingId, read: false, createdAt: isoNow(), ...extra,
+  });
+  const done = (by, extra = {}) => ({
+    refundStatus: 'refunded', refundedAt: isoNow(), refundedBy: by, refundMethod: 'telebirr', refundReference: 'TX123', paymentStatus: 'refunded', ...extra,
+  });
+  const paidCancelled = (extra = {}) => booking({ status: 'cancelled', cancelledBy: 'customer', paymentStatus: 'paid', paymentMethod: 'chapa', ...extra });
+
+  beforeEach(async () => {
+    await patch('bookings', 'bk1', { paymentStatus: 'paid', paymentMethod: 'chapa' });
+  });
+
+  // updateBookingStatus(cancelled) with a refund: one transaction that
+  // reads the booking and its locks, updates the booking (+ flag), creates
+  // the notice and releases the locks.
+  function cancelPaidTx(db, bookingId, update, notice, { recipient = 'customer', noticeId = `${bookingId}_refundDue`, startAt = START, minutes = 40 } = {}) {
+    return runTransaction(db, async (tx) => {
+      await tx.get(doc(db, 'bookings', bookingId));
+      const mine = [];
+      for (const s of blocks(startAt, minutes)) {
+        const ref = doc(locksOf(db), lockId(s));
+        const snap = await tx.get(ref);
+        if (snap.exists() && snap.data().bookingId === bookingId) mine.push(ref);
+      }
+      tx.update(doc(db, 'bookings', bookingId), update);
+      if (notice) tx.set(doc(db, `users/${recipient}/notifications`, noticeId), notice);
+      for (const ref of mine) tx.delete(ref);
+    });
+  }
+
+  // One batch: the booking update and the notice.
+  function writeWithNotice(db, bookingId, update, notice, { recipient = 'customer', noticeId } = {}) {
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'bookings', bookingId), update);
+    if (notice) batch.set(doc(db, `users/${recipient}/notifications`, noticeId ?? `${bookingId}_${notice.type}`), notice);
+    return batch.commit();
+  }
+
+  test('the customer cancels a paid booking: flag, notice and lock release in one transaction', async () => {
+    const db = as('customer', EMAILS.customer);
+    await assertSucceeds(cancelPaidTx(db, 'bk1', { status: 'cancelled', cancelledBy: 'customer', ...flag() }, dueNotice()));
+    const stored = await assertSucceeds(getDoc(doc(db, 'bookings', 'bk1')));
+    assert.equal(stored.data().refundStatus, 'due');
+  });
+
+  test("the customer's flag: own reasons, 0 < amount <= price, all four keys", async () => {
+    const db = as('customer', EMAILS.customer);
+    const cancel = (extra) => cancelPaidTx(db, 'bk1', { status: 'cancelled', cancelledBy: 'customer', ...extra }, null);
+    await assertFails(cancel(flag(450, 'barber_cancelled')));
+    await assertFails(cancel(flag(451)));
+    await assertFails(cancel(flag(0)));
+    await assertFails(cancel(flag(-5)));
+    await assertFails(cancel(flag(450, 'because')));
+    await assertFails(cancel({ ...flag(), refundStatus: 'refunded' }));
+    await assertFails(cancel({ ...flag(), refundFlaggedAt: 'today' }));
+    const { refundFlaggedAt, ...partial } = flag();
+    await assertFails(cancel(partial));
+    await assertFails(cancel({ ...flag(), refundedBy: 'customer' }));
+    // The late share is accepted too.
+    await assertSucceeds(cancel(flag(225, 'customer_late_cancel')));
+  });
+
+  test('an unpaid booking is cancelled without a flag, never with one', async () => {
+    await patch('bookings', 'bk1', { paymentStatus: 'unpaid' });
+    const db = as('customer', EMAILS.customer);
+    await assertFails(cancelPaidTx(db, 'bk1', { status: 'cancelled', cancelledBy: 'customer', ...flag() }, dueNotice()));
+    await assertFails(cancelPaidTx(db, 'bk1', { status: 'cancelled', cancelledBy: 'customer' }, dueNotice()));
+    await assertSucceeds(cancelPaidTx(db, 'bk1', { status: 'cancelled', cancelledBy: 'customer' }, null));
+  });
+
+  test('staff cancel, owner cancel and admin cancel each flag a paid booking', async () => {
+    await assertSucceeds(cancelPaidTx(as('barber1', EMAILS.barber1), 'bk1',
+      { status: 'cancelled', cancelledBy: 'barber1', cancelReasonNote: 'Sick', ...flag(450, 'barber_cancelled') }, dueNotice()));
+    for (const [uid, email, reason] of [['owner1', EMAILS.owner1, 'shop_cancelled'], ['admin', EMAILS.admin, 'admin_cancelled']]) {
+      await seed('bookings', `p_${uid}`, booking({ paymentStatus: 'paid', paymentMethod: 'chapa', startAt: addisSlot(5, 10), endAt: plusMinutes(addisSlot(5, 10), 40) }));
+      await assertSucceeds(writeWithNotice(as(uid, email), `p_${uid}`,
+        { status: 'cancelled', cancelledBy: uid, ...flag(450, reason) }, dueNotice(`p_${uid}`)), uid);
+    }
+  });
+
+  test('declining a paid request flags it', async () => {
+    await seed('bookings', 'req', booking({ status: 'pending', paymentStatus: 'paid', paymentMethod: 'chapa', startAt: addisSlot(5, 11), endAt: plusMinutes(addisSlot(5, 11), 40) }));
+    await assertSucceeds(writeWithNotice(as('barber1', EMAILS.barber1), 'req',
+      { status: 'cancelled', cancelledBy: 'barber', declineReason: 'Fully booked', ...flag(450, 'request_declined') }, dueNotice('req')));
+  });
+
+  test('refund keys only with a cancel (or the sweep), never twice', async () => {
+    // Not on a live booking.
+    await assertFails(updateDoc(doc(as('barber1', EMAILS.barber1), 'bookings', 'bk1'), { status: 'inProgress', ...flag() }));
+    await assertFails(updateDoc(doc(as('owner1', EMAILS.owner1), 'bookings', 'bk1'), flag()));
+    await assertFails(updateDoc(doc(as('admin', EMAILS.admin), 'bookings', 'bk1'), flag()));
+    // A booking that already has a refund state is not flagged again.
+    await patch('bookings', 'bk1', { refundStatus: 'refunded' });
+    await assertFails(cancelPaidTx(as('customer', EMAILS.customer), 'bk1', { status: 'cancelled', cancelledBy: 'customer', ...flag() }, null));
+  });
+
+  test("the owner's sweep flags a paid cancel that was missed; customers and barbers cannot", async () => {
+    await seed('bookings', 'missed', paidCancelled());
+    for (const [uid, email] of [['customer', EMAILS.customer], ['barber1', EMAILS.barber1], ['owner2', EMAILS.owner2]]) {
+      await assertFails(writeWithNotice(as(uid, email), 'missed', flag(), dueNotice('missed')), uid);
+    }
+    await assertSucceeds(writeWithNotice(as('owner1', EMAILS.owner1), 'missed', flag(450, 'customer_cancelled'), dueNotice('missed')));
+    // Flagged now: not again.
+    await assertFails(updateDoc(doc(as('admin', EMAILS.admin), 'bookings', 'missed'), flag()));
+    // An admin may sweep too; never an unpaid booking.
+    await seed('bookings', 'missed2', paidCancelled());
+    await assertSucceeds(updateDoc(doc(as('admin', EMAILS.admin), 'bookings', 'missed2'), flag()));
+    await seed('bookings', 'unpaidC', paidCancelled({ paymentStatus: 'unpaid' }));
+    await assertFails(updateDoc(doc(as('owner1', EMAILS.owner1), 'bookings', 'unpaidC'), flag()));
+  });
+
+  test('mark refunded: the owner or an admin, once, amounts unchanged', async () => {
+    const dueBooking = paidCancelled({ refundStatus: 'due', refundAmount: 450, refundReason: 'customer_cancelled', refundFlaggedAt: NOW });
+    await seed('bookings', 'due1', dueBooking);
+    for (const [uid, email] of [['customer', EMAILS.customer], ['barber1', EMAILS.barber1], ['owner2', EMAILS.owner2]]) {
+      await assertFails(writeWithNotice(as(uid, email), 'due1', done(uid), refundedNotice('due1')), uid);
+    }
+    const owner = as('owner1', EMAILS.owner1);
+    await assertFails(updateDoc(doc(owner, 'bookings', 'due1'), done('owner1', { refundAmount: 400 })));
+    await assertFails(updateDoc(doc(owner, 'bookings', 'due1'), done('owner1', { refundReason: 'shop_cancelled' })));
+    await assertFails(updateDoc(doc(owner, 'bookings', 'due1'), done('owner1', { refundMethod: 'gift' })));
+    await assertFails(updateDoc(doc(owner, 'bookings', 'due1'), done('owner2')));
+    await assertFails(updateDoc(doc(owner, 'bookings', 'due1'), done('owner1', { refundReference: '' })));
+    await assertFails(updateDoc(doc(owner, 'bookings', 'due1'), done('owner1', { paymentStatus: 'paid' })));
+    await assertFails(updateDoc(doc(owner, 'bookings', 'due1'), done('owner1', { status: 'confirmed' })));
+    await assertSucceeds(writeWithNotice(owner, 'due1', done('owner1'), refundedNotice('due1')));
+    // Not twice, and never back to due.
+    await assertFails(updateDoc(doc(owner, 'bookings', 'due1'), done('owner1', { refundMethod: 'cash' })));
+    await assertFails(updateDoc(doc(owner, 'bookings', 'due1'), { refundStatus: 'due' }));
+    // An admin, with paymentStatus already 'refunded' (left out) and no reference.
+    await seed('bookings', 'due2', { ...dueBooking, paymentStatus: 'refunded' });
+    const { paymentStatus, refundReference, ...fields } = done('admin');
+    await assertSucceeds(updateDoc(doc(as('admin', EMAILS.admin), 'bookings', 'due2'), fields));
+  });
+
+  test('refund notices: only with the refund change, only to the customer, exact id and keys', async () => {
+    const db = as('customer', EMAILS.customer);
+    // Wrong recipient, id or keys in the cancel transaction.
+    const cancel = (notice, opts) => cancelPaidTx(db, 'bk1', { status: 'cancelled', cancelledBy: 'customer', ...flag() }, notice, opts);
+    await assertFails(cancel(dueNotice(), { recipient: 'customer2' }));
+    await assertFails(cancel(dueNotice(), { noticeId: 'bk1_other' }));
+    await assertFails(cancel(dueNotice('bk1', { extra: 1 })));
+    await assertFails(cancel(dueNotice('bk1', { read: true })));
+    await assertFails(cancel(dueNotice('bk1', { title: '' })));
+    await assertSucceeds(cancel(dueNotice()));
+    // Later, without a refund change in the same write: refused.
+    await env.withSecurityRulesDisabled((ctx) => deleteDoc(doc(ctx.firestore(), 'users/customer/notifications', 'bk1_refundDue')));
+    await assertFails(setDoc(doc(db, 'users/customer/notifications', 'bk1_refundDue'), dueNotice()));
+    await assertFails(setDoc(doc(as('owner1', EMAILS.owner1), 'users/customer/notifications', 'bk1_refundDue'), dueNotice()));
+    // paymentRefunded only with "mark refunded" by the owner or an admin.
+    await assertFails(setDoc(doc(as('owner1', EMAILS.owner1), 'users/customer/notifications', 'bk1_paymentRefunded'), refundedNotice('bk1')));
+    await assertFails(setDoc(doc(db, 'users/customer/notifications', 'bk1_paymentRefunded'), refundedNotice('bk1')));
+  });
+});
+
+describe('shop deletion: admin clean-up', () => {
+  const admin = () => as('admin', EMAILS.admin);
+  const owner1 = () => as('owner1', EMAILS.owner1);
+  const recordRef = (db, id = 'shop1') => doc(db, 'shopDeletions', id);
+  const record = (extra = {}) => ({
+    shopId: 'shop1', shopName: 'Shop', requestedBy: 'admin', requestedAt: isoNow(), staffUids: ['owner1', 'barber1', 'barber2'], barberAccountUids: [], ...extra,
+  });
+  const notice = (type, extra = {}) => ({
+    type, title: 'Shop closed', body: 'The shop was removed from Crown & Blade.', shopId: 'shop1', read: false, createdAt: isoNow(), ...extra,
+  });
+  const cancelled = { status: 'cancelled', cancelledBy: 'admin', cancelReason: 'shop_deleted' };
+  const seedRecord = () => seed('shopDeletions', 'shop1', record());
+
+  function cancelBatch(db, update = cancelled, n = notice('shopDeleted', { bookingId: 'bk1' }), { recipient = 'customer', noticeId = 'bk1_shopDeleted' } = {}) {
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'bookings', 'bk1'), update);
+    if (n) batch.set(doc(db, `users/${recipient}/notifications`, noticeId), n);
+    return batch.commit();
+  }
+
+  function revokeBatch(db, uid, n = notice('shopRemoved'), noticeId = 'shopRemoved_shop1') {
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'users', uid), { role: 'customer', shopId: deleteField(), barberId: deleteField() });
+    if (n) batch.set(doc(db, `users/${uid}/notifications`, noticeId), n);
+    return batch.commit();
+  }
+
+  test('shopDeletions/{shopId}: admins write it with merge, read it; nobody deletes it', async () => {
+    const db = admin();
+    const write = (extra = {}) => setDoc(recordRef(db), { ...record(extra), staffUids: arrayUnion('owner1', 'barber1'), barberAccountUids: arrayUnion() }, { merge: true });
+    await assertSucceeds(write());
+    await assertSucceeds(write());
+    await assertSucceeds(getDoc(recordRef(db)));
+    await assertFails(deleteDoc(recordRef(db)));
+    await assertFails(setDoc(recordRef(db, 'shop2'), record()));
+    await assertFails(write({ requestedBy: 'owner1' }));
+    await assertFails(write({ requestedAt: 'now' }));
+    await assertFails(write({ serverCleanupAt: isoNow() }));
+    await assertFails(write({ note: 'x' }));
+    for (const [uid, email] of [['owner1', EMAILS.owner1], ['customer', EMAILS.customer]]) {
+      await assertFails(setDoc(recordRef(as(uid, email), 'shop2'), record({ shopId: 'shop2', requestedBy: uid })), uid);
+      await assertFails(getDoc(recordRef(as(uid, email))), uid);
+    }
+    // The server's fields (Admin SDK) survive the next merge.
+    await patch('shopDeletions', 'shop1', { serverCleanupAt: isoNow(), deletedLogins: ['barber1'] });
+    await assertSucceeds(write());
+  });
+
+  test('upcoming bookings are cancelled with a notice to their customer, in one batch', async () => {
+    await seedRecord();
+    await assertSucceeds(getDocs(query(collection(admin(), 'bookings'), where('shopId', '==', 'shop1'), where('startAt', '>=', NOW))));
+    await assertSucceeds(cancelBatch(admin()));
+  });
+
+  test('the clean-up cancel: admin only, with the record, reason shop_deleted, live bookings', async () => {
+    await assertFails(cancelBatch(admin()));
+    await seedRecord();
+    await assertFails(cancelBatch(owner1(), { ...cancelled, cancelledBy: 'owner1' }));
+    await assertFails(cancelBatch(admin(), { ...cancelled, cancelReason: 'other' }));
+    await assertFails(cancelBatch(admin(), { ...cancelled, cancelledBy: 'owner1' }));
+    await assertFails(cancelBatch(admin(), { ...cancelled, cancelReason: 'shop_deleted', cancelReasonNote: 'x' }));
+    await patch('bookings', 'bk1', { status: 'completed' });
+    await assertFails(cancelBatch(admin(), { ...cancelled }, null));
+  });
+
+  test('shopDeleted notices: admin only, to the booking customer, exact id and keys', async () => {
+    await seedRecord();
+    await assertFails(cancelBatch(admin(), cancelled, notice('shopDeleted', { bookingId: 'bk1' }), { recipient: 'customer2' }));
+    await assertFails(cancelBatch(admin(), cancelled, notice('shopDeleted', { bookingId: 'bk1' }), { noticeId: 'bk1_x' }));
+    await assertFails(cancelBatch(admin(), cancelled, notice('shopDeleted', { bookingId: 'bk1', extra: true })));
+    await assertFails(cancelBatch(admin(), cancelled, notice('shopDeleted', { bookingId: 'bk1', shopId: 'shop2' })));
+    // Not without the cancel in the same batch, and never by the owner.
+    await assertFails(setDoc(doc(admin(), 'users/customer/notifications', 'bk1_shopDeleted'), notice('shopDeleted', { bookingId: 'bk1' })));
+    const owner = owner1();
+    const batch = writeBatch(owner);
+    batch.update(doc(owner, 'bookings', 'bk1'), { status: 'cancelled', cancelledBy: 'owner1' });
+    batch.set(doc(owner, 'users/customer/notifications', 'bk1_shopDeleted'), notice('shopDeleted', { bookingId: 'bk1' }));
+    await assertFails(batch.commit());
+  });
+
+  test('staff are downgraded to customers with a shopRemoved notice; never by non-admins', async () => {
+    await seedRecord();
+    await assertFails(revokeBatch(owner1(), 'barber1'));
+    await assertFails(revokeBatch(as('barber1', EMAILS.barber1), 'barber2'));
+    await assertFails(revokeBatch(admin(), 'barber1', notice('shopRemoved', { bookingId: 'bk1' })));
+    await assertFails(revokeBatch(admin(), 'barber1', notice('shopRemoved'), 'shopRemoved_shop2'));
+    await assertSucceeds(revokeBatch(admin(), 'barber1'));
+    await assertSucceeds(revokeBatch(admin(), 'owner1'));
+    // A customer of another shop gets no shopRemoved notice.
+    await assertFails(setDoc(doc(admin(), 'users/customer/notifications', 'shopRemoved_shop1'), notice('shopRemoved')));
+    // The users and invites queries of the clean-up.
+    await assertSucceeds(getDocs(query(collection(admin(), 'users'), where('shopId', '==', 'shop1'))));
+    await assertSucceeds(getDocs(query(collection(admin(), 'invites'), where('shopId', '==', 'shop1'))));
+  });
+
+  test("the shop's subcollections are listed and deleted by an admin once the record exists", async () => {
+    await seed('barbershops/shop1/barbers/b1/private', 'contact', { phone: PHONES.barber1 });
+    await seed('barbershops/shop1/barbers/b1/timeOff', 'to1', { startAt: addisSlot(2, 9), endAt: addisSlot(2, 10), createdBy: 'barber1', createdAt: NOW });
+    await seed('barbershops/shop1/queue', 'q1', { name: 'Dawit', status: 'waiting', createdAt: NOW, addedBy: 'owner1', source: 'walkIn' });
+    await seed('barbershops/shop1/queueSummary', 'current', { waitingCount: 0, estimatedWaitMinutes: 0, positions: {}, updatedAt: NOW });
+    await seed('barbershops/shop1/reviews', 'bkX', { bookingId: 'bkX', shopId: 'shop1', barberId: 'b1', customerId: 'customer', customerName: 'c', rating: 5, createdAt: NOW });
+    await seed('barbershops/shop1/stats', '2026-11', { bookings: 1 });
+    await seed('barbershops/shop1/clients', 'customer', { customerId: 'customer' });
+    await seed('barbershops/shop1/payouts', 'p1', { barberId: 'b1', amount: 100, periodStart: NOW, periodEnd: NOW, method: 'cash', createdBy: 'owner1', createdAt: '2026-01-01T00:00:00.000Z' });
+    const paths = [
+      'barbershops/shop1/barbers/b1/timeOff', 'barbershops/shop1/queue', 'barbershops/shop1/queueSummary',
+      'barbershops/shop1/reviews', 'barbershops/shop1/stats', 'barbershops/shop1/clients', 'barbershops/shop1/payouts',
+    ];
+    // Before the record: not even an admin.
+    for (const p of ['barbershops/shop1/queue', 'barbershops/shop1/barbers/b1/timeOff']) {
+      await assertFails(getDocs(collection(admin(), p)), p);
+    }
+    for (const [p, id] of [['barbershops/shop1/queue', 'q1'], ['barbershops/shop1/reviews', 'bkX'], ['barbershops/shop1/stats', '2026-11'], ['barbershops/shop1/payouts', 'p1']]) {
+      await assertFails(deleteDoc(doc(admin(), p, id)), p);
+    }
+    await seedRecord();
+    // The owner still cannot.
+    await assertFails(deleteDoc(doc(owner1(), 'barbershops/shop1/queue', 'q1')));
+    await assertFails(deleteDoc(doc(owner1(), 'barbershops/shop1/stats', '2026-11')));
+    // Never another shop's.
+    await seed('barbershops/shop2/queue', 'q2', { name: 'Dawit', status: 'waiting', createdAt: NOW, addedBy: 'owner2', source: 'walkIn' });
+    await assertFails(deleteDoc(doc(admin(), 'barbershops/shop2/queue', 'q2')));
+    const db = admin();
+    for (const p of [...paths, 'barbershops/shop1/barbers/b1/private', 'barbershops/shop1/barbers/b1/slotLocks']) {
+      const page = await assertSucceeds(getDocs(query(collection(db, p), limit(100))), p);
+      const batch = writeBatch(db);
+      for (const d of page.docs) batch.delete(d.ref);
+      await assertSucceeds(batch.commit(), p);
+    }
+    for (const id of ['b1', 'b2']) await assertSucceeds(deleteDoc(doc(db, 'barbershops/shop1/barbers', id)));
+    await assertSucceeds(deleteDoc(doc(db, 'barbershops', 'shop1')));
+  });
+});
+
+describe('reviews: edit, delete and the owner notice', () => {
+  const reviewRef = (db, id = 'bkDone') => doc(db, 'barbershops/shop1/reviews', id);
+  const barberRef = (db, id = 'b1') => doc(db, 'barbershops/shop1/barbers', id);
+  const cust = () => as('customer', EMAILS.customer);
+  const stored = (extra = {}) => ({
+    bookingId: 'bkDone', shopId: 'shop1', barberId: 'b1', customerId: 'customer', customerName: 'customer', rating: 4, comment: 'Good', createdAt: NOW, ...extra,
+  });
+
+  beforeEach(async () => {
+    await seed('bookings', 'bkDone', booking({ status: 'completed', startAt: addisSlot(-2, 10), endAt: plusMinutes(addisSlot(-2, 10), 40) }));
+    await seed('barbershops/shop1/reviews', 'bkDone', stored());
+    await patch('barbershops/shop1/barbers', 'b1', { reviewCount: 1, ratingSum: 4, lastReviewId: 'bkDone' });
+  });
+
+  // FirestoreReviewStore.update / delete: one transaction each.
+  function editTx(db, fields, counters, id = 'bkDone') {
+    return runTransaction(db, async (tx) => {
+      await tx.get(reviewRef(db, id));
+      tx.update(reviewRef(db, id), fields);
+      if (counters) tx.update(barberRef(db), counters);
+    });
+  }
+  function deleteTx(db, counters, ids = ['bkDone']) {
+    return runTransaction(db, async (tx) => {
+      for (const id of ids) await tx.get(reviewRef(db, id));
+      for (const id of ids) tx.delete(reviewRef(db, id));
+      if (counters) tx.update(barberRef(db), counters);
+    });
+  }
+  const edit = (rating, extra = {}) => ({ rating, comment: 'Changed', editedAt: isoNow(), ...extra });
+
+  test('the customer changes the stars and the barber sum in one transaction', async () => {
+    await assertSucceeds(editTx(cust(), edit(2), { ratingSum: 2, lastReviewId: 'bkDone' }));
+    // Again, with a new editedAt; and a comment-only edit without counters.
+    await assertSucceeds(editTx(cust(), edit(5), { ratingSum: 5, lastReviewId: 'bkDone' }));
+    await assertSucceeds(editTx(cust(), edit(5, { comment: deleteField() })));
+    await assertSucceeds(editTx(cust(), edit(5, { comment: 'Back again' })));
+  });
+
+  test('edits: exact counter maths, own review only, only rating, comment and editedAt', async () => {
+    await assertFails(editTx(cust(), edit(2)));
+    await assertFails(editTx(cust(), edit(2), { ratingSum: 3, lastReviewId: 'bkDone' }));
+    await assertFails(editTx(cust(), edit(2), { ratingSum: 2, reviewCount: 2, lastReviewId: 'bkDone' }));
+    await assertFails(editTx(cust(), edit(6), { ratingSum: 6, lastReviewId: 'bkDone' }));
+    await assertFails(editTx(cust(), edit(4, { comment: '' })));
+    await assertFails(editTx(cust(), { rating: 4, comment: 'No time' }));
+    await assertFails(editTx(cust(), edit(4, { editedAt: 'yesterday' })));
+    await patch('barbershops/shop1/reviews', 'bkDone', { editedAt: '2026-11-01T10:00:00.000Z' });
+    await assertFails(editTx(cust(), edit(4, { editedAt: '2026-11-01T10:00:00.000Z' })));
+    for (const extra of [{ reply: 'Hi' }, { createdAt: isoNow() }, { customerName: 'X' }, { barberId: 'b2' }, { bookingId: 'x' }]) {
+      await assertFails(editTx(cust(), edit(4, extra)), Object.keys(extra)[0]);
+    }
+    await assertFails(editTx(as('customer2', EMAILS.customer2), edit(2), { ratingSum: 2, lastReviewId: 'bkDone' }));
+    await assertFails(editTx(as('owner1', EMAILS.owner1), edit(2), { ratingSum: 2, lastReviewId: 'bkDone' }));
+    // The owner's reply still works.
+    await assertSucceeds(updateDoc(reviewRef(as('owner1', EMAILS.owner1)), { reply: 'Thanks!', replyAt: isoNow() }));
+  });
+
+  test('the customer deletes their review and its stars leave the counters', async () => {
+    await assertFails(deleteTx(cust()));
+    await assertFails(deleteTx(cust(), { ratingSum: 0, reviewCount: 1, lastReviewId: 'bkDone' }));
+    await assertFails(deleteTx(as('customer2', EMAILS.customer2), { ratingSum: 0, reviewCount: 0, lastReviewId: 'bkDone' }));
+    await assertFails(deleteTx(as('owner1', EMAILS.owner1), { ratingSum: 0, reviewCount: 0, lastReviewId: 'bkDone' }));
+    await assertFails(deleteDoc(reviewRef(as('barber1', EMAILS.barber1))));
+    await assertSucceeds(deleteTx(cust(), { ratingSum: 0, reviewCount: 0, lastReviewId: 'bkDone' }));
+  });
+
+  test('a legacy barber (no ratingSum) uses round(rating * reviewCount); a removed barber needs no counters', async () => {
+    await env.withSecurityRulesDisabled((ctx) => setDoc(barberRef(ctx.firestore()), { ...barber('shop1', 'Abel'), rating: 4.5, reviewCount: 2 }));
+    await assertSucceeds(deleteTx(cust(), { ratingSum: 5, reviewCount: 1, lastReviewId: 'bkDone' }));
+    await seed('barbershops/shop1/reviews', 'bkGone', stored({ bookingId: 'bkGone', barberId: 'gone' }));
+    await assertSucceeds(deleteDoc(reviewRef(cust(), 'bkGone')));
+  });
+
+  test('counter changes need a matching review change in the same write', async () => {
+    // No review change at all (replays).
+    await assertFails(updateDoc(barberRef(cust()), { ratingSum: 1, lastReviewId: 'bkDone' }));
+    await assertFails(updateDoc(barberRef(cust()), { ratingSum: 0, reviewCount: 0, lastReviewId: 'bkDone' }));
+    // Two of the customer's reviews of the barber deleted in one write.
+    await seed('bookings', 'bkDone3', booking({ status: 'completed' }));
+    await seed('barbershops/shop1/reviews', 'bkDone3', stored({ bookingId: 'bkDone3', rating: 5 }));
+    await patch('barbershops/shop1/barbers', 'b1', { reviewCount: 2, ratingSum: 9 });
+    await assertFails(deleteTx(cust(), { ratingSum: 0, reviewCount: 0, lastReviewId: 'bkDone3' }, ['bkDone', 'bkDone3']));
+    await assertFails(deleteTx(cust(), { ratingSum: 5, reviewCount: 1, lastReviewId: 'bkDone' }, ['bkDone', 'bkDone3']));
+    await assertSucceeds(deleteTx(cust(), { ratingSum: 5, reviewCount: 1, lastReviewId: 'bkDone' }));
+  });
+
+  test('a review written again after a delete counts again', async () => {
+    await assertSucceeds(deleteTx(cust(), { ratingSum: 0, reviewCount: 0, lastReviewId: 'bkDone' }));
+    const again = { ...stored({ rating: 3, createdAt: isoNow() }) };
+    delete again.comment;
+    const db = cust();
+    const create = (counters) => runTransaction(db, async (tx) => {
+      tx.set(reviewRef(db), again);
+      tx.update(barberRef(db), counters);
+    });
+    // lastReviewId is already this review: the count must still go up.
+    await assertFails(create({ ratingSum: 3, lastReviewId: 'bkDone' }));
+    await assertSucceeds(create({ ratingSum: 3, reviewCount: 1, lastReviewId: 'bkDone' }));
+  });
+
+  test("the owner's newReview notice is written with the new review, by its customer", async () => {
+    await seed('bookings', 'bkNew', booking({ status: 'completed', startAt: addisSlot(-1, 10), endAt: plusMinutes(addisSlot(-1, 10), 40) }));
+    const createdAt = isoNow();
+    const id = `review_bkNew_${createdAt.replace(/[^0-9]/g, '')}`;
+    const note = (extra = {}) => ({
+      type: 'newReview', title: 'New review', body: '5 stars for Abel', bookingId: 'bkNew', shopId: 'shop1', barberId: 'b1', rating: 5, read: false, createdAt, ...extra,
+    });
+    const db = cust();
+    const create = (n, { recipient = 'owner1', noteId = id } = {}) => runTransaction(db, async (tx) => {
+      tx.set(reviewRef(db, 'bkNew'), stored({ bookingId: 'bkNew', rating: 5, createdAt }));
+      tx.update(barberRef(db), { ratingSum: 9, reviewCount: 2, lastReviewId: 'bkNew' });
+      tx.set(doc(db, `users/${recipient}/notifications`, noteId), n);
+    });
+    await assertFails(create(note(), { recipient: 'owner2' }));
+    await assertFails(create(note(), { recipient: 'barber1' }));
+    await assertFails(create(note(), { noteId: 'review_bkNew_1' }));
+    await assertFails(create(note({ rating: 4 })));
+    await assertFails(create(note({ barberId: 'b2' })));
+    await assertFails(create(note({ extra: 1 })));
+    await assertFails(create(note({ read: true })));
+    await assertSucceeds(create(note()));
+    // Without a new review in the same write: refused.
+    await assertFails(setDoc(doc(cust(), 'users/owner1/notifications', `${id}x`), note()));
+  });
+});
+
+describe('vacations: grouped time off and the cancel notice', () => {
+  const OFF = addisSlot(2, 13);
+  const barber1 = () => as('barber1', EMAILS.barber1);
+  const group = { groupId: 'vac1', groupFrom: '2026-12-01', groupTo: '2026-12-03' };
+
+  function vacationDay(db, uid, data = {}, id = 'vac1_d1', start = OFF) {
+    const end = plusMinutes(start, 60);
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'barbershops/shop1/barbers/b1/timeOff', id), {
+      startAt: start, endAt: end, reason: 'Vacation', createdBy: uid, createdAt: isoNow(), ...data,
+    });
+    for (const s of blocks(start, 60)) {
+      batch.set(doc(locksOf(db), lockId(s)), { timeOffId: id, startAt: s, expiresAt: plusMinutes(end, 24 * 60) });
+    }
+    return batch.commit();
+  }
+
+  test('a vacation day carries groupId, groupFrom and groupTo, all or none', async () => {
+    await assertFails(vacationDay(barber1(), 'barber1', { groupId: 'vac1' }));
+    await assertFails(vacationDay(barber1(), 'barber1', { groupFrom: '2026-12-01', groupTo: '2026-12-03' }));
+    await assertFails(vacationDay(barber1(), 'barber1', { ...group, groupFrom: '2026-12-04' }));
+    await assertFails(vacationDay(barber1(), 'barber1', { ...group, groupTo: '03/12/2026' }));
+    await assertFails(vacationDay(barber1(), 'barber1', { ...group, groupId: '' }));
+    await assertFails(vacationDay(barber1(), 'barber1', { ...group, groupDays: 3 }));
+    await assertFails(vacationDay(as('customer', EMAILS.customer), 'customer', group));
+    await assertFails(vacationDay(as('admin', EMAILS.admin), 'admin', group));
+    await assertSucceeds(vacationDay(barber1(), 'barber1', group));
+    await assertSucceeds(vacationDay(as('owner1', EMAILS.owner1), 'owner1', { ...group, groupFrom: '2026-12-03' }, 'vac1_d3', addisSlot(4, 13)));
+  });
+
+  test("the staff member who cancelled a booking notifies its customer ('cancelled')", async () => {
+    const notice = (extra = {}) => ({
+      type: 'cancelled', title: 'Booking cancelled', body: 'Abel is on vacation.', bookingId: 'bk1', read: false, createdAt: isoNow(), ...extra,
+    });
+    const send = (db, n = notice(), recipient = 'customer', id = 'bk1_cancelled') => setDoc(doc(db, `users/${recipient}/notifications`, id), n);
+    // Not before the cancel.
+    await assertFails(send(barber1()));
+    await assertSucceeds(cancelTx(barber1(), 'bk1', START, 40, { cancelledBy: 'barber1', cancelReasonNote: 'Vacation' }));
+    await assertFails(send(as('customer', EMAILS.customer)));
+    await assertFails(send(as('barber2', EMAILS.barber2)));
+    await assertFails(send(as('owner2', EMAILS.owner2)));
+    await assertFails(send(as('owner1', EMAILS.owner1)));
+    await assertFails(send(barber1(), notice(), 'customer2'));
+    await assertFails(send(barber1(), notice(), 'customer', 'bk1_other'));
+    await assertFails(send(barber1(), notice({ shopId: 'shop1' })));
+    await assertFails(send(barber1(), notice({ extra: 1 })));
+    await assertSucceeds(send(barber1()));
+    // Created once: no overwrite.
+    await assertFails(send(barber1(), notice({ title: 'Again' })));
+  });
+});
+
+describe('admin users: disabled accounts and role changes', () => {
+  const admin = () => as('admin', EMAILS.admin);
+  const disableFields = (extra = {}) => ({ disabled: true, disabledAt: isoNow(), disabledBy: 'admin', disabledReason: 'Fraud', ...extra });
+
+  test('an admin disables and enables an account', async () => {
+    await assertFails(updateDoc(doc(admin(), 'users', 'customer'), disableFields({ disabled: 'yes' })));
+    await assertFails(updateDoc(doc(admin(), 'users', 'customer'), disableFields({ disabledReason: '' })));
+    await assertSucceeds(updateDoc(doc(admin(), 'users', 'customer'), disableFields()));
+    const { disabledReason, ...noReason } = disableFields();
+    await assertSucceeds(updateDoc(doc(admin(), 'users', 'customer2'), noReason));
+    await assertSucceeds(updateDoc(doc(admin(), 'users', 'customer'), {
+      disabled: deleteField(), disabledAt: deleteField(), disabledBy: deleteField(), disabledReason: deleteField(),
+    }));
+  });
+
+  test('nobody sets or clears their own disabled flag', async () => {
+    const db = as('customer', EMAILS.customer);
+    await assertFails(updateDoc(doc(db, 'users', 'customer'), { disabled: false }));
+    await patch('users', 'customer', disableFields());
+    await assertFails(updateDoc(doc(db, 'users', 'customer'), { name: 'Me', disabled: deleteField() }));
+    await assertFails(updateDoc(doc(db, 'users', 'customer'), { disabled: false }));
+    await assertFails(updateDoc(doc(as('owner1', EMAILS.owner1), 'users', 'customer'), { disabled: deleteField() }));
+    // Self-create with the flag.
+    await assertFails(setDoc(doc(as('new', EMAILS.newPerson), 'users', 'new'), {
+      uid: 'new', email: EMAILS.newPerson, name: 'Hanna', phone: PHONES.newPerson, role: 'customer', createdAt: NOW, disabled: false,
+    }));
+    // Accepting an invite cannot clear it.
+    await seed('invites', EMAILS.customer, invite(EMAILS.customer, 'barber', { shopId: 'shop1', barberId: 'b2' }, 'owner1'));
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'users', 'customer'), {
+      role: 'barber', shopId: 'shop1', barberId: 'b2',
+      disabled: deleteField(), disabledAt: deleteField(), disabledBy: deleteField(), disabledReason: deleteField(),
+    });
+    batch.delete(doc(db, 'invites', EMAILS.customer));
+    await assertFails(batch.commit());
+  });
+
+  test('a disabled account books, reviews, joins queues and applies no more', async () => {
+    await patch('users', 'customer', disableFields());
+    const db = as('customer', EMAILS.customer);
+    await assertFails(bookBatch(db, 'blocked', newBooking(addisSlot(7, 9))));
+    await seed('bookings', 'bkDone', booking({ status: 'completed', startAt: addisSlot(-2, 10), endAt: plusMinutes(addisSlot(-2, 10), 40) }));
+    await assertFails(setDoc(doc(db, 'barbershops/shop1/reviews', 'bkDone'), {
+      bookingId: 'bkDone', shopId: 'shop1', barberId: 'gone', customerId: 'customer', customerName: 'customer', rating: 5, createdAt: isoNow(),
+    }));
+    await assertFails(setDoc(doc(db, 'barbershops/shop1/queue', 'join'), {
+      name: 'customer', phone: PHONES.customer, status: 'waiting', createdAt: isoNow(), addedBy: 'customer', source: 'remote',
+    }));
+    await assertFails(setDoc(doc(db, 'shopApplications', 'customer'), {
+      uid: 'customer', email: EMAILS.customer, ownerName: 'C', shopName: 'Shop C', address: 'Bole Road', subCity: 'Bole', phone: '+251911223344', status: 'pending', createdAt: NOW,
+    }));
+    // Their own bookings stay readable.
+    await assertSucceeds(getDoc(doc(db, 'bookings', 'bk1')));
+    // Enabled again: booking works.
+    await patch('users', 'customer', { disabled: deleteField(), disabledAt: deleteField(), disabledBy: deleteField(), disabledReason: deleteField() });
+    await assertSucceeds(bookBatch(db, 'allowed', newBooking(addisSlot(7, 9))));
+  });
+
+  test("a disabled barber's upcoming bookings: admin cancel + customer notice", async () => {
+    const notice = (extra = {}) => ({
+      type: 'cancelled', title: 'Booking cancelled', body: 'Your barber is no longer available.', shopId: 'shop1', bookingId: 'bk1', read: false, createdAt: isoNow(), ...extra,
+    });
+    const run = (db, update, n = notice(), id = 'bk1_accountDisabled', recipient = 'customer') => {
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'bookings', 'bk1'), update);
+      if (n) batch.set(doc(db, `users/${recipient}/notifications`, id), n);
+      return batch.commit();
+    };
+    const by = (uid) => ({ status: 'cancelled', cancelledBy: uid, cancelReason: 'account_disabled' });
+    await assertFails(run(as('owner1', EMAILS.owner1), by('owner1')));
+    await assertFails(run(admin(), by('admin'), notice(), 'bk1_disabled'));
+    await assertFails(run(admin(), by('admin'), notice(), 'bk1_accountDisabled', 'customer2'));
+    await assertFails(run(admin(), { ...by('admin'), cancelReason: 'shop_deleted' }));
+    await assertSucceeds(getDocs(query(collection(admin(), 'bookings'), where('shopId', '==', 'shop1'), where('barberId', '==', 'b1'), where('startAt', '>=', NOW), orderBy('startAt'))));
+    await assertSucceeds(run(admin(), by('admin')));
+  });
+
+  test('a paid booking cancelled for a disabled account is flagged in the same batch', async () => {
+    await patch('bookings', 'bk1', { paymentStatus: 'paid', paymentMethod: 'chapa' });
+    const db = admin();
+    const at = isoNow();
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'bookings', 'bk1'), {
+      status: 'cancelled', cancelledBy: 'admin', cancelReason: 'account_disabled',
+      refundStatus: 'due', refundAmount: 450, refundReason: 'admin_cancelled', refundFlaggedAt: at,
+    });
+    batch.set(doc(db, 'users/customer/notifications', 'bk1_refundDue'), {
+      type: 'refundDue', title: 'Refund due', body: 'ETB 450.00 will be refunded.', bookingId: 'bk1', read: false, createdAt: at,
+    });
+    await assertSucceeds(batch.commit());
+  });
+
+  test('role change: one admin batch over users, shop owner, barber profiles and invites', async () => {
+    // customer2 becomes the barber of a new profile at shop2; owner2 is
+    // replaced by customer as the owner of shop2.
+    await seed('invites', EMAILS.customer2, invite(EMAILS.customer2, 'barber', { shopId: 'shop2', barberId: 'b3' }, 'owner2'));
+    const db = admin();
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'users', 'customer'), { role: 'barbershopOwner', shopId: 'shop2' });
+    batch.update(doc(db, 'users', 'owner2'), { role: 'customer', shopId: deleteField(), barberId: deleteField() });
+    batch.update(doc(db, 'barbershops', 'shop2'), { ownerId: 'customer' });
+    batch.update(doc(db, 'users', 'customer2'), { role: 'barber', shopId: 'shop2', barberId: 'b8' });
+    batch.set(doc(db, 'barbershops/shop2/barbers', 'b8'), {
+      shopId: 'shop2', name: 'customer2', title: 'Barber', rating: 5.0, reviewCount: 0, isAvailable: true, specialties: [],
+    });
+    batch.update(doc(db, 'barbershops/shop2/barbers', 'b3'), { isAvailable: false });
+    batch.delete(doc(db, 'invites', EMAILS.customer2));
+    await assertSucceeds(batch.commit());
+    // An owner cannot change roles.
+    await assertFails(updateDoc(doc(as('owner1', EMAILS.owner1), 'users', 'barber1'), { role: 'customer', shopId: deleteField(), barberId: deleteField() }));
+  });
+});
+
+describe('subscription receipts: Storage photos', () => {
+  const ID = 'telebirr_CHK1AB2CDE';
+  const receipt = (extra = {}) => ({
+    shopId: 'shop1', ownerId: 'owner1', method: 'telebirr', transactionId: 'CHK1AB2CDE', amount: 1400,
+    status: 'pending', durationDays: 0, createdAt: isoNow(), ...extra,
+  });
+  const ref = (db, id = ID) => doc(db, 'subscriptionPayments', id);
+  const owner1 = () => as('owner1', EMAILS.owner1);
+
+  test('an owner may point to the Storage photo instead of an inline image', async () => {
+    await assertFails(setDoc(ref(owner1()), receipt({ imagePath: 'receipts/shop2/telebirr_CHK1AB2CDE.jpg' })));
+    await assertFails(setDoc(ref(owner1()), receipt({ imagePath: 'receipts/shop1/telebirr_OTHER123.jpg' })));
+    await assertFails(setDoc(ref(owner1()), receipt({ imagePath: 'receipts/shop1/telebirr_CHK1AB2CDE.png' })));
+    await assertFails(setDoc(ref(owner1()), receipt({ imagePath: 'receipts/shop1/telebirr_CHK1AB2CDE.jpg', receiptImage: 'QUJD' })));
+    await assertFails(setDoc(ref(as('owner2', EMAILS.owner2)), receipt({ shopId: 'shop2', ownerId: 'owner2', imagePath: 'receipts/shop1/telebirr_CHK1AB2CDE.jpg' })));
+    await assertSucceeds(setDoc(ref(owner1()), receipt({ imagePath: 'receipts/shop1/telebirr_CHK1AB2CDE.jpg' })));
+    // Still never changed by the owner.
+    await assertFails(updateDoc(ref(owner1()), { imagePath: 'receipts/shop1/x.jpg' }));
+    // Inline photos still work.
+    await assertSucceeds(setDoc(ref(owner1(), 'telebirr_CHK9ZZ8YYX'), receipt({ transactionId: 'CHK9ZZ8YYX', receiptImage: 'QUJD' })));
+  });
+
+  test('the admin turns Storage receipts on (a bool) in the pricing doc', async () => {
+    const pricing = (extra = {}) => ({
+      currency: 'ETB', tiers: [{ days: 30, amount: 500 }], receivers: { telebirr: { number: '+251911000000', name: 'Crown & Blade' } }, ...extra,
+    });
+    const pref = (db) => doc(db, 'platformConfig', 'subscriptionPricing');
+    await assertSucceeds(setDoc(pref(as('admin', EMAILS.admin)), pricing({ storageReceipts: true })));
+    await assertFails(setDoc(pref(as('admin', EMAILS.admin)), pricing({ storageReceipts: 'yes' })));
+    await assertFails(setDoc(pref(owner1()), pricing({ storageReceipts: true })));
+    assert.equal((await assertSucceeds(getDoc(pref(owner1())))).data().storageReceipts, true);
+    await assertSucceeds(setDoc(pref(as('admin', EMAILS.admin)), pricing()));
+  });
+});
+
+describe('earnings: aggregate queries', () => {
+  const completed = (id, extra = {}) => seed('bookings', id, booking({ status: 'completed', price: 500, ...extra }));
+  const agg = (q) => getAggregateFromServer(q, { n: count(), total: sum('price') });
+
+  beforeEach(async () => {
+    await completed('c1');
+    await completed('c2', { barberId: 'b2', barberName: 'Biruk' });
+    await completed('c3', { shopId: 'shop2', barberId: 'b3', price: 300 });
+    await seed('barbershops/shop1/payouts', 'p1', { barberId: 'b1', amount: 100, periodStart: '2026-11-01T00:00:00.000Z', periodEnd: '2026-11-30T00:00:00.000Z', method: 'cash', createdBy: 'owner1', createdAt: NOW });
+    await seed('barbershops/shop1/payouts', 'p2', { barberId: 'b2', amount: 150, periodStart: '2026-11-01T00:00:00.000Z', periodEnd: '2026-11-30T00:00:00.000Z', method: 'cash', createdBy: 'owner1', createdAt: NOW });
+  });
+
+  test("owners total their shop's completed bookings, per barber too", async () => {
+    const db = as('owner1', EMAILS.owner1);
+    const base = [where('shopId', '==', 'shop1'), where('status', '==', 'completed')];
+    const all = await assertSucceeds(agg(query(collection(db, 'bookings'), ...base)));
+    assert.equal(all.data().n, 2);
+    assert.equal(all.data().total, 1000);
+    const ranged = await assertSucceeds(agg(query(collection(db, 'bookings'), ...base, where('startAt', '>=', '2020-01-01T00:00:00.000Z'), where('startAt', '<', '2100-01-01T00:00:00.000Z'))));
+    assert.equal(ranged.data().n, 2);
+    assert.equal((await assertSucceeds(agg(query(collection(db, 'bookings'), ...base, where('barberId', '==', 'b1'))))).data().n, 1);
+    await assertFails(agg(query(collection(db, 'bookings'), where('shopId', '==', 'shop2'), where('status', '==', 'completed'))));
+    const paid = await assertSucceeds(getAggregateFromServer(query(collection(db, 'barbershops/shop1/payouts'), where('barberId', '==', 'b1'),
+      where('periodStart', '>=', '2026-11-01T00:00:00.000Z'), where('periodStart', '<', '2026-12-01T00:00:00.000Z')), { total: sum('amount') }));
+    assert.equal(paid.data().total, 100);
+  });
+
+  test('barbers total only their own; customers only with their own customerId', async () => {
+    const db = as('barber1', EMAILS.barber1);
+    const own = await assertSucceeds(agg(query(collection(db, 'bookings'), where('shopId', '==', 'shop1'), where('barberId', '==', 'b1'), where('status', '==', 'completed'))));
+    assert.equal(own.data().n, 1);
+    await assertFails(agg(query(collection(db, 'bookings'), where('shopId', '==', 'shop1'), where('barberId', '==', 'b2'), where('status', '==', 'completed'))));
+    await assertFails(agg(query(collection(db, 'bookings'), where('shopId', '==', 'shop1'), where('status', '==', 'completed'))));
+    await assertSucceeds(getAggregateFromServer(query(collection(db, 'barbershops/shop1/payouts'), where('barberId', '==', 'b1')), { total: sum('amount') }));
+    await assertFails(getAggregateFromServer(query(collection(db, 'barbershops/shop1/payouts'), where('barberId', '==', 'b2')), { total: sum('amount') }));
+    const cust = as('customer', EMAILS.customer);
+    await assertFails(agg(query(collection(cust, 'bookings'), where('shopId', '==', 'shop1'), where('status', '==', 'completed'))));
+    await assertSucceeds(agg(query(collection(cust, 'bookings'), where('customerId', '==', 'customer'), where('status', '==', 'completed'))));
   });
 });

@@ -12,6 +12,8 @@
  *                           (applicationApproved / applicationRejected)
  *   onBookingCompletedEarly Firestore trigger on bookings/{bookingId}
  *                           (barberFreeEarly / runningEarly push, earlyFinish.ts)
+ *   onReviewCreated         Firestore trigger on barbershops/{shopId}/reviews/{reviewId}
+ *                           (newReview inbox + push to owner and barber, reviews.ts)
  *
  * Secrets (firebase functions:secrets:set NAME). Set AFROMESSAGE_TOKEN to
  * "none" to keep SMS in log-only mode:
@@ -42,6 +44,8 @@ import { detectApplicationEvent, notifyApplication, type ShopApplicationDoc } fr
 import { onDocumentUpdated } from 'firebase-functions/v2/firestore'; // early finish
 import { sendPush } from './dispatch'; // early finish
 import { isCompletionTransition, notifyEarlyFinish } from './earlyFinish'; // early finish
+import { onDocumentCreated } from 'firebase-functions/v2/firestore'; // review notices
+import { notifyNewReview, type ReviewDoc } from './reviews'; // review notices
 
 if (getApps().length === 0) initializeApp();
 
@@ -160,3 +164,19 @@ export const onBookingCompletedEarly = onDocumentUpdated(
   },
 );
 // --- end early finish ---
+
+// --- review notices ---
+export const onReviewCreated = onDocumentCreated(
+  { document: 'barbershops/{shopId}/reviews/{reviewId}', retry: false },
+  async (event) => {
+    const { shopId, reviewId } = event.params;
+    const review = event.data?.exists ? (event.data.data() as ReviewDoc) : null;
+    try {
+      const result = await notifyNewReview(getFirestore(), shopId, reviewId, review, sendPush);
+      logger.info('review notice', { shopId, reviewId, ...result });
+    } catch (err) {
+      logger.error('review notice failed', { shopId, reviewId, err: String(err) });
+    }
+  },
+);
+// --- end review notices ---

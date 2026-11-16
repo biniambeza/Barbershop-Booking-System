@@ -59,6 +59,32 @@ abstract final class NotificationTypes {
   static const receiptRejected = 'receiptRejected';
   // --- end subscription receipts ---
 
+  // --- shop deletion --- written by the admin's app while it deletes a
+  // shop (lib/services/shop_deletion.dart), or by functions/auth
+  // onShopDeleted. Both carry shopId.
+  /// A customer's upcoming booking was cancelled because its shop was
+  /// deleted. Id `{bookingId}_shopDeleted`.
+  static const shopDeleted = 'shopDeleted';
+
+  /// The owner / a barber lost their shop and is now a customer. Id
+  /// `shopRemoved_{shopId}`; no bookingId.
+  static const shopRemoved = 'shopRemoved';
+  // --- end shop deletion ---
+
+  // --- refunds --- a paid booking was cancelled and the customer is owed
+  // money (lib/services/refunds.dart; functions/bookings flagRefundOnCancel
+  // on Blaze). Id `{bookingId}_refundDue`. When the shop marks it refunded
+  // the customer gets [paymentRefunded] (`{bookingId}_paymentRefunded`).
+  static const refundDue = 'refundDue';
+  // --- end refunds ---
+
+  // --- review notices --- a customer reviewed a visit at the shop
+  // (lib/services/review_notices.dart; functions/notifications reviews.ts
+  // pushes on Blaze). Id `review_{reviewId}_{createdAt digits}`; bookingId
+  // is the reviewed booking (= review id), rating the stars.
+  static const newReview = 'newReview';
+  // --- end review notices ---
+
   static const all = [
     created,
     confirmed,
@@ -85,6 +111,10 @@ abstract final class NotificationTypes {
     runningEarly, // early finish
     receiptApproved, // subscription receipts
     receiptRejected, // subscription receipts
+    shopDeleted, // shop deletion
+    shopRemoved, // shop deletion
+    refundDue, // refunds
+    newReview, // review notices
   ];
 }
 
@@ -110,6 +140,10 @@ class AppNotification {
   /// (lets the app re-render the copy in the viewer's language).
   final int? minutesEarly;
 
+  /// Review notices only: the review's stars (1..5), so the app can
+  /// re-render the copy in the viewer's language.
+  final int? rating; // review notices
+
   const AppNotification({
     required this.id,
     required this.title,
@@ -119,6 +153,7 @@ class AppNotification {
     this.read = false,
     required this.createdAt,
     this.minutesEarly, // early finish
+    this.rating, // review notices
   });
 
   bool get isReminder => type == NotificationTypes.reminder24h || type == NotificationTypes.reminder2h;
@@ -132,6 +167,7 @@ class AppNotification {
         read: read ?? this.read,
         createdAt: createdAt,
         minutesEarly: minutesEarly, // early finish
+        rating: rating, // review notices
       );
 
   factory AppNotification.fromMap(Map<String, dynamic> map, String id) {
@@ -144,6 +180,7 @@ class AppNotification {
       read: map['read'] == true,
       createdAt: _parseDate(map['createdAt']),
       minutesEarly: (map['minutesEarly'] as num?)?.toInt(), // early finish
+      rating: (map['rating'] as num?)?.toInt(), // review notices
     );
   }
 
@@ -155,6 +192,7 @@ class AppNotification {
         'read': read,
         'createdAt': createdAt.toUtc().toIso8601String(),
         if (minutesEarly != null) 'minutesEarly': minutesEarly, // early finish
+        if (rating != null) 'rating': rating, // review notices
       };
 
   static DateTime _parseDate(Object? value) {

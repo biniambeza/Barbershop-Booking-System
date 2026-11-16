@@ -63,6 +63,7 @@ class SubscriptionPayment {
     required this.transactionId,
     required this.amount,
     this.receiptImage,
+    this.imagePath,
     this.payerAccountSuffix,
     this.status = ReceiptStatus.pending,
     this.durationDays = 0,
@@ -89,6 +90,11 @@ class SubscriptionPayment {
   /// JPEG, base64 (no data: prefix), <= [kMaxReceiptImageChars] characters.
   final String? receiptImage;
 
+  /// Firebase Storage object of the photo, `receipts/{shopId}/{id}.jpg`
+  /// (Blaze plan, admin switch `storageReceipts`); then [receiptImage] is
+  /// null. See receipt_photo_storage.dart.
+  final String? imagePath;
+
   /// CBE: last digits of the payer's account (some receipt links need it).
   final String? payerAccountSuffix;
   final ReceiptStatus status;
@@ -103,7 +109,14 @@ class SubscriptionPayment {
   final DateTime createdAt;
   final DateTime? decidedAt;
 
-  bool get hasImage => receiptImage != null && receiptImage!.isNotEmpty;
+  /// A photo is attached, inline or in Storage.
+  bool get hasImage => hasInlineImage || hasStoredImage;
+
+  /// The photo is stored inline (base64 in the document; free plan).
+  bool get hasInlineImage => receiptImage != null && receiptImage!.isNotEmpty;
+
+  /// The photo is in Firebase Storage at [imagePath].
+  bool get hasStoredImage => imagePath != null && imagePath!.isNotEmpty;
   bool get isAutoVerified => verifiedBy == kReceiptVerifiedByAuto;
 
   /// Newest first.
@@ -133,6 +146,7 @@ class SubscriptionPayment {
         transactionId: transactionId,
         amount: amount,
         receiptImage: receiptImage,
+        imagePath: imagePath,
         payerAccountSuffix: payerAccountSuffix,
         status: status ?? this.status,
         durationDays: durationDays ?? this.durationDays,
@@ -143,9 +157,29 @@ class SubscriptionPayment {
         decidedAt: decidedAt ?? this.decidedAt,
       );
 
+  /// This receipt with its photo in Firebase Storage at [path] instead of
+  /// inline (no `receiptImage` bytes).
+  SubscriptionPayment withStoredImage(String path) => SubscriptionPayment(
+        id: id,
+        shopId: shopId,
+        ownerId: ownerId,
+        method: method,
+        transactionId: transactionId,
+        amount: amount,
+        imagePath: path,
+        payerAccountSuffix: payerAccountSuffix,
+        status: status,
+        durationDays: durationDays,
+        verifiedAmount: verifiedAmount,
+        verifiedBy: verifiedBy,
+        decisionReason: decisionReason,
+        createdAt: createdAt,
+        decidedAt: decidedAt,
+      );
+
   /// The owner's create (exact keys: shopId, ownerId, method,
   /// transactionId, amount, status 'pending', durationDays 0, createdAt,
-  /// and optionally receiptImage, payerAccountSuffix).
+  /// and optionally receiptImage OR imagePath, payerAccountSuffix).
   Map<String, dynamic> toCreateMap() => {
         'shopId': shopId,
         'ownerId': ownerId,
@@ -155,7 +189,8 @@ class SubscriptionPayment {
         'status': ReceiptStatus.pending.value,
         'durationDays': 0,
         'createdAt': createdAt.toUtc().toIso8601String(),
-        if (hasImage) 'receiptImage': receiptImage,
+        if (hasInlineImage) 'receiptImage': receiptImage,
+        if (hasStoredImage) 'imagePath': imagePath,
         if (payerAccountSuffix != null) 'payerAccountSuffix': payerAccountSuffix,
       };
 
@@ -172,6 +207,7 @@ class SubscriptionPayment {
 
   factory SubscriptionPayment.fromMap(Map<String, dynamic> map, String id) {
     final image = map['receiptImage'];
+    final path = map['imagePath'];
     return SubscriptionPayment(
       id: id,
       shopId: (map['shopId'] as String?) ?? '',
@@ -180,6 +216,7 @@ class SubscriptionPayment {
       transactionId: (map['transactionId'] as String?) ?? '',
       amount: (map['amount'] as num?)?.toDouble() ?? 0,
       receiptImage: image is String && image.isNotEmpty ? image : null,
+      imagePath: path is String && path.isNotEmpty ? path : null,
       payerAccountSuffix: map['payerAccountSuffix'] as String?,
       status: ReceiptStatus.fromValue(map['status']),
       durationDays: (map['durationDays'] as num?)?.toInt() ?? 0,

@@ -5,6 +5,7 @@ import { deflateSync } from 'node:zlib';
 import { DocData, DocStore, DocTx } from '../src/logic/docstore';
 import { evaluateReceipt, isDuplicateTransaction, ReceiptClaim } from '../src/receipts/evaluate';
 import { checkFromPage, formatAddisDate, ReceiptFlowDeps, verifyReceiptPayment } from '../src/receipts/flow';
+import { loadReceiptImage, RECEIPT_IMAGE_MAX_BYTES, receiptImagePath } from '../src/receipts/image';
 import {
   accountsMatch,
   contentStreamText,
@@ -491,4 +492,105 @@ test('flow: CBE uses the payer suffix and the PDF', async () => {
 test('notification dates', () => {
   assert.match(formatAddisDate(new Date('2027-02-15T09:00:00Z'), 'en'), /15 Feb 2027/);
   assert.ok(formatAddisDate(new Date('2027-02-15T09:00:00Z'), 'am').length > 0);
+});
+
+// --- receipt photos: inline (free plan) or Firebase Storage (Blaze) ---
+
+const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0xff, 0xd9]);
+const PATH = 'receipts/shop_1/telebirr_CHK1AB2CDE.jpg';
+
+test('photo: path, inline base64 and Storage reads', async () => {
+  assert.equal(receiptImagePath('shop_1', 'telebirr_CHK1AB2CDE'), PATH);
+  const pay = (o: Record<string, unknown>) => ({ shopId: 'shop_1', ...o });
+  const reads: string[] = [];
+  const reader = (objects: Record<string, Buffer>) => async (path: string) => {
+    reads.push(path);
+    return objects[path] ?? null;
+  };
+
+  // Nothing attached.
+  assert.deepEqual((await loadReceiptImage(pay({}), 'telebirr_CHK1AB2CDE')).summary, { source: 'none', ok: false });
+
+  // Inline (free plan).
+  const inline = await loadReceiptImage(pay({ receiptImage: JPEG.toString('base64') }), 'telebirr_CHK1AB2CDE');
+  assert.deepEqual(inline.summary, { source: 'inline', ok: true, bytes: JPEG.length });
+  assert.deepEqual(inline.data, JPEG);
+  assert.equal((await loadReceiptImage(pay({ receiptImage: 'not base64!' }), 'x')).summary.error, 'bad_base64');
+  assert.equal((await loadReceiptImage(pay({ receiptImage: 'QUJD' }), 'x')).summary.error, 'not_jpeg');
+
+  // Storage (Blaze): read from the payment's own path.
+  const stored = await loadReceiptImage(pay({ imagePath: PATH }), 'telebirr_CHK1AB2CDE', reader({ [PATH]: JPEG }));
+  assert.deepEqual(stored.summary, { source: 'storage', ok: true, path: PATH, bytes: JPEG.length });
+  assert.deepEqual(stored.data, JPEG);
+  assert.deepEqual(reads, [PATH]);
+
+  // Missing object, read errors, no reader, oversize, not a JPEG.
+  assert.equal((await loadReceiptImage(pay({ imagePath: PATH }), 'telebirr_CHK1AB2CDE', reader({}))).summary.error, 'missing');
+  const failing = async () => {
+    throw new Error('storage/bucket-not-found');
+  };
+  assert.equal((await loadReceiptImage(pay({ imagePath: PATH }), 'telebirr_CHK1AB2CDE', failing)).summary.error, 'unavailable');
+  assert.equal((await loadReceiptImage(pay({ imagePath: PATH }), 'telebirr_CHK1AB2CDE')).summary.error, 'unavailable');
+  const big = Buffer.concat([JPEG, Buffer.alloc(RECEIPT_IMAGE_MAX_BYTES)]);
+  assert.equal((await loadReceiptImage(pay({ imagePath: PATH }), 'telebirr_CHK1AB2CDE', reader({ [PATH]: big }))).summary.error, 'too_large');
+  assert.equal(
+    (await loadReceiptImage(pay({ imagePath: PATH }), 'telebirr_CHK1AB2CDE', reader({ [PATH]: Buffer.from('ABC') }))).summary.error,
+    'not_jpeg',
+  );
+
+  // Never reads an object outside this payment's own path.
+  reads.length = 0;
+  for (const other of ['receipts/shop_2/telebirr_CHK1AB2CDE.jpg', 'receipts/shop_1/cbe_FT1.jpg', 'users/x/secret.jpg', '../' + PATH]) {
+    const r = await loadReceiptImage(pay({ imagePath: other }), 'telebirr_CHK1AB2CDE', reader({ [other]: JPEG }));
+    assert.equal(r.summary.error, 'bad_path', other);
+  }
+  assert.deepEqual(reads, []);
+
+  // A Storage failure with an inline copy uses the inline copy.
+  const both = await loadReceiptImage(
+    pay({ imagePath: PATH, receiptImage: JPEG.toString('base64') }),
+    'telebirr_CHK1AB2CDE',
+    reader({}),
+  );
+  assert.deepEqual(both.summary, { source: 'inline', ok: true, bytes: JPEG.length, path: PATH, storageError: 'missing' });
+});
+
+test('flow: records the Storage photo (Blaze) in autoCheck.image; the verdict does not depend on it', async () => {
+  const { store, deps } = setup({ payment: { imagePath: PATH } });
+  const reads: string[] = [];
+  deps.readStorageObject = async (path) => {
+    reads.push(path);
+    return path === PATH ? JPEG : null;
+  };
+  assert.equal((await verifyReceiptPayment(deps, 'telebirr_CHK1AB2CDE')).outcome, 'verified');
+  assert.deepEqual(reads, [PATH]);
+  const p = store.doc('subscriptionPayments', 'telebirr_CHK1AB2CDE')!;
+  assert.deepEqual(p.autoCheck.image, { source: 'storage', ok: true, path: PATH, bytes: JPEG.length });
+
+  // Object missing (e.g. bucket gone): still decided from the official receipt.
+  const gone = setup({ payment: { imagePath: PATH } });
+  gone.deps.readStorageObject = async () => null;
+  assert.equal((await verifyReceiptPayment(gone.deps, 'telebirr_CHK1AB2CDE')).outcome, 'verified');
+  assert.deepEqual(gone.store.doc('subscriptionPayments', 'telebirr_CHK1AB2CDE')!.autoCheck.image, {
+    source: 'storage',
+    ok: false,
+    path: PATH,
+    error: 'missing',
+  });
+});
+
+test('flow: inline photo (free plan) and no photo', async () => {
+  const inline = setup({ payment: { receiptImage: JPEG.toString('base64') } });
+  inline.deps.readStorageObject = async () => {
+    throw new Error('must not read Storage for an inline photo');
+  };
+  await verifyReceiptPayment(inline.deps, 'telebirr_CHK1AB2CDE');
+  assert.deepEqual(inline.store.doc('subscriptionPayments', 'telebirr_CHK1AB2CDE')!.autoCheck.image, {
+    source: 'inline',
+    ok: true,
+    bytes: JPEG.length,
+  });
+  const none = setup();
+  await verifyReceiptPayment(none.deps, 'telebirr_CHK1AB2CDE');
+  assert.deepEqual(none.store.doc('subscriptionPayments', 'telebirr_CHK1AB2CDE')!.autoCheck.image, { source: 'none', ok: false });
 });

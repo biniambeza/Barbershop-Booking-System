@@ -18,6 +18,7 @@ import '../../payments/widgets/payment_status_badge.dart';
 import 'barber_schedule_screen.dart';
 import '../../queue/queue_dashboard_card.dart';
 import '../../reviews/widgets/reviews_dashboard_entries.dart';
+import '../../payouts/earnings_cards.dart'; // earnings for any period
 import '../../payouts/payouts_dashboard_entries.dart'; // barber payouts
 import '../../../services/booking_policy.dart';
 import '../../shared/widgets/no_show_dialog.dart';
@@ -173,6 +174,8 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                               const SizedBox(height: 16),
                               // --- barber payouts: this month's share, paid, balance ---
                               BarberPayoutsCard(barber: barber),
+                              // --- earnings for any period (Firestore aggregates) ---
+                              BarberEarningsCard(barber: barber),
                               _buildScheduleQuickAction(context, barber),
                               const SizedBox(height: 12),
                               QueueDashboardCard(shopId: barber.shopId),

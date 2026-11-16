@@ -55,6 +55,8 @@ export type CancelActor = 'customer' | 'barber' | 'shop' | 'admin' | 'system' | 
 /** cancelledBy / cancelReason written by the booking-integrity function. */
 export const SYSTEM_CANCEL = 'system';
 export const SLOT_CONFLICT_REASON = 'slot_conflict';
+/** cancelReason of bookings cancelled because their shop was deleted. */
+export const SHOP_DELETED_REASON = 'shop_deleted';
 
 // --- barber acceptance (functions/bookings expire.ts, lib/services/booking_acceptance.dart) ---
 /** cancelReason of a request that expired unanswered (cancelledBy 'system'). */
@@ -161,6 +163,10 @@ export function detectBookingEvent(
   if (before.status === after.status) return null;
   const event = STATUS_EVENT[after.status ?? ''] ?? null;
   if (event === 'cancelled' && isSlotConflictCancel(after)) return 'slotTaken';
+  // --- shop deletion --- the deleting admin's app (or functions/auth
+  // onShopDeleted) already wrote the customer a 'shopDeleted' notice.
+  if (event === 'cancelled' && after.cancelReason === SHOP_DELETED_REASON) return null;
+  // --- end shop deletion ---
   // --- barber acceptance ---
   if (before.status === 'pending') {
     if (event === 'confirmed' && typeof after.acceptedAt === 'string' && after.acceptedAt) return 'accepted';

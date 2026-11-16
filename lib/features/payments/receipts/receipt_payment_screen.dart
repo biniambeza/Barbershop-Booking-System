@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,6 +11,7 @@ import '../../../services/subscription_state.dart'; // subscription expiry
 import '../../shared/widgets/ui_kit.dart';
 import '../widgets/payment_status_badge.dart';
 import 'receipt_image.dart';
+import 'receipt_photo.dart';
 import 'receipts_l10n.dart';
 import 'subscription_receipts_service.dart';
 
@@ -402,7 +402,7 @@ class _ReceiptPaymentScreenState extends State<ReceiptPaymentScreen> {
         if (items.isEmpty) {
           return Text(l.rcptNoHistory, style: const TextStyle(color: AppTheme.textSecondary));
         }
-        return Column(children: [for (final p in items) ReceiptHistoryTile(payment: p)]);
+        return Column(children: [for (final p in items) ReceiptHistoryTile(payment: p, service: _service)]);
       },
     );
   }
@@ -410,9 +410,12 @@ class _ReceiptPaymentScreenState extends State<ReceiptPaymentScreen> {
 
 /// One receipt in the owner's history.
 class ReceiptHistoryTile extends StatelessWidget {
-  const ReceiptHistoryTile({super.key, required this.payment});
+  const ReceiptHistoryTile({super.key, required this.payment, this.service});
 
   final SubscriptionPayment payment;
+
+  /// Loads Storage photos; defaults to [SubscriptionReceiptsService.instance].
+  final SubscriptionReceiptsService? service;
 
   @override
   Widget build(BuildContext context) {
@@ -434,8 +437,14 @@ class ReceiptHistoryTile extends StatelessWidget {
           if (p.hasImage)
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: Image.memory(base64Decode(p.receiptImage!), width: 48, height: 48, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => IconTile(icon: receiptMethodIcon(p.method), size: 48)),
+              child: ReceiptPhoto(
+                payment: p,
+                service: service,
+                width: 48,
+                height: 48,
+                compact: true,
+                placeholder: IconTile(icon: receiptMethodIcon(p.method), size: 48),
+              ),
             )
           else
             IconTile(icon: receiptMethodIcon(p.method), size: 48),
@@ -559,12 +568,3 @@ class _ReceiptPaymentEntryCardState extends State<ReceiptPaymentEntryCard> {
   }
 }
 
-/// Decodes a stored receipt photo (null when it is not valid base64).
-Uint8List? decodeReceiptImage(String? base64) {
-  if (base64 == null || base64.isEmpty) return null;
-  try {
-    return base64Decode(base64);
-  } catch (_) {
-    return null;
-  }
-}

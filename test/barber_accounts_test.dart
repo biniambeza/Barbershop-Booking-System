@@ -188,7 +188,9 @@ void main() {
 
       expect(repo.getBarbersForShop('shop_1').length, before + 1);
       final barber = repo.getBarberById(created.barberId)!;
-      expect(barber.phone, '+251912345678');
+      // private barber phone: kept off the public profile, in private/contact.
+      expect(barber.phone, isNull, reason: 'the phone stays out of the public profile');
+      expect(repo.getBarberPhone(created.barberId), '+251912345678');
       expect(barber.email, isNull, reason: 'the login email stays out of the public profile');
       expect(repo.getPendingBarberInvite(created.barberId)?.authUid, created.uid);
     });

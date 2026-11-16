@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../shared/widgets/ui_kit.dart';
 import '../../../l10n/l10n.dart';
@@ -181,6 +182,9 @@ class CustomerBookingsScreen extends StatelessWidget {
                   style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
             ],
           ),
+          // --- private barber phone: only on a confirmed booking ---
+          if (booking.visibleBarberPhone != null) _BarberPhoneRow(booking: booking),
+          // --- end private barber phone ---
           const SizedBox(height: 6),
           Row(
             children: [
@@ -254,6 +258,58 @@ class CustomerBookingsScreen extends StatelessWidget {
     );
   }
 }
+
+// --- private barber phone ---
+/// The barber's phone on a confirmed (or in-progress) booking, with a call
+/// button. Barber profiles are public, so the number is not on them: the
+/// staff app copies it into the booking once it is confirmed
+/// ([Booking.visibleBarberPhone]).
+class _BarberPhoneRow extends StatelessWidget {
+  const _BarberPhoneRow({required this.booking});
+
+  final Booking booking;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final phone = booking.visibleBarberPhone!;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          const Icon(Icons.phone_outlined, size: 16, color: AppTheme.textSecondary),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              l.barberPhoneOnBooking(context.fmt.phone(phone)),
+              key: ValueKey('barber-phone-${booking.id}'),
+              style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+            ),
+          ),
+          TextButton.icon(
+            key: ValueKey('call-barber-${booking.id}'),
+            onPressed: () async {
+              final uri = Uri(scheme: 'tel', path: phone);
+              try {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              } catch (e) {
+                debugPrint('Could not open $uri: $e');
+              }
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: AppTheme.success,
+              minimumSize: const Size(0, 32),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+            ),
+            icon: const Icon(Icons.call_rounded, size: 16),
+            label: Text(l.callBarberAction(booking.barberName), style: const TextStyle(fontSize: 12)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+// --- end private barber phone ---
 
 void _showError(BuildContext context, Object error) {
   final l = context.l10n;

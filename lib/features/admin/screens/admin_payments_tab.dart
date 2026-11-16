@@ -10,6 +10,7 @@ import '../../payments/receipts/admin_receipts_screen.dart';
 import '../../payments/receipts/receipts_l10n.dart';
 import '../../payments/receipts/subscription_receipts_service.dart';
 import '../../shared/widgets/ui_kit.dart';
+import '../../refunds/refunds_dashboard_entries.dart' show AdminRefundsCard; // refunds
 import 'admin_payment_review_screen.dart';
 import 'admin_subscriptions_screen.dart';
 
@@ -107,6 +108,8 @@ class AdminPaymentsTab extends StatelessWidget {
                       subtitle: l.admPayOnlineSubtitle,
                       onTap: () => _open(context, const AdminPaymentReviewScreen()),
                     ),
+                    // --- refunds: paid bookings that were cancelled, every shop ---
+                    const AdminRefundsCard(),
                     const SizedBox(height: 12),
                     SectionHeader(
                       title: l.admPayTypesOnSale,

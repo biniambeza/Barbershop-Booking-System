@@ -221,3 +221,16 @@ test('barber acceptance: accepted, declined and expired requests', () => {
   assert.equal(smsRecipientRole('requestDeclined'), 'customer');
   assert.ok(ALL_NOTIFICATION_TYPES.includes('requestExpired'));
 });
+
+// --- shop deletion ---
+test('a cancel because the shop was deleted is not a generic cancelled event', () => {
+  assert.equal(
+    detectBookingEvent(
+      { status: 'confirmed' },
+      { status: 'cancelled', cancelledBy: 'admin1', cancelReason: 'shop_deleted' },
+    ),
+    null,
+  );
+  assert.equal(detectBookingEvent({ status: 'confirmed' }, { status: 'cancelled', cancelledBy: 'admin1' }), 'cancelled');
+});
+// --- end shop deletion ---

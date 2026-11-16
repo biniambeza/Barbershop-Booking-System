@@ -1,4 +1,7 @@
 import '../data/addis_time.dart';
+import 'refund_model.dart'; // refunds
+
+export 'refund_model.dart'; // refunds
 
 enum BookingStatus {
   pending,
@@ -142,6 +145,30 @@ class Booking {
   final DateTime? completedAt;
   // --- end early finish ---
 
+  // --- private barber phone ---
+  /// The barber's contact number, copied into the booking by the staff app
+  /// (barber or owner) when the booking is confirmed: barber profiles are
+  /// public, so the phone itself lives in the barber's private/contact doc,
+  /// and the customer sees it only through their own confirmed booking.
+  /// Never part of [toMap] (the create shape is fixed).
+  final String? barberPhone;
+
+  /// [barberPhone] when the customer may call the barber: the booking is
+  /// confirmed or in progress and a number was shared.
+  String? get visibleBarberPhone {
+    final p = barberPhone?.trim() ?? '';
+    if (p.isEmpty) return null;
+    return status == BookingStatus.confirmed || status == BookingStatus.inProgress ? p : null;
+  }
+  // --- end private barber phone ---
+
+  // --- refunds ---
+  /// Refund of a paid booking that was cancelled (refundStatus 'due' /
+  /// 'refunded' and its details), or null. Written with the cancel write
+  /// and by "Mark refunded", so never part of [toMap].
+  final BookingRefund? refund;
+  // --- end refunds ---
+
   /// If [startAt] is omitted it is derived from [date] + [timeSlot] (Addis
   /// local time); [endAt] defaults to [startAt] + [durationMinutes].
   Booking({
@@ -174,6 +201,8 @@ class Booking {
     this.declineReason,
     this.cancelReasonNote,
     this.completedAt, // early finish
+    this.barberPhone, // private barber phone
+    this.refund, // refunds
   })  : startAt = (startAt ?? appointmentStartUtc(date, timeSlot) ?? addisLocalToUtc(date.year, date.month, date.day)).toUtc(),
         endAt = (endAt ??
                 (startAt ?? appointmentStartUtc(date, timeSlot) ?? addisLocalToUtc(date.year, date.month, date.day))
@@ -213,6 +242,8 @@ class Booking {
     String? declineReason,
     String? cancelReasonNote,
     DateTime? completedAt, // early finish
+    String? barberPhone, // private barber phone
+    BookingRefund? refund, // refunds
   }) {
     return Booking(
       id: id ?? this.id,
@@ -244,6 +275,8 @@ class Booking {
       declineReason: declineReason ?? this.declineReason,
       cancelReasonNote: cancelReasonNote ?? this.cancelReasonNote,
       completedAt: completedAt ?? this.completedAt, // early finish
+      barberPhone: barberPhone ?? this.barberPhone, // private barber phone
+      refund: refund ?? this.refund, // refunds
     );
   }
 
@@ -321,6 +354,8 @@ class Booking {
       declineReason: map['declineReason'] is String ? map['declineReason'] as String : null,
       cancelReasonNote: map['cancelReasonNote'] is String ? map['cancelReasonNote'] as String : null,
       completedAt: _parseDate(map['completedAt'])?.toUtc(), // early finish
+      barberPhone: map['barberPhone'] is String ? map['barberPhone'] as String : null, // private barber phone
+      refund: BookingRefund.fromMap(map), // refunds
     );
   }
 }

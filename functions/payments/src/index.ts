@@ -35,6 +35,8 @@ import { db, findPaymentByTxRef, firestoreDocStore, markRefunded, PaymentDoc, re
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { fetchReceiptPage, ReceiptFlowDeps, verifyReceiptPayment } from './receipts/flow';
 import { RECEIPTS_COLLECTION } from './receipts/pricing';
+import { getStorage } from 'firebase-admin/storage';
+import { RECEIPT_IMAGE_MAX_BYTES } from './receipts/image';
 // --- end subscription receipts ---
 
 initializeApp();
@@ -502,6 +504,16 @@ function receiptFlowDeps(): ReceiptFlowDeps {
       return qs.docs.map((d) => ({ id: d.id, status: d.get('status'), createdAt: d.get('createdAt') }));
     },
     now: () => new Date(),
+    // Receipt photos in Firebase Storage (admin switch storageReceipts).
+    async readStorageObject(path) {
+      const file = getStorage().bucket().file(path);
+      const [exists] = await file.exists();
+      if (!exists) return null;
+      const [meta] = await file.getMetadata();
+      if (Number(meta.size ?? 0) > RECEIPT_IMAGE_MAX_BYTES) throw new Error('Receipt photo too large');
+      const [data] = await file.download();
+      return data;
+    },
   };
 }
 

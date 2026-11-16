@@ -553,6 +553,20 @@ void main() {
       expect(repo.getShopById('shop_5'), isNull);
     });
 
+    // --- shop deletion ---
+    testWidgets('delete dialog lists what is removed and what is kept', (tester) async {
+      repo.switchRole(UserRole.admin);
+      await pump(tester, const AdminDashboardScreen());
+      await scrollTo(tester, find.byKey(const ValueKey('admin-shop-delete-shop_1')));
+      await tester.tap(find.byKey(const ValueKey('admin-shop-delete-shop_1')));
+      await tester.pumpAndSettle();
+      expect(find.text('What happens'), findsOneWidget);
+      expect(find.textContaining('staff accounts (owner and barbers) become customer accounts'), findsOneWidget);
+      expect(find.textContaining('upcoming bookings are cancelled and their customers notified'), findsOneWidget);
+      expect(find.textContaining('Past bookings are kept for history'), findsOneWidget);
+    });
+    // --- end shop deletion ---
+
     testWidgets('edit screen shows the owner and the suspension, and saves', (tester) async {
       repo.switchRole(UserRole.admin);
       await pump(tester, const AdminShopEditScreen(shopId: 'shop_4'));

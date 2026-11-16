@@ -99,6 +99,7 @@ class SubscriptionPricing {
     required this.cbe,
     this.telebirrReceiptUrl = kTelebirrReceiptUrlTemplate,
     this.cbeReceiptUrl = kCbeReceiptUrlTemplate,
+    this.storageReceipts = false,
     this.updatedAt,
     this.updatedBy,
   });
@@ -123,6 +124,11 @@ class SubscriptionPricing {
   final PaymentReceiver cbe;
   final String telebirrReceiptUrl;
   final String cbeReceiptUrl;
+
+  /// Admin switch: receipt photos go to Firebase Storage (Blaze plan only)
+  /// instead of inline in the receipt document. A failed upload still falls
+  /// back to inline. Default off (free plan).
+  final bool storageReceipts;
   final DateTime? updatedAt;
   final String? updatedBy;
 
@@ -141,6 +147,7 @@ class SubscriptionPricing {
     List<PricingTier>? tiers,
     PaymentReceiver? telebirr,
     PaymentReceiver? cbe,
+    bool? storageReceipts,
     DateTime? updatedAt,
     String? updatedBy,
   }) =>
@@ -151,12 +158,15 @@ class SubscriptionPricing {
         cbe: cbe ?? this.cbe,
         telebirrReceiptUrl: telebirrReceiptUrl,
         cbeReceiptUrl: cbeReceiptUrl,
+        storageReceipts: storageReceipts ?? this.storageReceipts,
         updatedAt: updatedAt ?? this.updatedAt,
         updatedBy: updatedBy ?? this.updatedBy,
       );
 
   /// The document the admin writes (exact keys: currency, tiers,
-  /// receivers, receiptUrls, updatedAt, updatedBy).
+  /// receivers, receiptUrls, updatedAt, updatedBy, and storageReceipts:
+  /// true only while the switch is on - `set` replaces the document, so
+  /// off means the key is absent).
   Map<String, dynamic> toMap() => {
         'currency': currency,
         'tiers': [for (final t in tiers) t.toMap()],
@@ -165,6 +175,7 @@ class SubscriptionPricing {
           'cbe': {'account': cbe.account, 'name': cbe.name},
         },
         'receiptUrls': {'telebirr': telebirrReceiptUrl, 'cbe': cbeReceiptUrl},
+        if (storageReceipts) 'storageReceipts': true,
         if (updatedAt != null) 'updatedAt': updatedAt!.toUtc().toIso8601String(),
         if (updatedBy != null) 'updatedBy': updatedBy,
       };
@@ -190,6 +201,7 @@ class SubscriptionPricing {
       cbe: PaymentReceiver.fromMap(receivers['cbe'], defaults.cbe, accountKey: 'account'),
       telebirrReceiptUrl: url(urls['telebirr'], kTelebirrReceiptUrlTemplate),
       cbeReceiptUrl: url(urls['cbe'], kCbeReceiptUrlTemplate),
+      storageReceipts: map['storageReceipts'] == true,
       updatedAt: updated is String ? DateTime.tryParse(updated)?.toUtc() : _toDate(updated),
       updatedBy: map['updatedBy'] is String ? map['updatedBy'] as String : null,
     );

@@ -18,10 +18,13 @@ import '../../../services/app_repository.dart';
 import '../../../services/notification_service.dart';
 import '../../../services/subscription_pricing.dart';
 import '../../../services/payment_receivers.dart'; // receivers setup
+import 'receipt_image.dart' show decodeReceiptImage, ReceiptImageException;
+import 'receipt_photo_storage.dart';
 
 export '../../../models/subscription_payment.dart';
 export '../../../services/subscription_pricing.dart';
 export '../../../services/payment_receivers.dart'; // receivers setup
+export 'receipt_photo_storage.dart';
 
 /// Collection of the receipts and the pricing document.
 const String kSubscriptionPaymentsCollection = 'subscriptionPayments';
@@ -76,8 +79,11 @@ abstract class ReceiptStore {
   Future<SubscriptionPayment?> get(String id);
 
   /// Creates the document; throws [ReceiptException] duplicate when a
-  /// receipt with the same id already exists (anyone's).
-  Future<void> create(SubscriptionPayment payment);
+  /// receipt with the same id already exists (anyone's). [prepare] runs
+  /// after the duplicate check and before the write (the Storage photo
+  /// upload) and returns what to store. Returns the stored receipt.
+  Future<SubscriptionPayment> create(SubscriptionPayment payment,
+      {Future<SubscriptionPayment> Function(SubscriptionPayment payment)? prepare});
 
   /// Applies [decision]. Firestore: one batch (payment update, shop update
   /// on approve, owner inbox entry). Local: the payment only (the service
@@ -170,7 +176,8 @@ class FirestoreReceiptStore implements ReceiptStore {
   }
 
   @override
-  Future<void> create(SubscriptionPayment payment) async {
+  Future<SubscriptionPayment> create(SubscriptionPayment payment,
+      {Future<SubscriptionPayment> Function(SubscriptionPayment payment)? prepare}) async {
     final ref = _col.doc(payment.id);
     try {
       final existing = await ref.get();
@@ -180,14 +187,22 @@ class FirestoreReceiptStore implements ReceiptStore {
       if (e.code == 'permission-denied') throw ReceiptException(ReceiptErrorCode.duplicate);
       rethrow;
     }
+    final toWrite = prepare == null ? payment : await prepare(payment);
     try {
-      await ref.set(payment.toCreateMap());
+      await ref.set(toWrite.toCreateMap());
+      return toWrite;
     } on FirebaseException catch (e) {
       // Created by someone else between the get and the set: the set became
       // an update, which owners may not make.
       if (e.code == 'permission-denied') {
         final again = await ref.get().then((s) => s.exists, onError: (_) => true);
         if (again) throw ReceiptException(ReceiptErrorCode.duplicate);
+        // Rules that do not accept `imagePath` (yet): store the photo inline.
+        if (toWrite.hasStoredImage && payment.hasInlineImage) {
+          debugPrint('Receipt ${payment.id}: imagePath refused, storing the photo inline instead.');
+          await ref.set(payment.toCreateMap());
+          return payment;
+        }
       }
       rethrow;
     }
@@ -310,11 +325,15 @@ class LocalReceiptStore implements ReceiptStore {
   }
 
   @override
-  Future<void> create(SubscriptionPayment payment) async {
+  Future<SubscriptionPayment> create(SubscriptionPayment payment,
+      {Future<SubscriptionPayment> Function(SubscriptionPayment payment)? prepare}) async {
     await _ensureSeeded();
     if (_byId.containsKey(payment.id)) throw ReceiptException(ReceiptErrorCode.duplicate);
-    _byId[payment.id] = payment;
+    final toWrite = prepare == null ? payment : await prepare(payment);
+    if (_byId.containsKey(payment.id)) throw ReceiptException(ReceiptErrorCode.duplicate);
+    _byId[payment.id] = toWrite;
     _changes.add(null);
+    return toWrite;
   }
 
   @override
@@ -407,9 +426,11 @@ class SubscriptionReceiptsService {
     ReceiptStore? cloud,
     LocalReceiptStore? local,
     void Function(String uid, AppNotification notification)? localInbox,
+    ReceiptImageStorage? imageStorage,
   })  : _repo = repository ?? AppRepository.instance,
         _cloudOverride = cloud,
-        _localInbox = localInbox {
+        _localInbox = localInbox,
+        _imageStorageOverride = imageStorage {
     this.local = local ?? LocalReceiptStore(seedFromAssets: kDemoMode);
   }
 
@@ -423,7 +444,9 @@ class SubscriptionReceiptsService {
   final AppRepository _repo;
   final ReceiptStore? _cloudOverride;
   final void Function(String uid, AppNotification notification)? _localInbox;
+  final ReceiptImageStorage? _imageStorageOverride;
   ReceiptStore? _cloud;
+  ReceiptImageStorage? _firebaseImages;
 
   /// The in-memory store (DEMO_MODE and tests).
   late final LocalReceiptStore local;
@@ -433,6 +456,18 @@ class SubscriptionReceiptsService {
     if (!_repo.isFirebaseAttached) return local;
     return _cloud ??= FirestoreReceiptStore(FirebaseFirestore.instance);
   }
+
+  /// Where receipt photos go when the admin switch `storageReceipts` is on:
+  /// Firebase Storage once Firebase is attached; null in DEMO_MODE / tests
+  /// without an override (photos stay inline).
+  ReceiptImageStorage? get imageStorage {
+    if (_imageStorageOverride != null) return _imageStorageOverride;
+    if (!_repo.isFirebaseAttached) return null;
+    return _firebaseImages ??= FirebaseReceiptImageStorage();
+  }
+
+  /// Why the last Storage upload fell back to inline (null: it did not).
+  Object? lastPhotoUploadError;
 
   DateTime _now() => _repo.nowUtc();
 
@@ -507,8 +542,55 @@ class SubscriptionReceiptsService {
       payerAccountSuffix: method == ReceiptMethod.cbe ? normalizePayerAccountSuffix(payerAccountSuffix) : null,
       createdAt: _now(),
     );
-    await store.create(payment);
-    return payment;
+    final storage = imageStorage;
+    final toStorage = pricing.storageReceipts && storage != null && payment.hasInlineImage;
+    return store.create(payment, prepare: toStorage ? (p) => _uploadPhoto(storage, p) : null);
+  }
+
+  /// Blaze: uploads the photo to `receipts/{shopId}/{id}.jpg` and returns
+  /// the receipt with `imagePath` and no inline bytes. Any failure (no
+  /// bucket on the free plan, permission, network, timeout) is logged and
+  /// the receipt keeps its inline photo.
+  Future<SubscriptionPayment> _uploadPhoto(ReceiptImageStorage storage, SubscriptionPayment payment) async {
+    final jpeg = decodeReceiptImage(payment.receiptImage);
+    if (jpeg == null || jpeg.length > kReceiptStorageMaxBytes) return payment;
+    final path = receiptStoragePath(payment.shopId, payment.id);
+    try {
+      await storage.upload(path, jpeg).timeout(kReceiptUploadTimeout + const Duration(seconds: 5));
+      lastPhotoUploadError = null;
+      return payment.withStoredImage(path);
+    } catch (e) {
+      lastPhotoUploadError = e;
+      debugPrint('Receipt photo upload to $path failed, storing it inline instead: $e');
+      return payment;
+    }
+  }
+
+  // --- receipt photos (owner and admin views) ---
+
+  final Map<String, Future<Uint8List>> _photoCache = {};
+
+  /// The receipt's photo bytes: decoded inline base64, or downloaded from
+  /// Firebase Storage (cached; a failed download is retried on the next
+  /// call).
+  Future<Uint8List> loadReceiptPhoto(SubscriptionPayment payment) {
+    if (payment.hasInlineImage) {
+      final bytes = decodeReceiptImage(payment.receiptImage);
+      return bytes == null ? Future.error(const ReceiptImageException()) : Future.value(bytes);
+    }
+    final path = payment.imagePath;
+    final storage = imageStorage;
+    if (path == null || path.isEmpty || storage == null) return Future.error(const ReceiptImageException());
+    final cached = _photoCache[path];
+    if (cached != null) return cached;
+    if (_photoCache.length >= 40) _photoCache.remove(_photoCache.keys.first);
+    final future = storage.download(path);
+    _photoCache[path] = future;
+    future.then((_) {}, onError: (Object e) {
+      debugPrint('Could not load receipt photo $path: $e');
+      if (identical(_photoCache[path], future)) _photoCache.remove(path);
+    });
+    return future;
   }
 
   // --- admin ---

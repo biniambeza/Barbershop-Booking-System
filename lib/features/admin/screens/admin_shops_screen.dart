@@ -509,16 +509,27 @@ Future<bool> showReactivateShopDialog(BuildContext context, Barbershop shop) asy
   }
 }
 
-/// Typed-name confirmation, then deletes [shop] with its services, barbers
-/// and pending invites (bookings are kept). Returns true when deleted.
+/// Typed-name confirmation listing what goes, then deletes [shop] with the
+/// full cascade (upcoming bookings cancelled, staff become customers, shop
+/// data deleted; past bookings kept), showing each step. A failed step can
+/// be retried from the dialog. Returns true when deleted.
 Future<bool> showDeleteShopDialog(BuildContext context, Barbershop shop) async {
   final done = await showDialog<bool>(
     context: context,
+    barrierDismissible: false,
     builder: (_) => _DeleteShopDialog(shop: shop),
   );
   if (done == true && context.mounted) _toast(context, context.l10n.shopRemoved(shop.name));
   return done == true;
 }
+
+String _deleteStepLabel(AppLocalizations l, ShopDeletionStep step) => switch (step) {
+      ShopDeletionStep.prepare => l.adminShopsDeleteStepPrepare,
+      ShopDeletionStep.bookings => l.adminShopsDeleteStepBookings,
+      ShopDeletionStep.staff => l.adminShopsDeleteStepStaff,
+      ShopDeletionStep.data => l.adminShopsDeleteStepData,
+      ShopDeletionStep.shop => l.adminShopsDeleteStepShop,
+    };
 
 class _DeleteShopDialog extends StatefulWidget {
   const _DeleteShopDialog({required this.shop});
@@ -533,6 +544,21 @@ class _DeleteShopDialogState extends State<_DeleteShopDialog> {
   String? _error;
   bool _busy = false;
 
+  /// The step running now (while busy), or the one that failed.
+  ShopDeletionStep? _step;
+  bool _failed = false;
+  ShopDeletionPreview? _preview;
+
+  @override
+  void initState() {
+    super.initState();
+    AppRepository.instance.previewShopDeletion(widget.shop.id).then((p) {
+      if (mounted) setState(() => _preview = p);
+    }).catchError((Object e) {
+      debugPrint('Shop deletion preview failed: $e');
+    });
+  }
+
   @override
   void dispose() {
     _ctrl.dispose();
@@ -544,10 +570,22 @@ class _DeleteShopDialogState extends State<_DeleteShopDialog> {
     setState(() {
       _busy = true;
       _error = null;
+      _failed = false;
     });
     try {
-      await AppRepository.instance.deleteShopConfirmed(widget.shop.id, _ctrl.text);
+      await AppRepository.instance.deleteShopConfirmed(widget.shop.id, _ctrl.text, onStep: (step) {
+        if (mounted) setState(() => _step = step);
+      });
       if (mounted) Navigator.pop(context, true);
+    } on ShopDeletionException catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _failed = true;
+          _step = e.step;
+          _error = '${l.adminShopsDeleteFailed(_deleteStepLabel(l, e.step))}\n${l.errorText(e.cause)}';
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -558,31 +596,86 @@ class _DeleteShopDialogState extends State<_DeleteShopDialog> {
     }
   }
 
+  Widget _item(IconData icon, String text, {Color color = AppTheme.textSecondary}) => Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 8),
+            Expanded(child: Text(text, style: const TextStyle(fontSize: 12.5))),
+          ],
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
     final matches = deleteConfirmationMatches(_ctrl.text, widget.shop.name);
+    final p = _preview;
+    final step = _step;
     return AlertDialog(
       backgroundColor: AppTheme.card,
       title: Text(l.deleteShopTitle),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(l.adminShopsDeleteBody(widget.shop.name), style: const TextStyle(fontSize: 13)),
-          const SizedBox(height: 14),
-          TextField(
-            key: const ValueKey('admin-delete-name'),
-            controller: _ctrl,
-            autofocus: true,
-            onChanged: (_) => setState(() => _error = null),
-            decoration: InputDecoration(
-              labelText: l.adminShopsDeleteTypeName,
-              hintText: widget.shop.name,
-              errorText: _error,
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l.adminShopsDeleteBody(widget.shop.name), style: const TextStyle(fontSize: 13)),
+            const SizedBox(height: 12),
+            Text(l.adminShopsDeleteWillHeading, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+            if (p == null)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: LinearProgressIndicator(minHeight: 2),
+              )
+            else ...[
+              _item(Icons.event_busy_rounded,
+                  p.upcomingBookings == null ? l.adminShopsDeleteListBookingsUnknown : l.adminShopsDeleteListBookings(p.upcomingBookings!),
+                  color: AppTheme.danger),
+              _item(Icons.person_off_outlined, l.adminShopsDeleteListStaff(p.staffAccounts), color: AppTheme.danger),
+              _item(Icons.content_cut_rounded, l.adminShopsDeleteListBarbers(p.barbers)),
+              _item(Icons.design_services_outlined, l.adminShopsDeleteListServices(p.services)),
+              if (p.pendingInvites > 0) _item(Icons.mail_outline_rounded, l.adminShopsDeleteListInvites(p.pendingInvites)),
+              _item(Icons.delete_sweep_outlined, l.adminShopsDeleteListOther),
+              _item(Icons.history_rounded, l.adminShopsDeleteListKept, color: AppTheme.success),
+            ],
+            const SizedBox(height: 14),
+            TextField(
+              key: const ValueKey('admin-delete-name'),
+              controller: _ctrl,
+              autofocus: true,
+              enabled: !_busy && !_failed,
+              onChanged: (_) => setState(() => _error = null),
+              decoration: InputDecoration(
+                labelText: l.adminShopsDeleteTypeName,
+                hintText: widget.shop.name,
+              ),
             ),
-          ),
-        ],
+            if (_busy && step != null) ...[
+              const SizedBox(height: 14),
+              LinearProgressIndicator(
+                key: const ValueKey('admin-delete-progress'),
+                value: (step.index + 1) / ShopDeletionStep.values.length,
+                minHeight: 4,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                l.adminShopsDeleteProgress(step.index + 1, ShopDeletionStep.values.length, _deleteStepLabel(l, step)),
+                style: const TextStyle(fontSize: 12),
+              ),
+            ],
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                _error!,
+                key: const ValueKey('admin-delete-error'),
+                style: const TextStyle(fontSize: 12, color: AppTheme.danger),
+              ),
+            ],
+          ],
+        ),
       ),
       actions: [
         TextButton(
@@ -593,7 +686,9 @@ class _DeleteShopDialogState extends State<_DeleteShopDialog> {
           key: const ValueKey('admin-delete-confirm'),
           style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger, foregroundColor: Colors.white),
           onPressed: _busy || !matches ? null : _submit,
-          child: Text(l.delete),
+          child: _busy
+              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : Text(_failed ? l.adminShopsDeleteRetry : l.delete),
         ),
       ],
     );

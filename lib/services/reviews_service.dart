@@ -11,10 +11,13 @@ import '../models/booking_model.dart';
 import '../models/review_model.dart';
 import '../models/user_model.dart';
 import 'app_repository.dart';
+import 'notification_service.dart' show NotificationService; // review notices
 import 'rating_service.dart';
+import 'review_notices.dart'; // review notices
 
 export '../models/review_model.dart';
 export 'rating_service.dart';
+export 'review_notices.dart' show ReviewNotice, reviewNotificationId, renderReviewNoticeText; // review notices
 
 /// Review-specific failures. Screens show them with `reviewsErrorText`
 /// (lib/features/reviews/reviews_l10n.dart); sign-in errors are
@@ -68,11 +71,21 @@ abstract class ReviewStore {
   Future<RatingDistribution> distribution(String shopId, {String? barberId});
 
   /// Creates the review; throws [ReviewErrorCode.alreadyReviewed] if the
-  /// booking already has one.
-  Future<void> create(Review review);
+  /// booking already has one. [notices] (the owner's inbox entry) are
+  /// written in the same transaction.
+  Future<void> create(Review review, {List<ReviewNotice> notices = const []});
 
   /// Sets the owner's reply (only `reply` and `replyAt` change).
   Future<void> updateReply(Review review, String reply, DateTime replyAt);
+
+  /// The customer's edit: replaces `rating` and `comment` (removed when
+  /// null) and sets `editedAt` of [edited]'s doc. Returns the review as it
+  /// was stored before; throws [ReviewErrorCode.notFound] when it is gone.
+  Future<Review> update(Review edited);
+
+  /// The customer deletes their review. Returns the deleted review; throws
+  /// [ReviewErrorCode.notFound] when it is already gone.
+  Future<Review> delete(String shopId, String reviewId);
 }
 
 /// Firestore access, all under `barbershops/{shopId}/reviews`:
@@ -85,7 +98,13 @@ abstract class ReviewStore {
 ///  * distribution: 5 count() aggregations where rating == 1..5 (and
 ///                  barberId == b for a barber)
 ///  * create:       transaction: get `reviews/{bookingId}`, abort if it
-///                  exists, set the doc
+///                  exists, set the doc, barber counters + the owner's
+///                  inbox entry
+///  * edit:         transaction: get the review and the barber, update
+///                  {rating, comment, editedAt}; barber ratingSum += new -
+///                  old (only when the stars change)
+///  * delete:       transaction: get the review and the barber, delete the
+///                  review; barber ratingSum -= stars, reviewCount -= 1
 ///  * reply:        update {reply, replyAt}
 class FirestoreReviewStore implements ReviewStore {
   FirestoreReviewStore(this._db);
@@ -134,18 +153,29 @@ class FirestoreReviewStore implements ReviewStore {
   /// firestore.rules accepts the counter update only together with this
   /// new review, and the review only together with the counter update
   /// (unless the barber profile no longer exists).
+  ///
+  /// [notices] (the shop owner's inbox entry,
+  /// `users/{ownerId}/notifications/review_{bookingId}_{createdAt digits}`)
+  /// are set in the same transaction; firestore.rules accepts them only
+  /// together with this new review.
   @override
-  Future<void> create(Review review) async {
+  Future<void> create(Review review, {List<ReviewNotice> notices = const []}) async {
     final ref = _reviews(review.shopId).doc(review.bookingId);
-    final barberRef = _db.collection('barbershops').doc(review.shopId).collection('barbers').doc(review.barberId);
+    final barberRef = _barberRef(review.shopId, review.barberId);
     await _db.runTransaction((tx) async {
       final existing = await tx.get(ref);
       if (existing.exists) throw ReviewException(ReviewErrorCode.alreadyReviewed);
       final barber = await tx.get(barberRef);
       tx.set(ref, review.toMap());
       if (barber.exists) tx.update(barberRef, barberCounterUpdate(barber.data()!, review));
+      for (final n in notices) {
+        tx.set(_db.collection('users').doc(n.recipientUid).collection('notifications').doc(n.id), n.toMap());
+      }
     });
   }
+
+  DocumentReference<Map<String, dynamic>> _barberRef(String shopId, String barberId) =>
+      _db.collection('barbershops').doc(shopId).collection('barbers').doc(barberId);
 
   @override
   Future<void> updateReply(Review review, String reply, DateTime replyAt) =>
@@ -153,6 +183,58 @@ class FirestoreReviewStore implements ReviewStore {
         'reply': reply,
         'replyAt': replyAt.toUtc().toIso8601String(),
       });
+
+  /// One transaction: read the stored review (its current stars) and the
+  /// barber, update {rating, comment (deleted when empty), editedAt}; when
+  /// the stars change, the barber's `ratingSum` += new - old and
+  /// `lastReviewId` = the review id ([barberCounterEditUpdate]).
+  @override
+  Future<Review> update(Review edited) async {
+    final ref = _reviews(edited.shopId).doc(edited.bookingId);
+    return _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      if (!snap.exists) throw ReviewException(ReviewErrorCode.notFound);
+      final before = Review.fromMap(snap.data()!, snap.id);
+      final barberRef = _barberRef(before.shopId, before.barberId);
+      final barber = before.rating != edited.rating ? await tx.get(barberRef) : null;
+      tx.update(ref, {
+        'rating': edited.rating,
+        'comment': edited.hasComment ? edited.comment : FieldValue.delete(),
+        'editedAt': edited.editedAt!.toUtc().toIso8601String(),
+      });
+      if (barber != null && barber.exists) {
+        tx.update(
+          barberRef,
+          barberCounterEditUpdate(
+            barber.data()!,
+            barberId: before.barberId,
+            reviewId: before.bookingId,
+            oldRating: before.rating,
+            newRating: edited.rating,
+          ),
+        );
+      }
+      return before;
+    });
+  }
+
+  /// One transaction: read the stored review and the barber, delete the
+  /// review; the barber's `ratingSum` -= its stars, `reviewCount` -= 1 and
+  /// `lastReviewId` = the review id ([barberCounterDeleteUpdate]).
+  @override
+  Future<Review> delete(String shopId, String reviewId) async {
+    final ref = _reviews(shopId).doc(reviewId);
+    return _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      if (!snap.exists) throw ReviewException(ReviewErrorCode.notFound);
+      final before = Review.fromMap(snap.data()!, snap.id);
+      final barberRef = _barberRef(shopId, before.barberId);
+      final barber = await tx.get(barberRef);
+      tx.delete(ref);
+      if (barber.exists) tx.update(barberRef, barberCounterDeleteUpdate(barber.data()!, before));
+      return before;
+    });
+  }
 }
 
 /// In-memory reviews for DEMO_MODE builds and tests. In DEMO_MODE it loads
@@ -247,13 +329,38 @@ class LocalReviewStore implements ReviewStore {
     return RatingDistribution.fromRatings(_filtered(shopId, barberId).map((r) => r.rating));
   }
 
+  /// [notices] are delivered by [ReviewsService] in local mode.
   @override
-  Future<void> create(Review review) async {
+  Future<void> create(Review review, {List<ReviewNotice> notices = const []}) async {
     await _ensureSeeded();
     final shop = _byShop[review.shopId] ??= {};
     if (shop.containsKey(review.bookingId)) throw ReviewException(ReviewErrorCode.alreadyReviewed);
     shop[review.bookingId] = review;
     _changes.add(review.shopId);
+  }
+
+  @override
+  Future<Review> update(Review edited) async {
+    await _ensureSeeded();
+    final current = _byShop[edited.shopId]?[edited.bookingId];
+    if (current == null) throw ReviewException(ReviewErrorCode.notFound);
+    _byShop[edited.shopId]![edited.bookingId] = current.copyWith(
+      rating: edited.rating,
+      comment: edited.comment,
+      clearComment: !edited.hasComment,
+      editedAt: edited.editedAt?.toUtc(),
+    );
+    _changes.add(edited.shopId);
+    return current;
+  }
+
+  @override
+  Future<Review> delete(String shopId, String reviewId) async {
+    await _ensureSeeded();
+    final removed = _byShop[shopId]?.remove(reviewId);
+    if (removed == null) throw ReviewException(ReviewErrorCode.notFound);
+    _changes.add(shopId);
+    return removed;
   }
 
   @override
@@ -303,21 +410,37 @@ List<Review> reviewsFromSeedJson(Map<String, dynamic> json, {DateTime? now}) {
 ///    their own review on the booking card ([watchReviewForBooking]).
 ///  * Everyone reads a shop's or a barber's reviews newest first
 ///    ([loadPage]) and the star distribution ([loadDistribution]).
+///  * The customer edits ([updateReview]: stars and comment, marked
+///    "edited") or deletes ([deleteReview]) their own review.
 ///  * The shop owner adds or edits a reply ([saveReply]).
+///  * A new review puts a notice in the shop owner's inbox, written in the
+///    review transaction (lib/services/review_notices.dart).
 ///
-/// Ratings work without Cloud Functions (free Spark plan): creating a
-/// review also adds its stars to the barber's `ratingSum` / `reviewCount`
-/// in the same transaction ([FirestoreReviewStore.create]); without
-/// Firebase (DEMO_MODE, tests) [AppRepository.applyLocalBarberReview] does
-/// the same in memory. Barber averages and the shop rating (average of its
-/// rated barbers' averages) are computed in lib/services/rating_service.dart.
+/// Ratings work without Cloud Functions (free Spark plan): creating,
+/// editing or deleting a review also changes the barber's `ratingSum` /
+/// `reviewCount` in the same transaction ([FirestoreReviewStore.create],
+/// [FirestoreReviewStore.update], [FirestoreReviewStore.delete]); without
+/// Firebase (DEMO_MODE, tests) [AppRepository.applyLocalBarberReviewChange]
+/// does the same in memory. Barber averages and the shop rating (average
+/// of its rated barbers' averages) are computed in
+/// lib/services/rating_service.dart.
 class ReviewsService {
-  ReviewsService({AppRepository? repository, ReviewStore? cloud, LocalReviewStore? local, DateTime Function()? clock})
-      : _repo = repository ?? AppRepository.instance,
+  ReviewsService({
+    AppRepository? repository,
+    ReviewStore? cloud,
+    LocalReviewStore? local,
+    DateTime Function()? clock,
+    void Function(ReviewNotice notice)? onLocalNotice,
+  })  : _repo = repository ?? AppRepository.instance,
         _cloudOverride = cloud,
-        _clock = clock {
+        _clock = clock,
+        _onLocalNotice = onLocalNotice {
     this.local = local ?? LocalReviewStore(seedFromAssets: kDemoMode);
   }
+
+  /// Local mode: delivers a review notice (defaults to the shared
+  /// [NotificationService]'s in-memory inboxes).
+  final void Function(ReviewNotice notice)? _onLocalNotice;
 
   static ReviewsService? _instance;
   static ReviewsService get instance => _instance ??= ReviewsService();
@@ -393,9 +516,81 @@ class ReviewsService {
       comment: text.isEmpty ? null : text,
       createdAt: _now(),
     );
-    await store.create(review);
-    if (store is LocalReviewStore) _repo.applyLocalBarberReview(review.barberId, review.rating);
+    final isLocal = store is LocalReviewStore;
+    final notices = reviewNoticesFor(review, barberName: booking.barberName, includeBarbers: isLocal);
+    await store.create(review, notices: isLocal ? const [] : notices);
+    if (isLocal) {
+      _repo.applyLocalBarberReviewChange(review.barberId, ratingSumDelta: review.rating, reviewCountDelta: 1);
+      for (final n in notices) {
+        (_onLocalNotice ?? (n) => NotificationService.instance.local.addDirect(n.recipientUid, n.toAppNotification()))(n);
+      }
+    }
     return review;
+  }
+
+  /// The inbox entries for a new [review]: the shop's owner always; the
+  /// barber's account(s) only when [includeBarbers] (local mode, where the
+  /// app knows every user; with Firebase the customer cannot see staff
+  /// accounts, so functions/notifications tells the barber on Blaze).
+  @visibleForTesting
+  List<ReviewNotice> reviewNoticesFor(Review review, {String barberName = '', bool includeBarbers = false}) {
+    final users = includeBarbers ? _repo.getAllUsers() : const <AppUser>[];
+    final languages = {for (final u in users) u.uid: u.language};
+    return planReviewNotices(
+      review,
+      ownerUid: _repo.getShopById(review.shopId)?.ownerId,
+      barberUids: [
+        for (final u in users)
+          if (u.role == UserRole.barber && u.barberId == review.barberId && u.shopId == review.shopId) u.uid,
+      ],
+      barberName: barberName,
+      languageOf: (uid) => languages[uid],
+    );
+  }
+
+  /// Whether the signed-in user wrote [review] (only they edit or delete it).
+  bool canEditReview(Review review) {
+    final user = _repo.currentUser;
+    return user != null && user.uid == review.customerId;
+  }
+
+  /// The customer changes the stars and / or the comment of their own
+  /// [review] (marked edited). The barber's rating follows the new stars.
+  Future<Review> updateReview(Review review, {required int rating, String? comment}) async {
+    if (_repo.currentUser == null) throw AppStateException(AppErrorCode.signInRequired);
+    if (!canEditReview(review)) throw ReviewException(ReviewErrorCode.notYourBooking);
+    if (!isValidReviewRating(rating)) throw ReviewException(ReviewErrorCode.invalidRating);
+    final text = comment?.trim() ?? '';
+    if (text.length > kReviewCommentMaxLength) {
+      throw ReviewException(ReviewErrorCode.commentTooLong, [kReviewCommentMaxLength]);
+    }
+    final edited = review.copyWith(
+      rating: rating,
+      comment: text.isEmpty ? null : text,
+      clearComment: text.isEmpty,
+      editedAt: _now(),
+    );
+    final before = await store.update(edited);
+    if (store is LocalReviewStore && before.rating != rating) {
+      _repo.applyLocalBarberReviewChange(before.barberId, ratingSumDelta: rating - before.rating, reviewCountDelta: 0);
+    }
+    return before.copyWith(
+      rating: rating,
+      comment: edited.comment,
+      clearComment: !edited.hasComment,
+      editedAt: edited.editedAt,
+    );
+  }
+
+  /// The customer deletes their own [review]; its stars leave the barber's
+  /// rating. They may rate the visit again afterwards.
+  Future<void> deleteReview(Review review) async {
+    if (_repo.currentUser == null) throw AppStateException(AppErrorCode.signInRequired);
+    if (!canEditReview(review)) throw ReviewException(ReviewErrorCode.notYourBooking);
+    final removed = await store.delete(review.shopId, review.bookingId);
+    if (store is LocalReviewStore) {
+      _repo.applyLocalBarberReviewChange(removed.barberId, ratingSumDelta: -removed.rating, reviewCountDelta: -1);
+    }
   }
 
   // --- Owner ---

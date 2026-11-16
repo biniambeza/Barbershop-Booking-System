@@ -57,6 +57,16 @@ String? receiptImageBase64(Uint8List bytes) {
   return b64.length <= kMaxReceiptImageChars ? b64 : null;
 }
 
+/// Decodes a stored receipt photo (null when it is not valid base64).
+Uint8List? decodeReceiptImage(String? base64) {
+  if (base64 == null || base64.isEmpty) return null;
+  try {
+    return base64Decode(base64);
+  } catch (_) {
+    return null;
+  }
+}
+
 /// A picked and compressed receipt photo.
 class PickedReceiptImage {
   const PickedReceiptImage(this.jpeg, this.base64);

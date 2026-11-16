@@ -26,6 +26,9 @@ enum AppErrorCode {
   signInRequired,
   accountLoadFailed,
 
+  /// admin users: an admin disabled this account.
+  accountDisabled,
+
   /// args: [UserRole] of the existing account.
   emailAlreadyStaff,
 
@@ -74,6 +77,13 @@ enum AppErrorCode {
   timeOffConflict,
   timeOffNotAllowed,
 
+  // --- vacation (several days of time off)
+  /// args: [max days].
+  vacationTooLong,
+
+  /// The range has no working time left to block.
+  vacationNothingToBlock,
+
   // --- barber acceptance
   /// Only the booked barber, the shop owner or an admin may answer a request.
   bookingRequestNotAllowed,
@@ -116,6 +126,8 @@ enum AppErrorCode {
         return 'Sign in first.';
       case AppErrorCode.accountLoadFailed:
         return 'Could not load your account. Check your connection and try again.';
+      case AppErrorCode.accountDisabled: // admin users
+        return 'Your account has been disabled. Contact support.';
       case AppErrorCode.emailAlreadyStaff:
         return 'This email address already belongs to a ${arg(0)} account.';
       case AppErrorCode.signInToBook:
@@ -162,6 +174,11 @@ enum AppErrorCode {
         return 'This time overlaps a booking or other time off.';
       case AppErrorCode.timeOffNotAllowed:
         return 'You can only manage time off for your own schedule.';
+      // --- vacation
+      case AppErrorCode.vacationTooLong:
+        return 'A vacation can be at most ${arg(0)} days long.';
+      case AppErrorCode.vacationNothingToBlock:
+        return 'There are no working hours to block in these days.';
       // --- barber acceptance
       case AppErrorCode.bookingRequestNotAllowed:
         return 'Only the booked barber or the shop owner can answer this request.';

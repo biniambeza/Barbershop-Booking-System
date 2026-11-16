@@ -10,6 +10,7 @@ import '../../../models/booking_model.dart';
 import '../../../services/app_repository.dart';
 import '../../../services/availability_service.dart';
 import '../../../services/time_off_service.dart';
+import '../../../services/vacation_service.dart';
 import '../../shared/widgets/ui_kit.dart';
 
 /// A barber's day: their effective working hours (own days/hours within the
@@ -124,12 +125,15 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
     );
   }
 
-  /// The day's time off, with remove buttons and "Add time off" for the
-  /// barber and the owner.
-  Widget _buildTimeOffBar(Barbershop? shop, Barber barber, List<TimeOff> dayTimeOff, bool canManage) {
+  /// The day's time off and every upcoming vacation (one row each, e.g.
+  /// "Dec 12 - Dec 20 • Vacation"), with remove buttons and "Add time off"
+  /// for the barber and the owner.
+  Widget _buildTimeOffBar(Barbershop? shop, Barber barber, List<TimeOff> dayTimeOffAll, bool canManage) {
     final l = context.l10n;
     final fmt = context.fmt;
-    if (!canManage && dayTimeOff.isEmpty) return const SizedBox.shrink();
+    final dayTimeOff = dayTimeOffAll.where((t) => !t.isVacationPart).toList();
+    final vacations = groupTimeOff(_timeOff).where((i) => i.isVacation && i.isUpcoming(_nowUtc)).toList();
+    if (!canManage && dayTimeOff.isEmpty && vacations.isEmpty) return const SizedBox.shrink();
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -155,7 +159,32 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
                 ),
             ],
           ),
-          if (dayTimeOff.isEmpty)
+          for (final v in vacations)
+            Row(
+              key: ValueKey('vacation-${v.groupId}'),
+              children: [
+                const Icon(Icons.flight_takeoff_rounded, size: 14, color: AppTheme.orange),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    [
+                      l.vacationRange(fmt.monthDay(v.fromDate), fmt.monthDay(v.toDate)),
+                      v.reason ?? l.vacationLabel,
+                    ].join(' • '),
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                if (canManage)
+                  IconButton(
+                    key: ValueKey('remove-vacation-${v.groupId}'),
+                    tooltip: l.timeOffRemove,
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppTheme.danger),
+                    onPressed: () => _removeVacation(v),
+                  ),
+              ],
+            ),
+          if (dayTimeOff.isEmpty && vacations.isEmpty)
             Text(l.timeOffEmpty, style: const TextStyle(fontSize: 11, color: AppTheme.textTertiary))
           else
             for (final t in dayTimeOff)
@@ -217,15 +246,48 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
     }
   }
 
-  Future<void> _showAddTimeOff(Barbershop shop, Barber barber) async {
-    final added = await showDialog<bool>(
+  /// Removes every part of a vacation after a confirmation.
+  Future<void> _removeVacation(TimeOffItem item) async {
+    final l = context.l10n;
+    final fmt = context.fmt;
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => _AddTimeOffDialog(shop: shop, barber: barber, date: _selectedDate),
+      builder: (ctx) => AlertDialog(
+        title: Text(l.timeOffRemove),
+        content: Text(l.vacationRemoveConfirm(l.vacationRange(fmt.monthDay(item.fromDate), fmt.monthDay(item.toDate)))),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(l.cancel)),
+          TextButton(
+            key: const ValueKey('confirm-remove-vacation'),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.timeOffRemove, style: const TextStyle(color: AppTheme.danger)),
+          ),
+        ],
+      ),
     );
-    if (added == true && mounted) {
+    if (ok != true) return;
+    try {
+      await AppRepository.instance.deleteTimeOffItem(item);
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(l.timeOffRemoved)));
+    } catch (e) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(l.errorText(e))));
+    }
+  }
+
+  Future<void> _showAddTimeOff(Barbershop shop, Barber barber) async {
+    final message = await showDialog<String>(
+      context: context,
+      builder: (_) => _AddTimeOffDialog(shop: shop, barber: barber, date: _selectedDate, nowUtc: _nowUtc),
+    );
+    if (message != null && mounted) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(context.l10n.timeOffSaved)));
+        ..showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -493,23 +555,36 @@ class _BarberScheduleScreenState extends State<BarberScheduleScreen> {
   }
 }
 
-/// Whole day (the barber's working hours that day) or a range of hours on
-/// one Addis day, plus an optional note.
+enum _TimeOffMode { wholeDay, hours, days }
+
+/// Whole day (the barber's working hours that day), a range of hours on
+/// one Addis day, or several days (a vacation, [AppRepository.addVacation]:
+/// first and last date, optionally a later start on the first day and an
+/// earlier end on the last), plus an optional note. Pops the message to
+/// show once saved.
 class _AddTimeOffDialog extends StatefulWidget {
-  const _AddTimeOffDialog({required this.shop, required this.barber, required this.date});
+  const _AddTimeOffDialog({required this.shop, required this.barber, required this.date, required this.nowUtc});
 
   final Barbershop shop;
   final Barber barber;
   final DateTime date; // Addis calendar day
+  final DateTime nowUtc;
 
   @override
   State<_AddTimeOffDialog> createState() => _AddTimeOffDialogState();
 }
 
+/// What to do with the bookings inside a new vacation.
+enum _ConflictChoice { cancel, keep }
+
 class _AddTimeOffDialogState extends State<_AddTimeOffDialog> {
-  bool _wholeDay = true;
+  _TimeOffMode _mode = _TimeOffMode.wholeDay;
   late int _from; // minute of the Addis day
   late int _to;
+  late DateTime _vacationFrom; // Addis dates
+  late DateTime _vacationTo;
+  int? _firstDayFrom; // null = start of work
+  int? _lastDayUntil; // null = end of work
   final _reason = TextEditingController();
   bool _saving = false;
 
@@ -524,12 +599,22 @@ class _AddTimeOffDialogState extends State<_AddTimeOffDialog> {
     return [for (var m = start; m <= end; m += kSlotStepMinutes) m];
   }
 
+  /// Partial first/last day choices: inside the usual working hours.
+  List<int> get _workMinutes {
+    final s = _schedule;
+    final start = s.isEmpty ? 0 : s.startHour * 60;
+    final end = s.isEmpty ? 24 * 60 : s.endHour * 60;
+    return [for (var m = start + kSlotStepMinutes; m < end; m += kSlotStepMinutes) m];
+  }
+
   @override
   void initState() {
     super.initState();
     final minutes = _minutes;
     _from = minutes.first;
     _to = minutes.length > 4 ? minutes[4] : minutes.last;
+    _vacationFrom = DateTime(widget.date.year, widget.date.month, widget.date.day);
+    _vacationTo = DateTime(widget.date.year, widget.date.month, widget.date.day + 2);
   }
 
   @override
@@ -538,10 +623,22 @@ class _AddTimeOffDialogState extends State<_AddTimeOffDialog> {
     super.dispose();
   }
 
+  void _showError(Object e) {
+    final l = context.l10n;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        content: Text(l.errorText(e), key: const ValueKey('time-off-error')),
+        actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(MaterialLocalizations.of(ctx).okButtonLabel))],
+      ),
+    );
+  }
+
   Future<void> _save() async {
+    if (_mode == _TimeOffMode.days) return _saveVacation();
     final l = context.l10n;
     final navigator = Navigator.of(context);
-    final range = _wholeDay
+    final range = _mode == _TimeOffMode.wholeDay
         ? wholeDayTimeOffRange(widget.shop, widget.barber, widget.date)
         : timeOffRangeOnDay(widget.date, _from, _to);
     if (range == null) {
@@ -556,18 +653,165 @@ class _AddTimeOffDialogState extends State<_AddTimeOffDialog> {
         endUtc: range.$2,
         reason: _reason.text,
       );
-      navigator.pop(true);
+      navigator.pop(l.timeOffSaved);
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          content: Text(l.errorText(e), key: const ValueKey('time-off-error')),
-          actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(MaterialLocalizations.of(ctx).okButtonLabel))],
-        ),
-      );
+      _showError(e);
     }
+  }
+
+  Future<void> _saveVacation() async {
+    final l = context.l10n;
+    final navigator = Navigator.of(context);
+    final repo = AppRepository.instance;
+    try {
+      validateVacation(
+        fromDate: _vacationFrom,
+        toDate: _vacationTo,
+        firstDayFromMinute: _firstDayFrom,
+        lastDayToMinute: _lastDayUntil,
+        reason: _reason.text.trim(),
+        nowUtc: repo.nowUtc(),
+      );
+    } catch (e) {
+      _showError(e);
+      return;
+    }
+    final conflicts = repo.vacationConflictsFor(
+      barberId: widget.barber.id,
+      fromDate: _vacationFrom,
+      toDate: _vacationTo,
+      firstDayFromMinute: _firstDayFrom,
+      lastDayToMinute: _lastDayUntil,
+    );
+    var cancelIds = const <String>[];
+    if (conflicts.isNotEmpty) {
+      final choice = await showDialog<_ConflictChoice>(
+        context: context,
+        builder: (_) => _VacationConflictsDialog(bookings: conflicts),
+      );
+      if (choice == null || !mounted) return;
+      if (choice == _ConflictChoice.cancel) cancelIds = [for (final b in conflicts) b.id];
+    }
+    setState(() => _saving = true);
+    try {
+      final result = await repo.addVacation(
+        barberId: widget.barber.id,
+        fromDate: _vacationFrom,
+        toDate: _vacationTo,
+        firstDayFromMinute: _firstDayFrom,
+        lastDayToMinute: _lastDayUntil,
+        reason: _reason.text,
+        cancelBookingIds: cancelIds,
+      );
+      navigator.pop(result.cancelled.isEmpty ? l.vacationSaved : l.vacationSavedCancelled(result.cancelled.length));
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      _showError(e);
+    }
+  }
+
+  Future<void> _pickDate({required bool first}) async {
+    final today = addisToday(widget.nowUtc);
+    final initial = first ? _vacationFrom : _vacationTo;
+    final firstAllowed = first ? today : _vacationFrom;
+    final lastAllowed = first
+        ? DateTime(today.year + 1, today.month, today.day)
+        : DateTime(_vacationFrom.year, _vacationFrom.month, _vacationFrom.day + kMaxVacationDays - 1);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial.isBefore(firstAllowed) ? firstAllowed : (initial.isAfter(lastAllowed) ? lastAllowed : initial),
+      firstDate: firstAllowed,
+      lastDate: lastAllowed,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      final day = DateTime(picked.year, picked.month, picked.day);
+      if (first) {
+        _vacationFrom = day;
+        if (_vacationTo.isBefore(day)) _vacationTo = day;
+        if (vacationLengthDays(_vacationFrom, _vacationTo) > kMaxVacationDays) {
+          _vacationTo = DateTime(day.year, day.month, day.day + kMaxVacationDays - 1);
+        }
+      } else {
+        _vacationTo = day;
+      }
+    });
+  }
+
+  Widget _modeChip(_TimeOffMode mode, String key, String label) {
+    final selected = _mode == mode;
+    return ChoiceChip(
+      key: ValueKey(key),
+      label: Text(label, style: TextStyle(color: selected ? AppTheme.onInk : AppTheme.textPrimary)),
+      selected: selected,
+      onSelected: (_) => setState(() => _mode = mode),
+    );
+  }
+
+  Widget _dateButton(String key, String label, DateTime date, VoidCallback onTap) {
+    return Expanded(
+      child: OutlinedButton(
+        key: ValueKey(key),
+        onPressed: _saving ? null : onTap,
+        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10)),
+        child: Column(
+          children: [
+            Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+            const SizedBox(height: 2),
+            Text(context.fmt.dayShort(date), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _vacationFields() {
+    final l = context.l10n;
+    final fmt = context.fmt;
+    String label(int m) => fmt.time(m ~/ 60 % 24, m % 60);
+    final work = _workMinutes;
+    final days = vacationLengthDays(_vacationFrom, _vacationTo);
+    return [
+      const SizedBox(height: 12),
+      Row(
+        children: [
+          _dateButton('vacation-from', l.vacationFromDate, _vacationFrom, () => _pickDate(first: true)),
+          const SizedBox(width: 8),
+          _dateButton('vacation-to', l.vacationToDate, _vacationTo, () => _pickDate(first: false)),
+        ],
+      ),
+      const SizedBox(height: 6),
+      Text(l.vacationMaxDays(days, kMaxVacationDays),
+          key: const ValueKey('vacation-days'),
+          style: TextStyle(fontSize: 11.5, color: days > kMaxVacationDays ? AppTheme.danger : AppTheme.textSecondary)),
+      const SizedBox(height: 8),
+      DropdownButtonFormField<int?>(
+        key: const ValueKey('vacation-first-from'),
+        initialValue: _firstDayFrom,
+        isExpanded: true,
+        decoration: InputDecoration(labelText: l.vacationFirstDayFrom),
+        items: [
+          DropdownMenuItem<int?>(value: null, child: Text(l.vacationStartOfWork)),
+          for (final m in work) DropdownMenuItem<int?>(value: m, child: Text(label(m))),
+        ],
+        onChanged: (v) => setState(() => _firstDayFrom = v),
+      ),
+      const SizedBox(height: 8),
+      DropdownButtonFormField<int?>(
+        key: const ValueKey('vacation-last-until'),
+        initialValue: _lastDayUntil,
+        isExpanded: true,
+        decoration: InputDecoration(labelText: l.vacationLastDayUntil),
+        items: [
+          DropdownMenuItem<int?>(value: null, child: Text(l.vacationEndOfWork)),
+          for (final m in work) DropdownMenuItem<int?>(value: m, child: Text(label(m))),
+        ],
+        onChanged: (v) => setState(() => _lastDayUntil = v),
+      ),
+    ];
   }
 
   @override
@@ -583,28 +827,19 @@ class _AddTimeOffDialogState extends State<_AddTimeOffDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${l.timeOffDay}: ${fmt.dayLong(widget.date)}', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+            if (_mode != _TimeOffMode.days)
+              Text('${l.timeOffDay}: ${fmt.dayLong(widget.date)}', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
+              runSpacing: 6,
               children: [
-                ChoiceChip(
-                  key: const ValueKey('time-off-whole-day'),
-                  label: Text(l.timeOffWholeDay,
-                      style: TextStyle(color: _wholeDay ? AppTheme.onInk : AppTheme.textPrimary)),
-                  selected: _wholeDay,
-                  onSelected: (_) => setState(() => _wholeDay = true),
-                ),
-                ChoiceChip(
-                  key: const ValueKey('time-off-hours'),
-                  label: Text(l.timeOffHours,
-                      style: TextStyle(color: !_wholeDay ? AppTheme.onInk : AppTheme.textPrimary)),
-                  selected: !_wholeDay,
-                  onSelected: (_) => setState(() => _wholeDay = false),
-                ),
+                _modeChip(_TimeOffMode.wholeDay, 'time-off-whole-day', l.timeOffWholeDay),
+                _modeChip(_TimeOffMode.hours, 'time-off-hours', l.timeOffHours),
+                _modeChip(_TimeOffMode.days, 'time-off-several-days', l.timeOffSeveralDays),
               ],
             ),
-            if (!_wholeDay) ...[
+            if (_mode == _TimeOffMode.hours) ...[
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -637,6 +872,7 @@ class _AddTimeOffDialogState extends State<_AddTimeOffDialog> {
                 ],
               ),
             ],
+            if (_mode == _TimeOffMode.days) ..._vacationFields(),
             const SizedBox(height: 12),
             TextField(
               key: const ValueKey('time-off-reason'),
@@ -648,11 +884,73 @@ class _AddTimeOffDialogState extends State<_AddTimeOffDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: _saving ? null : () => Navigator.of(context).pop(false), child: Text(l.cancel)),
+        TextButton(onPressed: _saving ? null : () => Navigator.of(context).pop(), child: Text(l.cancel)),
         ElevatedButton(
           key: const ValueKey('save-time-off'),
           onPressed: _saving ? null : _save,
           child: Text(l.save),
+        ),
+      ],
+    );
+  }
+}
+
+/// The barber's upcoming bookings inside a new vacation: cancel them all
+/// (each customer is notified; paid ones get a refund flag) or keep them.
+class _VacationConflictsDialog extends StatelessWidget {
+  const _VacationConflictsDialog({required this.bookings});
+
+  final List<Booking> bookings;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final fmt = context.fmt;
+    return AlertDialog(
+      title: Text(l.vacationConflictsTitle),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l.vacationConflictsBody(bookings.length),
+                  style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+              const SizedBox(height: 10),
+              for (final b in bookings)
+                Padding(
+                  key: ValueKey('vacation-conflict-${b.id}'),
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${b.customerName} • ${b.serviceName}',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                      Text('${fmt.dayShort(toAddisWallClock(b.startAt))}, ${fmt.bookingRange(b)}',
+                          style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                      if (b.paymentStatus == PaymentStatus.paid)
+                        Text(l.vacationPaidRefund,
+                            key: ValueKey('vacation-conflict-paid-${b.id}'),
+                            style: const TextStyle(fontSize: 11.5, color: AppTheme.warning, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(l.cancel)),
+        TextButton(
+          key: const ValueKey('vacation-keep-bookings'),
+          onPressed: () => Navigator.of(context).pop(_ConflictChoice.keep),
+          child: Text(l.vacationKeepBookings),
+        ),
+        ElevatedButton(
+          key: const ValueKey('vacation-cancel-bookings'),
+          onPressed: () => Navigator.of(context).pop(_ConflictChoice.cancel),
+          child: Text(l.vacationCancelAndNotify),
         ),
       ],
     );

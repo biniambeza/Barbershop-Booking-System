@@ -158,3 +158,24 @@ test('seeded time off gets a time-off doc and one lock per 15-minute block', () 
   // invites mode writes no time off.
   assert.ok(!buildDocuments(seed, { now, mode: 'invites' }).some((d) => d.path.includes('/timeOff/')));
 });
+
+// private barber phone
+test('barber phones go to private/contact, never the public barber doc', () => {
+  for (const mode of ['users', 'invites']) {
+    const docs = buildDocuments(seed, { now, mode });
+    const publicBarbers = docs.filter((d) => /^barbershops\/[^/]+\/barbers\/[^/]+$/.test(d.path));
+    assert.ok(publicBarbers.length > 0);
+    for (const d of publicBarbers) assert.strictEqual(d.data.phone, undefined, `${d.path} has a phone`);
+    assert.deepStrictEqual(get(docs, 'barbershops/shop_1/barbers/barber_1/private/contact'), { phone: '+251911000201' });
+  }
+});
+
+test('only confirmed or in-progress seeded bookings carry barberPhone', () => {
+  const docs = buildDocuments(seed, { now });
+  assert.strictEqual(get(docs, 'bookings/book_1').barberPhone, '+251911000201'); // confirmed
+  for (const d of docs.filter((x) => x.path.startsWith('bookings/'))) {
+    if (d.data.status !== 'confirmed' && d.data.status !== 'inProgress') {
+      assert.strictEqual(d.data.barberPhone, undefined, `${d.path} (${d.data.status}) shares the phone`);
+    }
+  }
+});

@@ -1,0 +1,71 @@
+rules_version = '2';
+
+// Crown & Blade - Cloud Storage for Firebase rules.
+//
+// Storage needs the Blaze plan. On the free (Spark) plan there is no bucket
+// and the app keeps receipt photos inline in Firestore (receiptImage). The
+// admin switch platformConfig/subscriptionPricing.storageReceipts makes the
+// owner's app upload them here instead (falling back to inline on any
+// failure).
+//
+//   receipts/{shopId}/{paymentId}.jpg
+//       A shop owner's subscription receipt photo (compressed JPEG,
+//       <= ~250 KB; at most 2 MB accepted). Created once by the shop's
+//       owner (never overwritten or deleted by clients); read by that owner
+//       and by admins. The payments Cloud Function reads it with the Admin
+//       SDK (rules do not apply).
+//
+// Roles come from Firestore (users/{uid}.role / shopId and
+// barbershops/{shopId}.ownerId), as in firestore.rules isOwnerOf / isAdmin.
+// Everything else is denied.
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userPath() {
+      return /databases/(default)/documents/users/$(request.auth.uid);
+    }
+
+    function hasProfile() {
+      return signedIn() && firestore.exists(userPath());
+    }
+
+    function isAdmin() {
+      return hasProfile() && firestore.get(userPath()).data.role == 'admin';
+    }
+
+    // The owner of this shop: an owner profile for the shop, and the shop's
+    // ownerId is the caller.
+    function isOwnerOf(shopId) {
+      return hasProfile() &&
+        firestore.get(userPath()).data.role == 'barbershopOwner' &&
+        firestore.get(userPath()).data.get('shopId', '') == shopId &&
+        firestore.get(/databases/(default)/documents/barbershops/$(shopId)).data.get('ownerId', '') == request.auth.uid;
+    }
+
+    match /receipts/{shopId}/{fileName} {
+      // Admins read every receipt photo; owners only their shop's.
+      allow read: if isAdmin() || isOwnerOf(shopId);
+
+      // New object only (an existing one is an update, which is refused):
+      // an image under 2 MB named {paymentId}.jpg, where paymentId is
+      // {method}_{normalized transaction id}.
+      // resource == null: never overwrite an existing photo (the emulator,
+      // at least, evaluates an overwrite as create).
+      allow create: if resource == null &&
+        isOwnerOf(shopId) &&
+        request.resource.size > 0 &&
+        request.resource.size < 2 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*') &&
+        fileName.matches('^(telebirr|cbe|other)_[A-Z0-9-]{4,40}[.]jpg$');
+
+      allow update, delete: if false;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

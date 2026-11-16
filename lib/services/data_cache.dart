@@ -26,6 +26,12 @@ class DataCache {
   final Map<String, Booking> bookings = {};
   final Map<String, SubscriptionPlan> plans = {};
 
+  /// Private barber phones by barber id (the `private/contact` docs): only
+  /// those the signed-in user may read (the owner's shop, the barber's own;
+  /// everything in local mode, where AppRepository.getBarberPhone checks
+  /// the role).
+  final Map<String, String> barberPhones = {};
+
   void clear() {
     users.clear();
     invites.clear();
@@ -34,6 +40,7 @@ class DataCache {
     barbers.clear();
     bookings.clear();
     plans.clear();
+    barberPhones.clear();
   }
 
   void loadSeed(SeedDataset seed) {
@@ -53,6 +60,7 @@ class DataCache {
     for (final b in seed.barbers) {
       barbers[b.id] = b;
     }
+    barberPhones.addAll(seed.barberPhones);
     for (final b in seed.bookings) {
       bookings[b.id] = b;
     }

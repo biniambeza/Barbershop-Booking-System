@@ -50,6 +50,18 @@ class AppUser {
   final bool mustChangePassword;
   // --- end barber accounts ---
 
+  // --- admin users ---
+  /// Disabled by an admin (`users/{uid}.disabled`): the app signs the
+  /// account out at once and refuses sign-in. Absent = false.
+  final bool disabled;
+
+  /// When ([disabledAt], UTC), by which admin uid ([disabledBy]) and why
+  /// ([disabledReason], optional) the account was disabled.
+  final DateTime? disabledAt;
+  final String? disabledBy;
+  final String? disabledReason;
+  // --- end admin users ---
+
   AppUser({
     required this.uid,
     this.email,
@@ -61,6 +73,10 @@ class AppUser {
     required this.createdAt,
     this.language,
     this.mustChangePassword = false, // barber accounts
+    this.disabled = false, // admin users
+    this.disabledAt,
+    this.disabledBy,
+    this.disabledReason,
   });
 
   /// Language for messages (SMS / push). Amharic unless chosen otherwise.
@@ -78,6 +94,11 @@ class AppUser {
       'createdAt': createdAt.toUtc().toIso8601String(),
       if (language != null) 'language': language,
       if (mustChangePassword) 'mustChangePassword': true, // barber accounts
+      // admin users: kept on full rewrites of the profile.
+      if (disabled) 'disabled': true,
+      if (disabled && disabledAt != null) 'disabledAt': disabledAt!.toUtc().toIso8601String(),
+      if (disabled && disabledBy != null) 'disabledBy': disabledBy,
+      if (disabled && disabledReason != null) 'disabledReason': disabledReason,
     };
   }
 
@@ -92,7 +113,13 @@ class AppUser {
     DateTime? createdAt,
     String? language,
     bool? mustChangePassword, // barber accounts
+    // admin users: disabled == false clears disabledAt/By/Reason too.
+    bool? disabled,
+    DateTime? disabledAt,
+    String? disabledBy,
+    String? disabledReason,
   }) {
+    final isDisabled = disabled ?? this.disabled;
     return AppUser(
       uid: uid ?? this.uid,
       email: email ?? this.email,
@@ -104,6 +131,10 @@ class AppUser {
       createdAt: createdAt ?? this.createdAt,
       language: language ?? this.language,
       mustChangePassword: mustChangePassword ?? this.mustChangePassword, // barber accounts
+      disabled: isDisabled, // admin users
+      disabledAt: isDisabled ? disabledAt ?? this.disabledAt : null,
+      disabledBy: isDisabled ? disabledBy ?? this.disabledBy : null,
+      disabledReason: isDisabled ? disabledReason ?? this.disabledReason : null,
     );
   }
 
@@ -121,6 +152,11 @@ class AppUser {
           : DateTime.now(),
       language: map['language'] == 'en' || map['language'] == 'am' ? map['language'] : null,
       mustChangePassword: map['mustChangePassword'] == true, // barber accounts
+      // admin users
+      disabled: map['disabled'] == true,
+      disabledAt: map['disabledAt'] is String ? DateTime.tryParse(map['disabledAt'] as String)?.toUtc() : null,
+      disabledBy: map['disabledBy'] is String ? map['disabledBy'] as String : null,
+      disabledReason: map['disabledReason'] is String ? map['disabledReason'] as String : null,
     );
   }
 }

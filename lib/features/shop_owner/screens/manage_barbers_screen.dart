@@ -158,6 +158,7 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                             ),
                             // Barber accounts: waiting for first login / invitation / active.
                             BarberAccountStatus(barber: barber),
+                            BarberPhoneLine(barber: barber), // private barber phone
                             if (shop != null) ...[
                               const SizedBox(height: 4),
                               Text(
@@ -219,6 +220,140 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
     );
   }
 }
+
+// --- private barber phone ---
+/// The barber's private phone (AppRepository.getBarberPhone: staff and
+/// admins only) with an edit button. Live: the contact doc arrives after
+/// the barber list.
+class BarberPhoneLine extends StatelessWidget {
+  const BarberPhoneLine({super.key, required this.barber});
+
+  final Barber barber;
+
+  Future<void> _edit(BuildContext context, String? current) async {
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (_) => BarberPhoneDialog(barberId: barber.id, initial: current),
+    );
+    if (saved == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.l10n.barberPhoneSaved)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final repo = AppRepository.instance;
+    return ListenableBuilder(
+      listenable: repo,
+      builder: (context, _) {
+        final l = context.l10n;
+        final phone = repo.getBarberPhone(barber.id);
+        return Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: InkWell(
+            key: ValueKey('barber-phone-edit-${barber.id}'),
+            onTap: () => _edit(context, phone),
+            borderRadius: BorderRadius.circular(6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.lock_outline_rounded, size: 13, color: AppTheme.textSecondary),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    phone == null ? l.barberPhoneNone : context.fmt.phone(phone),
+                    key: ValueKey('barber-phone-${barber.id}'),
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(Icons.edit_outlined, size: 13, semanticLabel: l.barberPhoneEdit, color: AppTheme.textSecondary),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Sets or clears a barber's private phone (AppRepository.updateBarberPhone).
+/// Pops `true` once saved.
+class BarberPhoneDialog extends StatefulWidget {
+  const BarberPhoneDialog({super.key, required this.barberId, this.initial});
+
+  final String barberId;
+  final String? initial;
+
+  @override
+  State<BarberPhoneDialog> createState() => _BarberPhoneDialogState();
+}
+
+class _BarberPhoneDialogState extends State<BarberPhoneDialog> {
+  late final TextEditingController _phone = TextEditingController(text: widget.initial ?? '');
+  String? _error;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _phone.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final l = context.l10n;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await AppRepository.instance.updateBarberPhone(widget.barberId, _phone.text);
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _error = e is AppFormatException && e.code == AppErrorCode.invalidPhone ? l.invalidPhoneShort : l.errorText(e);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    return AlertDialog(
+      backgroundColor: AppTheme.card,
+      title: Text(l.barberPhoneEdit),
+      content: TextField(
+        key: const ValueKey('barber-phone-field'),
+        controller: _phone,
+        enabled: !_busy,
+        keyboardType: TextInputType.phone,
+        decoration: InputDecoration(
+          labelText: l.barberMobileOptional,
+          hintText: '09XX XXX XXX',
+          helperText: l.barberPhoneHelper,
+          helperMaxLines: 3,
+          errorText: _error,
+          prefixIcon: const Icon(Icons.phone_android),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(false),
+          child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
+        ),
+        ElevatedButton(
+          key: const ValueKey('barber-phone-save'),
+          onPressed: _busy ? null : _save,
+          child: Text(l.save),
+        ),
+      ],
+    );
+  }
+}
+// --- end private barber phone ---
 
 String _scheduleSummary(BuildContext context, AppFormats fmt, Barbershop shop, Barber barber) {
   final l = context.l10n;

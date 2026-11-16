@@ -309,7 +309,10 @@ class ReviewTile extends StatelessWidget {
                   StarRatingDisplay(rating: review.rating.toDouble(), size: 14),
                   const SizedBox(height: 2),
                   Text(
-                    fmt.addisDateMedium(review.createdAt),
+                    review.isEdited
+                        ? '${fmt.addisDateMedium(review.createdAt)} · ${l.reviewsEdited}'
+                        : fmt.addisDateMedium(review.createdAt),
+                    key: ValueKey('review-date-${review.id}'),
                     style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                   ),
                 ],

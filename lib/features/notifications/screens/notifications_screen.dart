@@ -9,6 +9,9 @@ import '../../../services/app_repository.dart';
 import '../../../services/early_finish_service.dart' show renderEarlyFinishText;
 import '../../customer/screens/customer_bookings_screen.dart';
 // --- end early finish ---
+import '../../../services/refunds.dart' show renderRefundDueText, renderRefundedText; // refunds
+import '../../../services/review_notices.dart' show renderReviewNoticeText; // review notices
+import '../../reviews/screens/reviews_screen.dart'; // review notices
 
 /// The signed-in user's notification inbox, newest first. Tapping an entry
 /// marks it read.
@@ -50,6 +53,11 @@ class NotificationsScreen extends StatelessWidget {
                       // --- early finish: open the customer's bookings ---
                       if (isEarlyFinishType(items[i].type) && items[i].bookingId != null) {
                         Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CustomerBookingsScreen()));
+                      }
+                      // --- review notices: open the shop's reviews ---
+                      final reviewShop = reviewNoticeShopId(items[i]);
+                      if (reviewShop != null) {
+                        Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReviewsScreen(shopId: reviewShop)));
                       }
                     },
                   ),
@@ -97,7 +105,9 @@ class _NotificationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final n = notification;
     final (icon, color) = notificationIcon(n.type);
-    final text = earlyFinishDisplayText(n, context.l10n.localeName); // early finish
+    final text = earlyFinishDisplayText(n, context.l10n.localeName) ?? // early finish
+        refundDisplayText(n, context.l10n.localeName) ?? // refunds
+        reviewNoticeDisplayText(n, context.l10n.localeName); // review notices
     return Container(
       decoration: AppTheme.cardDecoration(
         radius: AppTheme.radiusPanel + 4,
@@ -193,6 +203,17 @@ class _NotificationTile extends StatelessWidget {
       return (Icons.verified_rounded, AppTheme.success);
     case NotificationTypes.receiptRejected:
       return (Icons.receipt_long_rounded, AppTheme.danger);
+    // --- shop deletion ---
+    case NotificationTypes.shopDeleted:
+      return (Icons.event_busy_rounded, AppTheme.danger);
+    case NotificationTypes.shopRemoved:
+      return (Icons.store_mall_directory_outlined, AppTheme.danger);
+    // --- refunds ---
+    // --- review notices ---
+    case NotificationTypes.newReview:
+      return (Icons.star_rounded, AppTheme.orange);
+    case NotificationTypes.refundDue:
+      return (Icons.currency_exchange_rounded, AppTheme.warning);
     default:
       return (Icons.notifications_rounded, AppTheme.textSecondary);
   }
@@ -213,6 +234,51 @@ bool isEarlyFinishType(String type) =>
   return renderEarlyFinishText(n.type, booking, n.minutesEarly ?? 0, language: languageCode == 'en' ? 'en' : 'am');
 }
 // --- end early finish ---
+
+// --- refunds ---
+/// Refund notices may be written by the staff's app, which cannot read the
+/// customer's language: re-render them in the viewer's language from their
+/// own booking's refund when it is loaded (null: show the stored text).
+({String title, String body})? refundDisplayText(AppNotification n, String languageCode,
+    {AppRepository? repository}) {
+  if (n.bookingId == null) return null;
+  if (n.type != NotificationTypes.refundDue && n.type != NotificationTypes.paymentRefunded) return null;
+  final booking = (repository ?? AppRepository.instance).getBookingById(n.bookingId!);
+  final refund = booking?.refund;
+  if (booking == null || refund == null) return null;
+  final language = languageCode == 'en' ? 'en' : 'am';
+  return n.type == NotificationTypes.refundDue
+      ? renderRefundDueText(booking, refund.amount, language: language)
+      : renderRefundedText(booking, refund.amount, language: language);
+}
+// --- end refunds ---
+
+// --- review notices ---
+/// New-review notices are written by the customer's app, which cannot read
+/// the owner's language: re-render them in the viewer's language from the
+/// reviewed booking when it is loaded (null: show the stored text).
+({String title, String body})? reviewNoticeDisplayText(AppNotification n, String languageCode,
+    {AppRepository? repository}) {
+  if (n.type != NotificationTypes.newReview || n.bookingId == null || n.rating == null) return null;
+  final booking = (repository ?? AppRepository.instance).getBookingById(n.bookingId!);
+  if (booking == null) return null;
+  return renderReviewNoticeText(
+    rating: n.rating!,
+    customerName: booking.customerName,
+    barberName: booking.barberName,
+    language: languageCode == 'en' ? 'en' : 'am',
+  );
+}
+
+/// The shop whose reviews a new-review notice opens (null for other
+/// notices, or when its booking is not loaded and the user has no shop).
+String? reviewNoticeShopId(AppNotification n, {AppRepository? repository}) {
+  if (n.type != NotificationTypes.newReview) return null;
+  final repo = repository ?? AppRepository.instance;
+  final shopId = (n.bookingId == null ? null : repo.getBookingById(n.bookingId!)?.shopId) ?? repo.currentUser?.shopId;
+  return shopId == null || shopId.isEmpty ? null : shopId;
+}
+// --- end review notices ---
 
 /// 'Just now', '5 min ago', '3 h ago', '2 d ago', or the date.
 String relativeTime(DateTime createdAtUtc, {DateTime? now, AppLocalizations? l10n}) {

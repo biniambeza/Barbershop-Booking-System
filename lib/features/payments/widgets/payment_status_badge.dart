@@ -40,6 +40,31 @@ class PaymentStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // --- refunds: a cancelled paid booking shows its refund instead ---
+    final refund = booking.refund;
+    if (refund != null) {
+      final color = refund.isDue ? AppTheme.warning : AppTheme.blue;
+      final l = context.l10n;
+      final label = refund.isDue ? l.refundBadgeDue(context.fmt.birr(refund.amount)) : l.refundBadgeRefunded;
+      return Container(
+        key: ValueKey('refund-badge-${booking.id}'),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: AppTheme.softOf(color),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: Colors.transparent),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(refund.isDue ? Icons.currency_exchange_rounded : Icons.undo_rounded, size: 12, color: color),
+            const SizedBox(width: 4),
+            Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      );
+    }
+    // --- end refunds ---
     final status = booking.paymentStatus;
     final color = colorFor(status);
     return Container(

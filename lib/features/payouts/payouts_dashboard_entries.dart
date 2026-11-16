@@ -53,8 +53,9 @@ class OwnerPayoutsButton extends StatelessWidget {
   }
 }
 
-/// Barber dashboard: this month's share, what was paid, the balance owed,
-/// and the latest payouts (key `barber-payouts-card`).
+/// Barber dashboard: this month's share, what was paid, what carried over
+/// from earlier months, the balance owed, and the latest payouts (key
+/// `barber-payouts-card`).
 class BarberPayoutsCard extends StatefulWidget {
   const BarberPayoutsCard({super.key, required this.barber, this.manager});
 
@@ -75,6 +76,7 @@ class _BarberPayoutsCardState extends State<BarberPayoutsCard> {
   late final PayoutMonth _month = _m.currentMonth();
   late Future<List<Booking>> _bookings;
   late Stream<List<Payout>> _payouts;
+  late Future<PayoutCarryOver> _carry;
 
   @override
   void initState() {
@@ -91,6 +93,7 @@ class _BarberPayoutsCardState extends State<BarberPayoutsCard> {
   void _subscribe() {
     _bookings = _m.loadMonthBookings(widget.barber.shopId, _month, barberId: widget.barber.id);
     _payouts = _m.watchBarberPayouts(widget.barber);
+    _carry = _m.loadCarryOver(widget.barber, _month);
   }
 
   @override
@@ -101,89 +104,106 @@ class _BarberPayoutsCardState extends State<BarberPayoutsCard> {
       stream: _payouts,
       builder: (context, payoutSnap) => FutureBuilder<List<Booking>>(
         future: _bookings,
-        builder: (context, bookingSnap) => ListenableBuilder(
-          listenable: AppRepository.instance,
-          builder: (context, _) {
-            final barber = AppRepository.instance.getBarberById(widget.barber.id) ?? widget.barber;
-            final payouts = payoutSnap.data ?? const <Payout>[];
-            final bookings = mergeBookings(
-              bookingSnap.data ?? const <Booking>[],
-              _m.cachedMonthBookings(barber.shopId, _month, barberId: barber.id),
-            );
-            final s = summarizeBarberMonth(barber: barber, bookings: bookings, payouts: payouts, month: _month);
-            final latest = payouts.take(BarberPayoutsCard.latestShown).toList();
-            return AppCard(
-              key: const ValueKey('barber-payouts-card'),
-              margin: const EdgeInsets.only(bottom: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const IconTile(
-                          icon: Icons.account_balance_wallet_outlined,
-                          color: AppTheme.green,
-                          background: AppTheme.greenSoft,
-                          size: 44),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(l.payoutsYourShare,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w700, fontSize: 14.5, color: AppTheme.textPrimary)),
-                            Text(l.payoutsThisMonth(payoutMonthLabel(fmt, _month)),
-                                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
-                          ],
+        builder: (context, bookingSnap) => FutureBuilder<PayoutCarryOver>(
+          future: _carry,
+          builder: (context, carrySnap) => ListenableBuilder(
+            listenable: AppRepository.instance,
+            builder: (context, _) {
+              final barber = AppRepository.instance.getBarberById(widget.barber.id) ?? widget.barber;
+              final payouts = payoutSnap.data ?? const <Payout>[];
+              final bookings = mergeBookings(
+                bookingSnap.data ?? const <Booking>[],
+                _m.cachedMonthBookings(barber.shopId, _month, barberId: barber.id),
+              );
+              final s = summarizeBarberMonth(barber: barber, bookings: bookings, payouts: payouts, month: _month);
+              // carry-over: unpaid balance from earlier months (zero until loaded)
+              final carry = carrySnap.data ?? PayoutCarryOver.none(_month);
+              final balance = BarberBalance(summary: s, carry: carry).balance;
+              final latest = payouts.take(BarberPayoutsCard.latestShown).toList();
+              return AppCard(
+                key: const ValueKey('barber-payouts-card'),
+                margin: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const IconTile(
+                            icon: Icons.account_balance_wallet_outlined,
+                            color: AppTheme.green,
+                            background: AppTheme.greenSoft,
+                            size: 44),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(l.payoutsYourShare,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w700, fontSize: 14.5, color: AppTheme.textPrimary)),
+                              Text(l.payoutsThisMonth(payoutMonthLabel(fmt, _month)),
+                                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
+                            ],
+                          ),
                         ),
-                      ),
-                      Text(
-                        fmt.birr(s.share),
-                        key: const ValueKey('barber-payouts-share'),
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    l.payoutsShareLine(s.commissionPercent, s.completedJobs, fmt.birr(s.gross)),
-                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5),
-                  ),
-                  const SizedBox(height: 10),
-                  PayoutFigureLine(
-                    key: const ValueKey('barber-payouts-paid'),
-                    label: l.payoutsPaidToYou,
-                    value: fmt.birr(s.paid),
-                  ),
-                  PayoutFigureLine(
-                    key: const ValueKey('barber-payouts-balance'),
-                    label: l.payoutsBalanceOwed,
-                    value: fmt.birr(s.balance),
-                    strong: true,
-                    color: s.balance > 0 ? AppTheme.success : AppTheme.textPrimary,
-                  ),
-                  const Divider(height: 22, color: AppTheme.hairline),
-                  SectionHeader(
-                    title: l.payoutsMyPayouts,
-                    actionLabel: payouts.length > latest.length ? l.payoutsSeeAll : null,
-                    onAction: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => BarberPayoutsScreen(barber: barber, manager: _m)),
+                        Text(
+                          fmt.birr(s.share),
+                          key: const ValueKey('barber-payouts-share'),
+                          style:
+                              const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (payoutSnap.hasError)
-                    Text(l.payoutsLoadFailed, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5))
-                  else if (latest.isEmpty)
-                    Text(l.payoutsMyPayoutsEmpty,
-                        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5))
-                  else
-                    for (final p in latest) PayoutTile(payout: p),
-                ],
-              ),
-            );
-          },
+                    const SizedBox(height: 8),
+                    Text(
+                      l.payoutsShareLine(s.commissionPercent, s.completedJobs, fmt.birr(s.gross)),
+                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5),
+                    ),
+                    const SizedBox(height: 10),
+                    PayoutFigureLine(
+                      key: const ValueKey('barber-payouts-paid'),
+                      label: l.payoutsPaidToYou,
+                      value: fmt.birr(s.paid),
+                    ),
+                    if (!carry.isZero)
+                      PayoutFigureLine(
+                        key: const ValueKey('barber-payouts-carried'),
+                        label: l.payoutsCarriedOver(payoutMonthLabel(fmt, carry.from)),
+                        value: fmt.birr(carry.amount),
+                      ),
+                    PayoutFigureLine(
+                      key: const ValueKey('barber-payouts-balance'),
+                      label: l.payoutsBalanceOwed,
+                      value: fmt.birr(balance),
+                      strong: true,
+                      color: balance > 0 ? AppTheme.success : AppTheme.textPrimary,
+                    ),
+                    if (carrySnap.hasError)
+                      Text(l.payoutsCarryUnavailable,
+                          key: const ValueKey('barber-payouts-carry-failed'),
+                          style: const TextStyle(color: AppTheme.warning, fontSize: 12)),
+                    const Divider(height: 22, color: AppTheme.hairline),
+                    SectionHeader(
+                      title: l.payoutsMyPayouts,
+                      actionLabel: payouts.length > latest.length ? l.payoutsSeeAll : null,
+                      onAction: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => BarberPayoutsScreen(barber: barber, manager: _m)),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (payoutSnap.hasError)
+                      Text(l.payoutsLoadFailed, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5))
+                    else if (latest.isEmpty)
+                      Text(l.payoutsMyPayoutsEmpty,
+                          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5))
+                    else
+                      for (final p in latest) PayoutTile(payout: p),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
       ),
     );

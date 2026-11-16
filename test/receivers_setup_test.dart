@@ -34,6 +34,8 @@ Future<void> _tapPricingSave(WidgetTester tester) async {
   final save = find.byKey(const ValueKey('pricing-save'));
   await tester.scrollUntilVisible(save, 300,
       scrollable: find.descendant(of: find.byType(AdminPricingScreen), matching: find.byType(Scrollable)).first);
+  // ensureVisible's jump lays out on the next frame: pump before tapping.
+  await tester.pumpAndSettle();
   await tester.tap(save);
   await tester.pumpAndSettle();
 }

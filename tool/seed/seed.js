@@ -140,10 +140,13 @@ function buildDocuments(seed, { now = new Date(), mode = 'users' } = {}) {
       docs.push({ path: `barbershops/${id}/services/${svId}`, data: doc });
     }
     for (const b of brbs) {
-      const { id: bId, ...data } = b;
+      // private barber phone: the public barber doc never holds the phone;
+      // it goes to barbers/{id}/private/contact {phone} (owner/admin/that barber).
+      const { id: bId, phone, ...data } = b;
       const doc = { shopId: id, isAvailable: true, ...data };
-      barbers.set(bId, { id: bId, ...doc });
+      barbers.set(bId, { id: bId, ...doc, phone });
       docs.push({ path: `barbershops/${id}/barbers/${bId}`, data: doc });
+      if (phone) docs.push({ path: `barbershops/${id}/barbers/${bId}/private/contact`, data: { phone } });
     }
   }
 
@@ -184,6 +187,9 @@ function buildDocuments(seed, { now = new Date(), mode = 'users' } = {}) {
           durationMinutes: duration,
           paymentStatus: b.paymentStatus || 'unpaid',
           paymentMethod: b.paymentMethod || 'cash',
+          // private barber phone: shared with the customer once confirmed
+          // (same rule as seedBarberPhoneFor in lib/data/seed_dataset.dart).
+          ...((b.status === 'confirmed' || b.status === 'inProgress') && barber.phone ? { barberPhone: barber.phone } : {}),
         },
       });
       // Slot locks (double-booking prevention, see lib/services/availability_service.dart):

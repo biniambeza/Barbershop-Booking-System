@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
-import '../../../core/utils/phone_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../l10n/l10n.dart';
 import '../../../models/user_model.dart';
 import '../../../services/app_repository.dart';
 import '../../notifications/widgets/notification_bell.dart';
 import '../../shared/widgets/app_bar_menu.dart';
-import '../../shared/widgets/ui_kit.dart';
 import 'admin_payment_review_screen.dart';
 import 'admin_subscriptions_screen.dart';
 import 'admin_register_shop_screen.dart';
 import 'admin_shops_screen.dart'; // admin shop management
 import 'admin_payments_tab.dart'; // payments dashboard
+import 'admin_users_tab.dart'; // admin users
 import '../../payments/receipts/admin_pricing_screen.dart'; // subscription receipts
 import '../../payments/receipts/admin_receipts_screen.dart'; // subscription receipts
 import '../../payments/receipts/receivers_setup.dart'; // receivers setup (banner + red dot)
@@ -162,72 +161,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           // Tab 2: Payments (income, receipts, subscription types, plans)
           const AdminPaymentsTab(),
 
-          // Tab 3: Users Directory
-          _buildUsersTab(allUsers),
+          // Tab 3: Users (admin_users_tab.dart)
+          const AdminUsersTab(), // admin users: search, filters, edit user
         ],
       )),
       ]), // --- end receivers setup ---
-    );
-  }
-
-  // --- TAB 2: Users Directory ---
-  Widget _buildUsersTab(List<AppUser> allUsers) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: allUsers.length,
-      itemBuilder: (context, index) {
-        final u = allUsers[index];
-        final l = context.l10n;
-        final roleLabel = u.role == UserRole.admin
-            ? l.roleAdministrator
-            : (u.role == UserRole.barbershopOwner
-                ? l.roleOwner
-                : (u.role == UserRole.barber ? l.roleStaffBarber : l.roleCustomer));
-        final roleColor = u.role == UserRole.admin
-            ? AppTheme.purple
-            : (u.role == UserRole.barbershopOwner
-                ? AppTheme.ink
-                : (u.role == UserRole.barber ? AppTheme.teal : AppTheme.blue));
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(14),
-          decoration: AppTheme.cardDecoration(radius: 18),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: AppTheme.softOf(roleColor),
-                child: Text(
-                  u.name.isNotEmpty ? u.name[0].toUpperCase() : 'U',
-                  style: TextStyle(color: roleColor, fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(u.name,
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppTheme.textPrimary)),
-                    const SizedBox(height: 2),
-                    Text(
-                      u.phone != null ? formatEthiopianPhone(u.phone!) : (u.email ?? ''),
-                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
-                    ),
-                    if (u.shopId != null) ...[
-                      const SizedBox(height: 4),
-                      Text(l.assignedShop(AppRepository.instance.getShopById(u.shopId!)?.name ?? u.shopId!),
-                          style:
-                              const TextStyle(color: AppTheme.textPrimary, fontSize: 11, fontWeight: FontWeight.w500)),
-                    ],
-                  ],
-                ),
-              ),
-              StatusChip(label: roleLabel, color: roleColor),
-            ],
-          ),
-        );
-      },
     );
   }
 }

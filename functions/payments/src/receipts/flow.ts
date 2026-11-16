@@ -15,10 +15,15 @@
  *  - users/{ownerId}/notifications/{id}_receipt (verified / rejected):
  *    {title, body, type: 'receiptApproved'|'receiptRejected', read: false,
  *    createdAt, shopId, paymentId}.
+ *
+ * autoCheck.image: what was found of the owner's receipt photo - read from
+ * Firebase Storage when the payment has `imagePath` (Blaze, admin switch
+ * `storageReceipts`), else the inline base64 `receiptImage` (see image.ts).
  */
 import { DocStore } from '../logic/docstore';
 import { ParsedReceipt, extractPdfText, parseCbeReceiptText, parseTelebirrReceipt } from './parse';
 import { ReceiptCheck, ReceiptVerdict, evaluateReceipt, isDuplicateTransaction, precheckReceipt } from './evaluate';
+import { ReceiptImageSummary, StorageObjectReader, loadReceiptImage } from './image';
 import {
   PRICING_COLLECTION,
   PRICING_DOC,
@@ -44,6 +49,12 @@ export interface ReceiptFlowDeps {
   /** Other receipts with the same transaction number (any method). */
   findSameTransaction(transactionId: string): Promise<{ id: string; status: unknown; createdAt: unknown }[]>;
   now(): Date;
+  /**
+   * Reads a Firebase Storage object (receipt photos with `imagePath`); null
+   * when it does not exist. Omitted: Storage photos are reported
+   * 'unavailable' (inline photos still work).
+   */
+  readStorageObject?: StorageObjectReader;
 }
 
 export type ReceiptFlowResult =
@@ -188,6 +199,12 @@ export async function verifyReceiptPayment(
     }
   }
   let verdict = evaluateReceipt(claim, pricing, check, now, duplicate);
+  let image: ReceiptImageSummary;
+  try {
+    image = (await loadReceiptImage(payment, paymentId, deps.readStorageObject)).summary;
+  } catch {
+    image = { source: 'none', ok: false, error: 'unavailable' };
+  }
 
   return deps.store.runTransaction(async (tx) => {
     const current = await tx.get(RECEIPTS_COLLECTION, paymentId);
@@ -204,7 +221,7 @@ export async function verifyReceiptPayment(
     }
 
     const decidedAt = now.toISOString();
-    const autoCheck = { ...autoCheckSummary(check, url), checkedAt: decidedAt };
+    const autoCheck = { ...autoCheckSummary(check, url), image, checkedAt: decidedAt };
     let newEndsAt: Date | null = null;
     if (verdict.status === 'verified') {
       newEndsAt = extendByDays(toDate(shop!.subscriptionEndsAt), now, verdict.durationDays);

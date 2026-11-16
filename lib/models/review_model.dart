@@ -2,10 +2,12 @@
 /// shops and barbers.
 ///
 /// Firestore: `barbershops/{shopId}/reviews/{bookingId}` (public read). The
-/// customer of a completed booking creates it once (doc id = bookingId);
-/// the shop owner may add or edit [Review.reply] only. The same
-/// transaction adds the stars to the barber's `ratingSum` / `reviewCount`;
-/// barber and shop ratings are computed from those counters in
+/// customer of a completed booking creates it once (doc id = bookingId),
+/// and may later edit its stars / comment (sets [Review.editedAt]) or
+/// delete it; the shop owner may add or edit [Review.reply] only. The same
+/// transaction keeps the barber's `ratingSum` / `reviewCount` in line
+/// (create: + stars, + 1; edit: + new - old; delete: - stars, - 1); barber
+/// and shop ratings are computed from those counters in
 /// lib/services/rating_service.dart.
 library;
 
@@ -32,6 +34,7 @@ class Review {
     required this.createdAt,
     this.reply,
     this.replyAt,
+    this.editedAt,
   });
 
   /// Also the document id.
@@ -53,10 +56,15 @@ class Review {
   final String? reply;
   final DateTime? replyAt;
 
+  /// When the customer last changed the stars or the comment (null = never
+  /// edited; shown as "edited").
+  final DateTime? editedAt;
+
   String get id => bookingId;
 
   bool get hasComment => comment != null && comment!.isNotEmpty;
   bool get hasReply => reply != null && reply!.isNotEmpty;
+  bool get isEdited => editedAt != null;
 
   /// First name only ("Liya"), so full names are not shown publicly.
   /// Empty when the name is empty.
@@ -75,6 +83,7 @@ class Review {
         'createdAt': createdAt.toUtc().toIso8601String(),
         if (hasReply) 'reply': reply,
         if (replyAt != null) 'replyAt': replyAt!.toUtc().toIso8601String(),
+        if (editedAt != null) 'editedAt': editedAt!.toUtc().toIso8601String(),
       };
 
   factory Review.fromMap(Map<String, dynamic> map, String id) {
@@ -93,20 +102,31 @@ class Review {
       createdAt: date(map['createdAt']) ?? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
       reply: reply == null || reply.isEmpty ? null : reply,
       replyAt: date(map['replyAt']),
+      editedAt: date(map['editedAt']),
     );
   }
 
-  Review copyWith({String? reply, DateTime? replyAt}) => Review(
+  /// [clearComment] removes the comment (an edit that empties it).
+  Review copyWith({
+    String? reply,
+    DateTime? replyAt,
+    int? rating,
+    String? comment,
+    bool clearComment = false,
+    DateTime? editedAt,
+  }) =>
+      Review(
         bookingId: bookingId,
         shopId: shopId,
         barberId: barberId,
         customerId: customerId,
         customerName: customerName,
-        rating: rating,
-        comment: comment,
+        rating: rating ?? this.rating,
+        comment: clearComment ? null : (comment ?? this.comment),
         createdAt: createdAt,
         reply: reply ?? this.reply,
         replyAt: replyAt ?? this.replyAt,
+        editedAt: editedAt ?? this.editedAt,
       );
 
   /// Newest first (ties by id, so pages are stable).

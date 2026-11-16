@@ -28,19 +28,31 @@
  * email per invite document: inviteEmails/{email}_{createdAt} is created
  * before sending (closed to clients by firestore.rules).
  *
+ * onUserDisabledChanged (Firestore trigger on users/{uid} writes, Blaze
+ * only) mirrors the admin's users/{uid}.disabled flag to Firebase Auth:
+ * disabled -> Auth user disabled + refresh tokens revoked; enabled again ->
+ * Auth user enabled. See src/logic/accountDisable.ts.
+ *
+ * onShopDeleted (Firestore trigger on barbershops/{shopId} delete, Blaze
+ * only) repeats the admin app's shop-deletion cascade idempotently and
+ * deletes the logins the owner created for barbers (password-only accounts
+ * whose email was never verified). See src/logic/shopDeletion.ts.
+ *
  * Email goes out over SMTP using the secrets SMTP_HOST, SMTP_PORT,
  * SMTP_USER, SMTP_PASS and MAIL_FROM (see readme.md).
  */
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { DocumentReference, getFirestore } from 'firebase-admin/firestore';
+import { DocumentReference, FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { defineSecret } from 'firebase-functions/params';
 import { logger, setGlobalOptions } from 'firebase-functions/v2';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
-import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { onDocumentCreated, onDocumentDeleted, onDocumentWritten } from 'firebase-functions/v2/firestore';
+import { authDisableAction, mirrorDisabledToAuth } from './logic/accountDisable'; // admin users
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 
 import { sweepExpired } from './logic/cleanup';
+import { cascadeShopDeletion, SHOP_DELETED_REASON, SHOP_DELETIONS_COLLECTION, ShopDeletionStore } from './logic/shopDeletion';
 import type { CodeDoc } from './logic/codes';
 import { FlowError } from './logic/errors';
 import { buildInviteEmail, inviteEmailDocId, isInviteRole } from './logic/inviteEmail';
@@ -256,3 +268,125 @@ export const onInviteCreated = onDocumentCreated(
     logger.info('invite email sent', { role: invite.role, eventId: event.id });
   },
 );
+
+// --- shop deletion ---
+const shopDeletionStore: ShopDeletionStore = {
+  async getRecord(shopId) {
+    const snap = await db().doc(`${SHOP_DELETIONS_COLLECTION}/${shopId}`).get();
+    return snap.exists ? (snap.data() as { shopName?: string; staffUids?: string[]; barberAccountUids?: string[] }) : null;
+  },
+  async upcomingBookings(shopId, nowIso) {
+    const snap = await db().collection('bookings').where('shopId', '==', shopId).where('startAt', '>=', nowIso).get();
+    return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Record<string, string>) }));
+  },
+  async cancelBookings(items) {
+    const batch = db().batch();
+    for (const { bookingId, notice } of items) {
+      batch.update(db().doc(`bookings/${bookingId}`), {
+        status: 'cancelled',
+        cancelledBy: 'system',
+        cancelReason: SHOP_DELETED_REASON,
+      });
+      batch.set(db().doc(`users/${notice.uid}/notifications/${notice.id}`), notice.doc);
+    }
+    await batch.commit();
+  },
+  async usersOfShop(shopId) {
+    const snap = await db().collection('users').where('shopId', '==', shopId).get();
+    return snap.docs.map((d) => ({ uid: d.id, ...(d.data() as Record<string, string>) }));
+  },
+  async getUsers(uids) {
+    if (uids.length === 0) return [];
+    const snaps = await db().getAll(...uids.map((uid) => db().doc(`users/${uid}`)));
+    return snaps.filter((s) => s.exists).map((s) => ({ uid: s.id, ...(s.data() as Record<string, string>) }));
+  },
+  async downgrade(items) {
+    const batch = db().batch();
+    for (const { uid, notice } of items) {
+      batch.update(db().doc(`users/${uid}`), {
+        role: 'customer',
+        shopId: FieldValue.delete(),
+        barberId: FieldValue.delete(),
+      });
+      batch.set(db().doc(`users/${notice.uid}/notifications/${notice.id}`), notice.doc);
+    }
+    await batch.commit();
+  },
+  async invitesOfShop(shopId) {
+    const snap = await db().collection('invites').where('shopId', '==', shopId).get();
+    return snap.docs.map((d) => ({ email: d.id, role: d.get('role'), authUid: d.get('authUid') }));
+  },
+  async deleteInvites(emails) {
+    for (let i = 0; i < emails.length; i += 400) {
+      const batch = db().batch();
+      for (const email of emails.slice(i, i + 400)) batch.delete(db().doc(`invites/${email}`));
+      await batch.commit();
+    }
+  },
+  async deleteShopTree(shopId) {
+    // Deletes every descendant of the (already deleted) shop document.
+    await db().recursiveDelete(db().doc(`barbershops/${shopId}`));
+  },
+  async getAuthAccount(uid) {
+    try {
+      const u = await getAuth().getUser(uid);
+      return { uid: u.uid, emailVerified: u.emailVerified, providerIds: u.providerData.map((p) => p.providerId) };
+    } catch (e) {
+      if (authCode(e) === 'auth/user-not-found') return null;
+      throw e;
+    }
+  },
+  async deleteAuthAccount(uid) {
+    try {
+      await getAuth().deleteUser(uid);
+    } catch (e) {
+      if (authCode(e) !== 'auth/user-not-found') throw e;
+    }
+  },
+  async deleteUserProfile(uid) {
+    await db().recursiveDelete(db().doc(`users/${uid}`));
+  },
+  async markDone(shopId, result, nowIso) {
+    await db()
+      .doc(`${SHOP_DELETIONS_COLLECTION}/${shopId}`)
+      .set(
+        {
+          shopId,
+          serverCleanupAt: nowIso,
+          ...(result.deletedLogins.length > 0 ? { deletedLogins: FieldValue.arrayUnion(...result.deletedLogins) } : {}),
+        },
+        { merge: true },
+      );
+  },
+};
+
+export const onShopDeleted = onDocumentDeleted({ document: 'barbershops/{shopId}', timeoutSeconds: 540, retry: true }, async (event) => {
+  const shopId = event.params.shopId;
+  const name = event.data?.get('name');
+  const result = await cascadeShopDeletion(shopId, typeof name === 'string' ? name : undefined, shopDeletionStore, new Date());
+  logger.info('shop deletion cascade done', {
+    shopId,
+    cancelledBookings: result.cancelledBookings,
+    downgradedStaff: result.downgradedStaff,
+    deletedInvites: result.deletedInvites,
+    deletedLogins: result.deletedLogins.length,
+  });
+});
+// --- end shop deletion ---
+
+// --- admin users ---
+// Blaze only: mirrors users/{uid}.disabled (written by an admin) to
+// Firebase Auth. Spark: the app and firestore.rules enforce it alone.
+export const onUserDisabledChanged = onDocumentWritten({ document: 'users/{uid}', retry: true }, async (event) => {
+  const uid = event.params.uid;
+  const action = authDisableAction(event.data?.before?.data(), event.data?.after?.data());
+  if (action === 'none') return;
+  const done = await mirrorDisabledToAuth(uid, action, {
+    setDisabled: async (id, disabled) => {
+      await getAuth().updateUser(id, { disabled });
+    },
+    revokeRefreshTokens: (id) => getAuth().revokeRefreshTokens(id),
+  });
+  logger.info('account disabled flag mirrored to Auth', { action: done });
+});
+// --- end admin users ---

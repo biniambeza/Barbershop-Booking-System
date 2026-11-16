@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+  applyReviewCounterChange,
+  reviewCounterChange,
   barberAverage,
   barberRatingChanged,
   barberRatingSum,
@@ -73,4 +75,39 @@ test('only rating changes trigger a recompute; barber counters are never written
   assert.equal(barberRatingChanged(undefined, b), true);
   assert.equal(barberRatingChanged(b, undefined), true);
   assert.equal(barberRatingChanged(undefined, undefined), false);
+});
+
+test('review create / edit / delete change the barber counters like the app', () => {
+  assert.deepEqual(reviewCounterChange(undefined, { rating: 4 }), { ratingSumDelta: 4, reviewCountDelta: 1 });
+  assert.deepEqual(reviewCounterChange({ rating: 4 }, { rating: 2 }), { ratingSumDelta: -2, reviewCountDelta: 0 });
+  assert.deepEqual(reviewCounterChange({ rating: 3 }, { rating: 3 }), { ratingSumDelta: 0, reviewCountDelta: 0 });
+  assert.deepEqual(reviewCounterChange({ rating: 5 }, undefined), { ratingSumDelta: -5, reviewCountDelta: -1 });
+  assert.deepEqual(reviewCounterChange({ rating: 9 }, undefined), { ratingSumDelta: 0, reviewCountDelta: 0 });
+
+  // b1: 5 + 4 (sum 9, 2 reviews); b2: one 2. Shop = (4.5 + 2) / 2 = 3.3.
+  let b1 = { ratingSum: 9, reviewCount: 2 };
+  const b2 = { ratingSum: 2, reviewCount: 1 };
+  const shop = () =>
+    summarizeShopFromBarbers([
+      { id: 'b1', data: b1 },
+      { id: 'b2', data: b2 },
+    ]);
+  assert.deepEqual(shop(), { rating: 3.3, reviewCount: 3, ratedBarbers: 2 });
+  // The 4 is edited to 1: b1 = 6 / 2 = 3 -> shop (3 + 2) / 2 = 2.5.
+  b1 = applyReviewCounterChange(b1, reviewCounterChange({ rating: 4 }, { rating: 1 }));
+  assert.deepEqual(b1, { ratingSum: 6, reviewCount: 2 });
+  assert.deepEqual(shop(), { rating: 2.5, reviewCount: 3, ratedBarbers: 2 });
+  // The 5 is deleted: b1 = 1 / 1 -> shop (1 + 2) / 2 = 1.5.
+  b1 = applyReviewCounterChange(b1, reviewCounterChange({ rating: 5 }, undefined));
+  assert.deepEqual(b1, { ratingSum: 1, reviewCount: 1 });
+  assert.deepEqual(shop(), { rating: 1.5, reviewCount: 2, ratedBarbers: 2 });
+  // The last one is deleted: b1 drops out of the shop average.
+  b1 = applyReviewCounterChange(b1, reviewCounterChange({ rating: 1 }, undefined));
+  assert.deepEqual(shop(), { rating: 2, reviewCount: 1, ratedBarbers: 1 });
+  assert.equal(barberRatingChanged({ ratingSum: 9, reviewCount: 2 }, { ratingSum: 6, reviewCount: 2 }), true);
+  // Legacy doc (no ratingSum): 3.5 x 2 = 7, minus a deleted 4.
+  assert.deepEqual(applyReviewCounterChange({ rating: 3.5, reviewCount: 2 }, { ratingSumDelta: -4, reviewCountDelta: -1 }), {
+    ratingSum: 3,
+    reviewCount: 1,
+  });
 });

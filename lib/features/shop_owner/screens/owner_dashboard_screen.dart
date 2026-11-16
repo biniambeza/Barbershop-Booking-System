@@ -23,6 +23,7 @@ import '../../queue/queue_dashboard_card.dart';
 import '../../reports/screens/owner_reports_screen.dart';
 import '../../reviews/widgets/reviews_dashboard_entries.dart';
 import '../../payouts/payouts_dashboard_entries.dart'; // barber payouts
+import '../../refunds/refunds_dashboard_entries.dart'; // refunds
 import '../../barber/widgets/booking_requests_section.dart';
 
 class OwnerDashboardScreen extends StatefulWidget {
@@ -319,6 +320,9 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
 
             // --- barber payouts: commission, balances, payout history ---
             OwnerPayoutsButton(shopId: shop.id),
+
+            // --- refunds: paid bookings that were cancelled (shown while any is due) ---
+            OwnerRefundsButton(shopId: shop.id),
 
             // Platform subscription
             SizedBox(

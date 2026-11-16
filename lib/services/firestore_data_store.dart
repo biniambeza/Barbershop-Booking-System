@@ -17,6 +17,10 @@ import 'data_cache.dart';
 import 'data_store.dart';
 import 'early_finish_service.dart' show EarlyFinishNotice; // early finish
 import 'time_off_service.dart';
+import 'shop_deletion.dart'; // shop deletion
+import 'refund_writes.dart'; // refunds
+import 'refunds.dart'; // refunds
+import '../models/app_notification.dart' show AppNotification; // vacation
 
 /// Firestore-backed [DataStore].
 ///
@@ -31,10 +35,12 @@ import 'time_off_service.dart';
 ///               collectionGroup services; collectionGroup barbers;
 ///               bookings where customerId == uid (bounded, see below)
 ///  * owner:     doc barbershops/{shopId}; its services and barbers subcollections;
+///               each barber's private/contact doc (one doc listener per barber);
 ///               bookings where shopId == shopId (bounded);
 ///               invites where shopId == shopId and role == 'barber';
 ///               users where shopId == shopId; plans
 ///  * barber:    doc barbershops/{shopId}; its services and barbers subcollections;
+///               their own barbers/{barberId}/private/contact doc;
 ///               bookings where shopId == shopId and barberId == barberId (bounded)
 ///  * admin:     barbershops; collectionGroup services; collectionGroup barbers;
 ///               users; invites; plans (no bookings: the admin manages shops,
@@ -94,6 +100,55 @@ class FirestoreDataStore implements DataStore {
   CollectionReference<Map<String, dynamic>> get _users => _db.collection('users');
   CollectionReference<Map<String, dynamic>> _servicesOf(String shopId) => _shops.doc(shopId).collection('services');
   CollectionReference<Map<String, dynamic>> _barbersOf(String shopId) => _shops.doc(shopId).collection('barbers');
+
+  // --- private barber phone ---
+  /// `barbershops/{shopId}/barbers/{barberId}/private/contact`: `{phone}`
+  /// (E.164), readable by the shop's owner, admins and that barber only.
+  static String barberContactPath(String shopId, String barberId) =>
+      'barbershops/$shopId/barbers/$barberId/private/contact';
+
+  DocumentReference<Map<String, dynamic>> _contactOf(String shopId, String barberId) =>
+      _db.doc(barberContactPath(shopId, barberId));
+
+  /// Contact doc listeners, keyed by barber id (owner: every barber of the
+  /// shop; barber: their own).
+  final Map<String, StreamSubscription<dynamic>> _contactSubs = {};
+
+  /// Listens to [barberId]'s private contact into `cache.barberPhones`.
+  /// Errors (e.g. rules not deployed yet) are logged, never shown as a
+  /// sync error: the phone is optional.
+  void _watchContact(String shopId, String barberId) {
+    if (_contactSubs.containsKey(barberId)) return;
+    _contactSubs[barberId] = _contactOf(shopId, barberId).snapshots().listen(
+      (snap) {
+        final phone = snap.data()?['phone'];
+        final before = cache.barberPhones[barberId];
+        if (phone is String && phone.isNotEmpty) {
+          cache.barberPhones[barberId] = phone;
+        } else {
+          cache.barberPhones.remove(barberId);
+        }
+        if (before != cache.barberPhones[barberId]) onChanged();
+      },
+      onError: (Object e) => debugPrint('Barber contact listener error: $e'),
+    );
+  }
+
+  /// Owner: keeps one contact listener per barber of the shop.
+  void _syncContactListeners(String shopId) {
+    final ids = {
+      for (final b in cache.barbers.values)
+        if (b.shopId == shopId) b.id,
+    };
+    for (final id in _contactSubs.keys.where((id) => !ids.contains(id)).toList()) {
+      _contactSubs.remove(id)?.cancel();
+      cache.barberPhones.remove(id);
+    }
+    for (final id in ids) {
+      _watchContact(shopId, id);
+    }
+  }
+  // --- end private barber phone ---
 
   // --- Listeners ---
 
@@ -195,7 +250,10 @@ class FirestoreDataStore implements DataStore {
         if (shopId != null) {
           listenDoc(_shops.doc(shopId), cache.shops, Barbershop.fromMap);
           listenQuery(_servicesOf(shopId), cache.services, BarbershopService.fromMap);
-          listenQuery(_barbersOf(shopId), cache.barbers, Barber.fromMap);
+          listen<QuerySnapshot<Map<String, dynamic>>>(_barbersOf(shopId).snapshots(), (snap) {
+            _applyQuery(snap, cache.barbers, Barber.fromMap);
+            _syncContactListeners(shopId); // private barber phone
+          });
           listenBookings(_bookings.where('shopId', isEqualTo: shopId), staffHistoryLimit);
           listenQuery(
             _invites.where('shopId', isEqualTo: shopId).where('role', isEqualTo: UserRole.barber.name),
@@ -212,6 +270,7 @@ class FirestoreDataStore implements DataStore {
           listenDoc(_shops.doc(shopId), cache.shops, Barbershop.fromMap);
           listenQuery(_servicesOf(shopId), cache.services, BarbershopService.fromMap);
           listenQuery(_barbersOf(shopId), cache.barbers, Barber.fromMap);
+          _watchContact(shopId, barberId); // private barber phone
           listenBookings(
             _bookings.where('shopId', isEqualTo: shopId).where('barberId', isEqualTo: barberId),
             staffHistoryLimit,
@@ -263,8 +322,9 @@ class FirestoreDataStore implements DataStore {
 
   /// Cancels every listener and empties the cache (sign-out).
   Future<void> stop() async {
-    final subs = List.of(_subs);
+    final subs = [..._subs, ..._contactSubs.values];
     _subs.clear();
+    _contactSubs.clear();
     _scopeKey = null;
     for (final s in subs) {
       await s.cancel();
@@ -315,6 +375,8 @@ class FirestoreDataStore implements DataStore {
     }
     for (final b in barbers) {
       batch.set(shopRef.collection('barbers').doc(b.id), _withoutNulls(b.toMap()));
+      final phone = b.phone; // private barber phone
+      if (phone != null && phone.isNotEmpty) batch.set(_contactOf(shop.id, b.id), {'phone': phone});
     }
     if (ownerInvite != null) batch.set(_invites.doc(ownerInvite.email), ownerInvite.toMap());
     await batch.commit();
@@ -352,22 +414,140 @@ class FirestoreDataStore implements DataStore {
 
   @override
   Future<void> deleteShop(String shopId) async {
-    // Subcollections are not deleted with their parent; remove them so the
-    // collection-group listeners do not show orphans. (Only the admin, who
-    // has every service/barber/invite in the cache, deletes shops.)
-    final batch = _db.batch();
-    for (final s in cache.services.values.where((s) => s.shopId == shopId)) {
-      batch.delete(_servicesOf(shopId).doc(s.id));
-    }
-    for (final b in cache.barbers.values.where((b) => b.shopId == shopId)) {
-      batch.delete(_barbersOf(shopId).doc(b.id));
-    }
-    for (final i in cache.invites.values.where((i) => i.shopId == shopId)) {
-      batch.delete(_invites.doc(i.email));
-    }
-    batch.delete(_shops.doc(shopId));
-    await batch.commit();
+    // Subcollections are not deleted with their parent; remove them (the
+    // private barber contacts too: 'private' in kBarberSubcollections) so
+    // the collection-group listeners do not show orphans.
+    await deleteShopData(shopId);
+    await _deleteDocs([for (final i in await invitesOfShop(shopId)) _invites.doc(i.email)]);
+    await deleteShopDoc(shopId);
   }
+
+  // --- shop deletion (see shop_deletion.dart) ---
+
+  /// Deletes [refs] in batches of [kShopDeletionDeleteChunk].
+  Future<void> _deleteDocs(List<DocumentReference<Map<String, dynamic>>> refs) async {
+    for (final chunk in chunked(refs, kShopDeletionDeleteChunk)) {
+      final batch = _db.batch();
+      for (final ref in chunk) {
+        batch.delete(ref);
+      }
+      await batch.commit();
+    }
+  }
+
+  /// Deletes every document of [collection], [kShopDeletionDeleteChunk] at
+  /// a time (reads a page, deletes it, repeats until a page is short).
+  Future<void> _deleteCollection(CollectionReference<Map<String, dynamic>> collection) async {
+    while (true) {
+      final page = await collection.limit(kShopDeletionDeleteChunk).get();
+      if (page.docs.isEmpty) return;
+      await _deleteDocs([for (final d in page.docs) d.reference]);
+      if (page.docs.length < kShopDeletionDeleteChunk) return;
+    }
+  }
+
+  @override
+  Future<void> recordShopDeletion(ShopDeletionRecord record) {
+    return _db.collection(kShopDeletionsCollection).doc(record.shopId).set({
+      'shopId': record.shopId,
+      'shopName': record.shopName,
+      'requestedBy': record.requestedBy,
+      'requestedAt': record.requestedAt.toUtc().toIso8601String(),
+      'staffUids': FieldValue.arrayUnion(record.staffUids),
+      'barberAccountUids': FieldValue.arrayUnion(record.barberAccountUids),
+    }, SetOptions(merge: true));
+  }
+
+  /// `bookings where shopId == shopId and startAt >= now` (the composite
+  /// index of the owner's listener), then the exact instant on the client.
+  @override
+  Future<List<Booking>> upcomingBookingsOfShop(String shopId, DateTime nowUtc) async {
+    final (nowIso, _) = bookingWindowBounds(nowUtc);
+    final snap = await _bookings
+        .where('shopId', isEqualTo: shopId)
+        .where('startAt', isGreaterThanOrEqualTo: nowIso)
+        .get();
+    return [
+      for (final d in snap.docs) Booking.fromMap(d.data(), d.id),
+    ].where((b) => !b.startAt.isBefore(nowUtc.toUtc())).toList();
+  }
+
+  @override
+  Future<void> cancelBookingsForShopDeletion(List<ShopBookingCancellation> items,
+      {required String cancelledBy, RefundContext? refund}) async {
+    for (final chunk in chunked(items, kShopDeletionBookingChunk)) {
+      final batch = _db.batch();
+      for (final item in chunk) {
+        final update = <String, dynamic>{
+          'status': BookingStatus.cancelled.name,
+          'cancelledBy': cancelledBy,
+          'cancelReason': kShopDeletedCancelReason,
+        };
+        // refunds: a paid booking gets its refund flag in this same update.
+        if (refund != null) {
+          flagRefundIfPaid(
+            db: _db,
+            create: (ref, data) => batch.set(ref, data),
+            bookingUpdate: update,
+            booking: item.booking,
+            context: refund,
+          );
+        }
+        batch.update(_bookings.doc(item.booking.id), update);
+        batch.set(_users.doc(item.notice.recipientUid).collection('notifications').doc(item.notice.id),
+            item.notice.toMap());
+      }
+      await batch.commit();
+    }
+  }
+
+  @override
+  Future<List<AppUser>> staffOfShop(String shopId) async {
+    final snap = await _users.where('shopId', isEqualTo: shopId).get();
+    return [for (final d in snap.docs) AppUser.fromMap(d.data(), d.id)];
+  }
+
+  @override
+  Future<List<UserInvite>> invitesOfShop(String shopId) async {
+    final snap = await _invites.where('shopId', isEqualTo: shopId).get();
+    return [for (final d in snap.docs) UserInvite.fromMap(d.data(), d.id)];
+  }
+
+  @override
+  Future<void> revokeShopStaff(String shopId, List<ShopStaffRevocation> items) async {
+    for (final chunk in chunked(items, kShopDeletionStaffChunk)) {
+      final batch = _db.batch();
+      for (final item in chunk) {
+        batch.update(_users.doc(item.user.uid), {
+          'role': UserRole.customer.name,
+          'shopId': FieldValue.delete(),
+          'barberId': FieldValue.delete(),
+        });
+        batch.set(_users.doc(item.notice.recipientUid).collection('notifications').doc(item.notice.id),
+            item.notice.toMap());
+      }
+      await batch.commit();
+    }
+    await _deleteDocs([for (final i in await invitesOfShop(shopId)) _invites.doc(i.email)]);
+  }
+
+  @override
+  Future<void> deleteShopData(String shopId) async {
+    final barbers = await _barbersOf(shopId).get();
+    for (final b in barbers.docs) {
+      for (final sub in kBarberSubcollections) {
+        await _deleteCollection(b.reference.collection(sub));
+      }
+    }
+    await _deleteDocs([for (final b in barbers.docs) b.reference]);
+    for (final sub in kShopSubcollections) {
+      await _deleteCollection(_shops.doc(shopId).collection(sub));
+    }
+  }
+
+  @override
+  Future<void> deleteShopDoc(String shopId) => _shops.doc(shopId).delete();
+  // --- end shop deletion ---
 
   // --- admin shop management ---
   @override
@@ -390,9 +570,10 @@ class FirestoreDataStore implements DataStore {
   Future<void> deleteService(BarbershopService service) => _servicesOf(service.shopId).doc(service.id).delete();
 
   @override
-  Future<void> addBarber(Barber barber, UserInvite? invite) async {
+  Future<void> addBarber(Barber barber, UserInvite? invite, {String? phone}) async {
     final batch = _db.batch();
     batch.set(_barbersOf(barber.shopId).doc(barber.id), _withoutNulls(barber.toMap()));
+    if (phone != null && phone.isNotEmpty) batch.set(_contactOf(barber.shopId, barber.id), {'phone': phone});
     if (invite != null) batch.set(_invites.doc(invite.email), invite.toMap());
     await batch.commit();
   }
@@ -408,10 +589,36 @@ class FirestoreDataStore implements DataStore {
   @override
   Future<void> deleteBarber(Barber barber, UserInvite? pendingInvite) async {
     final batch = _db.batch();
+    batch.delete(_contactOf(barber.shopId, barber.id)); // private barber phone
     batch.delete(_barbersOf(barber.shopId).doc(barber.id));
     if (pendingInvite != null) batch.delete(_invites.doc(pendingInvite.email));
     await batch.commit();
   }
+
+  // --- private barber phone ---
+  @override
+  Future<void> setBarberPhone(String shopId, String barberId, String? phone) {
+    final ref = _contactOf(shopId, barberId);
+    return phone == null || phone.isEmpty ? ref.delete() : ref.set({'phone': phone});
+  }
+
+  @override
+  Future<void> migrateBarberContact(Barber barber, {String? phone}) async {
+    final contactRef = _contactOf(barber.shopId, barber.id);
+    final copy = phone != null && phone.isNotEmpty && !(await contactRef.get()).exists;
+    final batch = _db.batch();
+    if (copy) batch.set(contactRef, {'phone': phone});
+    batch.update(_barbersOf(barber.shopId).doc(barber.id), {
+      'phone': FieldValue.delete(),
+      'email': FieldValue.delete(),
+    });
+    await batch.commit();
+  }
+
+  @override
+  Future<void> shareBarberPhone(Booking booking, String phone) =>
+      _bookings.doc(booking.id).update({'barberPhone': phone});
+  // --- end private barber phone ---
 
   CollectionReference<Map<String, dynamic>> _slotLocksOf(String shopId, String barberId) =>
       _barbersOf(shopId).doc(barberId).collection('slotLocks');
@@ -472,7 +679,7 @@ class FirestoreDataStore implements DataStore {
   /// status change is a plain `update({status})`.
   @override
   Future<void> updateBookingStatus(Booking booking, BookingStatus status,
-      {String? cancelledBy, String? cancelReasonNote}) async {
+      {String? cancelledBy, String? cancelReasonNote, RefundContext? refund}) async {
     final bookingRef = _bookings.doc(booking.id);
     if (status != BookingStatus.cancelled) {
       await bookingRef.update({'status': status.name});
@@ -481,16 +688,33 @@ class FirestoreDataStore implements DataStore {
     final locksRef = _slotLocksOf(booking.shopId, booking.barberId);
     final ids = slotLockIdsFor(booking.startAt, booking.endAt);
     await _db.runTransaction<void>((tx) async {
+      // refunds: the paid state as of this transaction decides the flag.
+      Booking current = booking;
+      if (refund != null) {
+        final snap = await tx.get(bookingRef);
+        final data = snap.data();
+        if (data != null) current = Booking.fromMap(data, snap.id);
+      }
       final mine = <DocumentReference<Map<String, dynamic>>>[];
       for (final id in ids) {
         final snap = await tx.get(locksRef.doc(id));
         if (snap.exists && snap.data()?['bookingId'] == booking.id) mine.add(snap.reference);
       }
-      tx.update(bookingRef, {
+      final update = <String, dynamic>{
         'status': status.name,
         if (cancelledBy != null) 'cancelledBy': cancelledBy,
         if (cancelReasonNote != null) 'cancelReasonNote': cancelReasonNote,
-      });
+      };
+      if (refund != null && current.status != BookingStatus.cancelled) {
+        flagRefundIfPaid(
+          db: _db,
+          create: (ref, data) => tx.set(ref, data),
+          bookingUpdate: update,
+          booking: current,
+          context: refund,
+        );
+      }
+      tx.update(bookingRef, update);
       for (final ref in mine) {
         tx.delete(ref);
       }
@@ -678,12 +902,35 @@ class FirestoreDataStore implements DataStore {
     await batch.commit();
   }
 
+  // --- vacation (see vacation_service.dart) ---
+
+  /// `slotLocks where startAt >= start and startAt < end` (single-field
+  /// range, no composite index).
+  @override
+  Future<List<SlotLock>> slotLocksBetween(String shopId, String barberId, DateTime startUtc, DateTime endUtc) async {
+    final snap = await _slotLocksOf(shopId, barberId)
+        .where('startAt', isGreaterThanOrEqualTo: startUtc.toUtc().toIso8601String())
+        .where('startAt', isLessThan: endUtc.toUtc().toIso8601String())
+        .get();
+    return [for (final d in snap.docs) SlotLock.fromMap(d.data(), d.id)];
+  }
+
+  /// A plain `set` (a create: an existing notice, e.g. from
+  /// functions/notifications, is an update the rules refuse) of exactly
+  /// `{type: 'cancelled', title, body, bookingId, read: false, createdAt}`.
+  @override
+  Future<void> writeVacationCancelNotice(String recipientUid, AppNotification notice) {
+    return _users.doc(recipientUid).collection('notifications').doc(notice.id).set(notice.toMap());
+  }
+  // --- end vacation ---
+
   // --- barber acceptance (see booking_acceptance.dart) ---
 
   /// One transaction: read the booking; abort with
   /// [AppErrorCode.bookingNotChangeable] unless it is still 'pending' (the
   /// expiry function may have cancelled it); then `update` exactly
   /// `{status: 'confirmed', acceptedAt}`. The slot locks stay as they are.
+  /// (The barber's phone follows in a separate update, [shareBarberPhone].)
   @override
   Future<void> acceptBookingRequest(Booking booking, {required DateTime acceptedAt}) async {
     final bookingRef = _bookings.doc(booking.id);
@@ -705,7 +952,7 @@ class FirestoreDataStore implements DataStore {
   /// 'barber', declineReason?}` and `delete` each lock whose `bookingId` is
   /// this booking.
   @override
-  Future<void> declineBookingRequest(Booking booking, {String? reason}) async {
+  Future<void> declineBookingRequest(Booking booking, {String? reason, RefundContext? refund}) async {
     final bookingRef = _bookings.doc(booking.id);
     final locksRef = _slotLocksOf(booking.shopId, booking.barberId);
     await _db.runTransaction<void>((tx) async {
@@ -720,11 +967,23 @@ class FirestoreDataStore implements DataStore {
         final lock = await tx.get(locksRef.doc(id));
         if (lock.exists && lock.data()?['bookingId'] == booking.id) mine.add(lock.reference);
       }
-      tx.update(bookingRef, {
+      final update = <String, dynamic>{
         'status': BookingStatus.cancelled.name,
         'cancelledBy': 'barber',
         if (reason != null) 'declineReason': reason,
-      });
+      };
+      // refunds: a request is normally paid only after it is accepted, but
+      // flag one that is paid anyway.
+      if (refund != null) {
+        flagRefundIfPaid(
+          db: _db,
+          create: (ref, data) => tx.set(ref, data),
+          bookingUpdate: update,
+          booking: fresh,
+          context: refund,
+        );
+      }
+      tx.update(bookingRef, update);
       for (final ref in mine) {
         tx.delete(ref);
       }
@@ -756,4 +1015,64 @@ class FirestoreDataStore implements DataStore {
     await batch.commit();
   }
   // --- end early finish ---
+
+  // --- refunds ---
+
+  /// `bookings where refundStatus == 'due'` (+ `shopId ==` for an owner):
+  /// equality filters only, so no composite index is needed. Sorted in
+  /// code (oldest flag first).
+  @override
+  Stream<List<Booking>> watchRefundsDue({String? shopId}) {
+    Query<Map<String, dynamic>> q = _bookings.where('refundStatus', isEqualTo: RefundStatus.due.name);
+    if (shopId != null) q = q.where('shopId', isEqualTo: shopId);
+    return q
+        .limit(kRefundsQueryLimit)
+        .snapshots()
+        .map((snap) => refundsDue([for (final d in snap.docs) Booking.fromMap(d.data(), d.id)]));
+  }
+
+  /// One transaction: re-read the booking (still cancelled, paid and not
+  /// flagged), `update` it with exactly [BookingRefund.toFlagFields] and
+  /// create the customer's notice.
+  @override
+  Future<void> flagRefund(Booking booking, BookingRefund flag, RefundNotice? notice) async {
+    final ref = _bookings.doc(booking.id);
+    await _db.runTransaction<void>((tx) async {
+      final snap = await tx.get(ref);
+      final data = snap.data();
+      if (data == null) throw AppStateException(AppErrorCode.bookingNotChangeable);
+      final fresh = Booking.fromMap(data, snap.id);
+      if (fresh.status != BookingStatus.cancelled || !needsRefundFlag(fresh)) {
+        throw AppStateException(AppErrorCode.bookingNotChangeable);
+      }
+      tx.update(ref, flag.toFlagFields());
+      if (notice != null) {
+        tx.set(_users.doc(notice.recipientUid).collection('notifications').doc(notice.id), notice.toMap());
+      }
+    });
+  }
+
+  /// One transaction: re-read the booking (refundStatus still 'due'),
+  /// `update` it with exactly [fields] and create the customer's notice.
+  @override
+  Future<void> markRefunded(Booking booking, Map<String, dynamic> fields, RefundNotice? notice) async {
+    final ref = _bookings.doc(booking.id);
+    await _db.runTransaction<void>((tx) async {
+      final snap = await tx.get(ref);
+      final data = snap.data();
+      if (data == null || data['refundStatus'] != RefundStatus.due.name) {
+        throw AppStateException(AppErrorCode.bookingNotChangeable);
+      }
+      final update = Map<String, dynamic>.of(fields);
+      // Already 'refunded' (e.g. an admin's Chapa review): the customer was
+      // told then, and paymentStatus stays as it is.
+      final alreadyRefunded = data['paymentStatus'] == PaymentStatus.refunded.name;
+      if (alreadyRefunded) update.remove('paymentStatus');
+      tx.update(ref, update);
+      if (notice != null && !alreadyRefunded) {
+        tx.set(_users.doc(notice.recipientUid).collection('notifications').doc(notice.id), notice.toMap());
+      }
+    });
+  }
+  // --- end refunds ---
 }

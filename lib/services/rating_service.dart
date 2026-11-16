@@ -4,7 +4,9 @@
 ///
 ///  * Barber: `ratingSum / reviewCount` (one decimal). The customer's app
 ///    adds the review's stars to `ratingSum` and 1 to `reviewCount` in the
-///    transaction that creates the review (firestore.rules checks both).
+///    transaction that creates the review, adds (new - old) stars when the
+///    customer edits it and takes the stars and 1 off when they delete it
+///    (firestore.rules checks the maths).
 ///    Legacy docs without `ratingSum` use round(rating * reviewCount).
 ///    No reviews = "New".
 ///  * Shop: the average of its rated barbers' averages (barbers with
@@ -107,6 +109,36 @@ Map<String, Object> barberCounterUpdate(Map<String, dynamic> barberDoc, Review r
   return {
     'ratingSum': current.effectiveRatingSum + review.rating,
     'reviewCount': current.reviewCount + 1,
+    'lastReviewId': review.bookingId,
+  };
+}
+
+/// The barber-doc update written with an edited review (same transaction):
+/// `ratingSum` + ([newRating] - [oldRating]), `reviewCount` unchanged and
+/// `lastReviewId` = [reviewId]. [oldRating] is the stored review's rating as
+/// read in the transaction.
+Map<String, Object> barberCounterEditUpdate(
+  Map<String, dynamic> barberDoc, {
+  required String barberId,
+  required String reviewId,
+  required int oldRating,
+  required int newRating,
+}) {
+  final current = Barber.fromMap(barberDoc, barberId);
+  return {
+    'ratingSum': current.effectiveRatingSum + newRating - oldRating,
+    'lastReviewId': reviewId,
+  };
+}
+
+/// The barber-doc update written with a deleted review (same transaction):
+/// `ratingSum` - its stars, `reviewCount` - 1 and `lastReviewId` = the
+/// review's id. [review] is the stored review as read in the transaction.
+Map<String, Object> barberCounterDeleteUpdate(Map<String, dynamic> barberDoc, Review review) {
+  final current = Barber.fromMap(barberDoc, review.barberId);
+  return {
+    'ratingSum': current.effectiveRatingSum - review.rating,
+    'reviewCount': current.reviewCount - 1,
     'lastReviewId': review.bookingId,
   };
 }

@@ -7,6 +7,8 @@ import 'l10n/l10n.dart';
 import 'firebase_options.dart';
 import 'models/user_model.dart';
 import 'services/app_repository.dart';
+import 'services/app_check_setup.dart';
+import 'services/crash_reporting.dart';
 import 'services/notification_service.dart';
 import 'features/notifications/screens/notifications_screen.dart';
 import 'features/payments/payment_flow.dart';
@@ -30,6 +32,10 @@ Future<void> main() async {
   } else {
     try {
       await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      // App Check (tokens only, not enforced) before the first Firebase
+      // request, then Crashlytics (release builds only). Neither throws.
+      await setupAppCheck();
+      await setupCrashReporting();
       AppRepository.instance.attachFirebase();
     } catch (e) {
       // Never fall back to the offline demo in a production build: that

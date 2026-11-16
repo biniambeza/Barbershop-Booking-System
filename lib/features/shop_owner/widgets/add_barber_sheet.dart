@@ -283,6 +283,9 @@ class _AddBarberSheetState extends State<AddBarberSheet> {
               decoration: InputDecoration(
                 labelText: l.barberMobileOptional,
                 hintText: '09XX XXX XXX',
+                // private barber phone: stored in private/contact, not the public profile
+                helperText: l.barberPhoneHelper,
+                helperMaxLines: 3,
                 errorText: _phoneError,
                 prefixIcon: const Icon(Icons.phone_android),
               ),

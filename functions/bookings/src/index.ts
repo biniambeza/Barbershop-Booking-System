@@ -21,6 +21,13 @@
  *    their own slot locks deleted, one transaction per booking. Query:
  *    bookings where status == 'pending' and startAt <= now + 60 min
  *    (composite index status+startAt), re-checked in code and in the tx.
+ *  - flagRefundOnCancel (bookings/{bookingId} updated): refunds. A booking
+ *    that is cancelled and paid but has no refundStatus (the app normally
+ *    flags it in the cancel write) gets refundStatus 'due', refundAmount,
+ *    refundReason, refundFlaggedAt and the customer's
+ *    users/{uid}/notifications/{bookingId}_refundDue, in one transaction;
+ *    an existing refundStatus is never overwritten. The booking's refund
+ *    fields are mirrored onto payments/{paymentId}.
  */
 import { initializeApp } from 'firebase-admin/app';
 import { DocumentReference, getFirestore } from 'firebase-admin/firestore';
@@ -31,6 +38,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { sweepExpiredLocks } from './logic/cleanup';
 import { EXPIRE_MAX_PER_RUN, expireRequestInTx, expiryCutoff, selectExpiredRequests } from './logic/expire';
 import { shouldVerifyUpdate } from './logic/reschedule';
+import { flagRefundInTx, RefundBookingData, shouldHandleRefund } from './logic/refund'; // refunds
 import { BookingData, LockData, verifyBookingLocksInTx } from './logic/verify';
 
 const REGION = 'europe-west1';
@@ -164,5 +172,58 @@ export const expirePendingBookings = onSchedule(
       }
     }
     logger.info('pending booking requests expired', { scanned: snap.size, expired, failed });
+  },
+);
+
+// --- refunds: flag paid bookings that were cancelled (backstop for the app) ---
+export const flagRefundOnCancel = onDocumentUpdated(
+  // Safe to retry: the transaction re-reads the booking and never touches
+  // one that already has a refundStatus; the notice is created only if
+  // missing and the payment mirror only writes differences.
+  { document: 'bookings/{bookingId}', retry: true },
+  async (event) => {
+    const before = event.data?.before.exists ? (event.data.before.data() as RefundBookingData) : null;
+    const after = event.data?.after.exists ? (event.data.after.data() as RefundBookingData) : null;
+    if (!shouldHandleRefund(before, after)) return;
+    const bookingId = event.params.bookingId;
+    const bookingRef = db().doc(`bookings/${bookingId}`);
+    const now = new Date();
+    const cancelTransition = before?.status !== 'cancelled' && after?.status === 'cancelled';
+    const outcome = await db().runTransaction((tx) =>
+      flagRefundInTx(bookingId, { now, cancelTransition }, {
+        async getBooking() {
+          const s = await tx.get(bookingRef);
+          return s.exists ? (s.data() as RefundBookingData) : null;
+        },
+        async getCutoffHours(shopId) {
+          const s = await tx.get(db().doc(`barbershops/${shopId}`));
+          const v = s.exists ? s.get('cancellationCutoffHours') : null;
+          return typeof v === 'number' ? v : null;
+        },
+        async getLanguage(uid) {
+          const s = await tx.get(db().doc(`users/${uid}`));
+          return s.exists ? s.get('language') : undefined;
+        },
+        async noticeExists(uid, noticeId) {
+          return (await tx.get(db().doc(`users/${uid}/notifications/${noticeId}`))).exists;
+        },
+        async getPayment(paymentId) {
+          const s = await tx.get(db().doc(`payments/${paymentId}`));
+          return s.exists ? (s.data() as Record<string, unknown>) : null;
+        },
+        updateBooking(fields) {
+          tx.update(bookingRef, fields);
+        },
+        createNotice(uid, noticeId, data) {
+          tx.create(db().doc(`users/${uid}/notifications/${noticeId}`), data);
+        },
+        updatePayment(paymentId, fields) {
+          tx.update(db().doc(`payments/${paymentId}`), fields);
+        },
+      }),
+    );
+    if (outcome.flagged || outcome.mirrored) {
+      logger.info('booking refund handled', { bookingId, ...outcome });
+    }
   },
 );

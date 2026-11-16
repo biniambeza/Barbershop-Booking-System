@@ -356,6 +356,8 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.scrollUntilVisible(find.byKey(const ValueKey('rate-booking-book_5')), 200);
+      await tester.ensureVisible(find.byKey(const ValueKey('rate-booking-book_5')));
+      await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('rate-booking-book_1')), findsNothing); // upcoming
       await tester.tap(find.byKey(const ValueKey('rate-booking-book_5')));
       await tester.pumpAndSettle();

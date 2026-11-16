@@ -17,7 +17,20 @@ class Barber {
   /// written before the client-side counters (see [effectiveRatingSum]).
   final int? ratingSum;
   final bool isAvailable;
+
+  /// Legacy only: barber profiles are public (anyone may read them), so the
+  /// app no longer writes an email here (the login email lives in the
+  /// invite / users doc). Read so the owner's app can strip it
+  /// ([hasLegacyContactFields]).
   final String? email;
+
+  /// The barber's private contact number. Never written to the public
+  /// barber doc ([toMap] / [toProfileMap] leave it out): it lives in
+  /// `barbershops/{shopId}/barbers/{barberId}/private/contact` (readable by
+  /// the shop's owner, admins and that barber) and is copied into a booking
+  /// as `barberPhone` once the booking is confirmed. Set on a [Barber] only
+  /// while it is being added, or when read from a legacy public doc that
+  /// still has the field (the owner's app then migrates it).
   final String? phone;
   final List<String> specialties;
 
@@ -41,6 +54,11 @@ class Barber {
   /// (the same fallback firestore.rules uses for the first new review).
   int get effectiveRatingSum => ratingSum ?? (reviewCount <= 0 ? 0 : (rating * reviewCount).round());
 
+  /// A legacy public doc that still carries `phone` or `email` (see
+  /// AppRepository.migrateLegacyBarberContacts).
+  bool get hasLegacyContactFields =>
+      (phone != null && phone!.isNotEmpty) || (email != null && email!.isNotEmpty);
+
   Barber({
     required this.id,
     required this.shopId,
@@ -60,7 +78,8 @@ class Barber {
     this.commissionPercent, // barber commission
   });
 
-  /// Full document, used when the profile is created.
+  /// Full public document, used when the profile is created. Contact
+  /// details (phone, email) are never part of it.
   Map<String, dynamic> toMap() {
     return {
       'shopId': shopId,
@@ -71,8 +90,6 @@ class Barber {
       'reviewCount': reviewCount,
       if (ratingSum != null) 'ratingSum': ratingSum,
       'isAvailable': isAvailable,
-      'email': email,
-      'phone': phone,
       'specialties': specialties,
       if (workingDays != null) 'workingDays': workingDays,
       if (startHour != null) 'startHour': startHour,
@@ -81,17 +98,15 @@ class Barber {
     };
   }
 
-  /// The fields an owner may edit (never rating/reviewCount/ratingSum/shopId).
-  /// Null schedule fields are returned as null; the data layer turns them
-  /// into field deletes.
+  /// The fields an owner may edit (never rating/reviewCount/ratingSum/shopId,
+  /// never the private phone or the email). Null schedule fields are
+  /// returned as null; the data layer turns them into field deletes.
   Map<String, dynamic> toProfileMap() {
     return {
       'name': name,
       'title': title,
       'avatarUrl': avatarUrl,
       'isAvailable': isAvailable,
-      'email': email,
-      'phone': phone,
       'specialties': specialties,
       'workingDays': workingDays,
       'startHour': startHour,
@@ -118,6 +133,7 @@ class Barber {
     int? endHour,
     bool clearSchedule = false,
     int? commissionPercent, // barber commission
+    bool clearContact = false,
   }) {
     return Barber(
       id: id ?? this.id,
@@ -129,8 +145,8 @@ class Barber {
       reviewCount: reviewCount ?? this.reviewCount,
       ratingSum: ratingSum ?? this.ratingSum,
       isAvailable: isAvailable ?? this.isAvailable,
-      email: email ?? this.email,
-      phone: phone ?? this.phone,
+      email: clearContact ? null : (email ?? this.email),
+      phone: clearContact ? null : (phone ?? this.phone),
       specialties: specialties ?? this.specialties,
       workingDays: clearSchedule ? null : (workingDays ?? this.workingDays),
       startHour: clearSchedule ? null : (startHour ?? this.startHour),
@@ -150,8 +166,8 @@ class Barber {
       reviewCount: (map['reviewCount'] as num?)?.toInt() ?? 0,
       ratingSum: (map['ratingSum'] as num?)?.toInt(),
       isAvailable: map['isAvailable'] ?? true,
-      email: map['email'],
-      phone: map['phone'],
+      email: map['email'] is String ? map['email'] as String : null,
+      phone: map['phone'] is String ? map['phone'] as String : null,
       specialties: (map['specialties'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
           const ['Skin Fade', 'Beard Trim'],
       workingDays: (map['workingDays'] as List<dynamic>?)?.map((e) => (e as num).toInt()).toList(),

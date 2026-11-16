@@ -3,9 +3,12 @@
  * line):
  *
  *  - Barber: barbershops/{s}/barbers/{b} keeps ratingSum and reviewCount.
- *    The customer's app adds the review's stars and 1 in the transaction
- *    that creates the review (firestore.rules checks it), so this codebase
- *    never touches the barber counters (no double counting). Legacy docs
+ *    The customer's app changes them in the transaction that creates
+ *    (+stars, +1), edits (+new - old) or deletes (-stars, -1) the review
+ *    (firestore.rules checks the maths; see reviewCounterChange), so this
+ *    codebase never touches the barber counters (no double counting). Each
+ *    of those barber writes re-runs aggregateShopRating, so edits and
+ *    deletes reach the cached shop rating like new reviews. Legacy docs
  *    without ratingSum use round(rating * reviewCount). Average =
  *    ratingSum / reviewCount, one decimal.
  *  - Shop: the average of its rated barbers' (unrounded) averages, barbers
@@ -82,4 +85,37 @@ export function barberRatingChanged(before: BarberRatingData | undefined, after:
   return (
     before.ratingSum !== after.ratingSum || before.reviewCount !== after.reviewCount || before.rating !== after.rating
   );
+}
+
+export interface ReviewRatingData {
+  rating?: unknown;
+}
+
+/**
+ * How a review write changes its barber's counters (what the customer's app
+ * writes, lib/services/rating_service.dart): created -> +stars, +1; edited
+ * -> +(new - old), 0; deleted -> -stars, -1. Invalid ratings count as no
+ * review.
+ */
+export function reviewCounterChange(
+  before: ReviewRatingData | undefined,
+  after: ReviewRatingData | undefined,
+): { ratingSumDelta: number; reviewCountDelta: number } {
+  const b = before && isValidRating(before.rating) ? before.rating : null;
+  const a = after && isValidRating(after.rating) ? after.rating : null;
+  return {
+    ratingSumDelta: (a ?? 0) - (b ?? 0),
+    reviewCountDelta: (a === null ? 0 : 1) - (b === null ? 0 : 1),
+  };
+}
+
+/** The barber counters after [change] (legacy docs start from barberRatingSum). */
+export function applyReviewCounterChange(
+  barber: BarberRatingData,
+  change: { ratingSumDelta: number; reviewCountDelta: number },
+): { ratingSum: number; reviewCount: number } {
+  return {
+    ratingSum: barberRatingSum(barber) + change.ratingSumDelta,
+    reviewCount: barberReviewCount(barber) + change.reviewCountDelta,
+  };
 }

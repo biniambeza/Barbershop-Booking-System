@@ -10,9 +10,16 @@ import 'availability_service.dart';
 import 'data_cache.dart';
 import 'early_finish_service.dart' show EarlyFinishNotice; // early finish
 import 'time_off_service.dart';
+import '../models/user_model.dart'; // shop deletion
+import 'shop_deletion.dart'; // shop deletion
+import 'refunds.dart'; // refunds
+import '../models/app_notification.dart' show AppNotification; // vacation
 
 export 'availability_service.dart' show SlotLock, SlotTakenException;
 export 'time_off_service.dart' show TimeOff;
+
+/// Most bookings a "Refunds due" query returns.
+const int kRefundsQueryLimit = 200; // refunds
 
 /// All data writes the app makes (besides sign-in / profile creation, which
 /// live in AppRepository). Validation and permission-shaped checks happen in
@@ -55,9 +62,50 @@ abstract class DataStore {
   Future<void> setShopSubscriptionTransition(String shopId, Map<String, dynamic> fields);
   // --- end subscription expiry ---
 
-  /// Admin: deletes the shop, its services, barbers and pending invites.
-  /// Bookings are kept for history.
+  /// Admin: deletes the shop's data ([deleteShopData]), its invites and the
+  /// shop document. Bookings are kept. (The full cascade, which also
+  /// cancels upcoming bookings and downgrades the staff, is
+  /// AppRepository.deleteShop, see shop_deletion.dart.)
   Future<void> deleteShop(String shopId);
+
+  // --- shop deletion (see shop_deletion.dart) ---
+
+  /// Admin: merges [record] into `shopDeletions/{shopId}` (staff uids are
+  /// added with arrayUnion, so a retry keeps the first run's list).
+  Future<void> recordShopDeletion(ShopDeletionRecord record);
+
+  /// Admin: the shop's bookings starting at or after [nowUtc] (any status;
+  /// callers pick the pending/confirmed ones).
+  Future<List<Booking>> upcomingBookingsOfShop(String shopId, DateTime nowUtc);
+
+  /// Admin: in batches of [kShopDeletionBookingChunk]: `update` each booking
+  /// with exactly `{status: 'cancelled', cancelledBy, cancelReason:
+  /// 'shop_deleted'}` and `set` (create) its customer's notice.
+  /// Refunds: with [refund], a paid booking also gets its refund flag in
+  /// that update plus the `{bookingId}_refundDue` notice (refund_writes.dart).
+  Future<void> cancelBookingsForShopDeletion(List<ShopBookingCancellation> items,
+      {required String cancelledBy, RefundContext? refund});
+
+  /// Admin: owner and barber accounts of the shop (`users where shopId ==`).
+  Future<List<AppUser>> staffOfShop(String shopId);
+
+  /// Admin: invites of the shop (`invites where shopId ==`; owner and barber).
+  Future<List<UserInvite>> invitesOfShop(String shopId);
+
+  /// Admin: in batches of [kShopDeletionStaffChunk]: `update` each user to
+  /// `{role: 'customer'}` with shopId and barberId deleted and `set`
+  /// (create) its notice; then deletes every invite of [shopId].
+  Future<void> revokeShopStaff(String shopId, List<ShopStaffRevocation> items);
+
+  /// Admin: deletes every document of the shop's subcollections
+  /// ([kBarberSubcollections] of each barber, the barbers, then
+  /// [kShopSubcollections]) in batches of [kShopDeletionDeleteChunk]. The
+  /// shop document stays.
+  Future<void> deleteShopData(String shopId);
+
+  /// Admin: deletes `barbershops/{shopId}` only.
+  Future<void> deleteShopDoc(String shopId);
+  // --- end shop deletion ---
 
   // --- admin shop management ---
   /// Admin: one update of [Barbershop.toAdminEditMap] (profile without the
@@ -74,13 +122,32 @@ abstract class DataStore {
   Future<void> updateService(BarbershopService service);
   Future<void> deleteService(BarbershopService service);
 
-  /// Adds a barber profile and, optionally, their sign-in invite.
-  Future<void> addBarber(Barber barber, UserInvite? invite);
+  /// Adds a barber profile (public: never its phone) and, optionally, their
+  /// sign-in invite, plus the private contact doc
+  /// `barbers/{id}/private/contact {phone}` when [phone] is given. One batch.
+  Future<void> addBarber(Barber barber, UserInvite? invite, {String? phone});
 
   /// Owner/admin: profile fields only ([Barber.toProfileMap]).
   Future<void> updateBarberProfile(Barber barber);
   Future<void> setBarberAvailability(Barber barber, bool isAvailable);
   Future<void> deleteBarber(Barber barber, UserInvite? pendingInvite);
+
+  // --- private barber phone ---
+  /// Owner/admin/that barber: sets `barbers/{id}/private/contact` to
+  /// exactly `{phone}`, or deletes it when [phone] is null.
+  Future<void> setBarberPhone(String shopId, String barberId, String? phone);
+
+  /// Owner/admin: moves a legacy public barber doc's contact fields out of
+  /// it. Firestore: reads the private contact first, then ONE batch: `set`
+  /// the contact to `{phone}` when [phone] is given and no contact exists
+  /// yet (an existing one is newer and wins), and `update` the public doc
+  /// with `phone` and `email` deleted. Idempotent.
+  Future<void> migrateBarberContact(Barber barber, {String? phone});
+
+  /// Barber/owner: copies the barber's phone into a confirmed (or in
+  /// progress) booking: an `update` of exactly `{barberPhone}`.
+  Future<void> shareBarberPhone(Booking booking, String phone);
+  // --- end private barber phone ---
 
   /// Stores a fully built booking, atomically with its slot locks (one per
   /// 15-minute block it covers, see availability_service.dart).
@@ -93,9 +160,10 @@ abstract class DataStore {
   /// the same write and records [cancelledBy] (the caller's uid) so the
   /// notification backend can say who cancelled. [cancelReasonNote] (the
   /// barber's optional note, already trimmed and <= 200 characters) is
-  /// written with a cancel only.
+  /// written with a cancel only. Refunds: with [refund], cancelling a paid
+  /// booking also flags its refund in the same write (refund_writes.dart).
   Future<void> updateBookingStatus(Booking booking, BookingStatus status,
-      {String? cancelledBy, String? cancelReasonNote});
+      {String? cancelledBy, String? cancelReasonNote, RefundContext? refund});
 
   /// Live slot locks of one barber on one Addis calendar day. These cover
   /// other customers' bookings, which customers cannot read directly.
@@ -135,6 +203,20 @@ abstract class DataStore {
   /// Deletes the time-off doc and its slot locks in one batch.
   Future<void> deleteTimeOff(TimeOff timeOff);
 
+  // --- vacation (see vacation_service.dart) ---
+
+  /// The barber's slot locks whose `startAt` is in `[startUtc, endUtc)`
+  /// (bookings and time off; one single-field range query). The local
+  /// store returns its time-off locks (bookings are all in the cache).
+  Future<List<SlotLock>> slotLocksBetween(String shopId, String barberId, DateTime startUtc, DateTime endUtc);
+
+  /// Staff (owner or the booked barber) creates the customer's inbox
+  /// notice `users/{recipientUid}/notifications/{notice.id}` after
+  /// cancelling a booking for a vacation (free plan: no Cloud Function
+  /// tells the customer). The local store only records it (its inbox
+  /// derives the cancel notice from the booking).
+  Future<void> writeVacationCancelNotice(String recipientUid, AppNotification notice);
+
   // --- barber acceptance (see booking_acceptance.dart) ---
 
   /// Barber/owner: a still-pending request becomes confirmed
@@ -144,9 +226,31 @@ abstract class DataStore {
 
   /// Barber/owner: a still-pending request is cancelled ([declineFields]:
   /// status, cancelledBy 'barber', declineReason?) and its own slot locks
-  /// are released in the same write, as a cancel does.
-  Future<void> declineBookingRequest(Booking booking, {String? reason});
+  /// are released in the same write, as a cancel does (and, with [refund],
+  /// a paid booking's refund is flagged in it).
+  Future<void> declineBookingRequest(Booking booking, {String? reason, RefundContext? refund});
   // --- end barber acceptance ---
+
+  // --- refunds (see refunds.dart / refund_writes.dart) ---
+
+  /// Owner ([shopId]) or admin (null: every shop): bookings whose
+  /// refundStatus is 'due'. Firestore: `bookings where refundStatus == 'due'`
+  /// (+ `shopId ==`), limit [kRefundsQueryLimit]. The local store emits the
+  /// cache's due refunds once (AppRepository re-reads the cache on changes).
+  Stream<List<Booking>> watchRefundsDue({String? shopId});
+
+  /// Owner/admin: flags the refund of an already-cancelled paid booking
+  /// that has none (an older app cancelled it). ONE batch: `update` the
+  /// booking with exactly [BookingRefund.toFlagFields] and create the
+  /// customer's [notice].
+  Future<void> flagRefund(Booking booking, BookingRefund flag, RefundNotice? notice);
+
+  /// Owner/admin: "Mark refunded". ONE batch: `update` the booking with
+  /// exactly [fields] (refundCompletionFields) and create the customer's
+  /// [notice] (`{bookingId}_paymentRefunded`). Throws [AppStateException]
+  /// ([AppErrorCode.bookingNotChangeable]) when the refund is no longer due.
+  Future<void> markRefunded(Booking booking, Map<String, dynamic> fields, RefundNotice? notice);
+  // --- end refunds ---
 
   // --- early finish (see early_finish_service.dart) ---
 
@@ -223,7 +327,10 @@ class LocalDataStore implements DataStore {
       cache.services[s.id] = s;
     }
     for (final b in barbers) {
-      cache.barbers[b.id] = b;
+      // private barber phone: kept out of the (public) profile.
+      final phone = b.phone;
+      if (phone != null && phone.isNotEmpty) cache.barberPhones[b.id] = phone;
+      cache.barbers[b.id] = b.copyWith(clearContact: true);
     }
     if (ownerInvite != null) cache.invites[ownerInvite.email] = ownerInvite;
   }
@@ -284,15 +391,95 @@ class LocalDataStore implements DataStore {
 
   @override
   Future<void> deleteShop(String shopId) async {
-    cache.shops.remove(shopId);
-    cache.services.removeWhere((_, s) => s.shopId == shopId);
-    cache.barbers.removeWhere((_, b) => b.shopId == shopId);
+    // Like Firestore: bookings stay for history; staff accounts are
+    // downgraded by the cascade (AppRepository.deleteShop), not removed.
+    await deleteShopData(shopId);
     cache.invites.removeWhere((_, i) => i.shopId == shopId);
-    // Demo only: the local database also forgets the shop's bookings and
-    // staff accounts. Firestore keeps bookings for history.
-    cache.bookings.removeWhere((_, b) => b.shopId == shopId);
-    cache.users.removeWhere((_, u) => u.shopId == shopId);
+    await deleteShopDoc(shopId);
   }
+
+  // --- shop deletion ---
+
+  /// `shopDeletions/{shopId}` records (tests, demo).
+  final Map<String, ShopDeletionRecord> shopDeletions = {};
+
+  /// Inbox notices the cascade wrote, oldest first (AppRepository forwards
+  /// them to the local inboxes).
+  final List<ShopDeletionNotice> sentNotices = [];
+
+  @override
+  Future<void> recordShopDeletion(ShopDeletionRecord record) async {
+    final old = shopDeletions[record.shopId];
+    shopDeletions[record.shopId] = ShopDeletionRecord(
+      shopId: record.shopId,
+      shopName: record.shopName,
+      requestedBy: record.requestedBy,
+      requestedAt: record.requestedAt,
+      staffUids: {...?old?.staffUids, ...record.staffUids}.toList(),
+      barberAccountUids: {...?old?.barberAccountUids, ...record.barberAccountUids}.toList(),
+    );
+  }
+
+  @override
+  Future<List<Booking>> upcomingBookingsOfShop(String shopId, DateTime nowUtc) async => [
+        for (final b in cache.bookings.values)
+          if (b.shopId == shopId && !b.startAt.isBefore(nowUtc.toUtc())) b,
+      ];
+
+  @override
+  Future<void> cancelBookingsForShopDeletion(List<ShopBookingCancellation> items,
+      {required String cancelledBy, RefundContext? refund}) async {
+    for (final item in items) {
+      final old = cache.bookings[item.booking.id];
+      if (old == null) continue;
+      cache.bookings[old.id] = old.copyWith(
+        status: BookingStatus.cancelled,
+        cancelledBy: cancelledBy,
+        cancelReason: kShopDeletedCancelReason,
+        refund: _refundFlag(old, refund), // refunds
+      );
+      sentNotices.add(item.notice);
+    }
+  }
+
+  @override
+  Future<List<AppUser>> staffOfShop(String shopId) async => [
+        for (final u in cache.users.values)
+          if (u.shopId == shopId) u,
+      ];
+
+  @override
+  Future<List<UserInvite>> invitesOfShop(String shopId) async => [
+        for (final i in cache.invites.values)
+          if (i.shopId == shopId) i,
+      ];
+
+  @override
+  Future<void> revokeShopStaff(String shopId, List<ShopStaffRevocation> items) async {
+    for (final item in items) {
+      final old = cache.users[item.user.uid];
+      if (old == null) continue;
+      cache.users[old.uid] = downgradedToCustomer(old);
+      sentNotices.add(item.notice);
+    }
+    cache.invites.removeWhere((_, i) => i.shopId == shopId);
+  }
+
+  @override
+  Future<void> deleteShopData(String shopId) async {
+    cache.services.removeWhere((_, s) => s.shopId == shopId);
+    cache.barberPhones.removeWhere((id, _) => cache.barbers[id]?.shopId == shopId);
+    cache.barbers.removeWhere((_, b) => b.shopId == shopId);
+    final before = timeOff.length;
+    timeOff.removeWhere((_, t) => t.shopId == shopId);
+    if (timeOff.length != before) _timeOffChanges.add(null);
+  }
+
+  @override
+  Future<void> deleteShopDoc(String shopId) async {
+    cache.shops.remove(shopId);
+  }
+  // --- end shop deletion ---
 
   // --- admin shop management ---
   @override
@@ -348,8 +535,9 @@ class LocalDataStore implements DataStore {
   Future<void> deleteService(BarbershopService service) async => cache.services.remove(service.id);
 
   @override
-  Future<void> addBarber(Barber barber, UserInvite? invite) async {
-    cache.barbers[barber.id] = barber;
+  Future<void> addBarber(Barber barber, UserInvite? invite, {String? phone}) async {
+    cache.barbers[barber.id] = barber.copyWith(clearContact: true);
+    if (phone != null && phone.isNotEmpty) cache.barberPhones[barber.id] = phone;
     if (invite != null) cache.invites[invite.email] = invite;
   }
 
@@ -369,8 +557,8 @@ class LocalDataStore implements DataStore {
       reviewCount: old.reviewCount,
       ratingSum: old.ratingSum,
       isAvailable: barber.isAvailable,
-      email: barber.email,
-      phone: barber.phone,
+      // private barber phone: the profile update never carries contact
+      // fields (Firestore deletes legacy ones).
       specialties: barber.specialties,
       workingDays: barber.workingDays,
       startHour: barber.startHour,
@@ -388,10 +576,35 @@ class LocalDataStore implements DataStore {
   @override
   Future<void> deleteBarber(Barber barber, UserInvite? pendingInvite) async {
     cache.barbers.remove(barber.id);
+    cache.barberPhones.remove(barber.id);
     // Deleting the profile revokes the linked account (as the rules do).
     cache.users.removeWhere((_, u) => u.barberId == barber.id);
     if (pendingInvite != null) cache.invites.remove(pendingInvite.email);
   }
+
+  // --- private barber phone ---
+  @override
+  Future<void> setBarberPhone(String shopId, String barberId, String? phone) async {
+    if (phone == null || phone.isEmpty) {
+      cache.barberPhones.remove(barberId);
+    } else {
+      cache.barberPhones[barberId] = phone;
+    }
+  }
+
+  @override
+  Future<void> migrateBarberContact(Barber barber, {String? phone}) async {
+    if (phone != null && phone.isNotEmpty) cache.barberPhones[barber.id] = phone;
+    final old = cache.barbers[barber.id];
+    if (old != null) cache.barbers[barber.id] = old.copyWith(clearContact: true);
+  }
+
+  @override
+  Future<void> shareBarberPhone(Booking booking, String phone) async {
+    final old = cache.bookings[booking.id];
+    if (old != null) cache.bookings[booking.id] = old.copyWith(barberPhone: phone);
+  }
+  // --- end private barber phone ---
 
   /// Same rule as the Firestore transaction: no two non-cancelled bookings
   /// of a barber may share a 15-minute block, and no booking may take a
@@ -408,7 +621,7 @@ class LocalDataStore implements DataStore {
 
   @override
   Future<void> updateBookingStatus(Booking booking, BookingStatus status,
-      {String? cancelledBy, String? cancelReasonNote}) async {
+      {String? cancelledBy, String? cancelReasonNote, RefundContext? refund}) async {
     final old = cache.bookings[booking.id];
     if (old == null) return;
     final cancelled = status == BookingStatus.cancelled;
@@ -416,8 +629,56 @@ class LocalDataStore implements DataStore {
       status: status,
       cancelledBy: cancelled ? cancelledBy : null,
       cancelReasonNote: cancelled ? cancelReasonNote : null,
+      refund: cancelled && old.status != BookingStatus.cancelled ? _refundFlag(old, refund) : null, // refunds
     );
   }
+
+  // --- refunds ---
+
+  /// Customer notices of refunds written by this store, oldest first
+  /// (tests; the local inboxes derive the same entries from the bookings).
+  final List<RefundNotice> sentRefundNotices = [];
+
+  /// The refund flag for cancelling [old] (as stored now) in [ctx], and its
+  /// notice recorded like Firestore's same-write create.
+  BookingRefund? _refundFlag(Booking old, RefundContext? ctx) {
+    if (ctx == null) return null;
+    final flag = refundFlagFor(old, ctx);
+    if (flag != null && old.customerId.isNotEmpty) {
+      sentRefundNotices.add(refundDueNotice(old, flag, language: ctx.languageOf?.call(old.customerId)));
+    }
+    return flag;
+  }
+
+  @override
+  Stream<List<Booking>> watchRefundsDue({String? shopId}) =>
+      Stream.value(refundsDue(cache.bookings.values, shopId: shopId));
+
+  @override
+  Future<void> flagRefund(Booking booking, BookingRefund flag, RefundNotice? notice) async {
+    final old = cache.bookings[booking.id];
+    if (old == null || old.refund != null) throw AppStateException(AppErrorCode.bookingNotChangeable);
+    cache.bookings[booking.id] = old.copyWith(refund: flag);
+    if (notice != null) sentRefundNotices.add(notice);
+  }
+
+  @override
+  Future<void> markRefunded(Booking booking, Map<String, dynamic> fields, RefundNotice? notice) async {
+    final old = cache.bookings[booking.id];
+    final due = old?.refund;
+    if (old == null || due == null || !due.isDue) throw AppStateException(AppErrorCode.bookingNotChangeable);
+    cache.bookings[booking.id] = old.copyWith(
+      paymentStatus: PaymentStatus.refunded,
+      refund: due.markedRefunded(
+        at: DateTime.parse(fields['refundedAt'] as String),
+        by: fields['refundedBy'] as String,
+        method: RefundMethod.fromString(fields['refundMethod'] as String?) ?? RefundMethod.other,
+        reference: fields['refundReference'] as String?,
+      ),
+    );
+    if (notice != null) sentRefundNotices.add(notice);
+  }
+  // --- end refunds ---
 
   /// Booking locks are not stored locally (every booking is in the cache);
   /// this emits the time-off locks of the day, again after each change.
@@ -484,6 +745,24 @@ class LocalDataStore implements DataStore {
     if (timeOff.remove(entry.id) != null) _timeOffChanges.add(null);
   }
 
+  // --- vacation ---
+
+  @override
+  Future<List<SlotLock>> slotLocksBetween(String shopId, String barberId, DateTime startUtc, DateTime endUtc) async => [
+        for (final t in timeOff.values)
+          if (t.shopId == shopId && t.barberId == barberId)
+            for (final lock in slotLocksForTimeOff(t))
+              if (!lock.startAt.isBefore(startUtc.toUtc()) && lock.startAt.isBefore(endUtc.toUtc())) lock,
+      ];
+
+  /// Vacation cancel notices "written" by this store (tests).
+  final List<(String, AppNotification)> sentVacationNotices = [];
+
+  @override
+  Future<void> writeVacationCancelNotice(String recipientUid, AppNotification notice) async {
+    sentVacationNotices.add((recipientUid, notice));
+  }
+
   // --- barber acceptance ---
 
   @override
@@ -498,13 +777,17 @@ class LocalDataStore implements DataStore {
   /// The local database has no lock documents: a cancelled booking simply
   /// stops occupying its blocks.
   @override
-  Future<void> declineBookingRequest(Booking booking, {String? reason}) async {
+  Future<void> declineBookingRequest(Booking booking, {String? reason, RefundContext? refund}) async {
     final current = cache.bookings[booking.id];
     if (current == null || current.status != BookingStatus.pending) {
       throw AppStateException(AppErrorCode.bookingNotChangeable);
     }
-    cache.bookings[booking.id] =
-        current.copyWith(status: BookingStatus.cancelled, cancelledBy: 'barber', declineReason: reason);
+    cache.bookings[booking.id] = current.copyWith(
+      status: BookingStatus.cancelled,
+      cancelledBy: 'barber',
+      declineReason: reason,
+      refund: _refundFlag(current, refund), // refunds
+    );
   }
   // --- end barber acceptance ---
 

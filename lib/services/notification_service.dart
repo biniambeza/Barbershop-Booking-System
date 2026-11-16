@@ -14,6 +14,8 @@ import '../models/booking_model.dart';
 import '../models/user_model.dart';
 import 'app_repository.dart';
 import 'early_finish_service.dart' show planEarlyFinishNotices; // early finish
+import 'refunds.dart' show refundDueNotice, refundedNotice; // refunds
+import 'shop_deletion.dart' show ShopDeletionNotice, kShopDeletedCancelReason; // shop deletion
 
 /// Web push needs a VAPID key from the Firebase console (Project settings >
 /// Cloud Messaging > Web Push certificates):
@@ -76,6 +78,16 @@ class NotificationService extends ChangeNotifier {
   PushRegistrar? _push;
   bool _openInboxWhenSignedIn = false;
 
+  // --- shop deletion ---
+  /// Role of the signed-in user at the last repository change: when it
+  /// changes for the same account (e.g. a deleted shop's owner or barber
+  /// became a customer) pushed staff screens are closed.
+  UserRole? _lastRole;
+
+  /// shopRemoved notices already shown as a banner in this app session.
+  final Set<String> _shownShopRemoved = {};
+  // --- end shop deletion ---
+
   /// Called for every notification that arrives while the app is open
   /// (after the inbox's initial load). Defaults to a SnackBar banner.
   void Function(AppNotification notification)? onNewNotification;
@@ -93,13 +105,45 @@ class NotificationService extends ChangeNotifier {
     _started = true;
     _repo.addListener(_onRepositoryChanged);
     _repo.beforeSignOut = _beforeSignOut;
+    _repo.onLocalNotice = _onLocalShopDeletionNotice; // shop deletion
     _onRepositoryChanged();
   }
+
+  // --- shop deletion ---
+  /// Local mode: the admin's shop-deletion cascade wrote [notice].
+  void _onLocalShopDeletionNotice(ShopDeletionNotice notice) {
+    local.addDirect(notice.recipientUid, notice.toAppNotification());
+    if (notice.recipientUid == _uid) {
+      _items = local.inboxFor(notice.recipientUid);
+      notifyListeners();
+    }
+  }
+
+  /// Shows an unread "Your barbershop was removed" notice once per app
+  /// session (also when it was written while the user was signed out).
+  void _showUnreadShopRemoved(List<AppNotification> items) {
+    for (final n in items) {
+      if (n.type != NotificationTypes.shopRemoved || n.read || !_shownShopRemoved.add(n.id)) continue;
+      _announce(n);
+    }
+  }
+
+  /// The same account's role changed (a removed shop's staff became a
+  /// customer): close the staff screens pushed above the home screen.
+  void _onRoleChanged() {
+    final nav = navigatorKey.currentState;
+    if (nav == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      navigatorKey.currentState?.popUntil((route) => route.isFirst);
+    });
+  }
+  // --- end shop deletion ---
 
   @override
   void dispose() {
     _repo.removeListener(_onRepositoryChanged);
     if (_repo.beforeSignOut == _beforeSignOut) _repo.beforeSignOut = null;
+    if (_repo.onLocalNotice == _onLocalShopDeletionNotice) _repo.onLocalNotice = null; // shop deletion
     _inboxSub?.cancel();
     _push?.stop();
     super.dispose();
@@ -107,6 +151,12 @@ class NotificationService extends ChangeNotifier {
 
   void _onRepositoryChanged() {
     final user = _repo.authStatus == AuthStatus.signedIn ? _repo.currentUser : null;
+
+    // --- shop deletion ---
+    final role = user?.role;
+    if (user != null && user.uid == _uid && _lastRole != null && role != _lastRole) _onRoleChanged();
+    _lastRole = role;
+    // --- end shop deletion ---
 
     if (!_cloud) {
       // Local mode: turn booking changes into notifications first, so a
@@ -131,6 +181,7 @@ class NotificationService extends ChangeNotifier {
     if (!_cloud) {
       _items = uid == null ? const [] : local.inboxFor(uid);
       notifyListeners();
+      if (changed) _showUnreadShopRemoved(_items); // shop deletion
       return;
     }
 
@@ -158,16 +209,27 @@ class NotificationService extends ChangeNotifier {
 
   void _onCloudInbox(List<AppNotification> items) {
     final known = {for (final n in _items) n.id};
+    final first = _firstSnapshot;
     final fresh = _firstSnapshot ? const <AppNotification>[] : items.where((n) => !known.contains(n.id) && !n.read);
     _firstSnapshot = false;
     _items = items;
     notifyListeners();
     for (final n in fresh) {
+      if (n.type == NotificationTypes.shopRemoved) _shownShopRemoved.add(n.id); // shop deletion
       _announce(n);
     }
+    if (first) _showUnreadShopRemoved(items); // shop deletion
   }
 
   void _announce(AppNotification n) {
+    // --- shop deletion --- in the app's language (the stored copy follows
+    // the profile's language, which may be unset).
+    if (n.type == NotificationTypes.shopRemoved) {
+      final l = _l10n();
+      n = AppNotification(
+          id: n.id, title: l.shopRemovedNoticeTitle, body: l.shopRemovedNoticeBody, type: n.type, createdAt: n.createdAt);
+    }
+    // --- end shop deletion ---
     final handler = onNewNotification;
     if (handler != null) {
       handler(n);
@@ -191,10 +253,12 @@ class NotificationService extends ChangeNotifier {
   }
 
   /// 'View' in the app's language (the snack bar has no BuildContext of its own).
-  String _viewLabel() {
+  String _viewLabel() => _l10n().viewAction;
+
+  AppLocalizations _l10n() {
     final ctx = messengerKey.currentContext ?? navigatorKey.currentContext;
     final l = ctx == null ? null : Localizations.of<AppLocalizations>(ctx, AppLocalizations);
-    return (l ?? lookupAppLocalizations(Locale(LocaleController.instance.languageCode))).viewAction;
+    return l ?? lookupAppLocalizations(Locale(LocaleController.instance.languageCode));
   }
 
   /// A push notification was tapped (app in background or terminated).
@@ -389,8 +453,14 @@ class FcmPushRegistrar implements PushRegistrar {
     // register()/onRegistered, which yield an installation id (FID). The
     // notifications backend sends to classic registration tokens, so keep
     // these until it moves to FID direct-send.
+    // iOS: FCM can only issue a token once Apple has handed the app its APNs
+    // token, which arrives a moment after permission is granted; asking
+    // earlier throws `apns-token-not-set`. On a simulator, or before the APNs
+    // key is uploaded to Firebase, it never arrives: skip the token then
+    // (onTokenRefresh below still saves it if it turns up later).
+    final apnsReady = platform != 'ios' || await _waitForApnsToken();
     // ignore: deprecated_member_use
-    final token = await _messaging.getToken(vapidKey: platform == 'web' ? kFcmVapidKey : null);
+    final token = apnsReady ? await _messaging.getToken(vapidKey: platform == 'web' ? kFcmVapidKey : null) : null;
     if (_uid != uid) return; // Signed out meanwhile.
     if (token != null) await _save(uid, token, platform);
 
@@ -409,6 +479,20 @@ class FcmPushRegistrar implements PushRegistrar {
     _subs.add(FirebaseMessaging.onMessageOpenedApp.listen((m) => onOpened(notificationIdFromPushData(m.data))));
     final initial = await _messaging.getInitialMessage();
     if (initial != null) onOpened(notificationIdFromPushData(initial.data));
+  }
+
+  /// Polls for the iOS APNs token for up to about 10 seconds.
+  Future<bool> _waitForApnsToken() async {
+    for (var i = 0; i < 10; i++) {
+      try {
+        if (await _messaging.getAPNSToken() != null) return true;
+      } catch (_) {
+        // Not ready yet.
+      }
+      await Future<void>.delayed(const Duration(seconds: 1));
+    }
+    debugPrint('No APNs token (simulator, or push not set up yet): iOS push token skipped.');
+    return false;
   }
 
   Future<void> _save(String uid, String token, String platform) async {
@@ -467,6 +551,9 @@ class LocalNotificationInbox {
   /// Last seen reschedule count of every booking (reschedule notifications).
   final Map<String, int> _knownReschedules = {};
 
+  /// Last seen refund status of every booking (refund notices).
+  final Map<String, RefundStatus?> _knownRefunds = {}; // refunds
+
   /// Newest first.
   List<AppNotification> inboxFor(String uid) => List.unmodifiable(_inboxes[uid] ?? const []);
 
@@ -474,6 +561,7 @@ class LocalNotificationInbox {
     _inboxes.clear();
     _known = null;
     _knownReschedules.clear();
+    _knownRefunds.clear(); // refunds
   }
 
   void markRead(String uid, String id) {
@@ -505,10 +593,29 @@ class LocalNotificationInbox {
     _knownReschedules
       ..clear()
       ..addAll({for (final b in bookings) b.id: b.rescheduleCount});
+    final previousRefunds = Map.of(_knownRefunds); // refunds
+    _knownRefunds
+      ..clear()
+      ..addAll({for (final b in bookings) b.id: b.refund?.status});
     if (previous == null || actor == null) return const [];
 
     final delivered = <DeliveredNotification>[];
     for (final booking in bookings) {
+      // --- refunds: the customer hears when a refund is due / was sent ---
+      final refund = booking.refund;
+      if (refund != null && previousRefunds[booking.id] != refund.status && booking.customerId.isNotEmpty) {
+        final language = repo.getAllUsers().where((u) => u.uid == booking.customerId).firstOrNull?.language;
+        final notice = refund.isDue
+            ? refundDueNotice(booking, refund, language: language)
+            : refundedNotice(booking, refund.amount, refund.refundedAt ?? DateTime.now(), language: language);
+        final inbox = _inboxes.putIfAbsent(notice.recipientUid, () => []);
+        if (!inbox.any((n) => n.id == notice.id)) {
+          final n = notice.toAppNotification();
+          inbox.insert(0, n);
+          delivered.add(DeliveredNotification(notice.recipientUid, n));
+        }
+      }
+      // --- end refunds ---
       final before = previousReschedules[booking.id];
       if (before != null && booking.rescheduleCount > before && booking.status != BookingStatus.cancelled) {
         // One notification per reschedule (functions: {bookingId}_r{count}).
@@ -524,6 +631,8 @@ class LocalNotificationInbox {
       }
       final type = bookingEventType(previous[booking.id], booking.status, isNew: !previous.containsKey(booking.id));
       if (type == null) continue;
+      // Shop deletion: the cascade already wrote the customer a notice.
+      if (type == NotificationTypes.cancelled && booking.cancelReason == kShopDeletedCancelReason) continue;
       delivered.addAll(deliver(
         booking,
         type,

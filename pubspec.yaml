@@ -53,6 +53,10 @@ dependencies:
   image_picker: ^1.2.2
   image: ^4.8.0
   # --- end subscription receipts ---
+  # App Check (not enforced) and Crashlytics, both free on the Spark plan.
+  # Set up in lib/services/app_check_setup.dart and crash_reporting.dart.
+  firebase_app_check: ^0.5.1
+  firebase_crashlytics: ^6.0.1
 
 dev_dependencies:
   flutter_test:

@@ -1,9 +1,21 @@
 name: Build & Deploy Crown & Blade (Web & Android)
 
+# Every push to main deploys the REAL app (production Firebase project) to
+# GitHub Pages and builds the production Android APK.
+# The offline demo (DEMO_MODE: local data, one-tap demo logins, OTP 123456)
+# is built only when this workflow is run by hand with "demo" ticked
+# (Actions > Build & Deploy > Run workflow). A demo run replaces the website
+# with the demo until the next normal run.
+
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      demo:
+        description: 'Build the offline DEMO (DEMO_MODE=true) instead of the real app'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -11,6 +23,10 @@ permissions:
 concurrency:
   group: "deployment"
   cancel-in-progress: true
+
+env:
+  # 'true' only for a manual run with "demo" ticked; empty/false on push.
+  DEMO_BUILD: ${{ inputs.demo == true && 'true' || 'false' }}
 
 jobs:
   firestore-rules:
@@ -115,10 +131,25 @@ jobs:
       - name: Run Tests
         run: flutter test
 
-      # The public GitHub Pages site is an offline demo (no Firebase, demo
-      # logins, OTP 123456). Production builds omit DEMO_MODE.
-      - name: Build Web Application (demo)
-        run: flutter build web --release --dart-define=DEMO_MODE=true --base-href "/Barbershop-Booking-System/"
+      # Real app by default (production Firebase). RECAPTCHA_SITE_KEY may be
+      # empty: the app then skips web App Check. The base href must match the
+      # Pages path https://<owner>.github.io/<repo>/.
+      - name: Build Web Application (${{ env.DEMO_BUILD == 'true' && 'demo' || 'production' }})
+        env:
+          RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
+          BASE_HREF: /${{ github.event.repository.name }}/
+        run: |
+          DEFINES="--dart-define=RECAPTCHA_SITE_KEY=${RECAPTCHA_SITE_KEY}"
+          if [ "$DEMO_BUILD" = "true" ]; then
+            DEFINES="$DEFINES --dart-define=DEMO_MODE=true"
+            echo "::notice::Building the offline DEMO website (DEMO_MODE=true)."
+          else
+            echo "::notice::Building the PRODUCTION website (Firebase project from lib/firebase_options.dart)."
+          fi
+          if [ -z "$RECAPTCHA_SITE_KEY" ]; then
+            echo "::notice::RECAPTCHA_SITE_KEY secret not set: web App Check is off."
+          fi
+          flutter build web --release $DEFINES --base-href "$BASE_HREF"
 
       - name: Deploy Web App to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
@@ -128,14 +159,77 @@ jobs:
           publish_branch: gh-pages
           force_orphan: true
 
-      - name: Build Android Release APK (demo)
-        continue-on-error: true
-        run: flutter build apk --release --dart-define=DEMO_MODE=true
+  android-apk:
+    needs: [ firestore-rules, functions, seed-script ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install Dependencies
+        run: |
+          flutter pub get
+          flutter gen-l10n
+
+      # Release signing: only when all four secrets are set. Otherwise
+      # android/app/build.gradle.kts falls back to the debug key and the APK
+      # is labelled "debug-signed" (installable for testing, not for Play, and
+      # Google sign-in fails unless that key's SHA-1 is registered in Firebase).
+      - name: Set up release signing
+        id: signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$ANDROID_KEY_ALIAS" ] \
+             && [ -n "$ANDROID_KEY_PASSWORD" ] && [ -n "$ANDROID_STORE_PASSWORD" ]; then
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode --ignore-garbage > android/app/upload-keystore.jks
+            # key.properties is a Java properties file: escape backslashes.
+            esc() { printf '%s' "$1" | sed 's/\\/\\\\/g'; }
+            printf 'storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=upload-keystore.jks\n' \
+              "$(esc "$ANDROID_STORE_PASSWORD")" "$(esc "$ANDROID_KEY_PASSWORD")" "$(esc "$ANDROID_KEY_ALIAS")" > android/key.properties
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "label=release-signed" >> "$GITHUB_OUTPUT"
+            echo "::notice::Release keystore found: the APK is signed with the release key."
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "label=UNSIGNED-debug-signed" >> "$GITHUB_OUTPUT"
+            echo "::warning::Release keystore secrets not set (ANDROID_KEYSTORE_BASE64, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD, ANDROID_STORE_PASSWORD): the APK is signed with a throwaway DEBUG key. Testing only; Google sign-in will not work with it."
+          fi
+
+      - name: Build Android Release APK (${{ env.DEMO_BUILD == 'true' && 'demo' || 'production' }})
+        run: |
+          DEFINES=""
+          if [ "$DEMO_BUILD" = "true" ]; then
+            DEFINES="--dart-define=DEMO_MODE=true"
+          fi
+          flutter build apk --release $DEFINES
+          KIND=$([ "$DEMO_BUILD" = "true" ] && echo demo || echo production)
+          NAME="CrownAndBlade-${KIND}-${{ steps.signing.outputs.label }}"
+          cp build/app/outputs/flutter-apk/app-release.apk "build/${NAME}.apk"
+          echo "APK_NAME=${NAME}" >> "$GITHUB_ENV"
+
+      - name: Remove signing files
+        if: always()
+        run: rm -f android/key.properties android/app/upload-keystore.jks
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
-        continue-on-error: true
         with:
-          name: CrownAndBlade-Android-App
-          path: build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: ignore
+          name: ${{ env.APK_NAME }}
+          path: build/${{ env.APK_NAME }}.apk
+          if-no-files-found: error

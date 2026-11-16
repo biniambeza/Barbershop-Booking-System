@@ -404,6 +404,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rcptPricingSaved => 'Prices saved.';
 
   @override
+  String get rcptStorageTitle => 'Receipt photos';
+
+  @override
+  String get rcptStorageToggle =>
+      'Store receipt photos in Firebase Storage — needs Blaze';
+
+  @override
+  String get rcptStorageHelp =>
+      'Off: photos are saved inside the receipt record (works on the free plan). On: they go to Firebase Storage; if an upload fails, the photo is saved inside the record instead.';
+
+  @override
+  String get rcptPhotoLoadFailed => 'Couldn\'t load the receipt photo.';
+
+  @override
+  String get rcptPhotoRetry => 'Try again';
+
+  @override
   String get rcptNotifApprovedTitle => 'Subscription payment approved';
 
   @override
@@ -1094,6 +1111,80 @@ class AppLocalizationsEn extends AppLocalizations {
       'You can only manage time off for your own schedule.';
 
   @override
+  String get timeOffSeveralDays => 'Several days';
+
+  @override
+  String get vacationFromDate => 'First day';
+
+  @override
+  String get vacationToDate => 'Last day';
+
+  @override
+  String get vacationFirstDayFrom => 'First day starts at';
+
+  @override
+  String get vacationLastDayUntil => 'Last day ends at';
+
+  @override
+  String get vacationStartOfWork => 'Start of work';
+
+  @override
+  String get vacationEndOfWork => 'End of work';
+
+  @override
+  String vacationMaxDays(int days, int max) {
+    return '$days days selected (at most $max).';
+  }
+
+  @override
+  String get vacationLabel => 'Vacation';
+
+  @override
+  String vacationRange(String from, String to) {
+    return '$from - $to';
+  }
+
+  @override
+  String get vacationConflictsTitle => 'Bookings during this time off';
+
+  @override
+  String vacationConflictsBody(int count) {
+    return '$count upcoming bookings fall inside this time off. Cancel them and notify each customer, or keep them (their times stay booked).';
+  }
+
+  @override
+  String get vacationPaidRefund => 'Paid: a refund will be flagged';
+
+  @override
+  String get vacationCancelAndNotify => 'Cancel & notify customers';
+
+  @override
+  String get vacationKeepBookings => 'Keep bookings';
+
+  @override
+  String get vacationSaved =>
+      'Vacation saved. Customers can no longer book these days.';
+
+  @override
+  String vacationSavedCancelled(int count) {
+    return 'Vacation saved. $count bookings cancelled and their customers notified.';
+  }
+
+  @override
+  String vacationRemoveConfirm(String range) {
+    return 'Remove the whole vacation $range? Customers can book these days again.';
+  }
+
+  @override
+  String vacationErrTooLong(int max) {
+    return 'A vacation can be at most $max days long.';
+  }
+
+  @override
+  String get vacationErrNothingToBlock =>
+      'There are no working hours left to block on these days.';
+
+  @override
   String get subTrialing => 'Free trial';
 
   @override
@@ -1405,6 +1496,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get barberMobileOptional => 'Mobile Number (optional)';
 
   @override
+  String get barberPhoneHelper =>
+      'Private. Customers see it only after their booking is confirmed.';
+
+  @override
+  String get barberPhoneNone => 'No mobile number';
+
+  @override
+  String get barberPhoneEdit => 'Edit mobile number';
+
+  @override
+  String get barberPhoneSaved => 'Mobile number saved';
+
+  @override
+  String callBarberAction(String name) {
+    return 'Call $name';
+  }
+
+  @override
+  String barberPhoneOnBooking(String phone) {
+    return 'Barber\'s phone: $phone';
+  }
+
+  @override
   String get invalidEmailShort => 'Enter a valid email address';
 
   @override
@@ -1567,11 +1681,87 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String adminShopsDeleteBody(String shop) {
-    return 'This permanently deletes $shop with its services, barbers and pending invites. Booking history is kept. Type the shop name to confirm.';
+    return 'This permanently deletes $shop. Type the shop name to confirm.';
   }
 
   @override
   String get adminShopsDeleteTypeName => 'Shop name';
+
+  @override
+  String get adminShopsDeleteWillHeading => 'What happens';
+
+  @override
+  String adminShopsDeleteListBarbers(int count) {
+    return '$count barber profiles are deleted, with their time off and booked slots';
+  }
+
+  @override
+  String adminShopsDeleteListServices(int count) {
+    return '$count services are deleted';
+  }
+
+  @override
+  String adminShopsDeleteListStaff(int count) {
+    return '$count staff accounts (owner and barbers) become customer accounts';
+  }
+
+  @override
+  String adminShopsDeleteListInvites(int count) {
+    return '$count pending invites are revoked';
+  }
+
+  @override
+  String adminShopsDeleteListBookings(int count) {
+    return '$count upcoming bookings are cancelled and their customers notified';
+  }
+
+  @override
+  String get adminShopsDeleteListBookingsUnknown =>
+      'Upcoming bookings are cancelled and their customers notified';
+
+  @override
+  String get adminShopsDeleteListOther =>
+      'The walk-in queue, reviews, payouts and statistics are deleted';
+
+  @override
+  String get adminShopsDeleteListKept =>
+      'Past bookings are kept for history. Staff can still sign in, as customers.';
+
+  @override
+  String get adminShopsDeleteStepPrepare => 'Suspending the shop';
+
+  @override
+  String get adminShopsDeleteStepBookings => 'Cancelling upcoming bookings';
+
+  @override
+  String get adminShopsDeleteStepStaff => 'Moving staff to customer accounts';
+
+  @override
+  String get adminShopsDeleteStepData =>
+      'Deleting barbers, services and shop data';
+
+  @override
+  String get adminShopsDeleteStepShop => 'Deleting the shop';
+
+  @override
+  String adminShopsDeleteProgress(int step, int total, String label) {
+    return 'Step $step of $total: $label…';
+  }
+
+  @override
+  String adminShopsDeleteFailed(String step) {
+    return 'Could not finish \"$step\". What was done stays done; tap Retry to continue.';
+  }
+
+  @override
+  String get adminShopsDeleteRetry => 'Retry';
+
+  @override
+  String get shopRemovedNoticeTitle => 'Your barbershop was removed';
+
+  @override
+  String get shopRemovedNoticeBody =>
+      'You can keep using Crown & Blade as a customer.';
 
   @override
   String get adminShopsErrReasonRequired => 'Enter a reason.';
@@ -3333,6 +3523,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reviewsErrNotFound => 'This review no longer exists.';
 
   @override
+  String get reviewsEditAction => 'Edit review';
+
+  @override
+  String get reviewsDeleteAction => 'Delete review';
+
+  @override
+  String get reviewsEditTitle => 'Edit your review';
+
+  @override
+  String get reviewsSaveEdit => 'Save changes';
+
+  @override
+  String get reviewsEditSaved => 'Your review was updated.';
+
+  @override
+  String get reviewsEdited => 'edited';
+
+  @override
+  String get reviewsManageHint => 'Tap to edit or delete your review';
+
+  @override
+  String get reviewsDeleteConfirmTitle => 'Delete your review?';
+
+  @override
+  String reviewsDeleteConfirmBody(String barber) {
+    return 'Your stars and comment will be removed from $barber\'s rating. You can rate this visit again later.';
+  }
+
+  @override
+  String get reviewsDeleted => 'Your review was deleted.';
+
+  @override
   String get authTabLogin => 'Log in';
 
   @override
@@ -3804,6 +4026,88 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get payoutsErrDeleteWindow =>
       'Payouts can be deleted only within 24 hours of recording them.';
+
+  @override
+  String payoutsCarriedOver(String month) {
+    return 'Carried over from $month';
+  }
+
+  @override
+  String get payoutsCarryUnavailable =>
+      'Earlier unpaid balances couldn\'t be loaded. Showing this month only.';
+
+  @override
+  String get payoutsCarryHint =>
+      'Includes unpaid balances from earlier months. Paying part of it leaves the rest for next month.';
+
+  @override
+  String get payoutsTotalCarried => 'Carried over';
+
+  @override
+  String get earningsTitle => 'Your earnings';
+
+  @override
+  String get earningsShopTitle => 'Totals for any period';
+
+  @override
+  String get earningsTab => 'Totals';
+
+  @override
+  String get earningsThisMonth => 'This month';
+
+  @override
+  String get earningsLastMonth => 'Last month';
+
+  @override
+  String get earningsPickMonth => 'Pick a month';
+
+  @override
+  String get earningsThisYear => 'This year';
+
+  @override
+  String get earningsAllTime => 'All time';
+
+  @override
+  String get earningsAllTimeNote => 'All completed bookings';
+
+  @override
+  String get earningsCompleted => 'Completed jobs';
+
+  @override
+  String get earningsRevenue => 'Revenue';
+
+  @override
+  String earningsYourShare(int percent) {
+    return 'Your share ($percent%)';
+  }
+
+  @override
+  String get earningsBarbersShare => 'Barbers\' share';
+
+  @override
+  String get earningsShopKeeps => 'Shop\'s part';
+
+  @override
+  String get earningsByBarber => 'By barber';
+
+  @override
+  String earningsBarberJobs(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count completed jobs',
+      one: '1 completed job',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get earningsLoadFailed =>
+      'Couldn\'t load the totals. Please try again.';
+
+  @override
+  String get earningsShareNote =>
+      'Shares use the current commission. Only completed bookings count.';
 
   @override
   String get applRegisterShopTitle => 'Register your barbershop';
@@ -4439,6 +4743,96 @@ class AppLocalizationsEn extends AppLocalizations {
   String get admPayEdit => 'Edit';
 
   @override
+  String get refundsDueTitle => 'Refunds due';
+
+  @override
+  String refundsDueCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count refunds waiting',
+      one: '1 refund waiting',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get refundsEmpty =>
+      'No refunds due. When a paid booking is cancelled, the money owed to the customer shows up here.';
+
+  @override
+  String refundBadgeDue(String amount) {
+    return 'Refund due · $amount';
+  }
+
+  @override
+  String get refundBadgeRefunded => 'Refunded';
+
+  @override
+  String get refundMarkButton => 'Mark refunded';
+
+  @override
+  String get refundMarkTitle => 'Mark the refund as sent';
+
+  @override
+  String refundMarkBody(String amount, String customer) {
+    return 'Confirm that you sent $amount back to $customer.';
+  }
+
+  @override
+  String get refundMethodLabel => 'How was it refunded?';
+
+  @override
+  String refundMethodName(String method) {
+    String _temp0 = intl.Intl.selectLogic(
+      method,
+      {
+        'telebirr': 'telebirr',
+        'cbe': 'CBE Birr',
+        'bank': 'Bank transfer',
+        'cash': 'Cash',
+        'chapa': 'Chapa',
+        'other': 'Other',
+      },
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get refundReferenceLabel => 'Reference (optional)';
+
+  @override
+  String get refundReferenceHint => 'Transaction ID or a short note';
+
+  @override
+  String get refundMarkedSnack =>
+      'Marked as refunded. The customer was notified.';
+
+  @override
+  String refundReasonName(String reason) {
+    String _temp0 = intl.Intl.selectLogic(
+      reason,
+      {
+        'customer_cancelled': 'Customer cancelled',
+        'customer_late_cancel': 'Customer cancelled late (partial refund)',
+        'barber_cancelled': 'Barber cancelled',
+        'shop_cancelled': 'Shop cancelled',
+        'admin_cancelled': 'Cancelled by the platform',
+        'request_declined': 'Request declined',
+        'request_expired': 'Request expired',
+        'shop_deleted': 'Shop removed',
+        'other': 'Cancelled',
+      },
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String refundFlaggedOn(String date) {
+    return 'Cancelled $date';
+  }
+
+  @override
   String get admPayReceiversMissing =>
       'Add your telebirr number or CBE account so owners know where to pay.';
 
@@ -4467,4 +4861,245 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get admPayNoPayments => 'No payments yet.';
+
+  @override
+  String get errAccountDisabled =>
+      'Your account has been disabled. Contact support.';
+
+  @override
+  String get admUsrSearchHint => 'Search by name, email or phone';
+
+  @override
+  String admUsrFilterAll(int count) {
+    return 'All ($count)';
+  }
+
+  @override
+  String admUsrFilterCustomers(int count) {
+    return 'Customers ($count)';
+  }
+
+  @override
+  String admUsrFilterOwners(int count) {
+    return 'Owners ($count)';
+  }
+
+  @override
+  String admUsrFilterBarbers(int count) {
+    return 'Barbers ($count)';
+  }
+
+  @override
+  String admUsrFilterAdmins(int count) {
+    return 'Admins ($count)';
+  }
+
+  @override
+  String admUsrFilterDisabled(int count) {
+    return 'Disabled ($count)';
+  }
+
+  @override
+  String get admUsrEmpty => 'No users match your search.';
+
+  @override
+  String get admUsrDisabledChip => 'Disabled';
+
+  @override
+  String get admUsrYouChip => 'You';
+
+  @override
+  String get admUsrEditTitle => 'Edit user';
+
+  @override
+  String get admUsrEmailLabel => 'Email';
+
+  @override
+  String get admUsrPhoneLabel => 'Phone';
+
+  @override
+  String admUsrJoined(String date) {
+    return 'Joined $date';
+  }
+
+  @override
+  String get admUsrRoleSection => 'Role';
+
+  @override
+  String get admUsrShopLabel => 'Barbershop';
+
+  @override
+  String get admUsrPickShop => 'Choose a barbershop';
+
+  @override
+  String get admUsrBarberProfileLabel => 'Barber profile';
+
+  @override
+  String get admUsrNewBarberProfile => 'Create a new barber profile';
+
+  @override
+  String get admUsrSaveRole => 'Change role';
+
+  @override
+  String get admUsrSelfNote =>
+      'This is your own account. You cannot change your own role or disable yourself.';
+
+  @override
+  String admUsrRoleAtShop(String role, String shop) {
+    return '$role at $shop';
+  }
+
+  @override
+  String get admUsrConfirmRoleTitle => 'Change role?';
+
+  @override
+  String admUsrConfirmRoleBody(String name, String role) {
+    return '$name will become: $role.';
+  }
+
+  @override
+  String admUsrEffectNewBarber(String shop) {
+    return 'A new barber profile is created in $shop.';
+  }
+
+  @override
+  String admUsrEffectUnlinkBarber(String barber) {
+    return 'Their barber profile \"$barber\" stays in the shop for its history but stops taking bookings.';
+  }
+
+  @override
+  String admUsrEffectReleaseShop(String shop) {
+    return '$shop will have no owner until you assign one.';
+  }
+
+  @override
+  String admUsrEffectPreviousOwner(String name, String shop) {
+    return '$name owns $shop now and becomes a customer.';
+  }
+
+  @override
+  String admUsrEffectInvites(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count pending invites are cancelled.',
+      one: '1 pending invite is cancelled.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get admUsrRoleChanged => 'Role changed.';
+
+  @override
+  String get admUsrAccountSection => 'Account';
+
+  @override
+  String get admUsrActive => 'Active. This person can sign in.';
+
+  @override
+  String admUsrDisabledOn(String date) {
+    return 'Disabled on $date';
+  }
+
+  @override
+  String admUsrDisabledReason(String reason) {
+    return 'Reason: $reason';
+  }
+
+  @override
+  String get admUsrDisable => 'Disable account';
+
+  @override
+  String get admUsrEnable => 'Enable account';
+
+  @override
+  String admUsrDisableTitle(String name) {
+    return 'Disable $name?';
+  }
+
+  @override
+  String get admUsrDisableBody =>
+      'They are signed out right away and cannot sign in until you enable the account again.';
+
+  @override
+  String get admUsrReasonLabel => 'Reason (optional)';
+
+  @override
+  String get admUsrCancelBookings => 'Also cancel their upcoming bookings';
+
+  @override
+  String admUsrUpcomingCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count upcoming bookings',
+      one: '1 upcoming booking',
+      zero: 'No upcoming bookings',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get admUsrUpcomingUnknown => 'Upcoming bookings could not be counted.';
+
+  @override
+  String get admUsrBookingsStay =>
+      'Their upcoming bookings stay unless you tick the box.';
+
+  @override
+  String admUsrDisabledSnack(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Account disabled. $count bookings cancelled.',
+      one: 'Account disabled. 1 booking cancelled.',
+      zero: 'Account disabled.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String admUsrEnableTitle(String name) {
+    return 'Enable $name?';
+  }
+
+  @override
+  String get admUsrEnableBody => 'They can sign in again.';
+
+  @override
+  String get admUsrEnabledSnack => 'Account enabled.';
+
+  @override
+  String get admUsrErrNotAdmin => 'Only admins can manage users.';
+
+  @override
+  String get admUsrErrNotFound => 'This user no longer exists.';
+
+  @override
+  String get admUsrErrSelf =>
+      'You cannot change your own role or disable your own account.';
+
+  @override
+  String get admUsrErrLastAdmin =>
+      'The platform needs at least one active admin.';
+
+  @override
+  String get admUsrErrShopRequired => 'Choose a barbershop.';
+
+  @override
+  String get admUsrErrShopNotFound =>
+      'That barbershop or barber profile no longer exists.';
+
+  @override
+  String get admUsrErrBarberTaken =>
+      'That barber profile already belongs to another account.';
+
+  @override
+  String get admUsrErrNoChange => 'Nothing to change.';
+
+  @override
+  String admUsrErrReasonTooLong(int max) {
+    return 'The reason can be at most $max characters.';
+  }
 }

@@ -11,8 +11,12 @@ import '../../models/barber_model.dart';
 import '../../models/booking_model.dart';
 import '../../models/user_model.dart';
 import '../../services/app_repository.dart';
+import '../../services/earnings_period.dart';
+import '../../services/payout_carryover.dart';
 import '../../services/payout_service.dart';
 
+export '../../services/earnings_period.dart';
+export '../../services/payout_carryover.dart';
 export '../../services/payout_service.dart';
 
 /// Storage of payouts: [FirestorePayoutStore] in production,
@@ -31,6 +35,10 @@ abstract class PayoutStore {
 
   Future<void> create(Payout payout);
   Future<void> delete(Payout payout);
+
+  /// Sum of [barberId]'s payouts whose `periodStart` is in [window]
+  /// (carry-over).
+  Future<double> sumPaid(String shopId, String barberId, CarryOverWindow window);
 }
 
 /// Firestore access, all under `barbershops/{shopId}/payouts`:
@@ -42,6 +50,9 @@ abstract class PayoutStore {
 ///                   the client, no composite index)
 ///  * create:        set `payouts/{autoId}` with [Payout.toMap]
 ///  * delete:        delete `payouts/{id}`
+///  * carry-over:    aggregate sum('amount') where barberId == b and
+///                   periodStart >= first day and periodStart < end day
+///                   (composite index payouts barberId+periodStart)
 class FirestorePayoutStore implements PayoutStore {
   FirestorePayoutStore(this._db);
 
@@ -72,6 +83,17 @@ class FirestorePayoutStore implements PayoutStore {
 
   @override
   Future<void> delete(Payout payout) => _payouts(payout.shopId).doc(payout.id).delete();
+
+  @override
+  Future<double> sumPaid(String shopId, String barberId, CarryOverWindow window) async {
+    final snap = await _payouts(shopId)
+        .where('barberId', isEqualTo: barberId)
+        .where('periodStart', isGreaterThanOrEqualTo: payoutDateIso(window.firstDay))
+        .where('periodStart', isLessThan: payoutDateIso(window.endDay))
+        .aggregate(sum('amount'))
+        .get();
+    return snap.getSum('amount') ?? 0;
+  }
 }
 
 /// In-memory payouts for DEMO_MODE builds and tests. In DEMO_MODE it loads
@@ -161,6 +183,16 @@ class LocalPayoutStore implements PayoutStore {
     if (_byId.remove(payout.id) == null) throw PayoutException(PayoutErrorCode.notFound);
     _changes.add(null);
   }
+
+  @override
+  Future<double> sumPaid(String shopId, String barberId, CarryOverWindow window) async {
+    await _ensureSeeded();
+    var paid = 0.0;
+    for (final p in _byId.values) {
+      if (p.shopId == shopId && p.barberId == barberId && window.containsDate(p.periodStart)) paid += p.amount;
+    }
+    return paid;
+  }
 }
 
 /// The demo dataset's payouts. Each entry: `{id, shopId, barberId, amount,
@@ -234,6 +266,10 @@ class PayoutsManager {
 
   bool get _usesFirestore => _cloudOverride == null && _repo.isFirebaseAttached;
 
+  /// Whether figures come from Firestore queries (false: computed from the
+  /// in-memory bookings, which change with the repository).
+  bool get usesFirestore => _usesFirestore;
+
   PayoutStore get store {
     if (_cloudOverride != null) return _cloudOverride;
     if (!_repo.isFirebaseAttached) return local;
@@ -287,6 +323,118 @@ class PayoutsManager {
         .where('startAt', isLessThan: month.endUtc.toIso8601String())
         .get();
     return mergeBookings([for (final d in snap.docs) Booking.fromMap(d.data(), d.id)], cached);
+  }
+
+  // --- Earnings for any period (not limited to the cached 90 days) ---
+
+  /// Completed bookings and revenue of [shopId] (or of [barberId]) in
+  /// [period].
+  ///
+  /// With Firebase: one aggregate query, count() and sum('price') of
+  /// `bookings where shopId == s [and barberId == b] and status ==
+  /// 'completed' [and startAt >= start and startAt < end]` (composite
+  /// indexes shopId+status+startAt and shopId+barberId+status+startAt).
+  /// Works on the free Spark plan. Without Firebase: computed from the
+  /// in-memory bookings ([earningsFromBookings]).
+  Future<EarningsTotals> loadEarnings(String shopId, EarningsPeriod period, {String? barberId}) async {
+    if (!_usesFirestore) {
+      final bookings = barberId == null ? _repo.getShopBookings(shopId) : _repo.getBookingsForBarber(barberId);
+      return earningsFromBookings(bookings, shopId: shopId, barberId: barberId, period: period);
+    }
+    return _aggregateCompleted(shopId, barberId: barberId, startUtc: period.startUtc, endUtc: period.endUtc);
+  }
+
+  Future<EarningsTotals> _aggregateCompleted(
+    String shopId, {
+    String? barberId,
+    DateTime? startUtc,
+    DateTime? endUtc,
+  }) =>
+      aggregateCompletedBookings(_db ??= FirebaseFirestore.instance, shopId,
+          barberId: barberId, startUtc: startUtc, endUtc: endUtc);
+
+  /// The aggregate behind [loadEarnings] and [loadCarryOver]: count() and
+  /// sum('price') of the completed bookings of [shopId] (and [barberId])
+  /// with `startAt` in `[startUtc, endUtc)` (null = open).
+  static Future<EarningsTotals> aggregateCompletedBookings(
+    FirebaseFirestore db,
+    String shopId, {
+    String? barberId,
+    DateTime? startUtc,
+    DateTime? endUtc,
+  }) async {
+    Query<Map<String, dynamic>> q = db.collection('bookings').where('shopId', isEqualTo: shopId);
+    if (barberId != null) q = q.where('barberId', isEqualTo: barberId);
+    q = q.where('status', isEqualTo: BookingStatus.completed.name);
+    if (startUtc != null) q = q.where('startAt', isGreaterThanOrEqualTo: startUtc.toUtc().toIso8601String());
+    if (endUtc != null) q = q.where('startAt', isLessThan: endUtc.toUtc().toIso8601String());
+    final snap = await q.aggregate(count(), sum('price')).get();
+    return EarningsTotals(completed: snap.count ?? 0, revenue: snap.getSum('price') ?? 0);
+  }
+
+  /// The shop's totals for [period]: the whole shop and each current
+  /// barber (one aggregate each, run in parallel).
+  Future<ShopEarnings> loadShopEarnings(String shopId, EarningsPeriod period) async {
+    final barbers = _repo.getBarbersForShop(shopId);
+    final results = await Future.wait([
+      loadEarnings(shopId, period),
+      for (final b in barbers) loadEarnings(shopId, period, barberId: b.id),
+    ]);
+    return ShopEarnings(
+      shop: results.first,
+      barbers: ShopEarnings.sorted([
+        for (var i = 0; i < barbers.length; i++)
+          BarberEarnings(
+            barberId: barbers[i].id,
+            barberName: barbers[i].name,
+            commissionPercent: commissionOf(barbers[i]),
+            totals: results[i + 1],
+          ),
+      ]),
+    );
+  }
+
+  // --- Carry-over ---
+
+  /// What [barber] carries into [month] from earlier months
+  /// ([carryOverWindow]): with Firebase, one bookings aggregate (count and
+  /// sum of prices of the completed bookings in the window) and one payouts
+  /// aggregate (sum of amounts); without, computed in memory. Nothing is
+  /// written.
+  Future<PayoutCarryOver> loadCarryOver(Barber barber, PayoutMonth month) async {
+    final window = carryOverWindow(month);
+    if (window == null) return PayoutCarryOver.none(month);
+    final paidFuture = store.sumPaid(barber.shopId, barber.id, window);
+    final EarningsTotals earned;
+    if (_usesFirestore) {
+      earned = await _aggregateCompleted(
+        barber.shopId,
+        barberId: barber.id,
+        startUtc: window.startUtc,
+        endUtc: window.endUtc,
+      );
+    } else {
+      earned = earningsFromBookings(
+        _repo.getBookingsForBarber(barber.id),
+        shopId: barber.shopId,
+        barberId: barber.id,
+        period: EarningsPeriod.between(window.startUtc, window.endUtc),
+      );
+    }
+    return carryOverOf(
+      month: month,
+      commissionPercent: commissionOf(barber),
+      completedBefore: earned.completed,
+      revenueBefore: earned.revenue,
+      paidBefore: await paidFuture,
+    );
+  }
+
+  /// [loadCarryOver] for every current barber of [shopId], by barber id.
+  Future<Map<String, PayoutCarryOver>> loadShopCarryOver(String shopId, PayoutMonth month) async {
+    final barbers = _repo.getBarbersForShop(shopId);
+    final carries = await Future.wait([for (final b in barbers) loadCarryOver(b, month)]);
+    return {for (var i = 0; i < barbers.length; i++) barbers[i].id: carries[i]};
   }
 
   /// Per-barber figures of [shopId] for [month].

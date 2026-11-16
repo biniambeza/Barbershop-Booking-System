@@ -392,6 +392,23 @@ class AppLocalizationsAm extends AppLocalizations {
   String get rcptPricingSaved => 'ዋጋዎቹ ተቀምጠዋል።';
 
   @override
+  String get rcptStorageTitle => 'የደረሰኝ ፎቶዎች';
+
+  @override
+  String get rcptStorageToggle =>
+      'የደረሰኝ ፎቶዎችን በFirebase Storage አስቀምጥ — Blaze ዕቅድ ያስፈልጋል';
+
+  @override
+  String get rcptStorageHelp =>
+      'ሲጠፋ፦ ፎቶዎች በደረሰኙ መዝገብ ውስጥ ይቀመጣሉ (በነጻው ዕቅድ ይሰራል)። ሲበራ፦ ወደ Firebase Storage ይሄዳሉ፤ መስቀሉ ካልተሳካ ፎቶው በመዝገቡ ውስጥ ይቀመጣል።';
+
+  @override
+  String get rcptPhotoLoadFailed => 'የደረሰኙን ፎቶ መጫን አልተቻለም።';
+
+  @override
+  String get rcptPhotoRetry => 'እንደገና ይሞክሩ';
+
+  @override
   String get rcptNotifApprovedTitle => 'የደንበኝነት ክፍያ ጸድቋል';
 
   @override
@@ -1047,6 +1064,78 @@ class AppLocalizationsAm extends AppLocalizations {
   String get timeOffErrNotAllowed => 'እረፍት ማስተዳደር የሚችሉት ለራስዎ መርሐ ግብር ብቻ ነው።';
 
   @override
+  String get timeOffSeveralDays => 'ብዙ ቀናት';
+
+  @override
+  String get vacationFromDate => 'የመጀመሪያ ቀን';
+
+  @override
+  String get vacationToDate => 'የመጨረሻ ቀን';
+
+  @override
+  String get vacationFirstDayFrom => 'የመጀመሪያው ቀን የሚጀምረው';
+
+  @override
+  String get vacationLastDayUntil => 'የመጨረሻው ቀን የሚያበቃው';
+
+  @override
+  String get vacationStartOfWork => 'የሥራ መጀመሪያ';
+
+  @override
+  String get vacationEndOfWork => 'የሥራ መጨረሻ';
+
+  @override
+  String vacationMaxDays(int days, int max) {
+    return '$days ቀናት ተመርጠዋል (ቢበዛ $max)።';
+  }
+
+  @override
+  String get vacationLabel => 'የእረፍት ጊዜ';
+
+  @override
+  String vacationRange(String from, String to) {
+    return '$from - $to';
+  }
+
+  @override
+  String get vacationConflictsTitle => 'በዚህ እረፍት ውስጥ ያሉ ቀጠሮዎች';
+
+  @override
+  String vacationConflictsBody(int count) {
+    return '$count መጪ ቀጠሮዎች በዚህ እረፍት ውስጥ ይወድቃሉ። ሰርዘው ለእያንዳንዱ ደንበኛ ያሳውቁ፣ ወይም ያቆዩዋቸው (ሰዓቶቻቸው እንደተያዙ ይቆያሉ)።';
+  }
+
+  @override
+  String get vacationPaidRefund => 'ተከፍሏል፦ ተመላሽ ክፍያ ይመዘገባል';
+
+  @override
+  String get vacationCancelAndNotify => 'ሰርዝና ደንበኞችን አሳውቅ';
+
+  @override
+  String get vacationKeepBookings => 'ቀጠሮዎቹን አቆይ';
+
+  @override
+  String get vacationSaved => 'የእረፍት ጊዜው ተቀምጧል። ደንበኞች እነዚህን ቀናት መያዝ አይችሉም።';
+
+  @override
+  String vacationSavedCancelled(int count) {
+    return 'የእረፍት ጊዜው ተቀምጧል። $count ቀጠሮዎች ተሰርዘው ደንበኞቻቸው ተነግሯቸዋል።';
+  }
+
+  @override
+  String vacationRemoveConfirm(String range) {
+    return 'ሙሉው የእረፍት ጊዜ $range ይወገድ? ደንበኞች እነዚህን ቀናት እንደገና መያዝ ይችላሉ።';
+  }
+
+  @override
+  String vacationErrTooLong(int max) {
+    return 'የእረፍት ጊዜ ቢበዛ $max ቀናት ሊሆን ይችላል።';
+  }
+
+  @override
+  String get vacationErrNothingToBlock => 'በእነዚህ ቀናት የሚዘጋ የሥራ ሰዓት የለም።';
+
+  @override
   String get subTrialing => 'ነፃ ሙከራ';
 
   @override
@@ -1345,6 +1434,29 @@ class AppLocalizationsAm extends AppLocalizations {
   String get barberMobileOptional => 'የሞባይል ቁጥር (አማራጭ)';
 
   @override
+  String get barberPhoneHelper =>
+      'የግል ነው። ደንበኞች የሚያዩት ቀጠሮአቸው ከተረጋገጠ በኋላ ብቻ ነው።';
+
+  @override
+  String get barberPhoneNone => 'የሞባይል ቁጥር የለም';
+
+  @override
+  String get barberPhoneEdit => 'የሞባይል ቁጥር ያስተካክሉ';
+
+  @override
+  String get barberPhoneSaved => 'የሞባይል ቁጥሩ ተቀምጧል';
+
+  @override
+  String callBarberAction(String name) {
+    return 'ለ$name ይደውሉ';
+  }
+
+  @override
+  String barberPhoneOnBooking(String phone) {
+    return 'የፀጉር አስተካካዩ ስልክ፦ $phone';
+  }
+
+  @override
   String get invalidEmailShort => 'ትክክለኛ ኢሜይል ያስገቡ';
 
   @override
@@ -1506,11 +1618,86 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String adminShopsDeleteBody(String shop) {
-    return 'ይህ $shopን ከአገልግሎቶቹ፣ ከፀጉር አስተካካዮቹና በመጠባበቅ ላይ ካሉ ግብዣዎቹ ጋር በቋሚነት ይሰርዛል። የቀጠሮ ታሪክ ይቀመጣል። ለማረጋገጥ የፀጉር ቤቱን ስም ይጻፉ።';
+    return 'ይህ $shopን በቋሚነት ይሰርዛል። ለማረጋገጥ የፀጉር ቤቱን ስም ይጻፉ።';
   }
 
   @override
   String get adminShopsDeleteTypeName => 'የፀጉር ቤቱ ስም';
+
+  @override
+  String get adminShopsDeleteWillHeading => 'ምን ይከሰታል';
+
+  @override
+  String adminShopsDeleteListBarbers(int count) {
+    return '$count የፀጉር አስተካካይ መገለጫዎች ከእረፍት ጊዜያቸውና ከተያዙ ሰዓቶቻቸው ጋር ይሰረዛሉ';
+  }
+
+  @override
+  String adminShopsDeleteListServices(int count) {
+    return '$count አገልግሎቶች ይሰረዛሉ';
+  }
+
+  @override
+  String adminShopsDeleteListStaff(int count) {
+    return '$count የሰራተኛ መለያዎች (ባለቤትና ፀጉር አስተካካዮች) የደንበኛ መለያ ይሆናሉ';
+  }
+
+  @override
+  String adminShopsDeleteListInvites(int count) {
+    return 'በመጠባበቅ ላይ ያሉ $count ግብዣዎች ይሰረዛሉ';
+  }
+
+  @override
+  String adminShopsDeleteListBookings(int count) {
+    return '$count መጪ ቀጠሮዎች ይሰረዛሉ፤ ደንበኞቻቸውም ይነገራቸዋል';
+  }
+
+  @override
+  String get adminShopsDeleteListBookingsUnknown =>
+      'መጪ ቀጠሮዎች ይሰረዛሉ፤ ደንበኞቻቸውም ይነገራቸዋል';
+
+  @override
+  String get adminShopsDeleteListOther =>
+      'የወረፋ ዝርዝሩ፣ ግምገማዎች፣ የሰራተኛ ክፍያዎችና ስታቲስቲክስ ይሰረዛሉ';
+
+  @override
+  String get adminShopsDeleteListKept =>
+      'ያለፉ ቀጠሮዎች ለታሪክ ይቀመጣሉ። ሰራተኞቹ አሁንም እንደ ደንበኛ መግባት ይችላሉ።';
+
+  @override
+  String get adminShopsDeleteStepPrepare => 'ፀጉር ቤቱን በማገድ ላይ';
+
+  @override
+  String get adminShopsDeleteStepBookings => 'መጪ ቀጠሮዎችን በመሰረዝ ላይ';
+
+  @override
+  String get adminShopsDeleteStepStaff => 'ሰራተኞችን ወደ ደንበኛ መለያ በመቀየር ላይ';
+
+  @override
+  String get adminShopsDeleteStepData =>
+      'ፀጉር አስተካካዮችን፣ አገልግሎቶችንና የፀጉር ቤቱን መረጃ በመሰረዝ ላይ';
+
+  @override
+  String get adminShopsDeleteStepShop => 'ፀጉር ቤቱን በመሰረዝ ላይ';
+
+  @override
+  String adminShopsDeleteProgress(int step, int total, String label) {
+    return 'ደረጃ $step ከ$total፦ $label…';
+  }
+
+  @override
+  String adminShopsDeleteFailed(String step) {
+    return '«$step» መጨረስ አልተቻለም። የተሰራው ይቀመጣል፤ ለመቀጠል «እንደገና ሞክር»ን ይጫኑ።';
+  }
+
+  @override
+  String get adminShopsDeleteRetry => 'እንደገና ሞክር';
+
+  @override
+  String get shopRemovedNoticeTitle => 'ፀጉር ቤትዎ ተወግዷል';
+
+  @override
+  String get shopRemovedNoticeBody => 'Crown & Bladeን እንደ ደንበኛ መጠቀም መቀጠል ይችላሉ።';
 
   @override
   String get adminShopsErrReasonRequired => 'ምክንያት ያስገቡ።';
@@ -3215,6 +3402,38 @@ class AppLocalizationsAm extends AppLocalizations {
   String get reviewsErrNotFound => 'ይህ ግምገማ ከእንግዲህ የለም።';
 
   @override
+  String get reviewsEditAction => 'ግምገማውን ያስተካክሉ';
+
+  @override
+  String get reviewsDeleteAction => 'ግምገማውን ይሰርዙ';
+
+  @override
+  String get reviewsEditTitle => 'ግምገማዎን ያስተካክሉ';
+
+  @override
+  String get reviewsSaveEdit => 'ለውጦቹን አስቀምጥ';
+
+  @override
+  String get reviewsEditSaved => 'ግምገማዎ ተዘምኗል።';
+
+  @override
+  String get reviewsEdited => 'ተስተካክሏል';
+
+  @override
+  String get reviewsManageHint => 'ግምገማዎን ለማስተካከል ወይም ለመሰረዝ ይንኩ';
+
+  @override
+  String get reviewsDeleteConfirmTitle => 'ግምገማዎን ይሰርዙ?';
+
+  @override
+  String reviewsDeleteConfirmBody(String barber) {
+    return 'ኮከቦችዎና አስተያየትዎ ከ$barber ደረጃ ይወገዳሉ። ይህን ጉብኝት በኋላ እንደገና መገምገም ይችላሉ።';
+  }
+
+  @override
+  String get reviewsDeleted => 'ግምገማዎ ተሰርዟል።';
+
+  @override
   String get authTabLogin => 'ግባ';
 
   @override
@@ -3672,6 +3891,87 @@ class AppLocalizationsAm extends AppLocalizations {
   @override
   String get payoutsErrDeleteWindow =>
       'ክፍያን መሰረዝ የሚቻለው ከተመዘገበ በ24 ሰዓት ውስጥ ብቻ ነው።';
+
+  @override
+  String payoutsCarriedOver(String month) {
+    return 'ከ$month የተላለፈ';
+  }
+
+  @override
+  String get payoutsCarryUnavailable =>
+      'የቀደሙ ወራት ያልተከፈሉ ቀሪዎችን መጫን አልተቻለም። የዚህ ወር ብቻ ይታያል።';
+
+  @override
+  String get payoutsCarryHint =>
+      'ከቀደሙ ወራት ያልተከፈሉ ቀሪዎችን ያካትታል። ከፊሉን ከከፈሉ ቀሪው ወደሚቀጥለው ወር ይተላለፋል።';
+
+  @override
+  String get payoutsTotalCarried => 'የተላለፈ';
+
+  @override
+  String get earningsTitle => 'የእርስዎ ገቢ';
+
+  @override
+  String get earningsShopTitle => 'የማንኛውም ጊዜ ድምር';
+
+  @override
+  String get earningsTab => 'ድምሮች';
+
+  @override
+  String get earningsThisMonth => 'ይህ ወር';
+
+  @override
+  String get earningsLastMonth => 'ያለፈው ወር';
+
+  @override
+  String get earningsPickMonth => 'ወር ይምረጡ';
+
+  @override
+  String get earningsThisYear => 'ይህ ዓመት';
+
+  @override
+  String get earningsAllTime => 'ሁሉም ጊዜ';
+
+  @override
+  String get earningsAllTimeNote => 'ሁሉም የተጠናቀቁ ቀጠሮዎች';
+
+  @override
+  String get earningsCompleted => 'የተጠናቀቁ ሥራዎች';
+
+  @override
+  String get earningsRevenue => 'ገቢ';
+
+  @override
+  String earningsYourShare(int percent) {
+    return 'የእርስዎ ድርሻ ($percent%)';
+  }
+
+  @override
+  String get earningsBarbersShare => 'የባርበሮች ድርሻ';
+
+  @override
+  String get earningsShopKeeps => 'የፀጉር ቤቱ ድርሻ';
+
+  @override
+  String get earningsByBarber => 'በባርበር';
+
+  @override
+  String earningsBarberJobs(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count የተጠናቀቁ ሥራዎች',
+      one: '1 የተጠናቀቀ ሥራ',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get earningsLoadFailed => 'ድምሮቹን መጫን አልተቻለም። እባክዎ እንደገና ይሞክሩ።';
+
+  @override
+  String get earningsShareNote =>
+      'ድርሻዎች አሁን ባለው ኮሚሽን ይሰላሉ። የተጠናቀቁ ቀጠሮዎች ብቻ ይቆጠራሉ።';
 
   @override
   String get applRegisterShopTitle => 'የፀጉር ቤትዎን ያስመዝግቡ';
@@ -4290,6 +4590,95 @@ class AppLocalizationsAm extends AppLocalizations {
   String get admPayEdit => 'አስተካክል';
 
   @override
+  String get refundsDueTitle => 'ተመላሽ የሚደረጉ ክፍያዎች';
+
+  @override
+  String refundsDueCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ተመላሾች ይጠብቃሉ',
+      one: '1 ተመላሽ ይጠብቃል',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get refundsEmpty =>
+      'ተመላሽ የሚደረግ ክፍያ የለም። የተከፈለበት ቀጠሮ ሲሰረዝ ለደንበኛው የሚመለሰው ገንዘብ እዚህ ይታያል።';
+
+  @override
+  String refundBadgeDue(String amount) {
+    return 'ተመላሽ ይጠበቃል · $amount';
+  }
+
+  @override
+  String get refundBadgeRefunded => 'ተመልሷል';
+
+  @override
+  String get refundMarkButton => 'ተመልሷል በል';
+
+  @override
+  String get refundMarkTitle => 'ተመላሹ መላኩን አረጋግጥ';
+
+  @override
+  String refundMarkBody(String amount, String customer) {
+    return '$amount ለ$customer መመለሱን ያረጋግጡ።';
+  }
+
+  @override
+  String get refundMethodLabel => 'በምን ተመለሰ?';
+
+  @override
+  String refundMethodName(String method) {
+    String _temp0 = intl.Intl.selectLogic(
+      method,
+      {
+        'telebirr': 'ቴሌብር',
+        'cbe': 'ሲቢኢ ብር',
+        'bank': 'የባንክ ዝውውር',
+        'cash': 'ጥሬ ገንዘብ',
+        'chapa': 'ቻፓ',
+        'other': 'ሌላ',
+      },
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get refundReferenceLabel => 'ማጣቀሻ (አማራጭ)';
+
+  @override
+  String get refundReferenceHint => 'የግብይት መለያ ወይም አጭር ማስታወሻ';
+
+  @override
+  String get refundMarkedSnack => 'ተመልሷል ተብሎ ተመዝግቧል። ደንበኛው ተነግሯቸዋል።';
+
+  @override
+  String refundReasonName(String reason) {
+    String _temp0 = intl.Intl.selectLogic(
+      reason,
+      {
+        'customer_cancelled': 'ደንበኛው ሰርዘዋል',
+        'customer_late_cancel': 'ደንበኛው ዘግይተው ሰርዘዋል (ከፊል ተመላሽ)',
+        'barber_cancelled': 'ፀጉር አስተካካዩ ሰርዘዋል',
+        'shop_cancelled': 'ፀጉር ቤቱ ሰርዟል',
+        'admin_cancelled': 'በመድረኩ ተሰርዟል',
+        'request_declined': 'ጥያቄው ውድቅ ሆኗል',
+        'request_expired': 'ጥያቄው ጊዜው አልፏል',
+        'shop_deleted': 'ፀጉር ቤቱ ተወግዷል',
+        'other': 'ተሰርዟል',
+      },
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String refundFlaggedOn(String date) {
+    return 'የተሰረዘው $date';
+  }
+
+  @override
   String get admPayReceiversMissing =>
       'ባለቤቶች የት እንደሚከፍሉ እንዲያውቁ የቴሌብር ቁጥርዎን ወይም የንግድ ባንክ ሂሳብዎን ያስገቡ።';
 
@@ -4318,4 +4707,240 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get admPayNoPayments => 'እስካሁን ምንም ክፍያ የለም።';
+
+  @override
+  String get errAccountDisabled => 'መለያዎ ታግዷል። ድጋፍ ሰጪን ያነጋግሩ።';
+
+  @override
+  String get admUsrSearchHint => 'በስም፣ በኢሜይል ወይም በስልክ ይፈልጉ';
+
+  @override
+  String admUsrFilterAll(int count) {
+    return 'ሁሉም ($count)';
+  }
+
+  @override
+  String admUsrFilterCustomers(int count) {
+    return 'ደንበኞች ($count)';
+  }
+
+  @override
+  String admUsrFilterOwners(int count) {
+    return 'ባለቤቶች ($count)';
+  }
+
+  @override
+  String admUsrFilterBarbers(int count) {
+    return 'ፀጉር አስተካካዮች ($count)';
+  }
+
+  @override
+  String admUsrFilterAdmins(int count) {
+    return 'አስተዳዳሪዎች ($count)';
+  }
+
+  @override
+  String admUsrFilterDisabled(int count) {
+    return 'የታገዱ ($count)';
+  }
+
+  @override
+  String get admUsrEmpty => 'ከፍለጋዎ ጋር የሚዛመድ ተጠቃሚ የለም።';
+
+  @override
+  String get admUsrDisabledChip => 'ታግዷል';
+
+  @override
+  String get admUsrYouChip => 'እርስዎ';
+
+  @override
+  String get admUsrEditTitle => 'ተጠቃሚን ያስተካክሉ';
+
+  @override
+  String get admUsrEmailLabel => 'ኢሜይል';
+
+  @override
+  String get admUsrPhoneLabel => 'ስልክ';
+
+  @override
+  String admUsrJoined(String date) {
+    return 'የተቀላቀሉት $date';
+  }
+
+  @override
+  String get admUsrRoleSection => 'ሚና';
+
+  @override
+  String get admUsrShopLabel => 'ፀጉር ቤት';
+
+  @override
+  String get admUsrPickShop => 'ፀጉር ቤት ይምረጡ';
+
+  @override
+  String get admUsrBarberProfileLabel => 'የፀጉር አስተካካይ መገለጫ';
+
+  @override
+  String get admUsrNewBarberProfile => 'አዲስ የፀጉር አስተካካይ መገለጫ ይፍጠሩ';
+
+  @override
+  String get admUsrSaveRole => 'ሚናውን ይቀይሩ';
+
+  @override
+  String get admUsrSelfNote =>
+      'ይህ የራስዎ መለያ ነው። የራስዎን ሚና መቀየር ወይም ራስዎን ማገድ አይችሉም።';
+
+  @override
+  String admUsrRoleAtShop(String role, String shop) {
+    return '$role በ$shop';
+  }
+
+  @override
+  String get admUsrConfirmRoleTitle => 'ሚናው ይቀየር?';
+
+  @override
+  String admUsrConfirmRoleBody(String name, String role) {
+    return '$name የሚሆኑት፦ $role።';
+  }
+
+  @override
+  String admUsrEffectNewBarber(String shop) {
+    return 'በ$shop አዲስ የፀጉር አስተካካይ መገለጫ ይፈጠራል።';
+  }
+
+  @override
+  String admUsrEffectUnlinkBarber(String barber) {
+    return 'የፀጉር አስተካካይ መገለጫቸው \"$barber\" ለታሪክ በፀጉር ቤቱ ይቆያል፤ ነገር ግን ቀጠሮ መቀበል ያቆማል።';
+  }
+
+  @override
+  String admUsrEffectReleaseShop(String shop) {
+    return 'ሌላ ባለቤት እስኪመድቡ ድረስ $shop ባለቤት አይኖረውም።';
+  }
+
+  @override
+  String admUsrEffectPreviousOwner(String name, String shop) {
+    return '$name አሁን የ$shop ባለቤት ናቸው፤ ደንበኛ ይሆናሉ።';
+  }
+
+  @override
+  String admUsrEffectInvites(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count በመጠባበቅ ላይ ያሉ ግብዣዎች ይሰረዛሉ።',
+      one: '1 በመጠባበቅ ላይ ያለ ግብዣ ይሰረዛል።',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get admUsrRoleChanged => 'ሚናው ተቀይሯል።';
+
+  @override
+  String get admUsrAccountSection => 'መለያ';
+
+  @override
+  String get admUsrActive => 'ንቁ። ይህ ሰው መግባት ይችላል።';
+
+  @override
+  String admUsrDisabledOn(String date) {
+    return 'የታገደው $date';
+  }
+
+  @override
+  String admUsrDisabledReason(String reason) {
+    return 'ምክንያት፦ $reason';
+  }
+
+  @override
+  String get admUsrDisable => 'መለያውን ያግዱ';
+
+  @override
+  String get admUsrEnable => 'መለያውን ይክፈቱ';
+
+  @override
+  String admUsrDisableTitle(String name) {
+    return '$name ይታገዱ?';
+  }
+
+  @override
+  String get admUsrDisableBody =>
+      'ወዲያውኑ ይወጣሉ፤ መለያውን እንደገና እስኪከፍቱ ድረስ መግባት አይችሉም።';
+
+  @override
+  String get admUsrReasonLabel => 'ምክንያት (አማራጭ)';
+
+  @override
+  String get admUsrCancelBookings => 'መጪ ቀጠሮዎቻቸውንም ይሰርዙ';
+
+  @override
+  String admUsrUpcomingCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count መጪ ቀጠሮዎች',
+      one: '1 መጪ ቀጠሮ',
+      zero: 'መጪ ቀጠሮ የለም',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get admUsrUpcomingUnknown => 'መጪ ቀጠሮዎችን መቁጠር አልተቻለም።';
+
+  @override
+  String get admUsrBookingsStay => 'ሳጥኑን ካልመረጡ መጪ ቀጠሮዎቻቸው ይቆያሉ።';
+
+  @override
+  String admUsrDisabledSnack(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'መለያው ታግዷል። $count ቀጠሮዎች ተሰርዘዋል።',
+      one: 'መለያው ታግዷል። 1 ቀጠሮ ተሰርዟል።',
+      zero: 'መለያው ታግዷል።',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String admUsrEnableTitle(String name) {
+    return '$name ይከፈትላቸው?';
+  }
+
+  @override
+  String get admUsrEnableBody => 'እንደገና መግባት ይችላሉ።';
+
+  @override
+  String get admUsrEnabledSnack => 'መለያው ተከፍቷል።';
+
+  @override
+  String get admUsrErrNotAdmin => 'ተጠቃሚዎችን ማስተዳደር የሚችሉት አስተዳዳሪዎች ብቻ ናቸው።';
+
+  @override
+  String get admUsrErrNotFound => 'ይህ ተጠቃሚ ከእንግዲህ የለም።';
+
+  @override
+  String get admUsrErrSelf => 'የራስዎን ሚና መቀየር ወይም የራስዎን መለያ ማገድ አይችሉም።';
+
+  @override
+  String get admUsrErrLastAdmin => 'መድረኩ ቢያንስ አንድ ንቁ አስተዳዳሪ ያስፈልገዋል።';
+
+  @override
+  String get admUsrErrShopRequired => 'ፀጉር ቤት ይምረጡ።';
+
+  @override
+  String get admUsrErrShopNotFound =>
+      'ያ ፀጉር ቤት ወይም የፀጉር አስተካካይ መገለጫ ከእንግዲህ የለም።';
+
+  @override
+  String get admUsrErrBarberTaken => 'ያ የፀጉር አስተካካይ መገለጫ የሌላ መለያ ነው።';
+
+  @override
+  String get admUsrErrNoChange => 'የሚቀየር ነገር የለም።';
+
+  @override
+  String admUsrErrReasonTooLong(int max) {
+    return 'ምክንያቱ ቢበዛ $max ፊደላት ሊሆን ይችላል።';
+  }
 }

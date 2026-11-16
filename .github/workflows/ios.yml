@@ -1,0 +1,186 @@
+# iPhone build (manual). Run it from GitHub > Actions > "iOS build" > Run workflow.
+#
+# Job 1 always runs: it compiles the iOS app on a Mac WITHOUT signing, to
+# prove the iPhone build still works. No Apple account is needed for that.
+#
+# Job 1 then also signs the app and uploads it to TestFlight, but ONLY when
+# every secret below is set (Settings > Secrets and variables > Actions).
+# With any of them missing those steps are skipped and the run stays green.
+# docs/ios-setup.md explains how to get each one.
+#
+#   APPLE_TEAM_ID                       10-character Team ID (developer.apple.com > Membership)
+#   APP_STORE_CONNECT_API_KEY_ID        Key ID of an App Store Connect API key (role: App Manager or Admin)
+#   APP_STORE_CONNECT_API_ISSUER_ID     Issuer ID shown above the API keys list
+#   APP_STORE_CONNECT_API_KEY_P8        Full text of the AuthKey_XXXX.p8 file, including the BEGIN/END lines
+#   IOS_DIST_CERT_P12_BASE64            "Apple Distribution" certificate + private key exported as .p12, base64-encoded
+#   IOS_DIST_CERT_PASSWORD              Password chosen when exporting that .p12
+#
+# Optional:
+#   IOS_PROVISIONING_PROFILE_BASE64     An "App Store" provisioning profile for et.crownblade.app, base64-encoded.
+#                                       Not needed normally: Xcode's automatic signing downloads/creates the
+#                                       profile itself using the API key. Installed only if present.
+#
+# Signing uses Xcode automatic signing (the project's setting) with the API key,
+# so nobody has to log in to Xcode on the runner.
+
+name: iOS build
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload_to_testflight:
+        description: 'Sign and upload to TestFlight (only happens when all signing secrets are set)'
+        type: boolean
+        default: true
+      build_number:
+        description: 'Build number (CFBundleVersion). Empty = this workflow run number. Must go up for every TestFlight upload.'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-build
+  cancel-in-progress: false
+
+jobs:
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      BUNDLE_ID: et.crownblade.app
+      BUILD_NUMBER: ${{ inputs.build_number != '' && inputs.build_number || github.run_number }}
+      # Secrets are copied into env so the `if:` checks below can test them
+      # (secrets cannot be used in `if:` directly). They are never echoed.
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
+      DIST_CERT_P12_BASE64: ${{ secrets.IOS_DIST_CERT_P12_BASE64 }}
+      DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+      PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Show tool versions
+        run: |
+          flutter --version
+          xcodebuild -version
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Generate localizations
+        run: flutter gen-l10n
+
+      # ---- 1. Unsigned build: proves the iOS app compiles. ----
+      # Flutter resolves the Firebase / plugin Swift packages here (Swift
+      # Package Manager is Flutter's default, so there is no Podfile).
+      - name: Build iOS (release, no code signing)
+        run: flutter build ios --release --no-codesign --build-number="$BUILD_NUMBER"
+
+      # ---- 2. Signed build + TestFlight upload (only with all secrets). ----
+      - name: Check signing secrets
+        id: signing
+        run: |
+          missing=""
+          for v in APPLE_TEAM_ID ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 DIST_CERT_P12_BASE64 DIST_CERT_PASSWORD; do
+            if [ -z "${!v}" ]; then missing="$missing $v"; fi
+          done
+          if [ "${{ inputs.upload_to_testflight }}" != "true" ]; then
+            echo "::notice::TestFlight upload not requested: only the unsigned build ran."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          elif [ -n "$missing" ]; then
+            echo "::notice::Signing secrets missing ($missing ): skipped signing and TestFlight. See docs/ios-setup.md."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install distribution certificate and API key
+        if: steps.signing.outputs.enabled == 'true'
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
+          echo "::add-mask::$KEYCHAIN_PASSWORD"
+          echo "$DIST_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/dist.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/dist.p12" -P "$DIST_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          rm -f "$RUNNER_TEMP/dist.p12"
+
+          mkdir -p "$RUNNER_TEMP/private_keys"
+          printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          echo "ASC_KEY_PATH=$RUNNER_TEMP/private_keys/AuthKey_${ASC_KEY_ID}.p8" >> "$GITHUB_ENV"
+
+          # Optional manual profile (automatic signing normally makes its own).
+          if [ -n "$PROVISIONING_PROFILE_BASE64" ]; then
+            for dir in "$HOME/Library/MobileDevice/Provisioning Profiles" "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles"; do
+              mkdir -p "$dir"
+              echo "$PROVISIONING_PROFILE_BASE64" | base64 --decode > "$dir/crownblade_appstore.mobileprovision"
+            done
+            echo "Installed the provided provisioning profile."
+          fi
+
+      - name: Archive (signed)
+        if: steps.signing.outputs.enabled == 'true'
+        run: |
+          xcodebuild archive \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic
+
+      - name: Export and upload to TestFlight
+        if: steps.signing.outputs.enabled == 'true'
+        run: |
+          # destination=upload sends the build straight to App Store Connect;
+          # it shows up in TestFlight after Apple finishes processing (~15 min).
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>${APPLE_TEAM_ID}</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          echo "::notice::Uploaded build $BUILD_NUMBER to App Store Connect. It appears in TestFlight after processing."
+
+      - name: Clean up signing material
+        if: always() && steps.signing.outputs.enabled == 'true'
+        run: |
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
+          rm -rf "$RUNNER_TEMP/private_keys" "$HOME/Library/MobileDevice/Provisioning Profiles/crownblade_appstore.mobileprovision" \
+            "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles/crownblade_appstore.mobileprovision"

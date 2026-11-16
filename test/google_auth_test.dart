@@ -142,7 +142,8 @@ void main() {
       final invite = repo.getPendingBarberInvite(barber.id);
       expect(invite?.email, 'dawit.bekele@gmail.com');
       expect(barber.email, isNull, reason: 'barber profiles are public; the email stays in the invite');
-      expect(barber.phone, '+251944556677');
+      // private barber phone: kept off the public profile, in private/contact.
+      expect(barber.phone, isNull, reason: 'the phone stays out of the public profile');
 
       await signInWithGoogleAs('DAWIT.BEKELE@gmail.com', displayName: 'Dawit B');
       expect(repo.authStatus, AuthStatus.needsProfile);
@@ -154,6 +155,7 @@ void main() {
       expect(repo.currentUser?.shopId, shopId);
       expect(repo.currentUser?.barberId, barber.id);
       expect(repo.getBarberForCurrentUser()?.id, barber.id);
+      expect(repo.getBarberPhone(barber.id), '+251944556677', reason: 'the barber sees their own private phone');
       expect(repo.getPendingBarberInvite(barber.id), isNull);
       expect(repo.getPendingInvites().any((i) => i.email == 'dawit.bekele@gmail.com'), false);
     });

@@ -8,7 +8,7 @@ import '../../../l10n/l10n.dart';
 import '../../../services/app_repository.dart';
 import '../../shared/widgets/ui_kit.dart';
 import 'admin_pricing_screen.dart';
-import 'receipt_payment_screen.dart' show decodeReceiptImage;
+import 'receipt_photo.dart';
 import 'receipts_l10n.dart';
 import 'subscription_receipts_service.dart';
 
@@ -80,12 +80,13 @@ class _AdminReceiptsScreenState extends State<AdminReceiptsScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         child: Text(l.rcptAdminEmpty, style: const TextStyle(color: AppTheme.textSecondary)),
                       ),
-                    for (final p in open) _AdminReceiptCard(payment: p, pricing: pricing, onTap: () => _open(p)),
+                    for (final p in open) _AdminReceiptCard(payment: p, pricing: pricing, service: _service, onTap: () => _open(p)),
                     if (decided.isNotEmpty) ...[
                       const SizedBox(height: 16),
                       SectionHeader(title: l.rcptAdminDecidedSection),
                       const SizedBox(height: 8),
-                      for (final p in decided) _AdminReceiptCard(payment: p, pricing: pricing, onTap: () => _open(p)),
+                      for (final p in decided)
+                        _AdminReceiptCard(payment: p, pricing: pricing, service: _service, onTap: () => _open(p)),
                     ],
                   ],
                 ),
@@ -106,10 +107,11 @@ class _AdminReceiptsScreenState extends State<AdminReceiptsScreen> {
 }
 
 class _AdminReceiptCard extends StatelessWidget {
-  const _AdminReceiptCard({required this.payment, required this.pricing, required this.onTap});
+  const _AdminReceiptCard({required this.payment, required this.pricing, required this.service, required this.onTap});
 
   final SubscriptionPayment payment;
   final SubscriptionPricing pricing;
+  final SubscriptionReceiptsService service;
   final VoidCallback onTap;
 
   @override
@@ -117,7 +119,6 @@ class _AdminReceiptCard extends StatelessWidget {
     final l = context.l10n;
     final p = payment;
     final shop = AppRepository.instance.getShopById(p.shopId);
-    final image = decodeReceiptImage(p.receiptImage);
     final days = p.status == ReceiptStatus.verified ? p.durationDays : pricing.durationDaysFor(p.amount);
     final color = receiptStatusColor(p.status);
     return AppCard(
@@ -128,11 +129,17 @@ class _AdminReceiptCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (image != null)
+          if (p.hasImage)
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
-              child: Image.memory(image, width: 56, height: 56, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => IconTile(icon: receiptMethodIcon(p.method), size: 56)),
+              child: ReceiptPhoto(
+                payment: p,
+                service: service,
+                width: 56,
+                height: 56,
+                compact: true,
+                placeholder: IconTile(icon: receiptMethodIcon(p.method), size: 56),
+              ),
             )
           else
             IconTile(icon: receiptMethodIcon(p.method), size: 56),
@@ -268,7 +275,6 @@ class _AdminReceiptDetailScreenState extends State<AdminReceiptDetailScreen> {
   Widget build(BuildContext context) {
     final l = context.l10n;
     final p = widget.payment;
-    final image = decodeReceiptImage(p.receiptImage);
     final shop = AppRepository.instance.getShopById(p.shopId);
     return Scaffold(
       appBar: AppBar(title: Text(p.transactionId)),
@@ -285,14 +291,20 @@ class _AdminReceiptDetailScreenState extends State<AdminReceiptDetailScreen> {
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
             children: [
-              if (image != null)
+              if (p.hasImage)
                 AppCard(
                   padding: const EdgeInsets.all(8),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(AppTheme.radiusTile),
                     child: InteractiveViewer(
                       maxScale: 5,
-                      child: Image.memory(image, key: const ValueKey('admin-receipt-image'), fit: BoxFit.contain),
+                      // Inline (free plan) or Firebase Storage (Blaze).
+                      child: ReceiptPhoto(
+                        payment: p,
+                        service: _service,
+                        fit: BoxFit.contain,
+                        imageKey: const ValueKey('admin-receipt-image'),
+                      ),
                     ),
                   ),
                 )

@@ -5,11 +5,13 @@ import '../../../core/theme/app_theme.dart';
 import '../../../l10n/l10n.dart';
 import '../../../services/app_repository.dart';
 import '../../../services/reports_service.dart';
+import '../../payouts/earnings_cards.dart'; // totals for any period
 import '../../shared/widgets/ui_kit.dart';
 
 /// Owner reports for one shop: an Overview tab (month picker, totals,
 /// 6-month revenue trend, top services, barber performance) and a Clients
-/// tab (frequent clients with no-show badges).
+/// tab (frequent clients with no-show badges) and a Totals tab (revenue and
+/// barbers' share for any period, from Firestore aggregates).
 class OwnerReportsScreen extends StatefulWidget {
   const OwnerReportsScreen({super.key, required this.shopId, this.service, this.now});
 
@@ -51,7 +53,7 @@ class _OwnerReportsScreenState extends State<OwnerReportsScreen> {
   Widget build(BuildContext context) {
     final l = context.l10n;
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: Text(l.reportsTitle),
@@ -68,6 +70,7 @@ class _OwnerReportsScreenState extends State<OwnerReportsScreen> {
             tabs: [
               Tab(key: const ValueKey('reports-tab-overview'), text: l.reportsOverviewTab),
               Tab(key: const ValueKey('reports-tab-clients'), text: l.reportsClientsTab),
+              Tab(key: const ValueKey('reports-tab-totals'), text: l.earningsTab),
             ],
           ),
         ),
@@ -124,6 +127,7 @@ class _OwnerReportsScreenState extends State<OwnerReportsScreen> {
           onMonthChanged: (m) => setState(() => _selectedMonth = m),
         ),
         _ClientsTab(clients: report.clients),
+        ShopEarningsView(shopId: widget.shopId),
       ],
     );
   }

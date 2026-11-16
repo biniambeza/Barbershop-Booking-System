@@ -181,6 +181,8 @@ extension AppLabels on AppLocalizations {
         return errSignInRequired;
       case AppErrorCode.accountLoadFailed:
         return errAccountLoadFailed;
+      case AppErrorCode.accountDisabled: // admin users
+        return errAccountDisabled;
       case AppErrorCode.emailAlreadyStaff:
         final role = arg(0);
         return errEmailAlreadyStaff(role is UserRole ? roleName(role) : '${role ?? ''}');
@@ -235,6 +237,12 @@ extension AppLabels on AppLocalizations {
         return timeOffErrConflict;
       case AppErrorCode.timeOffNotAllowed:
         return timeOffErrNotAllowed;
+      // --- vacation
+      case AppErrorCode.vacationTooLong:
+        final max = arg(0);
+        return vacationErrTooLong(max is int ? max : 0);
+      case AppErrorCode.vacationNothingToBlock:
+        return vacationErrNothingToBlock;
       // --- barber acceptance
       case AppErrorCode.bookingRequestNotAllowed:
         return acceptErrNotAllowed;

@@ -32,11 +32,18 @@ import 'firestore_data_store.dart';
 import 'google_auth_service.dart';
 import 'staff_account_service.dart'; // barber accounts
 import 'time_off_service.dart';
+import 'vacation_service.dart'; // vacation
 import 'admin_shops_logic.dart'; // admin shop management
 import 'subscription_state.dart'; // subscription expiry (client-side)
+import 'shop_deletion.dart'; // shop deletion
+import 'refunds.dart'; // refunds
+import 'admin_users.dart'; // admin users
+import 'admin_user_writes.dart'; // admin users
 
 export '../models/app_exception.dart';
 export 'admin_shops_logic.dart'; // admin shop management
+export 'admin_users.dart'; // admin users
+export 'shop_deletion.dart' show ShopDeletionStep, ShopDeletionException, ShopDeletionPreview, ShopDeletionNotice; // shop deletion
 export 'email_auth_service.dart'
     show EmailAuthException, EmailAuthErrorCode, EmailCodeSent, EmailCodeVerified, EmailFlowStart, VerificationLinkResult;
 
@@ -150,6 +157,7 @@ class AppRepository extends ChangeNotifier {
     _emailAuth = FirebaseEmailAuthService(FirebaseAuth.instance)
       ..allowUnverifiedSignIn = _cloudUnverifiedAllowed; // barber accounts
     _staffAccounts = FirebaseStaffAccountService(); // barber accounts
+    _adminUserWrites = FirestoreAdminUserWrites(FirebaseFirestore.instance); // admin users
     _resetEmailFallback();
     // Web: report a failed redirect sign-in (used when the popup is blocked).
     google.redirectError().then((error) {
@@ -611,15 +619,17 @@ class AppRepository extends ChangeNotifier {
     await _onFirebaseAuthChanged(fbUser);
   }
 
-  /// Phone on the invited barber's (public) profile, to prefill setup.
+  /// The invited barber's private contact number
+  /// (`barbers/{id}/private/contact`, readable by the invitee through their
+  /// invite), to prefill setup. Null when it cannot be read.
   Future<String?> _loadBarberPhone(UserInvite? invite) async {
     final shopId = invite?.shopId;
     final barberId = invite?.barberId;
     if (shopId == null || barberId == null) return null;
-    final cached = _cache.barbers[barberId]?.phone;
+    final cached = _cache.barberPhones[barberId];
     if (cached != null) return cached;
     try {
-      final snap = await _db.collection('barbershops').doc(shopId).collection('barbers').doc(barberId).get();
+      final snap = await _db.doc(FirestoreDataStore.barberContactPath(shopId, barberId)).get();
       final phone = snap.data()?['phone'];
       return phone is String && phone.isNotEmpty ? phone : null;
     } catch (_) {
@@ -686,7 +696,6 @@ class AppRepository extends ChangeNotifier {
       shopId: shopId,
       name: cleanName,
       title: title.trim(),
-      phone: normalizedPhone,
       specialties: specialties ?? const ['Skin Fade', 'Beard Trim'],
       avatarUrl: avatarUrl ?? 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
     );
@@ -695,6 +704,7 @@ class AppRepository extends ChangeNotifier {
       password: temporaryPassword,
       persist: (uid) => _store.addBarber(
         barber,
+        phone: normalizedPhone, // private barber phone (private/contact)
         UserInvite(
           email: login,
           role: UserRole.barber,
@@ -734,6 +744,15 @@ class AppRepository extends ChangeNotifier {
 
     final existing = _findUserByEmail(email);
     final invite = _cache.invites[email];
+    // admin users: a disabled account cannot sign in.
+    if (existing != null && existing.disabled) {
+      _clearPending();
+      _currentUser = null;
+      _authError = AppStateException(AppErrorCode.accountDisabled);
+      _authStatus = AuthStatus.signedOut;
+      notifyListeners();
+      return;
+    }
     if (existing != null) {
       var user = existing;
       if (invite != null && existing.role == UserRole.customer) {
@@ -747,7 +766,7 @@ class AppRepository extends ChangeNotifier {
       _authStatus = AuthStatus.signedIn;
     } else {
       _pendingInvite = invite;
-      _pendingPhone = invite?.barberId == null ? null : _cache.barbers[invite!.barberId]?.phone; // barber accounts
+      _pendingPhone = invite?.barberId == null ? null : _cache.barberPhones[invite!.barberId]; // barber accounts
       _authStatus = AuthStatus.needsProfile;
     }
     notifyListeners();
@@ -922,6 +941,14 @@ class AppRepository extends ChangeNotifier {
       }
 
       var user = AppUser.fromMap(userSnap.data()!, userSnap.id);
+      // admin users: a disabled account is signed out with a clear message
+      // (on Blaze Firebase Auth refuses it before this: 'user-disabled').
+      if (user.disabled) {
+        _clearPending();
+        _authError = AppStateException(AppErrorCode.accountDisabled);
+        await FirebaseAuth.instance.signOut();
+        return;
+      }
       // A customer who was later invited as staff/owner is upgraded once.
       // Existing staff, owners and admins are never changed by an invite.
       if (invite != null && user.role == UserRole.customer) {
@@ -949,6 +976,10 @@ class AppRepository extends ChangeNotifier {
     }
   }
 
+  /// Tests: simulates the own-profile listener delivering [user].
+  @visibleForTesting
+  void debugCurrentUserDocChanged(AppUser? user) => _onCurrentUserDocChanged(user);
+
   /// The signed-in user's own profile document changed in Firestore.
   void _onCurrentUserDocChanged(AppUser? user) {
     final current = _currentUser;
@@ -956,6 +987,14 @@ class AppRepository extends ChangeNotifier {
     if (user == null) {
       // Profile removed (e.g. by an admin): end the session.
       signOut();
+      return;
+    }
+    if (user.disabled) {
+      // admin users: disabled while signed in: sign out now, with a message.
+      signOut().then((_) {
+        _authError = AppStateException(AppErrorCode.accountDisabled);
+        notifyListeners();
+      });
       return;
     }
     _currentUser = user;
@@ -1182,8 +1221,121 @@ class AppRepository extends ChangeNotifier {
     await _write(_store.updateShopSubscription(shopId, plan: plan, status: status, endsAt: endsAt));
   }
 
-  Future<void> deleteShop(String shopId) async {
-    await _write(_store.deleteShop(shopId));
+  /// Deletes a shop with the full cascade (see shop_deletion.dart): upcoming
+  /// bookings cancelled and their customers notified, the owner and
+  /// barbers downgraded to customers (with a notice), invites revoked, the
+  /// shop's subcollections and finally the shop document deleted. Past
+  /// bookings stay. [onStep] reports each step as it starts. Throws
+  /// [ShopDeletionException] naming the failed step; everything before it
+  /// stays done and running it again continues safely.
+  Future<void> deleteShop(String shopId, {void Function(ShopDeletionStep step)? onStep}) async {
+    final shop = _cache.shops[shopId];
+    final shopName = shop?.name ?? '';
+    final adminUid = _currentUser?.uid ?? 'system';
+    final now = _nowUtc();
+
+    Future<T> step<T>(ShopDeletionStep s, Future<T> Function() run) async {
+      onStep?.call(s);
+      try {
+        return await run();
+      } catch (e) {
+        debugPrint('Shop deletion failed at ${s.name}: $e');
+        throw ShopDeletionException(s, e);
+      }
+    }
+
+    // 1. Record who goes (for the Blaze function) and stop new bookings.
+    await step(ShopDeletionStep.prepare, () async {
+      final staff = await _store.staffOfShop(shopId);
+      final invites = await _store.invitesOfShop(shopId);
+      await _store.recordShopDeletion(ShopDeletionRecord(
+        shopId: shopId,
+        shopName: shopName,
+        requestedBy: adminUid,
+        requestedAt: now,
+        staffUids: [for (final u in staff) u.uid],
+        barberAccountUids: {
+          for (final u in staff)
+            if (u.role == UserRole.barber) u.uid,
+          for (final i in invites)
+            if (i.role == UserRole.barber && i.authUid != null) i.authUid!,
+        }.toList(),
+      ));
+      if (shop != null && !shop.adminSuspended) {
+        await _store.setShopAdminSuspension(
+          shopId,
+          Barbershop.adminSuspensionFields(suspended: true, reason: kShopDeletionSuspendReason, at: now, by: adminUid),
+        );
+      }
+    });
+
+    // 2. Upcoming bookings: cancelled, customers notified.
+    final notices = <ShopDeletionNotice>[];
+    await step(ShopDeletionStep.bookings, () async {
+      final items = planShopBookingCancellations(
+        shopId,
+        await _store.upcomingBookingsOfShop(shopId, now),
+        now,
+        languageOf: (uid) => _cache.users[uid]?.language,
+      );
+      await _store.cancelBookingsForShopDeletion(
+        items,
+        cancelledBy: adminUid,
+        // refunds: paid bookings are flagged for a full refund in the same batch.
+        refund: RefundContext(
+          by: RefundCanceller.admin,
+          nowUtc: now,
+          reason: RefundReasons.shopDeleted,
+          languageOf: (uid) => _cache.users[uid]?.language,
+        ),
+      );
+      notices.addAll(items.map((i) => i.notice));
+    });
+
+    // 3. Owner and barbers become customers; invites revoked.
+    await step(ShopDeletionStep.staff, () async {
+      final items = planShopStaffRevocations(shopId, shopName, await _store.staffOfShop(shopId), now);
+      await _store.revokeShopStaff(shopId, items);
+      notices.addAll(items.map((i) => i.notice));
+    });
+
+    // 4. Subcollections, 5. the shop document (last).
+    await step(ShopDeletionStep.data, () => _store.deleteShopData(shopId));
+    await step(ShopDeletionStep.shop, () => _store.deleteShopDoc(shopId));
+
+    if (!_firebaseReady) {
+      final sink = onLocalNotice;
+      for (final n in notices) {
+        sink?.call(n);
+      }
+    }
+    notifyListeners();
+  }
+
+  /// Local mode (demo, tests): receives the inbox notices the shop-deletion
+  /// cascade writes (NotificationService puts them in the local inboxes).
+  void Function(ShopDeletionNotice notice)? onLocalNotice;
+
+  /// Admin: what deleting [shopId] removes, for the confirmation dialog.
+  /// Upcoming bookings are counted with a query (null if that fails).
+  Future<ShopDeletionPreview> previewShopDeletion(String shopId) async {
+    _requireAdmin();
+    int? upcoming;
+    try {
+      final now = _nowUtc();
+      upcoming = planShopBookingCancellations(shopId, await _store.upcomingBookingsOfShop(shopId, now), now).length;
+    } catch (e) {
+      debugPrint('Could not count upcoming bookings: $e');
+    }
+    return ShopDeletionPreview(
+      barbers: _cache.barbers.values.where((b) => b.shopId == shopId).length,
+      services: _cache.services.values.where((s) => s.shopId == shopId).length,
+      staffAccounts: _cache.users.values
+          .where((u) => u.shopId == shopId && (u.role == UserRole.barbershopOwner || u.role == UserRole.barber))
+          .length,
+      pendingInvites: _cache.invites.values.where((i) => i.shopId == shopId).length,
+      upcomingBookings: upcoming,
+    );
   }
 
   // --- admin shop management (logic in features/admin/admin_shops_logic.dart) ---
@@ -1224,17 +1376,17 @@ class AppRepository extends ChangeNotifier {
     await _write(_store.setShopAdminSuspension(shopId, Barbershop.adminSuspensionFields(suspended: false)));
   }
 
-  /// Admin: deletes the shop after the typed-name confirmation (see
-  /// [deleteShop]: services, barbers and pending invites go too, bookings
-  /// stay).
-  Future<void> deleteShopConfirmed(String shopId, String typedName) async {
+  /// Admin: deletes the shop after the typed-name confirmation, with the
+  /// full cascade of [deleteShop] (past bookings stay).
+  Future<void> deleteShopConfirmed(String shopId, String typedName,
+      {void Function(ShopDeletionStep step)? onStep}) async {
     _requireAdmin();
     final shop = _cache.shops[shopId];
     if (shop == null) throw const AdminShopException(AdminShopError.shopNotFound);
     if (!deleteConfirmationMatches(typedName, shop.name)) {
       throw const AdminShopException(AdminShopError.nameMismatch);
     }
-    await deleteShop(shopId);
+    await deleteShop(shopId, onStep: onStep);
   }
 
   /// Admin: the shop's owner account, or the pending owner invite.
@@ -1400,7 +1552,6 @@ class AppRepository extends ChangeNotifier {
       shopId: shopId,
       name: name,
       title: title,
-      phone: normalizedPhone,
       specialties: specialties ?? const ['Skin Fade', 'Beard Trim'],
       avatarUrl: avatarUrl ?? 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
       workingDays: workingDays,
@@ -1420,7 +1571,8 @@ class AppRepository extends ChangeNotifier {
             createdAt: DateTime.now(),
           );
 
-    await _write(_store.addBarber(barber, invite));
+    // private barber phone: the phone goes to private/contact, not the profile.
+    await _write(_store.addBarber(barber, invite, phone: normalizedPhone));
   }
 
   /// Saves a barber's profile fields (not shopId or ratings).
@@ -1618,6 +1770,7 @@ class AppRepository extends ChangeNotifier {
       booking,
       newStatus,
       cancelledBy: newStatus == BookingStatus.cancelled ? _currentUser?.uid : null,
+      refund: newStatus == BookingStatus.cancelled ? _refundContextFor(booking) : null, // refunds
     ));
   }
 
@@ -1693,6 +1846,7 @@ class AppRepository extends ChangeNotifier {
   @override
   void notifyListeners() {
     super.notifyListeners();
+    _scheduleBarberContactSync(); // private barber phone
     final role = _currentUser?.role;
     if (_subscriptionSyncScheduled || (role != UserRole.admin && role != UserRole.barbershopOwner)) return;
     _subscriptionSyncScheduled = true;
@@ -1787,9 +1941,112 @@ class AppRepository extends ChangeNotifier {
       BookingStatus.cancelled,
       cancelledBy: user.uid,
       cancelReasonNote: note,
+      refund: _refundContextFor(booking), // refunds
     ));
   }
   // --- end barber cancel ---
+
+  // --- refunds (logic in refunds.dart, writes in refund_writes.dart) ---
+  // Every cancellation path passes a RefundContext down to the data store,
+  // which flags a paid booking's refund in the same write as the cancel
+  // (free plan). On Blaze, functions/bookings flagRefundOnCancel also flags
+  // any paid + cancelled booking that is still unflagged.
+
+  /// What the store needs to flag a refund when the signed-in user cancels
+  /// [booking] ([reason] fixes the reason, e.g. a declined request).
+  RefundContext _refundContextFor(Booking booking, {String? reason}) {
+    return RefundContext(
+      by: refundCancellerFor(_currentUser, booking),
+      nowUtc: _nowUtc(),
+      cutoffHours: _cache.shops[booking.shopId]?.cancellationCutoffHours,
+      reason: reason,
+      languageOf: (uid) => _cache.users[uid]?.language,
+    );
+  }
+
+  /// Whether the signed-in user may see and settle [shopId]'s refunds (its
+  /// owner) or every shop's (an admin, [shopId] null or any).
+  bool canManageRefunds({String? shopId}) {
+    final user = _currentUser;
+    if (user == null) return false;
+    if (user.role == UserRole.admin) return true;
+    return user.role == UserRole.barbershopOwner && shopId != null && user.shopId == shopId;
+  }
+
+  /// Live "Refunds due" (oldest flag first): the owner's shop ([shopId])
+  /// or, for an admin with [shopId] null, every shop. Local mode re-reads
+  /// the cache on every change.
+  Stream<List<Booking>> watchRefundsDue({String? shopId}) {
+    if (!canManageRefunds(shopId: shopId)) return Stream.value(const []);
+    if (_firebaseReady) return _store.watchRefundsDue(shopId: shopId);
+    late StreamController<List<Booking>> controller;
+    void emit() {
+      if (!controller.isClosed) controller.add(refundsDue(_cache.bookings.values, shopId: shopId));
+    }
+
+    controller = StreamController<List<Booking>>(
+      onListen: () {
+        addListener(emit);
+        emit();
+      },
+      onCancel: () => removeListener(emit),
+    );
+    return controller.stream;
+  }
+
+  /// Owner/admin: records that the money of [booking]'s due refund went
+  /// back ([method], optional [reference] up to 100 characters):
+  /// refundStatus 'refunded', refundedAt/By, paymentStatus 'refunded', and
+  /// the customer's "Payment refunded" notice, in one write.
+  Future<void> markRefunded(Booking booking, {required RefundMethod method, String? reference}) async {
+    final user = _currentUser;
+    if (user == null || !canManageRefunds(shopId: booking.shopId)) {
+      throw AppStateException(AppErrorCode.bookingNotChangeable);
+    }
+    final due = booking.refund;
+    if (due == null || !due.isDue) throw AppStateException(AppErrorCode.bookingNotChangeable);
+    final String? ref;
+    try {
+      ref = normalizeRefundReference(reference);
+    } on ArgumentError {
+      throw AppFormatException(AppErrorCode.declineReasonTooLong, [kMaxRefundReferenceLength]);
+    }
+    final now = _nowUtc();
+    final fields = refundCompletionFields(refundedAt: now, refundedBy: user.uid, method: method, reference: ref);
+    final notice = booking.customerId.isEmpty
+        ? null
+        : refundedNotice(booking, due.amount, now, language: _cache.users[booking.customerId]?.language);
+    await _write(_store.markRefunded(booking, fields, notice));
+  }
+
+  final Set<String> _refundSweepTried = {};
+
+  /// Owner (own shop) / admin: flags cancelled + paid bookings in the cache
+  /// that have no refund yet (cancelled by an older app version). Each
+  /// booking is tried once per session; returns how many were flagged and
+  /// never throws.
+  Future<int> flagMissingRefunds({String? shopId}) async {
+    final user = _currentUser;
+    final id = shopId ?? user?.shopId;
+    if (id == null || !canManageRefunds(shopId: id)) return 0;
+    var flagged = 0;
+    final now = _nowUtc();
+    for (final b in cancelledPaidUnflagged(_cache.bookings.values, shopId: id)) {
+      if (!_refundSweepTried.add(b.id)) continue;
+      final ctx = refundContextForPastCancel(b, now, languageOf: (uid) => _cache.users[uid]?.language);
+      final flag = refundFlagFor(b, ctx);
+      if (flag == null) continue;
+      try {
+        await _store.flagRefund(b, flag, b.customerId.isEmpty ? null : refundDueNotice(b, flag, language: ctx.languageOf?.call(b.customerId)));
+        flagged++;
+      } catch (e) {
+        debugPrint('Could not flag the refund of ${b.id}: $e');
+      }
+    }
+    if (flagged > 0) notifyListeners();
+    return flagged;
+  }
+  // --- end refunds ---
 
   /// Staff: marks a pending/confirmed booking whose start has passed as a
   /// no-show. Its slot locks are kept (they expire on their own).
@@ -1840,7 +2097,9 @@ class AppRepository extends ChangeNotifier {
   bool canRespondToBookingRequest(Booking booking) => acceptance.canRespondToRequest(_currentUser, booking);
 
   /// Barber/owner: confirms a pending request (status 'confirmed' +
-  /// acceptedAt). Throws [AppStateException] if not allowed, no longer
+  /// acceptedAt), then shares the barber's private phone with the customer
+  /// (`barberPhone`, a separate best-effort update: a failure never fails
+  /// the accept). Throws [AppStateException] if not allowed, no longer
   /// pending or already inside the expiry window.
   Future<void> acceptBookingRequest(String bookingId) async {
     final booking = _cache.bookings[bookingId];
@@ -1848,6 +2107,7 @@ class AppRepository extends ChangeNotifier {
     final now = _nowUtc();
     acceptance.assertCanRespond(_currentUser, booking, now, accept: true);
     await _write(_store.acceptBookingRequest(booking, acceptedAt: now));
+    await _shareBarberPhone(booking.copyWith(status: BookingStatus.confirmed)); // private barber phone
   }
 
   /// Barber/owner: declines a pending request (status 'cancelled',
@@ -1858,7 +2118,11 @@ class AppRepository extends ChangeNotifier {
     if (booking == null) throw AppStateException(AppErrorCode.bookingNotChangeable);
     acceptance.assertCanRespond(_currentUser, booking, _nowUtc(), accept: false);
     final note = acceptance.normalizeDeclineReason(reason);
-    await _write(_store.declineBookingRequest(booking, reason: note));
+    await _write(_store.declineBookingRequest(
+      booking,
+      reason: note,
+      refund: _refundContextFor(booking, reason: RefundReasons.requestDeclined), // refunds
+    ));
   }
 
   // --- free plan: staff app closes expired requests (booking_acceptance.dart) ---
@@ -1884,7 +2148,11 @@ class AppRepository extends ChangeNotifier {
     var closed = 0;
     for (final b in expired) {
       try {
-        await _store.declineBookingRequest(b, reason: acceptance.kNotAcceptedReason);
+        await _store.declineBookingRequest(
+          b,
+          reason: acceptance.kNotAcceptedReason,
+          refund: _refundContextFor(b, reason: RefundReasons.requestExpired), // refunds
+        );
         closed++;
       } catch (e) {
         debugPrint('Could not close expired request ${b.id}: $e');
@@ -1904,6 +2172,179 @@ class AppRepository extends ChangeNotifier {
   }
   // --- end free plan ---
   // --- end barber acceptance ---
+
+  // --- private barber phone ---
+  // Barber profiles (barbershops/{shopId}/barbers/{id}) are public, so the
+  // barber's phone lives in barbers/{id}/private/contact {phone}: readable
+  // by the shop's owner, admins and that barber. A customer sees it only on
+  // their own confirmed booking: the staff app copies it in as
+  // `barberPhone` when it accepts a request, and (free plan, no Cloud
+  // Functions) whenever it sees an upcoming confirmed booking without it.
+
+  /// Whether the signed-in user may see [barber]'s private phone: an admin,
+  /// the owner of the barber's shop, or that barber.
+  bool _canSeeBarberPhone(Barber barber) {
+    final user = _currentUser;
+    if (user == null) return false;
+    switch (user.role) {
+      case UserRole.admin:
+        return true;
+      case UserRole.barbershopOwner:
+        return user.shopId != null && user.shopId == barber.shopId;
+      case UserRole.barber:
+        return user.barberId == barber.id && user.shopId == barber.shopId;
+      case UserRole.customer:
+        return false;
+    }
+  }
+
+  /// The barber's private phone (E.164) for staff and admins (see
+  /// [_canSeeBarberPhone]); null for everyone else or when none is set.
+  /// Customers use [Booking.visibleBarberPhone] instead. Until a legacy
+  /// public doc is migrated its old `phone` field is used.
+  String? getBarberPhone(String barberId) {
+    final barber = _cache.barbers[barberId];
+    if (barber == null || !_canSeeBarberPhone(barber)) return null;
+    final phone = _cache.barberPhones[barberId] ?? barber.phone;
+    return phone == null || phone.trim().isEmpty ? null : phone;
+  }
+
+  /// The phone the staff app may copy into a booking: only a real private
+  /// contact (never a legacy public field, which the rules would not match).
+  String? _shareablePhone(String barberId) {
+    final barber = _cache.barbers[barberId];
+    if (barber == null || !_canSeeBarberPhone(barber)) return null;
+    final phone = _cache.barberPhones[barberId];
+    return phone == null || phone.isEmpty ? null : phone;
+  }
+
+  /// Owner (own shop), admin or the barber themself: sets the barber's
+  /// private phone (validated, stored as E.164), or removes it when [phone]
+  /// is null or blank. Bookings already confirmed get the new number on the
+  /// next sync ([shareBarberPhonesWithBookings]). Does nothing for anyone
+  /// else.
+  Future<void> updateBarberPhone(String barberId, String? phone) async {
+    final barber = _cache.barbers[barberId];
+    if (barber == null || !_canSeeBarberPhone(barber)) return;
+    String? normalized;
+    if (phone != null && phone.trim().isNotEmpty) {
+      normalized = normalizeEthiopianPhone(phone);
+      if (normalized == null) throw AppFormatException(AppErrorCode.invalidPhone);
+    }
+    await _write(_store.setBarberPhone(barber.shopId, barberId, normalized));
+  }
+
+  bool _barberContactSyncScheduled = false;
+  final Set<String> _contactMigrationsInFlight = {};
+
+  /// Barber ids whose migration failed (e.g. permission denied); not
+  /// retried this session.
+  final Set<String> _contactMigrationsFailed = {};
+  final Set<String> _phoneSharesInFlight = {};
+
+  /// '$bookingId:$phone' shares that failed; not retried this session.
+  final Set<String> _phoneSharesFailed = {};
+
+  /// After every data change (staff and admins): [migrateLegacyBarberContacts]
+  /// and [shareBarberPhonesWithBookings], once per microtask.
+  void _scheduleBarberContactSync() {
+    final role = _currentUser?.role;
+    if (_barberContactSyncScheduled || role == null || role == UserRole.customer) return;
+    _barberContactSyncScheduled = true;
+    scheduleMicrotask(() {
+      _barberContactSyncScheduled = false;
+      unawaited(migrateLegacyBarberContacts());
+      unawaited(shareBarberPhonesWithBookings());
+    });
+  }
+
+  /// Owner (own shop) / admin (every loaded barber): moves the `phone` (and
+  /// legacy `email`) of public barber docs that still carry them into the
+  /// private contact and deletes them from the public doc
+  /// ([DataStore.migrateBarberContact]). An existing contact is kept. A
+  /// phone that is not a valid Ethiopian mobile is dropped. Idempotent and
+  /// never throws; returns how many barbers were migrated.
+  Future<int> migrateLegacyBarberContacts() async {
+    final user = _currentUser;
+    if (user == null) return 0;
+    final Iterable<Barber> barbers;
+    if (user.role == UserRole.admin) {
+      barbers = _cache.barbers.values;
+    } else if (user.role == UserRole.barbershopOwner && user.shopId != null) {
+      barbers = _cache.barbers.values.where((b) => b.shopId == user.shopId);
+    } else {
+      return 0;
+    }
+    final legacy = barbers
+        .where((b) =>
+            b.hasLegacyContactFields &&
+            !_contactMigrationsInFlight.contains(b.id) &&
+            !_contactMigrationsFailed.contains(b.id))
+        .toList();
+    var migrated = 0;
+    for (final barber in legacy) {
+      final raw = barber.phone?.trim() ?? '';
+      final phone = raw.isEmpty ? null : normalizeEthiopianPhone(raw);
+      if (raw.isNotEmpty && phone == null) debugPrint('Dropping invalid phone of barber ${barber.id}');
+      _contactMigrationsInFlight.add(barber.id);
+      try {
+        await _store.migrateBarberContact(barber, phone: phone);
+        migrated++;
+      } catch (e) {
+        _contactMigrationsFailed.add(barber.id);
+        debugPrint('Barber contact migration for ${barber.id} failed: $e');
+      } finally {
+        _contactMigrationsInFlight.remove(barber.id);
+      }
+    }
+    if (migrated > 0) notifyListeners();
+    return migrated;
+  }
+
+  /// Copies the barber's private phone into [booking] (`barberPhone`) when
+  /// the signed-in barber/owner may, the booking is confirmed or in
+  /// progress and not over, and it does not carry that number yet. Never
+  /// throws; returns whether it wrote.
+  Future<bool> _shareBarberPhone(Booking booking) async {
+    final user = _currentUser;
+    if (user == null || (user.role != UserRole.barber && user.role != UserRole.barbershopOwner)) return false;
+    if (booking.status != BookingStatus.confirmed && booking.status != BookingStatus.inProgress) return false;
+    if (!booking.endAt.isAfter(_nowUtc())) return false;
+    if (!acceptance.canRespondToRequest(user, booking)) return false;
+    final phone = _shareablePhone(booking.barberId);
+    if (phone == null || booking.barberPhone == phone) return false;
+    final key = '${booking.id}:$phone';
+    if (_phoneSharesInFlight.contains(key) || _phoneSharesFailed.contains(key)) return false;
+    _phoneSharesInFlight.add(key);
+    try {
+      await _store.shareBarberPhone(booking, phone);
+      return true;
+    } catch (e) {
+      _phoneSharesFailed.add(key);
+      debugPrint('Could not share the barber phone on ${booking.id}: $e');
+      return false;
+    } finally {
+      _phoneSharesInFlight.remove(key);
+    }
+  }
+
+  /// Barber (own bookings) / owner (shop's bookings), free plan: copies the
+  /// barber's private phone into every upcoming confirmed or in-progress
+  /// booking that lacks it (or has an old number), so the customer can call
+  /// once the booking is confirmed, also when the shop confirms bookings
+  /// automatically. Idempotent and never throws; returns how many were
+  /// written.
+  Future<int> shareBarberPhonesWithBookings() async {
+    final user = _currentUser;
+    if (user == null || (user.role != UserRole.barber && user.role != UserRole.barbershopOwner)) return 0;
+    var shared = 0;
+    for (final booking in _cache.bookings.values.toList()) {
+      if (await _shareBarberPhone(booking)) shared++;
+    }
+    if (shared > 0) notifyListeners();
+    return shared;
+  }
+  // --- end private barber phone ---
 
   /// Live time off of one barber (soonest first).
   Stream<List<TimeOff>> watchTimeOff(String shopId, String barberId) => _store.watchTimeOff(shopId, barberId);
@@ -1955,18 +2396,214 @@ class AppRepository extends ChangeNotifier {
     if (local is LocalDataStore) local.loadTimeOff(entries);
   }
 
+  // --- vacation: time off from date to date (logic in vacation_service.dart) ---
+
+  /// The time [addVacation] would block for [barberId] (working hours of
+  /// each day from [fromDate] to [toDate], Addis dates, inclusive), before
+  /// leaving out blocks that are already taken.
+  List<(DateTime, DateTime)> vacationRangesFor({
+    required String barberId,
+    required DateTime fromDate,
+    required DateTime toDate,
+    int? firstDayFromMinute,
+    int? lastDayToMinute,
+  }) {
+    final barber = _cache.barbers[barberId];
+    final shop = barber == null ? null : _cache.shops[barber.shopId];
+    if (barber == null || shop == null) return const [];
+    if (toDate.isBefore(fromDate) || vacationLengthDays(fromDate, toDate) > kMaxVacationDays) return const [];
+    return vacationDayRanges(shop, barber, fromDate, toDate,
+        firstDayFromMinute: firstDayFromMinute, lastDayToMinute: lastDayToMinute, nowUtc: _nowUtc());
+  }
+
+  /// The barber's upcoming pending/confirmed bookings inside the vacation
+  /// (the ones the owner or barber may cancel for it), soonest first.
+  List<Booking> vacationConflictsFor({
+    required String barberId,
+    required DateTime fromDate,
+    required DateTime toDate,
+    int? firstDayFromMinute,
+    int? lastDayToMinute,
+  }) {
+    final barber = _cache.barbers[barberId];
+    if (barber == null) return const [];
+    return vacationConflicts(
+      _cache.bookings.values,
+      shopId: barber.shopId,
+      barberId: barberId,
+      ranges: vacationRangesFor(
+          barberId: barberId,
+          fromDate: fromDate,
+          toDate: toDate,
+          firstDayFromMinute: firstDayFromMinute,
+          lastDayToMinute: lastDayToMinute),
+      nowUtc: _nowUtc(),
+    );
+  }
+
+  /// Owner (any barber of their shop) or the barber themself: blocks every
+  /// working day from [fromDate] to [toDate] (Addis dates, inclusive, at
+  /// most [kMaxVacationDays] days; optionally starting at
+  /// [firstDayFromMinute] on the first day and ending at [lastDayToMinute]
+  /// on the last, Addis minutes of the day).
+  ///
+  /// Bookings in [cancelBookingIds] (from [vacationConflictsFor]) are
+  /// cancelled first, through the same write as any staff cancel (slot
+  /// locks released, a paid booking refund-flagged by flagRefundIfPaid in
+  /// that write), and each customer gets an inbox notice. Every other
+  /// booking is kept: its blocks are left out of the vacation.
+  ///
+  /// Then one time-off document per free stretch (usually one per working
+  /// day) is written, each in its own batch with its slot locks. If one of
+  /// them fails, the parts already written are removed again (best effort)
+  /// and the error is rethrown; cancelled bookings stay cancelled.
+  Future<VacationResult> addVacation({
+    required String barberId,
+    required DateTime fromDate,
+    required DateTime toDate,
+    int? firstDayFromMinute,
+    int? lastDayToMinute,
+    String? reason,
+    Iterable<String> cancelBookingIds = const [],
+  }) async {
+    final barber = _cache.barbers[barberId];
+    final user = _currentUser;
+    if (barber == null || user == null || !canManageTimeOff(user, barber)) {
+      throw AppStateException(AppErrorCode.timeOffNotAllowed);
+    }
+    final shop = _cache.shops[barber.shopId];
+    if (shop == null) throw AppStateException(AppErrorCode.timeOffNotAllowed);
+    final note = reason?.trim();
+    final now = _nowUtc();
+    validateVacation(
+      fromDate: fromDate,
+      toDate: toDate,
+      firstDayFromMinute: firstDayFromMinute,
+      lastDayToMinute: lastDayToMinute,
+      reason: note,
+      nowUtc: now,
+    );
+    final ranges = vacationDayRanges(shop, barber, fromDate, toDate,
+        firstDayFromMinute: firstDayFromMinute, lastDayToMinute: lastDayToMinute, nowUtc: now);
+    if (ranges.isEmpty) throw AppStateException(AppErrorCode.vacationNothingToBlock);
+
+    final wanted = cancelBookingIds.toSet();
+    final toCancel = vacationConflicts(_cache.bookings.values,
+            shopId: barber.shopId, barberId: barber.id, ranges: ranges, nowUtc: now)
+        .where((b) => wanted.contains(b.id))
+        .toList();
+    final locks = await _store.slotLocksBetween(barber.shopId, barber.id, ranges.first.$1, ranges.last.$2);
+    List<(DateTime, DateTime)> segmentsWith(Set<String> cancelledIds) => freeVacationSegments(
+        ranges,
+        vacationTakenBlocks(
+          shopId: barber.shopId,
+          barberId: barber.id,
+          bookings: _cache.bookings.values,
+          cancelledIds: cancelledIds,
+          locks: locks,
+        ));
+    if (segmentsWith({for (final b in toCancel) b.id}).isEmpty) {
+      throw AppStateException(AppErrorCode.vacationNothingToBlock);
+    }
+
+    // 1. Cancel the chosen bookings (each in its own transaction).
+    final cancelled = <Booking>[];
+    final notices = <AppNotification>[];
+    var noticeFailures = 0;
+    final cancelNote = note == null || note.isEmpty ? null : policy.normalizeCancelReasonNote(note);
+    for (final b in toCancel) {
+      try {
+        if (user.role == UserRole.barber) policy.assertBarberCanCancel(b, now);
+        await _store.updateBookingStatus(
+          b,
+          BookingStatus.cancelled,
+          cancelledBy: user.uid,
+          cancelReasonNote: cancelNote,
+          refund: _refundContextFor(b), // refunds: flagRefundIfPaid runs in this same write
+        );
+        cancelled.add(b);
+      } catch (e) {
+        debugPrint('Vacation: could not cancel ${b.id}: $e');
+        continue;
+      }
+      try {
+        final language = _cache.users[b.customerId]?.language;
+        final notice = vacationCancelNotice(b, nowUtc: _nowUtc(), language: language ?? 'am');
+        await _store.writeVacationCancelNotice(b.customerId, notice);
+        notices.add(notice);
+      } catch (e) {
+        noticeFailures++;
+        debugPrint('Vacation: could not notify the customer of ${b.id}: $e');
+      }
+    }
+    if (cancelled.isNotEmpty) notifyListeners();
+
+    // 2. The time-off parts around whatever is still booked.
+    final segments = segmentsWith({for (final b in cancelled) b.id});
+    if (segments.isEmpty) throw AppStateException(AppErrorCode.vacationNothingToBlock);
+    final parts = buildVacationParts(
+      groupId: _uuid.v4(),
+      idFor: (_) => _uuid.v4(),
+      shopId: barber.shopId,
+      barberId: barber.id,
+      segments: segments,
+      fromDate: fromDate,
+      toDate: toDate,
+      reason: note,
+      createdBy: user.uid,
+      createdAt: now,
+    );
+    final written = <TimeOff>[];
+    try {
+      for (final part in parts) {
+        await _store.addTimeOff(part);
+        written.add(part);
+      }
+    } catch (_) {
+      for (final part in written) {
+        try {
+          await _store.deleteTimeOff(part);
+        } catch (e) {
+          debugPrint('Vacation: could not roll back ${part.id}: $e');
+        }
+      }
+      notifyListeners();
+      rethrow;
+    }
+    notifyListeners();
+    return VacationResult(parts: written, cancelled: cancelled, notices: notices, noticeFailures: noticeFailures);
+  }
+
+  /// Removes one row of the time-off list: a single entry, or every loaded
+  /// part of a vacation (each part in its own batch with its locks).
+  Future<void> deleteTimeOffItem(TimeOffItem item) async {
+    for (final part in item.parts) {
+      await deleteTimeOff(part);
+    }
+  }
+  // --- end vacation ---
+
   // --- Reviews (logic in reviews_service.dart) ---
 
   /// Local mode only (demo builds, tests): adds a new review's [stars] to
   /// the barber's `ratingSum` and 1 to `reviewCount`, as the review
   /// transaction does in Firestore. Ignored once Firebase is attached (the
   /// barber listener brings the new counters).
-  void applyLocalBarberReview(String barberId, int stars) {
+  void applyLocalBarberReview(String barberId, int stars) =>
+      applyLocalBarberReviewChange(barberId, ratingSumDelta: stars, reviewCountDelta: 1);
+
+  /// Local mode only: a review was created (+stars, +1), edited (+new -
+  /// old, 0) or deleted (-stars, -1); the barber's counters follow, as the
+  /// review transaction does in Firestore. Ignored once Firebase is
+  /// attached.
+  void applyLocalBarberReviewChange(String barberId, {required int ratingSumDelta, required int reviewCountDelta}) {
     if (_firebaseReady) return;
     final barber = _cache.barbers[barberId];
     if (barber == null) return;
-    _cache.barbers[barberId] =
-        barber.copyWith(ratingSum: barber.effectiveRatingSum + stars, reviewCount: barber.reviewCount + 1);
+    _cache.barbers[barberId] = barber.copyWith(
+      ratingSum: barber.effectiveRatingSum + ratingSumDelta,
+      reviewCount: barber.reviewCount + reviewCountDelta,
+    );
     notifyListeners();
   }
 
@@ -1981,6 +2618,100 @@ class AppRepository extends ChangeNotifier {
   /// loaded barbers (customers and admins load all barbers, owners and
   /// barbers their own shop's).
   ShopRating shopRatingOf(String shopId) => shopRatingFromBarbers(getBarbersForShop(shopId));
+
+  // --- admin users (logic in admin_users.dart, writes in admin_user_writes.dart) ---
+
+  /// Local mode writes the cache; [attachFirebase] switches to Firestore.
+  late AdminUserWrites _adminUserWrites = LocalAdminUserWrites(_cache, onNotice: (item) {
+    final notice = item.notice;
+    if (notice != null) onLocalNotice?.call(notice);
+  });
+
+  /// Admin: the user with [uid], if loaded.
+  AppUser? getUserById(String uid) => _cache.users[uid];
+
+  /// Admin: barber profiles of [shopId] that [user] could be linked to.
+  List<Barber> linkableBarbersFor(String shopId, AppUser user) => linkableBarbers(shopId,
+      barbers: _cache.barbers.values,
+      users: _cache.users.values,
+      invites: _cache.invites.values,
+      forUid: user.uid,
+      forEmail: user.email);
+
+  /// Admin: what changing [uid]'s role to [to] writes (for the confirm
+  /// dialog). Throws [AdminUserException] when it is not allowed.
+  RoleChangePlan previewRoleChange(String uid, RoleTarget to) {
+    final target = _cache.users[uid];
+    if (target == null) throw const AdminUserException(AdminUserError.userNotFound);
+    return planRoleChange(
+      actor: _currentUser,
+      target: target,
+      to: to,
+      users: _cache.users.values,
+      shops: _cache.shops,
+      barbers: _cache.barbers,
+      invites: _cache.invites.values,
+      newId: _uuid.v4,
+    );
+  }
+
+  /// Admin: changes [uid]'s role to [to] in one batch (users doc, barber
+  /// profile, shop ownerId, stale invites; see [RoleChangePlan]). The
+  /// admin cannot change their own role or remove the last admin.
+  Future<void> adminChangeUserRole(String uid, RoleTarget to) async {
+    final plan = previewRoleChange(uid, to);
+    await _write(_adminUserWrites.applyRoleChange(plan));
+  }
+
+  /// Admin: [uid]'s upcoming bookings (as customer, or as barber), for
+  /// the disable dialog. Null when they cannot be loaded.
+  Future<int?> countUpcomingBookingsOf(String uid) async {
+    final user = _cache.users[uid];
+    if (user == null) return null;
+    try {
+      return (await _adminUserWrites.upcomingBookingsOf(user, _nowUtc())).length;
+    } catch (e) {
+      debugPrint('Could not count upcoming bookings: $e');
+      return null;
+    }
+  }
+
+  /// Admin: disables [uid] (`disabled`, `disabledAt`, `disabledBy`,
+  /// `disabledReason`). Their app signs out at once and sign-in is refused.
+  /// Upcoming bookings stay unless [cancelUpcoming]; then they are
+  /// cancelled (paid ones flagged for a refund) and, for a barber, each
+  /// customer is notified. Returns the number of cancelled bookings.
+  Future<int> adminDisableUser(String uid, {String? reason, bool cancelUpcoming = false}) async {
+    final target = _cache.users[uid];
+    if (target == null) throw const AdminUserException(AdminUserError.userNotFound);
+    checkCanDisable(actor: _currentUser, target: target, users: _cache.users.values);
+    final cleanReason = normalizeDisableReason(reason);
+    final admin = _currentUser!.uid;
+    final now = _nowUtc();
+    await _adminUserWrites.disable(uid, disableFields(at: now, by: admin, reason: cleanReason));
+    var cancelled = 0;
+    if (cancelUpcoming) {
+      String? languageOf(String id) => _cache.users[id]?.language;
+      final items = planDisableCancellations(target, await _adminUserWrites.upcomingBookingsOf(target, now), now,
+          languageOf: languageOf);
+      await _adminUserWrites.cancelBookings(items,
+          adminUid: admin,
+          refund: RefundContext(by: RefundCanceller.admin, nowUtc: now, languageOf: languageOf));
+      cancelled = items.length;
+    }
+    notifyListeners();
+    return cancelled;
+  }
+
+  /// Admin: enables [uid] again (removes the disable fields).
+  Future<void> adminEnableUser(String uid) async {
+    if (_currentUser?.role != UserRole.admin) throw const AdminUserException(AdminUserError.notAdmin);
+    final target = _cache.users[uid];
+    if (target == null) throw const AdminUserException(AdminUserError.userNotFound);
+    if (!target.disabled) throw const AdminUserException(AdminUserError.noChange);
+    await _write(_adminUserWrites.enable(uid));
+  }
+  // --- end admin users ---
 
   /// Awaits a store write, then notifies listeners. (With Firestore the
   /// listeners have usually notified already via latency compensation.)
@@ -2034,6 +2765,10 @@ class AppRepository extends ChangeNotifier {
       }
       for (final b in barbers) {
         batch.set(shopRef.collection('barbers').doc(b.id), noNulls(b.toMap()));
+        final phone = b.phone; // private barber phone
+        if (phone != null && phone.isNotEmpty) {
+          batch.set(_db.doc(FirestoreDataStore.barberContactPath(shop.id, b.id)), {'phone': phone});
+        }
       }
       batch.set(_db.collection('invites').doc(ownerInvite.email), ownerInvite.toMap());
       batch.update(_db.doc(approval.path), approval.fieldsFor(shop.id));

@@ -788,6 +788,36 @@ abstract class AppLocalizations {
   /// **'Prices saved.'**
   String get rcptPricingSaved;
 
+  /// No description provided for @rcptStorageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt photos'**
+  String get rcptStorageTitle;
+
+  /// No description provided for @rcptStorageToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Store receipt photos in Firebase Storage — needs Blaze'**
+  String get rcptStorageToggle;
+
+  /// No description provided for @rcptStorageHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Off: photos are saved inside the receipt record (works on the free plan). On: they go to Firebase Storage; if an upload fails, the photo is saved inside the record instead.'**
+  String get rcptStorageHelp;
+
+  /// No description provided for @rcptPhotoLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the receipt photo.'**
+  String get rcptPhotoLoadFailed;
+
+  /// No description provided for @rcptPhotoRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get rcptPhotoRetry;
+
   /// No description provided for @rcptNotifApprovedTitle.
   ///
   /// In en, this message translates to:
@@ -1802,6 +1832,126 @@ abstract class AppLocalizations {
   /// **'You can only manage time off for your own schedule.'**
   String get timeOffErrNotAllowed;
 
+  /// No description provided for @timeOffSeveralDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Several days'**
+  String get timeOffSeveralDays;
+
+  /// No description provided for @vacationFromDate.
+  ///
+  /// In en, this message translates to:
+  /// **'First day'**
+  String get vacationFromDate;
+
+  /// No description provided for @vacationToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Last day'**
+  String get vacationToDate;
+
+  /// No description provided for @vacationFirstDayFrom.
+  ///
+  /// In en, this message translates to:
+  /// **'First day starts at'**
+  String get vacationFirstDayFrom;
+
+  /// No description provided for @vacationLastDayUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'Last day ends at'**
+  String get vacationLastDayUntil;
+
+  /// No description provided for @vacationStartOfWork.
+  ///
+  /// In en, this message translates to:
+  /// **'Start of work'**
+  String get vacationStartOfWork;
+
+  /// No description provided for @vacationEndOfWork.
+  ///
+  /// In en, this message translates to:
+  /// **'End of work'**
+  String get vacationEndOfWork;
+
+  /// No description provided for @vacationMaxDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} days selected (at most {max}).'**
+  String vacationMaxDays(int days, int max);
+
+  /// No description provided for @vacationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Vacation'**
+  String get vacationLabel;
+
+  /// No description provided for @vacationRange.
+  ///
+  /// In en, this message translates to:
+  /// **'{from} - {to}'**
+  String vacationRange(String from, String to);
+
+  /// No description provided for @vacationConflictsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookings during this time off'**
+  String get vacationConflictsTitle;
+
+  /// No description provided for @vacationConflictsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} upcoming bookings fall inside this time off. Cancel them and notify each customer, or keep them (their times stay booked).'**
+  String vacationConflictsBody(int count);
+
+  /// No description provided for @vacationPaidRefund.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid: a refund will be flagged'**
+  String get vacationPaidRefund;
+
+  /// No description provided for @vacationCancelAndNotify.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel & notify customers'**
+  String get vacationCancelAndNotify;
+
+  /// No description provided for @vacationKeepBookings.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep bookings'**
+  String get vacationKeepBookings;
+
+  /// No description provided for @vacationSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Vacation saved. Customers can no longer book these days.'**
+  String get vacationSaved;
+
+  /// No description provided for @vacationSavedCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Vacation saved. {count} bookings cancelled and their customers notified.'**
+  String vacationSavedCancelled(int count);
+
+  /// No description provided for @vacationRemoveConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the whole vacation {range}? Customers can book these days again.'**
+  String vacationRemoveConfirm(String range);
+
+  /// No description provided for @vacationErrTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'A vacation can be at most {max} days long.'**
+  String vacationErrTooLong(int max);
+
+  /// No description provided for @vacationErrNothingToBlock.
+  ///
+  /// In en, this message translates to:
+  /// **'There are no working hours left to block on these days.'**
+  String get vacationErrNothingToBlock;
+
   /// No description provided for @subTrialing.
   ///
   /// In en, this message translates to:
@@ -2300,6 +2450,42 @@ abstract class AppLocalizations {
   /// **'Mobile Number (optional)'**
   String get barberMobileOptional;
 
+  /// No description provided for @barberPhoneHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Private. Customers see it only after their booking is confirmed.'**
+  String get barberPhoneHelper;
+
+  /// No description provided for @barberPhoneNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No mobile number'**
+  String get barberPhoneNone;
+
+  /// No description provided for @barberPhoneEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit mobile number'**
+  String get barberPhoneEdit;
+
+  /// No description provided for @barberPhoneSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile number saved'**
+  String get barberPhoneSaved;
+
+  /// No description provided for @callBarberAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Call {name}'**
+  String callBarberAction(String name);
+
+  /// No description provided for @barberPhoneOnBooking.
+  ///
+  /// In en, this message translates to:
+  /// **'Barber\'s phone: {phone}'**
+  String barberPhoneOnBooking(String phone);
+
   /// No description provided for @invalidEmailShort.
   ///
   /// In en, this message translates to:
@@ -2585,7 +2771,7 @@ abstract class AppLocalizations {
   /// No description provided for @adminShopsDeleteBody.
   ///
   /// In en, this message translates to:
-  /// **'This permanently deletes {shop} with its services, barbers and pending invites. Booking history is kept. Type the shop name to confirm.'**
+  /// **'This permanently deletes {shop}. Type the shop name to confirm.'**
   String adminShopsDeleteBody(String shop);
 
   /// No description provided for @adminShopsDeleteTypeName.
@@ -2593,6 +2779,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Shop name'**
   String get adminShopsDeleteTypeName;
+
+  /// No description provided for @adminShopsDeleteWillHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'What happens'**
+  String get adminShopsDeleteWillHeading;
+
+  /// No description provided for @adminShopsDeleteListBarbers.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} barber profiles are deleted, with their time off and booked slots'**
+  String adminShopsDeleteListBarbers(int count);
+
+  /// No description provided for @adminShopsDeleteListServices.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} services are deleted'**
+  String adminShopsDeleteListServices(int count);
+
+  /// No description provided for @adminShopsDeleteListStaff.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} staff accounts (owner and barbers) become customer accounts'**
+  String adminShopsDeleteListStaff(int count);
+
+  /// No description provided for @adminShopsDeleteListInvites.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} pending invites are revoked'**
+  String adminShopsDeleteListInvites(int count);
+
+  /// No description provided for @adminShopsDeleteListBookings.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} upcoming bookings are cancelled and their customers notified'**
+  String adminShopsDeleteListBookings(int count);
+
+  /// No description provided for @adminShopsDeleteListBookingsUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming bookings are cancelled and their customers notified'**
+  String get adminShopsDeleteListBookingsUnknown;
+
+  /// No description provided for @adminShopsDeleteListOther.
+  ///
+  /// In en, this message translates to:
+  /// **'The walk-in queue, reviews, payouts and statistics are deleted'**
+  String get adminShopsDeleteListOther;
+
+  /// No description provided for @adminShopsDeleteListKept.
+  ///
+  /// In en, this message translates to:
+  /// **'Past bookings are kept for history. Staff can still sign in, as customers.'**
+  String get adminShopsDeleteListKept;
+
+  /// No description provided for @adminShopsDeleteStepPrepare.
+  ///
+  /// In en, this message translates to:
+  /// **'Suspending the shop'**
+  String get adminShopsDeleteStepPrepare;
+
+  /// No description provided for @adminShopsDeleteStepBookings.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelling upcoming bookings'**
+  String get adminShopsDeleteStepBookings;
+
+  /// No description provided for @adminShopsDeleteStepStaff.
+  ///
+  /// In en, this message translates to:
+  /// **'Moving staff to customer accounts'**
+  String get adminShopsDeleteStepStaff;
+
+  /// No description provided for @adminShopsDeleteStepData.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting barbers, services and shop data'**
+  String get adminShopsDeleteStepData;
+
+  /// No description provided for @adminShopsDeleteStepShop.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting the shop'**
+  String get adminShopsDeleteStepShop;
+
+  /// No description provided for @adminShopsDeleteProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {step} of {total}: {label}…'**
+  String adminShopsDeleteProgress(int step, int total, String label);
+
+  /// No description provided for @adminShopsDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not finish \"{step}\". What was done stays done; tap Retry to continue.'**
+  String adminShopsDeleteFailed(String step);
+
+  /// No description provided for @adminShopsDeleteRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get adminShopsDeleteRetry;
+
+  /// No description provided for @shopRemovedNoticeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your barbershop was removed'**
+  String get shopRemovedNoticeTitle;
+
+  /// No description provided for @shopRemovedNoticeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You can keep using Crown & Blade as a customer.'**
+  String get shopRemovedNoticeBody;
 
   /// No description provided for @adminShopsErrReasonRequired.
   ///
@@ -5480,6 +5780,66 @@ abstract class AppLocalizations {
   /// **'This review no longer exists.'**
   String get reviewsErrNotFound;
 
+  /// No description provided for @reviewsEditAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit review'**
+  String get reviewsEditAction;
+
+  /// No description provided for @reviewsDeleteAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete review'**
+  String get reviewsDeleteAction;
+
+  /// No description provided for @reviewsEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit your review'**
+  String get reviewsEditTitle;
+
+  /// No description provided for @reviewsSaveEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes'**
+  String get reviewsSaveEdit;
+
+  /// No description provided for @reviewsEditSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Your review was updated.'**
+  String get reviewsEditSaved;
+
+  /// No description provided for @reviewsEdited.
+  ///
+  /// In en, this message translates to:
+  /// **'edited'**
+  String get reviewsEdited;
+
+  /// No description provided for @reviewsManageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to edit or delete your review'**
+  String get reviewsManageHint;
+
+  /// No description provided for @reviewsDeleteConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete your review?'**
+  String get reviewsDeleteConfirmTitle;
+
+  /// No description provided for @reviewsDeleteConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your stars and comment will be removed from {barber}\'s rating. You can rate this visit again later.'**
+  String reviewsDeleteConfirmBody(String barber);
+
+  /// No description provided for @reviewsDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Your review was deleted.'**
+  String get reviewsDeleted;
+
   /// No description provided for @authTabLogin.
   ///
   /// In en, this message translates to:
@@ -6271,6 +6631,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Payouts can be deleted only within 24 hours of recording them.'**
   String get payoutsErrDeleteWindow;
+
+  /// No description provided for @payoutsCarriedOver.
+  ///
+  /// In en, this message translates to:
+  /// **'Carried over from {month}'**
+  String payoutsCarriedOver(String month);
+
+  /// No description provided for @payoutsCarryUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier unpaid balances couldn\'t be loaded. Showing this month only.'**
+  String get payoutsCarryUnavailable;
+
+  /// No description provided for @payoutsCarryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Includes unpaid balances from earlier months. Paying part of it leaves the rest for next month.'**
+  String get payoutsCarryHint;
+
+  /// No description provided for @payoutsTotalCarried.
+  ///
+  /// In en, this message translates to:
+  /// **'Carried over'**
+  String get payoutsTotalCarried;
+
+  /// No description provided for @earningsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your earnings'**
+  String get earningsTitle;
+
+  /// No description provided for @earningsShopTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Totals for any period'**
+  String get earningsShopTitle;
+
+  /// No description provided for @earningsTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Totals'**
+  String get earningsTab;
+
+  /// No description provided for @earningsThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get earningsThisMonth;
+
+  /// No description provided for @earningsLastMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Last month'**
+  String get earningsLastMonth;
+
+  /// No description provided for @earningsPickMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a month'**
+  String get earningsPickMonth;
+
+  /// No description provided for @earningsThisYear.
+  ///
+  /// In en, this message translates to:
+  /// **'This year'**
+  String get earningsThisYear;
+
+  /// No description provided for @earningsAllTime.
+  ///
+  /// In en, this message translates to:
+  /// **'All time'**
+  String get earningsAllTime;
+
+  /// No description provided for @earningsAllTimeNote.
+  ///
+  /// In en, this message translates to:
+  /// **'All completed bookings'**
+  String get earningsAllTimeNote;
+
+  /// No description provided for @earningsCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed jobs'**
+  String get earningsCompleted;
+
+  /// No description provided for @earningsRevenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Revenue'**
+  String get earningsRevenue;
+
+  /// No description provided for @earningsYourShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Your share ({percent}%)'**
+  String earningsYourShare(int percent);
+
+  /// No description provided for @earningsBarbersShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Barbers\' share'**
+  String get earningsBarbersShare;
+
+  /// No description provided for @earningsShopKeeps.
+  ///
+  /// In en, this message translates to:
+  /// **'Shop\'s part'**
+  String get earningsShopKeeps;
+
+  /// No description provided for @earningsByBarber.
+  ///
+  /// In en, this message translates to:
+  /// **'By barber'**
+  String get earningsByBarber;
+
+  /// No description provided for @earningsBarberJobs.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 completed job} other{{count} completed jobs}}'**
+  String earningsBarberJobs(int count);
+
+  /// No description provided for @earningsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the totals. Please try again.'**
+  String get earningsLoadFailed;
+
+  /// No description provided for @earningsShareNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Shares use the current commission. Only completed bookings count.'**
+  String get earningsShareNote;
 
   /// No description provided for @applRegisterShopTitle.
   ///
@@ -7298,6 +7790,96 @@ abstract class AppLocalizations {
   /// **'Edit'**
   String get admPayEdit;
 
+  /// No description provided for @refundsDueTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Refunds due'**
+  String get refundsDueTitle;
+
+  /// No description provided for @refundsDueCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 refund waiting} other{{count} refunds waiting}}'**
+  String refundsDueCount(int count);
+
+  /// No description provided for @refundsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No refunds due. When a paid booking is cancelled, the money owed to the customer shows up here.'**
+  String get refundsEmpty;
+
+  /// No description provided for @refundBadgeDue.
+  ///
+  /// In en, this message translates to:
+  /// **'Refund due · {amount}'**
+  String refundBadgeDue(String amount);
+
+  /// No description provided for @refundBadgeRefunded.
+  ///
+  /// In en, this message translates to:
+  /// **'Refunded'**
+  String get refundBadgeRefunded;
+
+  /// No description provided for @refundMarkButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark refunded'**
+  String get refundMarkButton;
+
+  /// No description provided for @refundMarkTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark the refund as sent'**
+  String get refundMarkTitle;
+
+  /// No description provided for @refundMarkBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm that you sent {amount} back to {customer}.'**
+  String refundMarkBody(String amount, String customer);
+
+  /// No description provided for @refundMethodLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'How was it refunded?'**
+  String get refundMethodLabel;
+
+  /// No description provided for @refundMethodName.
+  ///
+  /// In en, this message translates to:
+  /// **'{method, select, telebirr{telebirr} cbe{CBE Birr} bank{Bank transfer} cash{Cash} chapa{Chapa} other{Other}}'**
+  String refundMethodName(String method);
+
+  /// No description provided for @refundReferenceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference (optional)'**
+  String get refundReferenceLabel;
+
+  /// No description provided for @refundReferenceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Transaction ID or a short note'**
+  String get refundReferenceHint;
+
+  /// No description provided for @refundMarkedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Marked as refunded. The customer was notified.'**
+  String get refundMarkedSnack;
+
+  /// No description provided for @refundReasonName.
+  ///
+  /// In en, this message translates to:
+  /// **'{reason, select, customer_cancelled{Customer cancelled} customer_late_cancel{Customer cancelled late (partial refund)} barber_cancelled{Barber cancelled} shop_cancelled{Shop cancelled} admin_cancelled{Cancelled by the platform} request_declined{Request declined} request_expired{Request expired} shop_deleted{Shop removed} other{Cancelled}}'**
+  String refundReasonName(String reason);
+
+  /// No description provided for @refundFlaggedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled {date}'**
+  String refundFlaggedOn(String date);
+
   /// No description provided for @admPayReceiversMissing.
   ///
   /// In en, this message translates to:
@@ -7333,6 +7915,348 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No payments yet.'**
   String get admPayNoPayments;
+
+  /// No description provided for @errAccountDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account has been disabled. Contact support.'**
+  String get errAccountDisabled;
+
+  /// No description provided for @admUsrSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by name, email or phone'**
+  String get admUsrSearchHint;
+
+  /// No description provided for @admUsrFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All ({count})'**
+  String admUsrFilterAll(int count);
+
+  /// No description provided for @admUsrFilterCustomers.
+  ///
+  /// In en, this message translates to:
+  /// **'Customers ({count})'**
+  String admUsrFilterCustomers(int count);
+
+  /// No description provided for @admUsrFilterOwners.
+  ///
+  /// In en, this message translates to:
+  /// **'Owners ({count})'**
+  String admUsrFilterOwners(int count);
+
+  /// No description provided for @admUsrFilterBarbers.
+  ///
+  /// In en, this message translates to:
+  /// **'Barbers ({count})'**
+  String admUsrFilterBarbers(int count);
+
+  /// No description provided for @admUsrFilterAdmins.
+  ///
+  /// In en, this message translates to:
+  /// **'Admins ({count})'**
+  String admUsrFilterAdmins(int count);
+
+  /// No description provided for @admUsrFilterDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled ({count})'**
+  String admUsrFilterDisabled(int count);
+
+  /// No description provided for @admUsrEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No users match your search.'**
+  String get admUsrEmpty;
+
+  /// No description provided for @admUsrDisabledChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get admUsrDisabledChip;
+
+  /// No description provided for @admUsrYouChip.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get admUsrYouChip;
+
+  /// No description provided for @admUsrEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit user'**
+  String get admUsrEditTitle;
+
+  /// No description provided for @admUsrEmailLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get admUsrEmailLabel;
+
+  /// No description provided for @admUsrPhoneLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone'**
+  String get admUsrPhoneLabel;
+
+  /// No description provided for @admUsrJoined.
+  ///
+  /// In en, this message translates to:
+  /// **'Joined {date}'**
+  String admUsrJoined(String date);
+
+  /// No description provided for @admUsrRoleSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Role'**
+  String get admUsrRoleSection;
+
+  /// No description provided for @admUsrShopLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Barbershop'**
+  String get admUsrShopLabel;
+
+  /// No description provided for @admUsrPickShop.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a barbershop'**
+  String get admUsrPickShop;
+
+  /// No description provided for @admUsrBarberProfileLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Barber profile'**
+  String get admUsrBarberProfileLabel;
+
+  /// No description provided for @admUsrNewBarberProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a new barber profile'**
+  String get admUsrNewBarberProfile;
+
+  /// No description provided for @admUsrSaveRole.
+  ///
+  /// In en, this message translates to:
+  /// **'Change role'**
+  String get admUsrSaveRole;
+
+  /// No description provided for @admUsrSelfNote.
+  ///
+  /// In en, this message translates to:
+  /// **'This is your own account. You cannot change your own role or disable yourself.'**
+  String get admUsrSelfNote;
+
+  /// No description provided for @admUsrRoleAtShop.
+  ///
+  /// In en, this message translates to:
+  /// **'{role} at {shop}'**
+  String admUsrRoleAtShop(String role, String shop);
+
+  /// No description provided for @admUsrConfirmRoleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change role?'**
+  String get admUsrConfirmRoleTitle;
+
+  /// No description provided for @admUsrConfirmRoleBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} will become: {role}.'**
+  String admUsrConfirmRoleBody(String name, String role);
+
+  /// No description provided for @admUsrEffectNewBarber.
+  ///
+  /// In en, this message translates to:
+  /// **'A new barber profile is created in {shop}.'**
+  String admUsrEffectNewBarber(String shop);
+
+  /// No description provided for @admUsrEffectUnlinkBarber.
+  ///
+  /// In en, this message translates to:
+  /// **'Their barber profile \"{barber}\" stays in the shop for its history but stops taking bookings.'**
+  String admUsrEffectUnlinkBarber(String barber);
+
+  /// No description provided for @admUsrEffectReleaseShop.
+  ///
+  /// In en, this message translates to:
+  /// **'{shop} will have no owner until you assign one.'**
+  String admUsrEffectReleaseShop(String shop);
+
+  /// No description provided for @admUsrEffectPreviousOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} owns {shop} now and becomes a customer.'**
+  String admUsrEffectPreviousOwner(String name, String shop);
+
+  /// No description provided for @admUsrEffectInvites.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 pending invite is cancelled.} other{{count} pending invites are cancelled.}}'**
+  String admUsrEffectInvites(int count);
+
+  /// No description provided for @admUsrRoleChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Role changed.'**
+  String get admUsrRoleChanged;
+
+  /// No description provided for @admUsrAccountSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get admUsrAccountSection;
+
+  /// No description provided for @admUsrActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active. This person can sign in.'**
+  String get admUsrActive;
+
+  /// No description provided for @admUsrDisabledOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled on {date}'**
+  String admUsrDisabledOn(String date);
+
+  /// No description provided for @admUsrDisabledReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason: {reason}'**
+  String admUsrDisabledReason(String reason);
+
+  /// No description provided for @admUsrDisable.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable account'**
+  String get admUsrDisable;
+
+  /// No description provided for @admUsrEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable account'**
+  String get admUsrEnable;
+
+  /// No description provided for @admUsrDisableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable {name}?'**
+  String admUsrDisableTitle(String name);
+
+  /// No description provided for @admUsrDisableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'They are signed out right away and cannot sign in until you enable the account again.'**
+  String get admUsrDisableBody;
+
+  /// No description provided for @admUsrReasonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason (optional)'**
+  String get admUsrReasonLabel;
+
+  /// No description provided for @admUsrCancelBookings.
+  ///
+  /// In en, this message translates to:
+  /// **'Also cancel their upcoming bookings'**
+  String get admUsrCancelBookings;
+
+  /// No description provided for @admUsrUpcomingCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No upcoming bookings} =1{1 upcoming booking} other{{count} upcoming bookings}}'**
+  String admUsrUpcomingCount(int count);
+
+  /// No description provided for @admUsrUpcomingUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming bookings could not be counted.'**
+  String get admUsrUpcomingUnknown;
+
+  /// No description provided for @admUsrBookingsStay.
+  ///
+  /// In en, this message translates to:
+  /// **'Their upcoming bookings stay unless you tick the box.'**
+  String get admUsrBookingsStay;
+
+  /// No description provided for @admUsrDisabledSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Account disabled.} =1{Account disabled. 1 booking cancelled.} other{Account disabled. {count} bookings cancelled.}}'**
+  String admUsrDisabledSnack(int count);
+
+  /// No description provided for @admUsrEnableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable {name}?'**
+  String admUsrEnableTitle(String name);
+
+  /// No description provided for @admUsrEnableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'They can sign in again.'**
+  String get admUsrEnableBody;
+
+  /// No description provided for @admUsrEnabledSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'Account enabled.'**
+  String get admUsrEnabledSnack;
+
+  /// No description provided for @admUsrErrNotAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Only admins can manage users.'**
+  String get admUsrErrNotAdmin;
+
+  /// No description provided for @admUsrErrNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This user no longer exists.'**
+  String get admUsrErrNotFound;
+
+  /// No description provided for @admUsrErrSelf.
+  ///
+  /// In en, this message translates to:
+  /// **'You cannot change your own role or disable your own account.'**
+  String get admUsrErrSelf;
+
+  /// No description provided for @admUsrErrLastAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'The platform needs at least one active admin.'**
+  String get admUsrErrLastAdmin;
+
+  /// No description provided for @admUsrErrShopRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a barbershop.'**
+  String get admUsrErrShopRequired;
+
+  /// No description provided for @admUsrErrShopNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'That barbershop or barber profile no longer exists.'**
+  String get admUsrErrShopNotFound;
+
+  /// No description provided for @admUsrErrBarberTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'That barber profile already belongs to another account.'**
+  String get admUsrErrBarberTaken;
+
+  /// No description provided for @admUsrErrNoChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to change.'**
+  String get admUsrErrNoChange;
+
+  /// No description provided for @admUsrErrReasonTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'The reason can be at most {max} characters.'**
+  String admUsrErrReasonTooLong(int max);
 }
 
 class _AppLocalizationsDelegate

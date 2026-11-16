@@ -36,7 +36,7 @@ GOOGLE_APPLICATION_CREDENTIALS=service-account.json node seed.js --invites --pro
 
 Sign-in is with Google, so people are identified by their (lowercased) Google email. In invites mode each person gets their role the first time they sign in with Google using the invited address, as with any invite (owners then claim their shop). The dataset's emails are `@example.com` placeholders: before running `--invites` on a real project, replace them in `assets/seed/addis_seed.json` (or a copy) with the real people's Google addresses, otherwise nobody can accept the invites. The script lowercases emails and refuses users without one.
 
-Demo emails: admin `admin@example.com`, owner of `shop_1` `owner.shop1@example.com` (shops 2-6: `owner.shop2@example.com` ...), barbers `barber1.shop1@example.com` and `barber2.shop1@example.com`, customer `liya@example.com`. Phones (`+251911000001`, ...) are contact numbers on the profile, not sign-in identities.
+Demo emails: admin `admin@example.com`, owner of `shop_1` `owner.shop1@example.com` (shops 2-6: `owner.shop2@example.com` ...), barbers `barber1.shop1@example.com` and `barber2.shop1@example.com`, customer `liya@example.com`. Phones (`+251911000001`, ...) are contact numbers on the profile, not sign-in identities. A barber's `phone` in the JSON is private: both modes write it to `barbershops/{shop}/barbers/{barber}/private/contact {phone}` (owner, admin and that barber only), never to the public barber doc, and users mode copies it into confirmed and in-progress bookings as `barberPhone` (what the staff app does when it confirms a booking).
 
 `npm test` checks the script resolves the data like the app does.
 
