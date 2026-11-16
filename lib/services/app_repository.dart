@@ -36,13 +36,23 @@ import 'vacation_service.dart'; // vacation
 import 'admin_shops_logic.dart'; // admin shop management
 import 'subscription_state.dart'; // subscription expiry (client-side)
 import 'shop_deletion.dart'; // shop deletion
+import 'shop_maps.dart' show isValidShopCoordinate; // shop location (maps)
 import 'refunds.dart'; // refunds
 import 'admin_users.dart'; // admin users
 import 'admin_user_writes.dart'; // admin users
+import 'account_auth_service.dart'; // account deletion
+import 'account_deletion.dart'; // account deletion
+import 'account_deletion_writes.dart'; // account deletion
+import '../models/app_notification.dart' show AppNotification, NotificationTypes; // account deletion
+import 'customer_blocks.dart' show CustomerBlockService; // customer blocks
+import 'favorite_barbers_store.dart'; // favourite barbers & rebook
+import 'rebook_service.dart' as rebook; // favourite barbers & rebook
 
 export '../models/app_exception.dart';
 export 'admin_shops_logic.dart'; // admin shop management
 export 'admin_users.dart'; // admin users
+export 'account_deletion.dart'; // account deletion
+export 'account_auth_service.dart' show ReauthMethod; // account deletion
 export 'shop_deletion.dart' show ShopDeletionStep, ShopDeletionException, ShopDeletionPreview, ShopDeletionNotice; // shop deletion
 export 'email_auth_service.dart'
     show EmailAuthException, EmailAuthErrorCode, EmailCodeSent, EmailCodeVerified, EmailFlowStart, VerificationLinkResult;
@@ -158,6 +168,8 @@ class AppRepository extends ChangeNotifier {
       ..allowUnverifiedSignIn = _cloudUnverifiedAllowed; // barber accounts
     _staffAccounts = FirebaseStaffAccountService(); // barber accounts
     _adminUserWrites = FirestoreAdminUserWrites(FirebaseFirestore.instance); // admin users
+    _accountDeletionWrites = FirestoreAccountDeletionWrites(FirebaseFirestore.instance); // account deletion
+    _accountAuth = FirebaseAccountAuthService(FirebaseAuth.instance); // account deletion
     _resetEmailFallback();
     // Web: report a failed redirect sign-in (used when the popup is blocked).
     google.redirectError().then((error) {
@@ -199,11 +211,16 @@ class AppRepository extends ChangeNotifier {
     _favoriteBarberIds
       ..clear()
       ..addAll(seed.favoriteBarberIds);
+    _favoriteBarbers.clear(); // favourite barbers & rebook
+    _favoriteBarberLoads.clear();
+    _favoriteBarbersRead.clear();
     _currentUser = null;
     _authStatus = AuthStatus.signedOut;
     _googleAuth = _defaultLocalGoogleAuth();
     _emailAuth = _defaultLocalEmailAuth();
     _staffAccounts = _defaultLocalStaffAccounts(); // barber accounts
+    _resetLocalAccountDeletion(); // account deletion
+    CustomerBlockService.resetLocal(); // customer blocks
     _resetEmailFallback();
     _clearPending();
     _authError = null;
@@ -864,6 +881,7 @@ class AppRepository extends ChangeNotifier {
     }
     _clearPending();
     _authError = null;
+    _forgetPendingAccountDeletion(); // account deletion
     if (_firebaseReady) {
       await _googleAuth.signOut();
       return; // _onFirebaseAuthChanged resets the session.
@@ -876,6 +894,7 @@ class AppRepository extends ChangeNotifier {
   Future<void> _onFirebaseAuthChanged(User? fbUser) async {
     if (fbUser == null) {
       await _cloud?.stop();
+      _forgetPendingAccountDeletion(); // account deletion
       _currentUser = null;
       _clearPending();
       _authStatus = AuthStatus.signedOut;
@@ -982,6 +1001,7 @@ class AppRepository extends ChangeNotifier {
 
   /// The signed-in user's own profile document changed in Firestore.
   void _onCurrentUserDocChanged(AppUser? user) {
+    if (_deletingAccount) return; // account deletion: the profile goes away on purpose
     final current = _currentUser;
     if (current == null || _authStatus != AuthStatus.signedIn) return;
     if (user == null) {
@@ -1099,6 +1119,9 @@ class AppRepository extends ChangeNotifier {
     required bool isVerified,
     String subCity = '',
     String? landmark,
+    // shop location (maps): optional map pin, both or neither.
+    double? latitude,
+    double? longitude,
     String? shopPhone,
     // --- shop applications --- set when approving a ShopApplication: the
     // application update is committed with the shop.
@@ -1124,6 +1147,8 @@ class AppRepository extends ChangeNotifier {
       city: city,
       subCity: subCity,
       landmark: (landmark == null || landmark.trim().isEmpty) ? null : landmark.trim(),
+      latitude: isValidShopCoordinate(latitude, longitude) ? latitude : null,
+      longitude: isValidShopCoordinate(latitude, longitude) ? longitude : null,
       phone: contactPhone,
       imageUrl: imageUrl.isNotEmpty ? imageUrl : 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800',
       rating: 5.0,
@@ -1675,6 +1700,8 @@ class AppRepository extends ChangeNotifier {
     if (barber != null && !barber.isAvailable) {
       throw AppStateException(AppErrorCode.barberNotTakingBookings, [barber.name]);
     }
+    // customer blocks: a customer the owner blocked books nothing here
+    await CustomerBlockService.instance.assertCurrentUserCanBook(shopId);
     final start = (startAt ?? appointmentStartUtc(date, timeSlot))?.toUtc();
     if (start == null) throw AppFormatException(AppErrorCode.invalidTimeSlot, [timeSlot]);
     final duration = durationMinutes ?? _cache.services[serviceId]?.durationMinutes ?? 30;
@@ -1772,6 +1799,8 @@ class AppRepository extends ChangeNotifier {
       cancelledBy: newStatus == BookingStatus.cancelled ? _currentUser?.uid : null,
       refund: newStatus == BookingStatus.cancelled ? _refundContextFor(booking) : null, // refunds
     ));
+    // customer blocks: auto-block after N no-shows (best effort, never throws)
+    if (newStatus == BookingStatus.noShow) await CustomerBlockService.instance.afterNoShow(booking);
   }
 
   // --- early finish (logic in early_finish_service.dart) ---
@@ -2817,6 +2846,377 @@ class AppRepository extends ChangeNotifier {
   }
   // --- end shop applications ---
 
+  // --- account deletion (logic in account_deletion.dart, writes in account_deletion_writes.dart) ---
+  // Settings > Delete account, on the free Spark plan: the person's own app
+  // cancels their bookings, anonymises their reviews and bookings, removes a
+  // barber from their shop, deletes their personal documents and users/{uid},
+  // then the Firebase Auth login. functions/auth onUserProfileDeleted
+  // (Blaze) repeats the clean-up on the server.
+
+  late AccountDeletionWrites _accountDeletionWrites = LocalAccountDeletionWrites(_cache);
+  late AccountAuthService _accountAuth = _defaultLocalAccountAuth();
+
+  AccountAuthService _defaultLocalAccountAuth() => LocalAccountAuthService(
+        hasPassword: (email) => _emailAuth.hasPassword(email),
+        verifyPassword: (email, password) => _emailAuth.signIn(email: email, password: password),
+        onDeleteLogin: (email) {
+          final local = _emailAuth;
+          if (local is LocalEmailAuthService) local.deleteAccount(email);
+        },
+      );
+
+  void _resetLocalAccountDeletion() {
+    _accountDeletionWrites = LocalAccountDeletionWrites(_cache);
+    _accountAuth = _defaultLocalAccountAuth();
+    _deletingAccount = false;
+    _profileDeleted = false;
+    _accountDeletedNotice = false;
+  }
+
+  /// Tests: the deletion writes in use (local mode: [LocalAccountDeletionWrites]).
+  @visibleForTesting
+  AccountDeletionWrites get accountDeletionWrites => _accountDeletionWrites;
+
+  /// Tests: the re-authentication / login deletion in use.
+  @visibleForTesting
+  AccountAuthService get accountAuthService => _accountAuth;
+  @visibleForTesting
+  set accountAuthService(AccountAuthService service) => _accountAuth = service;
+
+  /// The cascade is running: the own-profile listener must not sign out.
+  bool _deletingAccount = false;
+
+  /// The session ended (sign-out or deleted login): a half-finished
+  /// deletion must not carry over to the next account signed in here.
+  void _forgetPendingAccountDeletion() {
+    _deletingAccount = false;
+    _profileDeleted = false;
+  }
+
+  /// users/{uid} is gone; only the login is left to delete (after a new
+  /// sign-in when Firebase asked for one).
+  bool _profileDeleted = false;
+
+  bool _accountDeletedNotice = false;
+
+  /// What the last deletion could not remove (e.g. rules not deployed yet).
+  List<String> _deletionLeftovers = const [];
+  List<String> get lastAccountDeletionLeftovers => _deletionLeftovers;
+
+  /// The sign-in screen: whether an account was just deleted (read once).
+  bool takeAccountDeletedNotice() {
+    final notice = _accountDeletedNotice;
+    _accountDeletedNotice = false;
+    return notice;
+  }
+
+  /// How the signed-in person can confirm it is them before deleting.
+  Set<ReauthMethod> get reauthMethods {
+    final email = _currentUser?.email ?? '';
+    return _accountAuth.methodsFor(email);
+  }
+
+  /// Whether the account's data is already deleted and only the login is
+  /// left (sign in again, then [deleteMyAccount] finishes).
+  bool get accountDeletionPending => _profileDeleted;
+
+  /// What deleting the signed-in account would do, or why it cannot yet.
+  AccountDeletionPreview previewAccountDeletion() {
+    final user = _currentUser;
+    if (user == null) throw const AccountDeletionException(AccountDeletionError.notSignedIn);
+    return planAccountDeletion(
+      user: user,
+      bookings: _cache.bookings.values,
+      shops: _cache.shops,
+      users: _cache.users.values,
+      nowUtc: _nowUtc(),
+    );
+  }
+
+  /// Signs in again with the account's password (needed before deleting).
+  Future<void> reauthenticateWithPassword(String password) async {
+    final email = _currentUser?.email;
+    if (email == null || email.isEmpty) throw const AccountDeletionException(AccountDeletionError.notSignedIn);
+    await _accountAuth.reauthenticateWithPassword(email, password);
+  }
+
+  /// Signs in again with Google (needed before deleting).
+  Future<void> reauthenticateWithGoogle() async {
+    final email = _currentUser?.email;
+    if (email == null || email.isEmpty) throw const AccountDeletionException(AccountDeletionError.notSignedIn);
+    await _accountAuth.reauthenticateWithGoogle(email);
+  }
+
+  static bool _isPermissionDenied(Object e) => e is FirebaseException && e.code == 'permission-denied';
+
+  /// Deletes the signed-in account after [confirmation] ("DELETE") and a
+  /// re-authentication: see account_deletion.dart for every step. [onStep]
+  /// reports each step as it starts. Throws [AccountDeletionException]:
+  /// ownsShop / lastAdmin (nothing changed), stepFailed (retry continues
+  /// safely), reauthRequired (data deleted, sign in again and call this
+  /// again to delete the login). On success the session ends.
+  Future<void> deleteMyAccount({
+    required String confirmation,
+    void Function(AccountDeletionStep step)? onStep,
+  }) async {
+    final user = _currentUser;
+    if (user == null) throw const AccountDeletionException(AccountDeletionError.notSignedIn);
+    if (!isDeleteConfirmation(confirmation)) {
+      throw const AccountDeletionException(AccountDeletionError.confirmationMismatch);
+    }
+    if (!_profileDeleted) {
+      switch (previewAccountDeletion().blocker) {
+        case AccountDeletionBlocker.ownsShop:
+          throw const AccountDeletionException(AccountDeletionError.ownsShop);
+        case AccountDeletionBlocker.lastAdmin:
+          throw const AccountDeletionException(AccountDeletionError.lastAdmin);
+        case null:
+          break;
+      }
+      _deletingAccount = true;
+      try {
+        _deletionLeftovers = await _runAccountCleanup(user, onStep);
+      } catch (e) {
+        _deletingAccount = false;
+        rethrow;
+      }
+      _profileDeleted = true;
+    }
+
+    onStep?.call(AccountDeletionStep.deleteLogin);
+    try {
+      await _accountAuth.deleteCurrentLogin();
+    } on AccountDeletionException {
+      rethrow; // reauthRequired: the screen asks for a new sign-in and calls again
+    } catch (e) {
+      throw AccountDeletionException(AccountDeletionError.stepFailed, step: AccountDeletionStep.deleteLogin, cause: e);
+    }
+    await _forgetDeletedAccount(user.uid);
+    _profileDeleted = false;
+    _deletingAccount = false;
+    _accountDeletedNotice = true;
+    _clearPending();
+    _authError = null;
+    if (_firebaseReady) {
+      // Deleting the login signs out (the auth listener resets the session).
+      try {
+        await _googleAuth.signOut();
+      } catch (e) {
+        debugPrint('Sign out after account deletion: $e');
+      }
+      return;
+    }
+    _currentUser = null;
+    _authStatus = AuthStatus.signedOut;
+    notifyListeners();
+  }
+
+  /// Favourites kept on this device for [uid] (best effort).
+  Future<void> _forgetDeletedAccount(String uid) async {
+    _favoriteShopIds.clear();
+    _favoriteBarberIds.clear();
+    _favoriteBarbers.remove(uid);
+    _favoriteBarberLoads.remove(uid);
+    _favoriteBarbersRead.remove(uid);
+    try {
+      await _favoriteStore?.save(uid, const []);
+    } catch (e) {
+      debugPrint('Could not clear saved favourites: $e');
+    }
+  }
+
+  /// Steps 1-6 (everything but the login). Returns the parts that could not
+  /// be removed because the rules refused them (Blaze cleans them up).
+  Future<List<String>> _runAccountCleanup(AppUser user, void Function(AccountDeletionStep step)? onStep) async {
+    final now = _nowUtc();
+    final leftovers = <String>[];
+    Never fail(AccountDeletionStep step, Object e) =>
+        throw AccountDeletionException(AccountDeletionError.stepFailed, step: step, cause: e);
+
+    // All of the person's bookings as a customer (the app keeps 90 days).
+    final byId = {for (final b in _cache.bookings.values) b.id: b};
+    try {
+      for (final b in await _accountDeletionWrites.bookingsOfCustomer(user.uid)) {
+        byId[b.id] = b;
+      }
+    } catch (e) {
+      debugPrint('Account deletion: could not load all bookings: $e');
+    }
+    final plan = planAccountDeletion(
+      user: user,
+      bookings: byId.values,
+      shops: _cache.shops,
+      users: _cache.users.values,
+      nowUtc: now,
+    );
+    String? languageOf(String uid) => _cache.users[uid]?.language;
+
+    // 1. Cancel upcoming bookings (customer cancel; barber cancel + notice).
+    onStep?.call(AccountDeletionStep.cancelBookings);
+    final keepContact = <String>{};
+    for (final b in plan.toCancel) {
+      try {
+        await _store.updateBookingStatus(
+          b,
+          BookingStatus.cancelled,
+          cancelledBy: user.uid,
+          refund: RefundContext(
+            by: RefundCanceller.customer,
+            nowUtc: now,
+            cutoffHours: _cache.shops[b.shopId]?.cancellationCutoffHours,
+            languageOf: languageOf,
+          ),
+        );
+        // A paid booking now has a refund due: the shop needs the phone.
+        if (needsRefundFlag(b)) keepContact.add(b.id);
+      } catch (e) {
+        // e.g. the cutoff passed meanwhile: the booking stays, anonymised.
+        if (!_isPermissionDenied(e)) fail(AccountDeletionStep.cancelBookings, e);
+        debugPrint('Account deletion: could not cancel ${b.id}: $e');
+      }
+    }
+    for (final b in plan.barberToCancel) {
+      try {
+        await _store.updateBookingStatus(
+          b,
+          BookingStatus.cancelled,
+          cancelledBy: user.uid,
+          refund: RefundContext(by: RefundCanceller.barber, nowUtc: now, languageOf: languageOf),
+        );
+      } catch (e) {
+        if (!_isPermissionDenied(e)) fail(AccountDeletionStep.cancelBookings, e);
+        debugPrint('Account deletion: could not cancel ${b.id}: $e');
+        continue;
+      }
+      if (b.customerId.isEmpty) continue;
+      try {
+        final text = renderBarberLeftText(b, language: languageOf(b.customerId) ?? 'am');
+        await _store.writeVacationCancelNotice(
+          b.customerId,
+          AppNotification(
+            id: '${b.id}_cancelled',
+            title: text.title,
+            body: text.body,
+            type: NotificationTypes.cancelled,
+            bookingId: b.id,
+            createdAt: now,
+          ),
+        );
+      } catch (e) {
+        debugPrint('Account deletion: could not notify the customer of ${b.id}: $e');
+      }
+    }
+    if (plan.toCancel.isNotEmpty || plan.barberToCancel.isNotEmpty) notifyListeners();
+
+    // 2. Reviews: "Former customer", comment removed, stars kept.
+    onStep?.call(AccountDeletionStep.anonymizeReviews);
+    final completed = [
+      for (final b in byId.values)
+        if (b.customerId == user.uid && b.status == BookingStatus.completed) b,
+    ];
+    try {
+      await _accountDeletionWrites.anonymizeReviews(user.uid, completed);
+    } catch (e) {
+      if (!_isPermissionDenied(e)) fail(AccountDeletionStep.anonymizeReviews, e);
+      leftovers.add('reviews');
+    }
+
+    // 3. Bookings: "Former customer", no phone (not while a refund is due).
+    onStep?.call(AccountDeletionStep.anonymizeBookings);
+    final anonymize = [
+      for (final b in byId.values)
+        if (needsBookingAnonymizing(b, user.uid) && !keepContact.contains(b.id)) b,
+    ];
+    try {
+      await _accountDeletionWrites.anonymizeBookings(anonymize);
+    } catch (e) {
+      if (!_isPermissionDenied(e)) fail(AccountDeletionStep.anonymizeBookings, e);
+      leftovers.add('bookings');
+    }
+
+    // 4. A barber leaves the shop (profile and private contact).
+    final shopId = user.shopId;
+    final barberId = user.barberId;
+    if (user.role == UserRole.barber && shopId != null && barberId != null) {
+      onStep?.call(AccountDeletionStep.leaveShop);
+      try {
+        await _accountDeletionWrites.removeBarberProfile(shopId, barberId);
+      } catch (e) {
+        if (!_isPermissionDenied(e)) fail(AccountDeletionStep.leaveShop, e);
+        leftovers.add('barberProfile');
+      }
+    }
+
+    // 5. Invite, application, removal request, inbox, device tokens.
+    onStep?.call(AccountDeletionStep.deletePersonalData);
+    leftovers.addAll(await _accountDeletionWrites.deletePersonalData(user));
+
+    // 6. users/{uid}. The listeners stop first (the own-profile listener
+    // would end the session as soon as the document is gone).
+    onStep?.call(AccountDeletionStep.deleteProfile);
+    await _cloud?.stop();
+    try {
+      await _accountDeletionWrites.deleteProfile(user.uid);
+    } catch (e) {
+      final cloud = _cloud;
+      if (cloud != null) unawaited(cloud.start(user).catchError((Object _) {}));
+      fail(AccountDeletionStep.deleteProfile, e);
+    }
+    _cache.users.remove(user.uid);
+    return leftovers;
+  }
+
+  // --- shop removal requests (an owner who wants to delete their account) ---
+
+  /// The signed-in owner's request, live (null when none).
+  Stream<ShopRemovalRequest?> watchMyShopRemovalRequest() {
+    final user = _currentUser;
+    if (user == null) return Stream.value(null);
+    return _accountDeletionWrites.watchMyRemovalRequest(user.uid);
+  }
+
+  /// Owner: asks the admin to remove their shop (so they can then delete
+  /// their account), with an optional [note] (up to 500 characters).
+  Future<void> requestShopRemoval({String? note}) async {
+    final user = _currentUser;
+    if (user == null) throw const AccountDeletionException(AccountDeletionError.notSignedIn);
+    final shop = ownedShopOf(user, _cache.shops);
+    if (shop == null) throw const AccountDeletionException(AccountDeletionError.stepFailed);
+    await _accountDeletionWrites.createRemovalRequest(ShopRemovalRequest(
+      uid: user.uid,
+      email: user.email ?? '',
+      name: user.name,
+      shopId: shop.id,
+      shopName: shop.name,
+      note: normalizeShopRemovalNote(note),
+      createdAt: _nowUtc(),
+    ));
+    notifyListeners();
+  }
+
+  /// Owner: withdraws their request.
+  Future<void> withdrawShopRemovalRequest() async {
+    final user = _currentUser;
+    if (user == null) throw const AccountDeletionException(AccountDeletionError.notSignedIn);
+    await _write(_accountDeletionWrites.withdrawRemovalRequest(user.uid));
+  }
+
+  /// Admin: every shop removal request, newest first (empty for others).
+  Stream<List<ShopRemovalRequest>> watchShopRemovalRequests() {
+    if (_currentUser?.role != UserRole.admin) return Stream.value(const []);
+    return _accountDeletionWrites.watchRemovalRequests();
+  }
+
+  /// Admin: marks a request done (the shop was removed) or dismissed.
+  Future<void> resolveShopRemovalRequest(String uid, ShopRemovalStatus status) async {
+    _requireAdmin();
+    await _write(_accountDeletionWrites.resolveRemovalRequest(
+      uid,
+      ShopRemovalRequest.resolveFields(status, at: _nowUtc(), by: _currentUser!.uid),
+    ));
+  }
+  // --- end account deletion ---
+
   // --- Favorites Management (kept on this device) ---
   bool isShopFavorite(String shopId) => _favoriteShopIds.contains(shopId);
   void toggleFavoriteShop(String shopId) {
@@ -2828,15 +3228,145 @@ class AppRepository extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool isBarberFavorite(String barberId) => _favoriteBarberIds.contains(barberId);
-  void toggleFavoriteBarber(String barberId) {
-    if (_favoriteBarberIds.contains(barberId)) {
-      _favoriteBarberIds.remove(barberId);
-    } else {
-      _favoriteBarberIds.add(barberId);
-    }
-    notifyListeners();
+  // --- favourite barbers & rebook (logic in rebook_service.dart) ---
+  // Favourite barbers belong to the signed-in customer and are kept on this
+  // device (shared_preferences, one key per account; nothing in Firestore,
+  // so no rules and it works on the free plan). In local/demo mode without
+  // a store, a customer starts with the seed's favourites.
+
+  /// uid -> barberId -> favourite, for the accounts used this session.
+  final Map<String, Map<String, rebook.FavoriteBarber>> _favoriteBarbers = {};
+
+  /// uid -> the read of that account's saved favourites.
+  final Map<String, Future<void>> _favoriteBarberLoads = {};
+
+  /// Barbers toggled while the saved list was still loading (their new
+  /// state wins over the saved one).
+  final Set<String> _favoriteBarbersToggledEarly = {};
+
+  /// Accounts whose saved favourites have been read.
+  final Set<String> _favoriteBarbersRead = {};
+
+  FavoriteBarbersStore? _favoriteBarbersStoreOverride;
+  FavoriteBarbersStore? _prefsFavoriteBarbersStore;
+
+  /// Tests: keeps favourites in [store] (also in local mode). Null restores
+  /// the default (shared_preferences with Firebase, none locally).
+  @visibleForTesting
+  set favoriteBarbersStore(FavoriteBarbersStore? store) {
+    _favoriteBarbersStoreOverride = store;
+    _favoriteBarbers.clear();
+    _favoriteBarberLoads.clear();
+    _favoriteBarbersRead.clear();
   }
+
+  FavoriteBarbersStore? get _favoriteStore =>
+      _favoriteBarbersStoreOverride ??
+      (_firebaseReady ? (_prefsFavoriteBarbersStore ??= PrefsFavoriteBarbersStore()) : null);
+
+  /// The signed-in customer's favourites (null for anyone else). The first
+  /// call for an account starts reading its saved list.
+  Map<String, rebook.FavoriteBarber>? _customerFavoriteBarbers() {
+    final user = _currentUser;
+    if (user == null || user.role != UserRole.customer) return null;
+    final existing = _favoriteBarbers[user.uid];
+    if (existing != null) return existing;
+    final favs = <String, rebook.FavoriteBarber>{};
+    _favoriteBarbers[user.uid] = favs;
+    final store = _favoriteStore;
+    if (store == null) {
+      for (final id in _favoriteBarberIds) {
+        final b = _cache.barbers[id];
+        if (b != null) favs[id] = rebook.FavoriteBarber(barberId: id, shopId: b.shopId, barberName: b.name);
+      }
+    } else {
+      _favoriteBarberLoads[user.uid] = _readSavedFavoriteBarbers(user.uid, store, favs);
+    }
+    return favs;
+  }
+
+  Future<void> _readSavedFavoriteBarbers(
+      String uid, FavoriteBarbersStore store, Map<String, rebook.FavoriteBarber> favs) async {
+    final saved = await store.load(uid);
+    if (!identical(_favoriteBarbers[uid], favs)) return; // reset meanwhile
+    var changed = false;
+    for (final f in saved) {
+      if (_favoriteBarbersToggledEarly.contains(f.barberId) || favs.containsKey(f.barberId)) continue;
+      favs[f.barberId] = f;
+      changed = true;
+    }
+    _favoriteBarbersToggledEarly.clear();
+    _favoriteBarbersRead.add(uid);
+    if (changed) notifyListeners();
+  }
+
+  /// Waits until the signed-in customer's saved favourites are read.
+  Future<void> loadFavoriteBarbers() async {
+    _customerFavoriteBarbers();
+    final uid = _currentUser?.uid;
+    final load = uid == null ? null : _favoriteBarberLoads[uid];
+    if (load != null) await load;
+  }
+
+  bool isBarberFavorite(String barberId) => _customerFavoriteBarbers()?.containsKey(barberId) ?? false;
+
+  /// The signed-in customer's favourite barbers, oldest first.
+  List<rebook.FavoriteBarber> getFavoriteBarbers() =>
+      List.unmodifiable(_customerFavoriteBarbers()?.values ?? const <rebook.FavoriteBarber>[]);
+
+  /// Adds or removes a favourite barber of the signed-in customer and
+  /// returns whether it is now a favourite. [shopId] and [barberName]
+  /// default to the barber's live profile. Anyone but a signed-in customer
+  /// gets false and nothing changes.
+  bool toggleFavoriteBarber(String barberId, {String? shopId, String? barberName}) {
+    final favs = _customerFavoriteBarbers();
+    if (favs == null || barberId.isEmpty) return false;
+    final uid = _currentUser!.uid;
+    if (favs.remove(barberId) == null) {
+      final b = _cache.barbers[barberId];
+      favs[barberId] = rebook.FavoriteBarber(
+        barberId: barberId,
+        shopId: shopId ?? b?.shopId ?? '',
+        barberName: barberName ?? b?.name ?? '',
+      );
+    }
+    if (_favoriteBarberLoads.containsKey(uid) && !_favoriteBarbersRead.contains(uid)) {
+      _favoriteBarbersToggledEarly.add(barberId);
+    }
+    final store = _favoriteStore;
+    if (store != null) unawaited(store.save(uid, favs.values.toList()));
+    notifyListeners();
+    return favs.containsKey(barberId);
+  }
+
+  /// The "Your barbers" row of the signed-in customer: favourites, then the
+  /// barbers of recent completed bookings. Empty for anyone else.
+  List<rebook.RebookCandidate> getYourBarbers() {
+    final user = _currentUser;
+    final favs = _customerFavoriteBarbers();
+    if (user == null || favs == null) return const [];
+    return rebook.buildYourBarbers(
+      favorites: favs.values,
+      bookings: getCustomerBookings(user.uid),
+      barberById: getBarberById,
+      shopById: getShopById,
+      nowUtc: _nowUtc(),
+    );
+  }
+
+  /// "Book again" from a past booking.
+  rebook.RebookCandidate rebookCandidateFor(Booking booking) =>
+      rebook.RebookCandidate.fromBooking(booking, isFavorite: isBarberFavorite(booking.barberId));
+
+  /// Whether [candidate] can open the booking flow, or which fallback to
+  /// show (shop gone or suspended, barber left or unavailable, service gone).
+  rebook.RebookCheck checkRebook(rebook.RebookCandidate candidate) => rebook.checkRebook(
+        candidate,
+        shopById: getShopById,
+        barberById: getBarberById,
+        servicesForShop: getServicesForShop,
+      );
+  // --- end favourite barbers & rebook ---
 }
 
 class BarberWithShop {

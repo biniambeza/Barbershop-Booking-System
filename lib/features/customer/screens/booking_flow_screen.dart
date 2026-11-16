@@ -13,6 +13,9 @@ import '../../../services/availability_service.dart';
 import '../../../services/booking_acceptance.dart' show isAwaitingAcceptance;
 import '../../payments/payment_flow.dart';
 import '../../reviews/widgets/shop_reviews_section.dart' show BarberRatingInline;
+import '../../../services/rebook_service.dart' show firstNameOf; // favourite barbers & rebook
+import '../widgets/rebook_widgets.dart' show FavoriteBarberButton; // favourite barbers & rebook
+import '../../portfolio/widgets/portfolio_entries.dart' show BarberPortfolioLink; // barber portfolio
 
 /// Pick barber, service, day and a real free time, then book.
 ///
@@ -38,6 +41,13 @@ class BookingFlowScreen extends StatefulWidget {
   /// The customer's booking being moved, or null for a new booking.
   final Booking? rescheduling;
 
+  // --- favourite barbers & rebook ---
+  /// "Book again": scroll to the date and time, and pick the barber's next
+  /// free time (the first day with a free slot within the booking window)
+  /// as a suggestion the customer can change. Ignored when rescheduling.
+  final bool suggestNextSlot;
+  // --- end favourite barbers & rebook ---
+
   const BookingFlowScreen({
     super.key,
     required this.shop,
@@ -45,6 +55,7 @@ class BookingFlowScreen extends StatefulWidget {
     required this.initialBarber,
     this.clock,
     this.rescheduling,
+    this.suggestNextSlot = false, // favourite barbers & rebook
   });
 
   @override
@@ -71,6 +82,15 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
   Timer? _clockTimer;
   late DateTime _now;
 
+  // --- favourite barbers & rebook ---
+  /// Still looking for the next free time ([BookingFlowScreen.suggestNextSlot]);
+  /// any choice the customer makes stops it.
+  bool _autoSuggest = false;
+  DateTime? _suggestedStart; // UTC
+  bool _noFreeTimeSoon = false;
+  final _whenKey = GlobalKey();
+  // --- end favourite barbers & rebook ---
+
   DateTime _readClock() => (widget.clock?.call() ?? DateTime.now()).toUtc();
 
   @override
@@ -86,6 +106,9 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             isBookableDate(shop: _currentShop, barber: _currentBarber, addisDate: currentDate, nowUtc: _now)
         ? currentDate
         : _firstBookableDate(_currentShop, _currentBarber) ?? addisToday(_now);
+    // favourite barbers & rebook: land on date and time, next free slot.
+    _autoSuggest = widget.suggestNextSlot && moving == null;
+    if (_autoSuggest) WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToWhen());
     _subscribeBusy();
     // Past slots disappear as time goes by.
     _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -123,11 +146,62 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
         _busy = busy;
         _busyLoaded = true;
       });
+      _suggestNextSlot(); // favourite barbers & rebook
     });
   }
 
+  // --- favourite barbers & rebook ---
+  /// While [_autoSuggest]: selects the first free slot of the current day,
+  /// or moves on to the next bookable day (up to the end of the booking
+  /// window) and waits for its busy times.
+  void _suggestNextSlot() {
+    if (!_autoSuggest || !mounted) return;
+    final shop = _currentShop;
+    final barber = _currentBarber;
+    if (shop.isBlocked || !barber.isAvailable) {
+      _autoSuggest = false; // the slot area explains why
+      return;
+    }
+    final slots = _slots(shop, barber, _currentService);
+    if (slots.isNotEmpty) {
+      setState(() {
+        _autoSuggest = false;
+        _selectedStart = slots.first;
+        _suggestedStart = slots.first;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToWhen());
+      return;
+    }
+    final next = upcomingAddisDates(nowUtc: _now)
+        .where((d) => d.isAfter(_date) && isBookableDate(shop: shop, barber: barber, addisDate: d, nowUtc: _now))
+        .firstOrNull;
+    if (next == null) {
+      setState(() {
+        _autoSuggest = false;
+        _noFreeTimeSoon = true;
+      });
+      return;
+    }
+    setState(() => _date = next);
+    _subscribeBusy();
+  }
+
+  void _scrollToWhen() {
+    final ctx = _whenKey.currentContext;
+    if (!mounted || ctx == null) return;
+    Scrollable.ensureVisible(ctx, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+  }
+
+  /// The customer chose something themselves: stop suggesting.
+  void _stopSuggesting() {
+    _autoSuggest = false;
+    _noFreeTimeSoon = false;
+  }
+  // --- end favourite barbers & rebook ---
+
   void _selectBarber(Barber barber) {
     if (barber.id == _barberId) return;
+    _stopSuggesting(); // favourite barbers & rebook
     setState(() {
       _barberId = barber.id;
       _selectedStart = null;
@@ -141,6 +215,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
 
   void _selectDate(DateTime date) {
     if (DateUtils.isSameDay(date, _date)) return;
+    _stopSuggesting(); // favourite barbers & rebook
     setState(() {
       _date = date;
       _selectedStart = null;
@@ -417,13 +492,15 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                   _sectionTitle(context, l.stepChooseBarber),
                   const SizedBox(height: 12),
                   _buildBarberPicker(allBarbers.isEmpty ? [barber] : allBarbers),
+                  // barber portfolio: "See Abel's work" (nothing without photos).
+                  BarberPortfolioLink(shopId: shop.id, barber: barber, onBookStyle: _selectBarber),
                   const SizedBox(height: 24),
                   _sectionTitle(context, l.stepSelectedService),
                   const SizedBox(height: 12),
                   _buildServicePicker(allServices.isEmpty ? [service] : allServices),
                   const SizedBox(height: 24),
                 ],
-                _sectionTitle(context, l.stepSelectDate),
+                KeyedSubtree(key: _whenKey, child: _sectionTitle(context, l.stepSelectDate)),
                 const SizedBox(height: 12),
                 _buildDatePicker(shop, barber),
                 const SizedBox(height: 24),
@@ -434,6 +511,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                   style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                 ),
                 const SizedBox(height: 12),
+                ..._buildSuggestion(barber, selected), // favourite barbers & rebook
                 _buildSlots(shop, barber, slots, selected),
                 const SizedBox(height: 32),
                 _buildTotal(service, selected),
@@ -445,6 +523,51 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       },
     );
   }
+
+  // --- favourite barbers & rebook ---
+  /// "Next free time with Dawit: ..." while the suggested slot is selected,
+  /// or a note when the barber has nothing free in the booking window.
+  List<Widget> _buildSuggestion(Barber barber, DateTime? selected) {
+    final l = context.l10n;
+    final suggested = _suggestedStart;
+    String? text;
+    Key? key;
+    var good = true;
+    if (suggested != null && selected == suggested) {
+      final local = toAddisWallClock(suggested);
+      final when = l.dateAtTime(
+          context.fmt.dayShort(DateTime(local.year, local.month, local.day)), _slotDisplay(suggested));
+      text = l.rebookSuggestedSlot(firstNameOf(barber.name), when);
+      key = const ValueKey('rebook-suggestion');
+    } else if (_noFreeTimeSoon) {
+      text = l.rebookNoFreeTime(firstNameOf(barber.name), kMaxBookingDaysAhead);
+      key = const ValueKey('rebook-no-free-time');
+      good = false;
+    }
+    if (text == null) return const [];
+    return [
+      Container(
+        key: key,
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: AppTheme.panelDecoration(color: good ? AppTheme.greenSoft : AppTheme.orangeSoft),
+        child: Row(
+          children: [
+            Icon(good ? Icons.auto_awesome_rounded : Icons.info_outline_rounded,
+                size: 18, color: good ? AppTheme.success : AppTheme.warning),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(text,
+                  style: TextStyle(
+                      fontSize: 12.5, fontWeight: FontWeight.w600, color: good ? AppTheme.success : AppTheme.warning)),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 12),
+    ];
+  }
+  // --- end favourite barbers & rebook ---
 
   /// Reschedule mode: the fixed barber and service and the current time.
   Widget _buildRescheduleSummary(Booking moving) {
@@ -520,43 +643,53 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             opacity: barber.isAvailable ? 1 : 0.45,
             child: InkWell(
               onTap: barber.isAvailable ? () => _selectBarber(barber) : null,
-              child: Container(
-                width: 120,
-                margin: const EdgeInsets.only(right: 12),
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppTheme.card,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusPanel),
-                  border: Border.all(
-                    color: isSelected ? AppTheme.ink : AppTheme.hairline,
-                    width: isSelected ? 2 : 1,
-                  ),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircleAvatar(
-                      radius: 18,
-                      backgroundImage: barber.avatarUrl != null ? NetworkImage(barber.avatarUrl!) : null,
-                      onBackgroundImageError: barber.avatarUrl != null ? (error, stackTrace) {} : null,
-                      backgroundColor: AppTheme.surface,
-                      child: barber.avatarUrl == null
-                          ? Text(barber.name.isEmpty ? '?' : barber.name.substring(0, 1),
-                              style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700))
-                          : null,
+              // favourite barbers & rebook: heart in the corner.
+              child: Stack(
+                children: [
+                  Container(
+                    width: 120,
+                    margin: const EdgeInsets.only(right: 12),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.card,
+                      borderRadius: BorderRadius.circular(AppTheme.radiusPanel),
+                      border: Border.all(
+                        color: isSelected ? AppTheme.ink : AppTheme.hairline,
+                        width: isSelected ? 2 : 1,
+                      ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(barber.name,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
-                    // The barber's own stars and review count, or "New".
-                    BarberRatingInline(barber: barber, fontSize: 10.5),
-                    if (!barber.isAvailable)
-                      Text(context.l10n.unavailable,
-                          style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
-                  ],
-                ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundImage: barber.avatarUrl != null ? NetworkImage(barber.avatarUrl!) : null,
+                          onBackgroundImageError: barber.avatarUrl != null ? (error, stackTrace) {} : null,
+                          backgroundColor: AppTheme.surface,
+                          child: barber.avatarUrl == null
+                              ? Text(barber.name.isEmpty ? '?' : barber.name.substring(0, 1),
+                                  style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700))
+                              : null,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(barber.name,
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
+                        // The barber's own stars and review count, or "New".
+                        BarberRatingInline(barber: barber, fontSize: 10.5),
+                        if (!barber.isAvailable)
+                          Text(context.l10n.unavailable,
+                              style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
+                      ],
+                    ),
+                  ),
+                  Positioned(
+                    top: 0,
+                    right: 12,
+                    child: FavoriteBarberButton(barber: barber, size: 16),
+                  ),
+                ],
               ),
             ),
           );
@@ -579,6 +712,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               selectedColor: AppTheme.ink,
               onSelected: (val) {
                 if (val) {
+                  _stopSuggesting(); // favourite barbers & rebook
                   setState(() {
                     _serviceId = service.id;
                     _selectedStart = null;
@@ -720,7 +854,10 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                 final label = _slotLabel(slot);
                 return InkWell(
                   key: ValueKey('slot-$label'),
-                  onTap: () => setState(() => _selectedStart = slot),
+                  onTap: () => setState(() {
+                    _stopSuggesting(); // favourite barbers & rebook
+                    _selectedStart = slot;
+                  }),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     decoration: BoxDecoration(

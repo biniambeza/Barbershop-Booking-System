@@ -13,6 +13,9 @@ import '../../queue/queue_status_card.dart';
 import '../../reviews/widgets/shop_reviews_section.dart';
 import '../../reviews/widgets/review_widgets.dart';
 import '../../admin/widgets/shop_suspension_widgets.dart'; // admin shop management
+import '../widgets/rebook_widgets.dart' show FavoriteBarberButton; // favourite barbers & rebook
+import '../widgets/shop_location_block.dart'; // shop location (maps)
+import '../../portfolio/widgets/portfolio_entries.dart' show ShopPortfolioSection; // barber portfolio
 
 class BarbershopDetailScreen extends StatefulWidget {
   final Barbershop shop;
@@ -26,6 +29,23 @@ class BarbershopDetailScreen extends StatefulWidget {
 class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
   BarbershopService? _selectedService;
   Barber? _selectedBarber;
+
+  // --- barber portfolio: "Book this style with <barber>" from the gallery ---
+  void _bookStyle(Barber barber, List<BarbershopService> services) {
+    final service = _selectedService ?? (services.isNotEmpty ? services.first : null);
+    if (service == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(context.l10n.shopHasNoServicesOrBarbers)));
+      return;
+    }
+    setState(() => _selectedBarber = barber);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BookingFlowScreen(shop: widget.shop, initialService: service, initialBarber: barber),
+      ),
+    );
+  }
+  // --- end barber portfolio ---
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +159,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Location & Contact Card (No Map needed!)
+                  // Location & Contact Card (landmark, map pin, directions)
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: AppTheme.cardDecoration(),
@@ -161,36 +181,10 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                           ],
                         ),
                         const SizedBox(height: 10),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.storefront, size: 15, color: AppTheme.textSecondary),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                l.shopAddress(widget.shop),
-                                style: const TextStyle(
-                                    fontSize: 13.5, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (widget.shop.landmark != null && widget.shop.landmark!.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              const Icon(Icons.place_outlined, size: 15, color: AppTheme.textSecondary),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  widget.shop.landmark!,
-                                  style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                        const SizedBox(height: 8),
+                        // shop location (maps): landmark first and big,
+                        // address, map pin and Directions.
+                        ShopLocationBlock(shop: liveShop),
+                        const SizedBox(height: 12),
                         Row(
                           children: [
                             const Icon(Icons.schedule, size: 15, color: AppTheme.textSecondary),
@@ -237,7 +231,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                       itemBuilder: (context, index) {
                         final barber = barbers[index];
                         final isSelected = _selectedBarber?.id == barber.id;
-                        return InkWell(
+                        final card = InkWell(
                           onTap: () {
                             setState(() {
                               _selectedBarber = isSelected ? null : barber;
@@ -281,9 +275,23 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                             ),
                           ),
                         );
+                        // favourite barbers & rebook: heart in the card's corner.
+                        return Stack(
+                          children: [
+                            card,
+                            Positioned(top: 0, right: 12, child: FavoriteBarberButton(barber: barber, size: 16)),
+                          ],
+                        );
                       },
                     ),
                   ),
+                  // --- barber portfolio: counts only; photos load when a gallery opens ---
+                  ShopPortfolioSection(
+                    shopId: widget.shop.id,
+                    barbers: barbers,
+                    onBookStyle: blocked ? null : (barber) => _bookStyle(barber, services),
+                  ),
+                  // --- end barber portfolio ---
                   const Divider(height: 32, color: AppTheme.hairline),
 
                   // Services Section

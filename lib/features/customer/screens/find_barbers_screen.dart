@@ -203,7 +203,7 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                             ),
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
-                            onPressed: () => repo.toggleFavoriteBarber(barber.id),
+                            onPressed: () => repo.toggleFavoriteBarber(barber.id, shopId: shop.id, barberName: barber.name),
                           ),
                         ],
                       ),
@@ -260,8 +260,12 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                             style:
                                 const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                           ),
+                          // shop location (maps): landmark first.
                           Text(
-                            context.l10n.shopAddress(shop),
+                            [
+                              if ((shop.landmark ?? '').trim().isNotEmpty) shop.landmark!.trim(),
+                              context.l10n.shopAddress(shop),
+                            ].join(' · '),
                             style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                             overflow: TextOverflow.ellipsis,
                           ),

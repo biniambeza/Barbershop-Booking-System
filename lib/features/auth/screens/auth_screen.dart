@@ -9,6 +9,7 @@ import '../../../services/app_repository.dart';
 import '../widgets/email_login_form.dart';
 import '../widgets/email_register_form.dart';
 import '../widgets/forgot_password_form.dart';
+import '../../legal/privacy_policy_screen.dart' show PrivacyConsentNote; // privacy policy
 
 enum _AuthMode { login, register, forgot }
 
@@ -38,6 +39,9 @@ class _AuthScreenState extends State<AuthScreen> {
 
   /// Bumped to rebuild the login form with a new prefilled email.
   int _loginFormVersion = 0;
+
+  /// account deletion: "Your account was deleted." after deleting it.
+  late final bool _accountDeleted = AppRepository.instance.takeAccountDeletedNotice();
 
   @override
   void initState() {
@@ -124,6 +128,23 @@ class _AuthScreenState extends State<AuthScreen> {
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondary),
                   ),
                   const SizedBox(height: 24),
+                  if (_accountDeleted) ...[
+                    // account deletion
+                    Container(
+                      key: const ValueKey('account-deleted-notice'),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.greenSoft,
+                        borderRadius: BorderRadius.circular(AppTheme.radiusPanel),
+                      ),
+                      child: Text(
+                        l.deleteAccountDone,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: AppTheme.success, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   if (_mode != _AuthMode.forgot) ...[
                     SegmentedButton<_AuthMode>(
                       key: const ValueKey('auth-tabs'),
@@ -177,6 +198,8 @@ class _AuthScreenState extends State<AuthScreen> {
                       fontWeight: kDemoMode ? FontWeight.w500 : FontWeight.w400,
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  const PrivacyConsentNote(), // privacy policy
                   if (error != null) ...[
                     const SizedBox(height: 14),
                     Text(

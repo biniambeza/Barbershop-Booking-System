@@ -13,6 +13,7 @@ import 'admin_payments_tab.dart'; // payments dashboard
 import 'admin_users_tab.dart'; // admin users
 import '../../payments/receipts/admin_pricing_screen.dart'; // subscription receipts
 import '../../payments/receipts/admin_receipts_screen.dart'; // subscription receipts
+import 'admin_removal_requests_screen.dart'; // account deletion
 import '../../payments/receipts/receivers_setup.dart'; // receivers setup (banner + red dot)
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -109,6 +110,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 ),
               ),
               // --- end subscription receipts ---
+              // --- account deletion ---
+              AppBarMenuEntry(
+                key: const ValueKey('open-admin-removal-requests'),
+                icon: Icons.store_mall_directory_outlined,
+                color: AppTheme.warning,
+                label: context.l10n.adminRemovalRequestsTitle,
+                onSelected: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AdminRemovalRequestsScreen()),
+                ),
+              ),
+              // --- end account deletion ---
             ],
           ),
           const SizedBox(width: 4),

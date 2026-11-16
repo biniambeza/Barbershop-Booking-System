@@ -1,4 +1,5 @@
 import '../services/subscription_state.dart'; // subscription expiry (client-side)
+import '../services/shop_maps.dart' show isValidShopCoordinate; // shop location (maps)
 
 /// Subscription state of a shop on the platform. Written by the admin or
 /// Cloud Functions (payments); the owner app only records a lapsed period
@@ -49,6 +50,13 @@ class Barbershop {
 
   /// Optional well-known landmark, e.g. 'Near Edna Mall'.
   final String? landmark;
+
+  // --- shop location (maps) ---
+  /// Optional map pin (WGS84 degrees), set by the owner or admin. Stored as
+  /// two numbers `latitude` / `longitude`, always both or neither.
+  final double? latitude;
+  final double? longitude;
+  // --- end shop location ---
   final String phone;
   final String imageUrl;
   final double rating;
@@ -103,6 +111,8 @@ class Barbershop {
     required this.imageUrl,
     this.subCity = '',
     this.landmark,
+    this.latitude,
+    this.longitude,
     this.rating = 4.8,
     this.reviewCount = 0,
     this.openingHour = 9,
@@ -121,6 +131,9 @@ class Barbershop {
     this.adminSuspendedAt,
     this.adminSuspendedBy,
   });
+
+  /// True when the shop has a valid map pin (see services/shop_maps.dart).
+  bool get hasLocation => isValidShopCoordinate(latitude, longitude);
 
   String get fullAddress {
     final parts = [address, if (subCity.isNotEmpty) subCity, city].where((p) => p.isNotEmpty);
@@ -220,6 +233,10 @@ class Barbershop {
       'city': city,
       'subCity': subCity,
       'landmark': landmark,
+      // Map pin: null (no pin) deletes both fields in an update and is left
+      // out on create.
+      'latitude': hasLocation ? latitude : null,
+      'longitude': hasLocation ? longitude : null,
       'phone': phone,
       'imageUrl': imageUrl,
       'openingHour': openingHour,
@@ -252,6 +269,9 @@ class Barbershop {
     int? maxReschedules,
     bool? requireBarberAcceptance,
     bool clearLandmark = false,
+    double? latitude,
+    double? longitude,
+    bool clearLocation = false,
     // admin shop management (suspension)
     bool? adminSuspended,
     String? adminSuspendedReason,
@@ -269,6 +289,8 @@ class Barbershop {
       city: city ?? this.city,
       subCity: subCity ?? this.subCity,
       landmark: clearLandmark ? null : (landmark ?? this.landmark),
+      latitude: clearLocation ? null : (latitude ?? this.latitude),
+      longitude: clearLocation ? null : (longitude ?? this.longitude),
       phone: phone ?? this.phone,
       imageUrl: imageUrl ?? this.imageUrl,
       rating: rating ?? this.rating,
@@ -301,6 +323,8 @@ class Barbershop {
       city: map['city'] ?? '',
       subCity: map['subCity'] ?? '',
       landmark: map['landmark'],
+      latitude: _coordinates(map)?.$1,
+      longitude: _coordinates(map)?.$2,
       phone: map['phone'] ?? '',
       imageUrl: map['imageUrl'] ?? 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800',
       rating: (map['rating'] as num?)?.toDouble() ?? 4.8,
@@ -324,6 +348,16 @@ class Barbershop {
       adminSuspendedBy: map['adminSuspendedBy'] is String ? map['adminSuspendedBy'] as String : null,
     );
   }
+}
+
+/// The stored map pin as (latitude, longitude), or null when either is
+/// missing or out of range.
+(double, double)? _coordinates(Map<String, dynamic> map) {
+  final lat = map['latitude'];
+  final lng = map['longitude'];
+  if (lat is! num || lng is! num) return null;
+  final la = lat.toDouble(), ln = lng.toDouble();
+  return isValidShopCoordinate(la, ln) ? (la, ln) : null;
 }
 
 /// A whole number within [min, max], or null.

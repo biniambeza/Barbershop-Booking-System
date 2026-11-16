@@ -55,6 +55,8 @@
       "city": "Addis Ababa",
       "subCity": "Bole",
       "landmark": "Near Edna Mall",
+      "latitude": 8.99633,
+      "longitude": 38.78776,
       "phone": "+251911223301",
       "imageUrl": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800",
       "rating": 4.2,
@@ -75,7 +77,7 @@
         { "id": "srv_1_4", "name": "Kids Cut (under 12)", "description": "Gentle, quick cut for children.", "price": 250, "durationMinutes": 30 }
       ],
       "barbers": [
-        { "id": "barber_1", "name": "Yonas Tadesse", "title": "Master Barber / Fade Specialist", "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400", "rating": 5.0, "reviewCount": 2, "ratingSum": 10, "phone": "+251911000201", "specialties": ["Skin Fade", "Beard Sculpting", "Hot Razor Shave"], "commissionPercent": 60 },
+        { "id": "barber_1", "name": "Yonas Tadesse", "title": "Master Barber / Fade Specialist", "avatarUrl": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400", "rating": 5.0, "reviewCount": 2, "ratingSum": 10, "phone": "+251911000201", "specialties": ["Skin Fade", "Beard Sculpting", "Hot Razor Shave"], "commissionPercent": 60 },
         { "id": "barber_2", "name": "Kaleab Mekonnen", "title": "Senior Stylist & Shave Artist", "avatarUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400", "rating": 3.5, "reviewCount": 2, "ratingSum": 7, "phone": "+251911000202", "specialties": ["Scissor Cut", "Hot Towel Shave", "Kids Cuts"], "commissionPercent": 50 },
         { "id": "barber_1_3", "name": "Biniyam Hailu", "title": "Barber", "avatarUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400", "rating": 4.0, "reviewCount": 1, "ratingSum": 4, "phone": "+251912450013", "specialties": ["Low Taper", "Line-up"], "workingDays": [2, 3, 4, 5, 6, 7], "startHour": 12, "endHour": 20, "commissionPercent": 40 }
       ]
@@ -89,6 +91,8 @@
       "city": "Addis Ababa",
       "subCity": "Kirkos",
       "landmark": "Behind the Intercontinental Hotel",
+      "latitude": 9.01826,
+      "longitude": 38.76958,
       "phone": "+251911223302",
       "imageUrl": "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=800",
       "rating": 4.5,
@@ -122,6 +126,8 @@
       "city": "Addis Ababa",
       "subCity": "Arada",
       "landmark": "Near Taitu Hotel",
+      "latitude": 9.03322,
+      "longitude": 38.75221,
       "phone": "+251911223303",
       "imageUrl": "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?w=800",
       "rating": 5.0,
@@ -153,6 +159,8 @@
       "city": "Addis Ababa",
       "subCity": "Kolfe Keranio",
       "landmark": "Sarbet roundabout",
+      "latitude": 8.99766,
+      "longitude": 38.73567,
       "phone": "+251911223304",
       "imageUrl": "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?w=800",
       "rating": 5.0,
@@ -188,6 +196,8 @@
       "city": "Addis Ababa",
       "subCity": "Yeka",
       "landmark": "Near St. Michael Church, CMC",
+      "latitude": 9.02087,
+      "longitude": 38.84589,
       "phone": "+251911223305",
       "imageUrl": "https://images.unsplash.com/photo-1512690459411-b9245aed614b?w=800",
       "rating": 4.5,
@@ -208,7 +218,7 @@
       ],
       "barbers": [
         { "id": "barber_5_1", "name": "Samuel Tesfaye", "title": "Senior Barber", "avatarUrl": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400", "rating": 5.0, "reviewCount": 1, "ratingSum": 5, "phone": "+251911000105", "specialties": ["Executive Styling", "Hot Shave"] },
-        { "id": "barber_5_2", "name": "Abel Negash", "title": "Stylist", "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400", "rating": 4.0, "reviewCount": 1, "ratingSum": 4, "phone": "+251912450052", "specialties": ["Scissor Cut", "Facials"], "startHour": 13, "endHour": 21 }
+        { "id": "barber_5_2", "name": "Abel Negash", "title": "Stylist", "avatarUrl": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400", "rating": 4.0, "reviewCount": 1, "ratingSum": 4, "phone": "+251912450052", "specialties": ["Scissor Cut", "Facials"], "startHour": 13, "endHour": 21 }
       ]
     },
     {
@@ -220,6 +230,8 @@
       "city": "Addis Ababa",
       "subCity": "Yeka",
       "landmark": "Next to Zefmesh Mall",
+      "latitude": 9.02006,
+      "longitude": 38.80218,
       "phone": "+251911223306",
       "imageUrl": "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800",
       "rating": 4.0,

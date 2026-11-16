@@ -9,6 +9,406 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get privacyPolicyTitle => 'Privacy policy';
+
+  @override
+  String privacyPolicyUpdated(String date) {
+    return 'Last updated $date';
+  }
+
+  @override
+  String get privacyOpenWeb => 'Open on the web';
+
+  @override
+  String get privacyDeletePageLink => 'How to delete your account';
+
+  @override
+  String get privacyLinkFailed => 'Could not open the link.';
+
+  @override
+  String get privacyConsentPrefix =>
+      'By signing up or signing in you agree to our';
+
+  @override
+  String get deleteAccountMenu => 'Delete account';
+
+  @override
+  String get deleteAccountTitle => 'Delete account';
+
+  @override
+  String get deleteAccountHeroTitle => 'Delete your account';
+
+  @override
+  String get deleteAccountHeroBody =>
+      'Your profile and login are removed for good. This cannot be undone.';
+
+  @override
+  String get deleteAccountWhatHappens => 'What happens';
+
+  @override
+  String deleteAccountCancelCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Your $count upcoming bookings will be cancelled.',
+      one: 'Your 1 upcoming booking will be cancelled.',
+      zero: 'You have no upcoming bookings to cancel.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deleteAccountPaidRefund(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count paid bookings will be flagged for a refund. The shop keeps your phone number on them until the money is sent back.',
+      one:
+          '1 paid booking will be flagged for a refund. The shop keeps your phone number on it until the money is sent back.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deleteAccountKeptInCutoff(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count bookings start too soon to cancel in the app. They stay with the shop without your name; call the shop if you will not come.',
+      one:
+          '1 booking starts too soon to cancel in the app. It stays with the shop without your name; call the shop if you will not come.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deleteAccountBarberCancel(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count customer bookings with you will be cancelled and the customers told.',
+      one:
+          '1 customer booking with you will be cancelled and the customer told.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deleteAccountBarberLeaves(String shop) {
+    return 'You are removed from $shop.';
+  }
+
+  @override
+  String get deleteAccountYourShop => 'your shop';
+
+  @override
+  String get deleteAccountReviews =>
+      'Your reviews keep their stars but show \"Former customer\" and lose the comment.';
+
+  @override
+  String get deleteAccountBookingsHistory =>
+      'Past bookings stay in the shop\'s history without your name and phone number.';
+
+  @override
+  String get deleteAccountPersonalData =>
+      'Your profile, inbox, invitations, favourites and login are deleted.';
+
+  @override
+  String get deleteAccountPendingLogin =>
+      'Your data is already deleted. Confirm it\'s you once more to delete your login.';
+
+  @override
+  String get deleteAccountReauthTitle => 'Confirm it\'s you';
+
+  @override
+  String deleteAccountConfirmLabel(String word) {
+    return 'Type $word to confirm';
+  }
+
+  @override
+  String get deleteAccountConfirmMismatch => 'Type DELETE exactly to confirm.';
+
+  @override
+  String get deleteAccountPasswordLabel => 'Your password';
+
+  @override
+  String get deleteAccountPasswordOrGoogle =>
+      'Or leave it empty to confirm with Google.';
+
+  @override
+  String get deleteAccountReauthGoogle =>
+      'You will be asked to sign in with Google again.';
+
+  @override
+  String get deleteAccountSubmit => 'Delete my account';
+
+  @override
+  String get deleteAccountDone => 'Your account was deleted.';
+
+  @override
+  String get deleteAccountErrReauth =>
+      'For your security, sign in again to finish deleting your account, then tap Delete again.';
+
+  @override
+  String get deleteAccountErrReauthCancelled =>
+      'Google sign-in was cancelled. Nothing was deleted.';
+
+  @override
+  String deleteAccountErrStep(String step) {
+    return 'Deleting stopped at: $step Tap Delete again to continue where it stopped.';
+  }
+
+  @override
+  String get deleteAccountErrFailed =>
+      'Your account could not be deleted. Try again.';
+
+  @override
+  String get deleteStepCancelBookings => 'Cancelling your bookings…';
+
+  @override
+  String get deleteStepReviews => 'Updating your reviews…';
+
+  @override
+  String get deleteStepBookings => 'Removing your name from bookings…';
+
+  @override
+  String get deleteStepLeaveShop => 'Removing you from the shop…';
+
+  @override
+  String get deleteStepPersonalData => 'Deleting your inbox and invitations…';
+
+  @override
+  String get deleteStepProfile => 'Deleting your profile…';
+
+  @override
+  String get deleteStepLogin => 'Deleting your login…';
+
+  @override
+  String get deleteAccountOwnerTitle => 'Remove your shop first';
+
+  @override
+  String deleteAccountOwnerBody(String shop) {
+    return 'You own $shop. An account that owns a shop cannot be deleted. Ask the admin to remove the shop: its upcoming bookings are cancelled and the customers told. You then become a customer and can delete your account here.';
+  }
+
+  @override
+  String get deleteAccountLastAdminTitle => 'You are the only admin';
+
+  @override
+  String get deleteAccountLastAdminBody =>
+      'Make another person an admin first (Users tab), then you can delete your account.';
+
+  @override
+  String get shopRemovalNoteLabel => 'Note for the admin (optional)';
+
+  @override
+  String get shopRemovalRequestButton => 'Ask the admin to remove my shop';
+
+  @override
+  String get shopRemovalSent => 'Request sent to the admin.';
+
+  @override
+  String shopRemovalPending(String date) {
+    return 'You asked on $date. The admin will remove the shop and may contact you.';
+  }
+
+  @override
+  String get shopRemovalWithdraw => 'Withdraw request';
+
+  @override
+  String shopRemovalDismissed(String date) {
+    return 'The admin dismissed your request on $date. You can send it again.';
+  }
+
+  @override
+  String shopRemovalNoteTooLong(int max) {
+    return 'The note can be at most $max characters.';
+  }
+
+  @override
+  String get shopRemovalStatusPending => 'Waiting';
+
+  @override
+  String get shopRemovalStatusDone => 'Done';
+
+  @override
+  String get shopRemovalStatusDismissed => 'Dismissed';
+
+  @override
+  String get formerCustomer => 'Former customer';
+
+  @override
+  String get adminRemovalRequestsTitle => 'Shop removal requests';
+
+  @override
+  String get adminRemovalHelp =>
+      'Owners who want to delete their account ask here first. Open the shop and delete it (Delete shop), then mark the request done. The owner becomes a customer and can delete the account in the app.';
+
+  @override
+  String get adminRemovalEmpty => 'No requests.';
+
+  @override
+  String adminRemovalRequestedOn(String date) {
+    return 'Asked on $date';
+  }
+
+  @override
+  String get adminRemovalShopGone => 'The shop is already removed.';
+
+  @override
+  String get adminRemovalOpenShop => 'Open shop';
+
+  @override
+  String get adminRemovalMarkDone => 'Mark done';
+
+  @override
+  String get adminRemovalDismiss => 'Dismiss';
+
+  @override
+  String get portfolioTitle => 'Portfolio';
+
+  @override
+  String portfolioOfBarber(String name) {
+    return '$name\'s work';
+  }
+
+  @override
+  String portfolioPhotoCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count photos',
+      one: '1 photo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get portfolioShopSectionTitle => 'See their work';
+
+  @override
+  String get portfolioShopSectionHint => 'Haircuts by this shop\'s barbers';
+
+  @override
+  String portfolioSeeWork(String name) {
+    return 'See $name\'s work';
+  }
+
+  @override
+  String get portfolioEmpty => 'No photos yet.';
+
+  @override
+  String portfolioBookStyle(String name) {
+    return 'Book this style with $name';
+  }
+
+  @override
+  String portfolioViewerCounter(int index, int total) {
+    return '$index / $total';
+  }
+
+  @override
+  String portfolioPhotoSemantics(int index) {
+    return 'Portfolio photo $index';
+  }
+
+  @override
+  String get portfolioManageTitle => 'Portfolio photos';
+
+  @override
+  String portfolioManageIntro(int max) {
+    return 'Photos of your best haircuts help customers choose you. Up to $max photos.';
+  }
+
+  @override
+  String get portfolioPublicNotice =>
+      'Portfolio photos are public. Only post photos your customers agreed to share, with no names or phone numbers.';
+
+  @override
+  String portfolioCountOfMax(int count, int max) {
+    return '$count of $max photos';
+  }
+
+  @override
+  String get portfolioAddPhoto => 'Add photo';
+
+  @override
+  String get portfolioTakePhoto => 'Take a photo';
+
+  @override
+  String get portfolioChooseFromGallery => 'Choose from gallery';
+
+  @override
+  String get portfolioCaptionLabel => 'Style name (optional)';
+
+  @override
+  String get portfolioCaptionHint => 'e.g. Low fade';
+
+  @override
+  String get portfolioEditCaption => 'Edit style name';
+
+  @override
+  String get portfolioDeletePhoto => 'Delete photo';
+
+  @override
+  String get portfolioDeleteConfirmTitle => 'Delete this photo?';
+
+  @override
+  String get portfolioDeleteConfirmBody => 'Customers will no longer see it.';
+
+  @override
+  String get portfolioAdded => 'Photo added.';
+
+  @override
+  String get portfolioDeleted => 'Photo deleted.';
+
+  @override
+  String get portfolioCaptionSaved => 'Style name saved.';
+
+  @override
+  String get portfolioSaving => 'Saving photo...';
+
+  @override
+  String portfolioFull(int max) {
+    return 'You have $max photos. Delete one to add another.';
+  }
+
+  @override
+  String get portfolioErrNotAllowed =>
+      'Only this barber and the shop owner can change this portfolio.';
+
+  @override
+  String portfolioErrCaptionTooLong(int max) {
+    return 'Keep the style name to $max characters or fewer.';
+  }
+
+  @override
+  String get portfolioErrImage =>
+      'This photo could not be used. Try another one.';
+
+  @override
+  String get portfolioErrSlotTaken =>
+      'Another photo was just added. Please try again.';
+
+  @override
+  String get portfolioErrNotFound => 'This photo was already deleted.';
+
+  @override
+  String get portfolioLoadFailed => 'Could not load the photos.';
+
+  @override
+  String get portfolioRetry => 'Try again';
+
+  @override
+  String get portfolioDashboardTitle => 'My portfolio';
+
+  @override
+  String get portfolioDashboardSubtitle => 'Show customers your best haircuts';
+
+  @override
   String get rcptPayTitle => 'Pay by transfer';
 
   @override
@@ -2463,6 +2863,237 @@ class AppLocalizationsEn extends AppLocalizations {
       'This barbershop is not taking bookings right now.';
 
   @override
+  String get reportsBusyHoursTab => 'Busy hours';
+
+  @override
+  String get reportsNoShowsTab => 'No-shows';
+
+  @override
+  String get busyRangeLast30 => 'Last 30 days';
+
+  @override
+  String get busyRangeLast90 => 'Last 90 days';
+
+  @override
+  String get busyRangeMonth => 'Month';
+
+  @override
+  String get busyHoursTitle => 'Bookings by day and hour';
+
+  @override
+  String get busyHoursNote =>
+      'Addis Ababa time. Each booking counts in the hour it starts. Cancelled bookings are left out.';
+
+  @override
+  String get busyBusiestDay => 'Busiest day';
+
+  @override
+  String get busyBusiestTime => 'Busiest time';
+
+  @override
+  String get busyQuietestHour => 'Quietest hour';
+
+  @override
+  String get busyTotalBookings => 'Bookings';
+
+  @override
+  String get busyNoBookings => 'No bookings in this period.';
+
+  @override
+  String get busyLegendFewer => 'Fewer';
+
+  @override
+  String get busyLegendMore => 'More';
+
+  @override
+  String get busyLoadFailed => 'Could not load this month\'s bookings.';
+
+  @override
+  String busyCellSemantics(String day, String hour, int count) {
+    return '$day $hour: $count bookings';
+  }
+
+  @override
+  String get noShowsAutoBlockTitle => 'Auto-block repeat no-shows';
+
+  @override
+  String noShowsAutoBlockOn(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'A customer is blocked after $count no-shows at your shop.',
+      one: 'A customer is blocked after 1 no-show at your shop.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get noShowsAutoBlockOff =>
+      'Off. Turn it on to block a customer automatically after repeated no-shows.';
+
+  @override
+  String get noShowsAutoBlockLimit => 'No-shows before blocking';
+
+  @override
+  String get noShowsDecrease => 'Fewer';
+
+  @override
+  String get noShowsIncrease => 'More';
+
+  @override
+  String get noShowsSettingsUnavailable =>
+      'The auto-block setting could not be loaded.';
+
+  @override
+  String get noShowsSearchHint => 'Search customers by name';
+
+  @override
+  String get noShowsFilterAll => 'All';
+
+  @override
+  String noShowsFilterBlocked(int count) {
+    return 'Blocked ($count)';
+  }
+
+  @override
+  String get noShowsListTitle => 'Customers by no-show rate';
+
+  @override
+  String get noShowsRateHelp =>
+      'No-show rate: missed appointments out of completed and missed ones.';
+
+  @override
+  String get noShowsNoCustomers => 'No customers yet.';
+
+  @override
+  String get noShowsNoMatch => 'No customers match your search.';
+
+  @override
+  String noShowsWindowNote(int days) {
+    return 'Counts cover the last $days days of bookings.';
+  }
+
+  @override
+  String noShowsCustomerStats(
+      int bookings, int completed, int cancelled, int noShows) {
+    return 'Bookings $bookings · Completed $completed · Cancelled $cancelled · No-shows $noShows';
+  }
+
+  @override
+  String noShowsRateSemantics(int percent) {
+    return 'No-show rate $percent%';
+  }
+
+  @override
+  String get customerBlockedChip => 'Blocked';
+
+  @override
+  String get customerAutoBlockedChip => 'Auto-blocked';
+
+  @override
+  String get customerBlockAction => 'Block';
+
+  @override
+  String get customerUnblockAction => 'Unblock';
+
+  @override
+  String customerBlockTitle(String name) {
+    return 'Block $name?';
+  }
+
+  @override
+  String get customerBlockBody =>
+      'They won\'t be able to book or join the queue at your shop. They will see: \"This shop can\'t take your booking right now. Please contact the shop.\"';
+
+  @override
+  String get customerBlockReasonLabel => 'Note (optional)';
+
+  @override
+  String get customerBlockReasonHelper =>
+      'For your records. The app doesn\'t show it to the customer.';
+
+  @override
+  String customerBlockCancelUpcoming(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Also cancel their $count upcoming bookings',
+      one: 'Also cancel their upcoming booking',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get customerBlockCancelPaidNote =>
+      'Paid bookings are marked for a refund.';
+
+  @override
+  String get customerBlockKeepNote =>
+      'Their upcoming bookings stay unless you cancel them here.';
+
+  @override
+  String customerBlockedSnack(String name) {
+    return '$name is blocked.';
+  }
+
+  @override
+  String customerBlockedCancelledSnack(int count, String name) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$name is blocked. $count bookings cancelled.',
+      one: '$name is blocked. 1 booking cancelled.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String customerUnblockTitle(String name) {
+    return 'Unblock $name?';
+  }
+
+  @override
+  String get customerUnblockBody =>
+      'They can book and join the queue at your shop again.';
+
+  @override
+  String customerUnblockedSnack(String name) {
+    return '$name is unblocked.';
+  }
+
+  @override
+  String customerBlockedOn(String date) {
+    return 'Blocked on $date';
+  }
+
+  @override
+  String customerBlockNote(String reason) {
+    return 'Note: $reason';
+  }
+
+  @override
+  String customerAutoBlockedAfter(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Blocked automatically after $count no-shows',
+      one: 'Blocked automatically after 1 no-show',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get customerUnknownName => 'Customer';
+
+  @override
+  String get errCustomerBlockedAtShop =>
+      'This shop can\'t take your booking right now. Please contact the shop.';
+
+  @override
+  String get errCustomerBlockNotAllowed =>
+      'Only the shop owner can block or unblock customers.';
+
+  @override
   String barberNotTakingBookings(String barber) {
     return '$barber is not taking bookings right now. Please choose another barber.';
   }
@@ -2475,6 +3106,96 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get noFreeTimes =>
       'No free times left on this day. Please pick another date.';
+
+  @override
+  String get yourBarbersTitle => 'Your barbers';
+
+  @override
+  String get yourBarbersSubtitle => 'Favorites and recent visits';
+
+  @override
+  String get bookAgain => 'Book again';
+
+  @override
+  String bookAgainWith(String name) {
+    return 'Book again with $name';
+  }
+
+  @override
+  String rebookLastService(String service) {
+    return 'Last time: $service';
+  }
+
+  @override
+  String get rebookFavoriteTag => 'Favorite';
+
+  @override
+  String favoriteBarberAdd(String name) {
+    return 'Add $name to favorites';
+  }
+
+  @override
+  String favoriteBarberRemove(String name) {
+    return 'Remove $name from favorites';
+  }
+
+  @override
+  String rebookSuggestedSlot(String name, String when) {
+    return 'Next free time with $name: $when. Tap another time to change it.';
+  }
+
+  @override
+  String rebookNoFreeTime(String name, int days) {
+    return '$name has no free time in the next $days days. Try another barber at this shop.';
+  }
+
+  @override
+  String get rebookFallbackTitle => 'Can\'t book again right now';
+
+  @override
+  String rebookShopGone(String shop) {
+    return '$shop is no longer listed in the app. Find another barber in Find Barbers.';
+  }
+
+  @override
+  String rebookShopBlocked(String shop) {
+    return '$shop isn\'t taking bookings right now. Please try again later.';
+  }
+
+  @override
+  String rebookBarberGone(String barber, String shop) {
+    return '$barber no longer works at $shop. Another barber there can look after you.';
+  }
+
+  @override
+  String rebookBarberUnavailable(String barber, String shop) {
+    return '$barber isn\'t taking bookings right now. Another barber at $shop can look after you.';
+  }
+
+  @override
+  String rebookServiceGone(String shop, String service, String barber) {
+    return '$shop no longer offers $service. Pick another service with $barber.';
+  }
+
+  @override
+  String rebookNoServices(String shop) {
+    return '$shop has no services listed right now. Please try again later.';
+  }
+
+  @override
+  String get rebookSeeShop => 'See the shop';
+
+  @override
+  String get rebookPickService => 'Pick a service';
+
+  @override
+  String get rebookRemoveFavorite => 'Remove from favorites';
+
+  @override
+  String get rebookSignInNeeded => 'Sign in as a customer to book again.';
+
+  @override
+  String get rebookClose => 'Close';
 
   @override
   String get morning => 'Morning';
@@ -5102,4 +5823,90 @@ class AppLocalizationsEn extends AppLocalizations {
   String admUsrErrReasonTooLong(int max) {
     return 'The reason can be at most $max characters.';
   }
+
+  @override
+  String get nearbyLandmark => 'Nearby landmark';
+
+  @override
+  String get nearbyLandmarkHint => 'e.g. Near Edna Mall';
+
+  @override
+  String get nearbyLandmarkHelper =>
+      'Most customers find shops by landmark. It is shown big on your shop page.';
+
+  @override
+  String get shopMapPinTitle => 'Map pin';
+
+  @override
+  String get shopMapPinHelp =>
+      'Tap the map to place the shop\'s pin, or use your current location while you are at the shop.';
+
+  @override
+  String get useMyCurrentLocation => 'Use my current location';
+
+  @override
+  String get findingYourLocation => 'Finding your location...';
+
+  @override
+  String get removeMapPin => 'Remove pin';
+
+  @override
+  String get noMapPinYet =>
+      'No pin yet. Directions will search for the address and landmark instead.';
+
+  @override
+  String mapPinCoordinates(String latitude, String longitude) {
+    return 'Pin: $latitude, $longitude';
+  }
+
+  @override
+  String get mapPinOutsideEthiopia =>
+      'This pin is outside Ethiopia. Check it before saving.';
+
+  @override
+  String get locationServiceOff =>
+      'Location is turned off. Turn it on in your phone settings and try again.';
+
+  @override
+  String get locationPermissionDenied =>
+      'Location permission was not given. You can still tap the map to place the pin.';
+
+  @override
+  String get locationPermissionBlocked =>
+      'Location is blocked for Crown & Blade. Allow it in Settings.';
+
+  @override
+  String get locationUnavailable =>
+      'Could not get your location. Try again, or tap the map.';
+
+  @override
+  String get openSettingsAction => 'Settings';
+
+  @override
+  String get shopDirections => 'Directions';
+
+  @override
+  String get shopDirectionsFailed => 'Could not open a maps app.';
+
+  @override
+  String get shopLandmarkLabel => 'Landmark';
+
+  @override
+  String get nearMe => 'Near me';
+
+  @override
+  String get nearMeNeedsLocation => 'Allow location to sort shops by distance.';
+
+  @override
+  String distanceKmAway(String km) {
+    return '$km km away';
+  }
+
+  @override
+  String distanceMetersAway(int meters) {
+    return '$meters m away';
+  }
+
+  @override
+  String get shopMapSemantics => 'Map showing the shop\'s location';
 }

@@ -20,6 +20,10 @@ const int kReviewReplyMaxLength = 500;
 /// Reviews per page in the paginated lists.
 const int kReviewPageSize = 10;
 
+/// The name on reviews of deleted accounts (same value as
+/// kFormerCustomerName in lib/services/account_deletion.dart).
+const String kFormerCustomerReviewName = 'Former customer';
+
 bool isValidReviewRating(Object? value) => value is int && value >= 1 && value <= 5;
 
 class Review {
@@ -63,6 +67,10 @@ class Review {
   String get id => bookingId;
 
   bool get hasComment => comment != null && comment!.isNotEmpty;
+
+  /// Written by someone who deleted their account (account deletion): the
+  /// name is [kFormerCustomerReviewName] and the comment was removed.
+  bool get isFormerCustomer => customerName == kFormerCustomerReviewName;
   bool get hasReply => reply != null && reply!.isNotEmpty;
   bool get isEdited => editedAt != null;
 

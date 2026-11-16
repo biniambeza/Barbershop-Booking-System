@@ -38,6 +38,15 @@
  * deletes the logins the owner created for barbers (password-only accounts
  * whose email was never verified). See src/logic/shopDeletion.ts.
  *
+ * onUserProfileDeleted (Firestore trigger on users/{uid} delete, Blaze
+ * only) finishes an in-app account deletion on the server: it cancels the
+ * person's upcoming bookings the app could not (inside the cutoff; paid
+ * ones get their refund flag), anonymises the rest of their bookings and
+ * reviews, removes a deleted barber's profile tree (portfolio photos, time
+ * off, slot locks) and Storage photos, and deletes leftover personal
+ * documents. See src/logic/accountDeletion.ts. On Spark the app does all it
+ * can without it.
+ *
  * Email goes out over SMTP using the secrets SMTP_HOST, SMTP_PORT,
  * SMTP_USER, SMTP_PASS and MAIL_FROM (see readme.md).
  */
@@ -49,6 +58,14 @@ import { logger, setGlobalOptions } from 'firebase-functions/v2';
 import { CallableRequest, HttpsError, onCall } from 'firebase-functions/v2/https';
 import { onDocumentCreated, onDocumentDeleted, onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { authDisableAction, mirrorDisabledToAuth } from './logic/accountDisable'; // admin users
+import { getStorage } from 'firebase-admin/storage'; // account deletion
+import {
+  AccountDeletionStore,
+  BookingRow,
+  cleanupDeletedAccount,
+  DeletedProfile,
+  FORMER_CUSTOMER_NAME,
+} from './logic/accountDeletion'; // account deletion
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 
 import { sweepExpired } from './logic/cleanup';
@@ -390,3 +407,100 @@ export const onUserDisabledChanged = onDocumentWritten({ document: 'users/{uid}'
   logger.info('account disabled flag mirrored to Auth', { action: done });
 });
 // --- end admin users ---
+
+// --- account deletion ---
+// Blaze only: finishes an in-app account deletion (Settings > Delete
+// account) when users/{uid} is deleted. Spark: the app does it alone.
+const accountDeletionStore: AccountDeletionStore = {
+  async bookingsOfCustomer(uid) {
+    const snap = await db().collection('bookings').where('customerId', '==', uid).get();
+    return snap.docs.map((d) => ({ ...(d.data() as Omit<BookingRow, 'id'>), id: d.id }));
+  },
+  async upcomingBookingsOfBarber(shopId, barberId, nowIso) {
+    // Index shopId + barberId + startAt (firestore.indexes.json).
+    const snap = await db()
+      .collection('bookings')
+      .where('shopId', '==', shopId)
+      .where('barberId', '==', barberId)
+      .where('startAt', '>=', nowIso)
+      .get();
+    return snap.docs.map((d) => ({ ...(d.data() as Omit<BookingRow, 'id'>), id: d.id }));
+  },
+  async cutoffHours(shopId) {
+    const snap = await db().doc(`barbershops/${shopId}`).get();
+    if (!snap.exists) return null;
+    const v = snap.get('cancellationCutoffHours');
+    return typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : 2;
+  },
+  async languageOf(uid) {
+    const snap = await db().doc(`users/${uid}`).get();
+    const v = snap.get('language');
+    return typeof v === 'string' ? v : undefined;
+  },
+  async updateBooking(bookingId, plan) {
+    const ref = db().doc(`bookings/${bookingId}`);
+    return db().runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const current = snap.exists ? ({ ...(snap.data() as Omit<BookingRow, 'id'>), id: snap.id } as BookingRow) : null;
+      const write = plan(current);
+      if (!write || !current) return false;
+      let locks: DocumentReference[] = [];
+      if (write.releaseLocks && typeof current.shopId === 'string' && typeof current.barberId === 'string') {
+        const lockSnap = await tx.get(
+          db().collection(`barbershops/${current.shopId}/barbers/${current.barberId}/slotLocks`).where('bookingId', '==', bookingId),
+        );
+        locks = lockSnap.docs.map((d) => d.ref);
+      }
+      tx.update(ref, write.fields);
+      for (const lock of locks) tx.delete(lock);
+      for (const n of write.notices) tx.set(db().doc(`users/${n.uid}/notifications/${n.id}`), n.doc);
+      return true;
+    });
+  },
+  async anonymizeReview(shopId, bookingId, uid) {
+    const ref = db().doc(`barbershops/${shopId}/reviews/${bookingId}`);
+    return db().runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists || snap.get('customerId') !== uid) return false;
+      if (snap.get('customerName') === FORMER_CUSTOMER_NAME && snap.get('comment') === undefined) return false;
+      tx.update(ref, { customerName: FORMER_CUSTOMER_NAME, comment: FieldValue.delete() });
+      return true;
+    });
+  },
+  async otherProfilesOfBarber(shopId, barberId, uid) {
+    const snap = await db().collection('users').where('barberId', '==', barberId).get();
+    return snap.docs.filter((d) => d.id !== uid && d.get('shopId') === shopId).length;
+  },
+  async deleteBarberTree(shopId, barberId) {
+    await db().recursiveDelete(db().doc(`barbershops/${shopId}/barbers/${barberId}`));
+  },
+  async deletePortfolioFiles(shopId, barberId) {
+    try {
+      const bucket = getStorage().bucket();
+      const [files] = await bucket.getFiles({ prefix: `portfolio/${shopId}/${barberId}/` });
+      await Promise.all(files.map((f) => f.delete({ ignoreNotFound: true })));
+      return files.length;
+    } catch (e) {
+      // No default bucket (Storage not set up): nothing to delete.
+      logger.warn('account deletion: portfolio files not deleted', { error: String(e) });
+      return 0;
+    }
+  },
+  async deletePersonalData(uid, email) {
+    if (email) await db().doc(`invites/${email}`).delete();
+    const application = db().doc(`shopApplications/${uid}`);
+    const app = await application.get();
+    if (app.exists && app.get('status') !== 'approved') await application.delete();
+    await db().doc(`shopRemovalRequests/${uid}`).delete();
+    // The profile is gone; this removes its inbox and device tokens.
+    await db().recursiveDelete(db().doc(`users/${uid}`));
+  },
+};
+
+export const onUserProfileDeleted = onDocumentDeleted({ document: 'users/{uid}', timeoutSeconds: 540, retry: true }, async (event) => {
+  const uid = event.params.uid;
+  const profile = (event.data?.data() ?? null) as DeletedProfile | null;
+  const result = await cleanupDeletedAccount(uid, profile, accountDeletionStore, new Date());
+  logger.info('account deletion clean-up done', { ...result });
+});
+// --- end account deletion ---

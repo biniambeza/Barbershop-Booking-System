@@ -190,6 +190,10 @@ extension AppLabels on AppLocalizations {
         return errSignInToBook;
       case AppErrorCode.shopNotTakingBookings:
         return shopNotTakingBookings;
+      case AppErrorCode.customerBlockedAtShop: // customer blocks
+        return errCustomerBlockedAtShop;
+      case AppErrorCode.customerBlockNotAllowed: // customer blocks
+        return errCustomerBlockNotAllowed;
       case AppErrorCode.barberNotTakingBookings:
         return barberNotTakingBookings('${arg(0) ?? ''}');
       case AppErrorCode.invalidTimeSlot:

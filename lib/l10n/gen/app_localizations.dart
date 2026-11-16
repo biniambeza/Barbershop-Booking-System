@@ -98,6 +98,606 @@ abstract class AppLocalizations {
     Locale('en')
   ];
 
+  /// No description provided for @privacyPolicyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy policy'**
+  String get privacyPolicyTitle;
+
+  /// No description provided for @privacyPolicyUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Last updated {date}'**
+  String privacyPolicyUpdated(String date);
+
+  /// No description provided for @privacyOpenWeb.
+  ///
+  /// In en, this message translates to:
+  /// **'Open on the web'**
+  String get privacyOpenWeb;
+
+  /// No description provided for @privacyDeletePageLink.
+  ///
+  /// In en, this message translates to:
+  /// **'How to delete your account'**
+  String get privacyDeletePageLink;
+
+  /// No description provided for @privacyLinkFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the link.'**
+  String get privacyLinkFailed;
+
+  /// No description provided for @privacyConsentPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'By signing up or signing in you agree to our'**
+  String get privacyConsentPrefix;
+
+  /// No description provided for @deleteAccountMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get deleteAccountMenu;
+
+  /// No description provided for @deleteAccountTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get deleteAccountTitle;
+
+  /// No description provided for @deleteAccountHeroTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete your account'**
+  String get deleteAccountHeroTitle;
+
+  /// No description provided for @deleteAccountHeroBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your profile and login are removed for good. This cannot be undone.'**
+  String get deleteAccountHeroBody;
+
+  /// No description provided for @deleteAccountWhatHappens.
+  ///
+  /// In en, this message translates to:
+  /// **'What happens'**
+  String get deleteAccountWhatHappens;
+
+  /// No description provided for @deleteAccountCancelCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{You have no upcoming bookings to cancel.} =1{Your 1 upcoming booking will be cancelled.} other{Your {count} upcoming bookings will be cancelled.}}'**
+  String deleteAccountCancelCount(int count);
+
+  /// No description provided for @deleteAccountPaidRefund.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 paid booking will be flagged for a refund. The shop keeps your phone number on it until the money is sent back.} other{{count} paid bookings will be flagged for a refund. The shop keeps your phone number on them until the money is sent back.}}'**
+  String deleteAccountPaidRefund(int count);
+
+  /// No description provided for @deleteAccountKeptInCutoff.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 booking starts too soon to cancel in the app. It stays with the shop without your name; call the shop if you will not come.} other{{count} bookings start too soon to cancel in the app. They stay with the shop without your name; call the shop if you will not come.}}'**
+  String deleteAccountKeptInCutoff(int count);
+
+  /// No description provided for @deleteAccountBarberCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 customer booking with you will be cancelled and the customer told.} other{{count} customer bookings with you will be cancelled and the customers told.}}'**
+  String deleteAccountBarberCancel(int count);
+
+  /// No description provided for @deleteAccountBarberLeaves.
+  ///
+  /// In en, this message translates to:
+  /// **'You are removed from {shop}.'**
+  String deleteAccountBarberLeaves(String shop);
+
+  /// No description provided for @deleteAccountYourShop.
+  ///
+  /// In en, this message translates to:
+  /// **'your shop'**
+  String get deleteAccountYourShop;
+
+  /// No description provided for @deleteAccountReviews.
+  ///
+  /// In en, this message translates to:
+  /// **'Your reviews keep their stars but show \"Former customer\" and lose the comment.'**
+  String get deleteAccountReviews;
+
+  /// No description provided for @deleteAccountBookingsHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Past bookings stay in the shop\'s history without your name and phone number.'**
+  String get deleteAccountBookingsHistory;
+
+  /// No description provided for @deleteAccountPersonalData.
+  ///
+  /// In en, this message translates to:
+  /// **'Your profile, inbox, invitations, favourites and login are deleted.'**
+  String get deleteAccountPersonalData;
+
+  /// No description provided for @deleteAccountPendingLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Your data is already deleted. Confirm it\'s you once more to delete your login.'**
+  String get deleteAccountPendingLogin;
+
+  /// No description provided for @deleteAccountReauthTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm it\'s you'**
+  String get deleteAccountReauthTitle;
+
+  /// No description provided for @deleteAccountConfirmLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Type {word} to confirm'**
+  String deleteAccountConfirmLabel(String word);
+
+  /// No description provided for @deleteAccountConfirmMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Type DELETE exactly to confirm.'**
+  String get deleteAccountConfirmMismatch;
+
+  /// No description provided for @deleteAccountPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Your password'**
+  String get deleteAccountPasswordLabel;
+
+  /// No description provided for @deleteAccountPasswordOrGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Or leave it empty to confirm with Google.'**
+  String get deleteAccountPasswordOrGoogle;
+
+  /// No description provided for @deleteAccountReauthGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'You will be asked to sign in with Google again.'**
+  String get deleteAccountReauthGoogle;
+
+  /// No description provided for @deleteAccountSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete my account'**
+  String get deleteAccountSubmit;
+
+  /// No description provided for @deleteAccountDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account was deleted.'**
+  String get deleteAccountDone;
+
+  /// No description provided for @deleteAccountErrReauth.
+  ///
+  /// In en, this message translates to:
+  /// **'For your security, sign in again to finish deleting your account, then tap Delete again.'**
+  String get deleteAccountErrReauth;
+
+  /// No description provided for @deleteAccountErrReauthCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Google sign-in was cancelled. Nothing was deleted.'**
+  String get deleteAccountErrReauthCancelled;
+
+  /// No description provided for @deleteAccountErrStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting stopped at: {step} Tap Delete again to continue where it stopped.'**
+  String deleteAccountErrStep(String step);
+
+  /// No description provided for @deleteAccountErrFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account could not be deleted. Try again.'**
+  String get deleteAccountErrFailed;
+
+  /// No description provided for @deleteStepCancelBookings.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelling your bookings…'**
+  String get deleteStepCancelBookings;
+
+  /// No description provided for @deleteStepReviews.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating your reviews…'**
+  String get deleteStepReviews;
+
+  /// No description provided for @deleteStepBookings.
+  ///
+  /// In en, this message translates to:
+  /// **'Removing your name from bookings…'**
+  String get deleteStepBookings;
+
+  /// No description provided for @deleteStepLeaveShop.
+  ///
+  /// In en, this message translates to:
+  /// **'Removing you from the shop…'**
+  String get deleteStepLeaveShop;
+
+  /// No description provided for @deleteStepPersonalData.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting your inbox and invitations…'**
+  String get deleteStepPersonalData;
+
+  /// No description provided for @deleteStepProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting your profile…'**
+  String get deleteStepProfile;
+
+  /// No description provided for @deleteStepLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting your login…'**
+  String get deleteStepLogin;
+
+  /// No description provided for @deleteAccountOwnerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove your shop first'**
+  String get deleteAccountOwnerTitle;
+
+  /// No description provided for @deleteAccountOwnerBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You own {shop}. An account that owns a shop cannot be deleted. Ask the admin to remove the shop: its upcoming bookings are cancelled and the customers told. You then become a customer and can delete your account here.'**
+  String deleteAccountOwnerBody(String shop);
+
+  /// No description provided for @deleteAccountLastAdminTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You are the only admin'**
+  String get deleteAccountLastAdminTitle;
+
+  /// No description provided for @deleteAccountLastAdminBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Make another person an admin first (Users tab), then you can delete your account.'**
+  String get deleteAccountLastAdminBody;
+
+  /// No description provided for @shopRemovalNoteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Note for the admin (optional)'**
+  String get shopRemovalNoteLabel;
+
+  /// No description provided for @shopRemovalRequestButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask the admin to remove my shop'**
+  String get shopRemovalRequestButton;
+
+  /// No description provided for @shopRemovalSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Request sent to the admin.'**
+  String get shopRemovalSent;
+
+  /// No description provided for @shopRemovalPending.
+  ///
+  /// In en, this message translates to:
+  /// **'You asked on {date}. The admin will remove the shop and may contact you.'**
+  String shopRemovalPending(String date);
+
+  /// No description provided for @shopRemovalWithdraw.
+  ///
+  /// In en, this message translates to:
+  /// **'Withdraw request'**
+  String get shopRemovalWithdraw;
+
+  /// No description provided for @shopRemovalDismissed.
+  ///
+  /// In en, this message translates to:
+  /// **'The admin dismissed your request on {date}. You can send it again.'**
+  String shopRemovalDismissed(String date);
+
+  /// No description provided for @shopRemovalNoteTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'The note can be at most {max} characters.'**
+  String shopRemovalNoteTooLong(int max);
+
+  /// No description provided for @shopRemovalStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting'**
+  String get shopRemovalStatusPending;
+
+  /// No description provided for @shopRemovalStatusDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get shopRemovalStatusDone;
+
+  /// No description provided for @shopRemovalStatusDismissed.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismissed'**
+  String get shopRemovalStatusDismissed;
+
+  /// No description provided for @formerCustomer.
+  ///
+  /// In en, this message translates to:
+  /// **'Former customer'**
+  String get formerCustomer;
+
+  /// No description provided for @adminRemovalRequestsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shop removal requests'**
+  String get adminRemovalRequestsTitle;
+
+  /// No description provided for @adminRemovalHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Owners who want to delete their account ask here first. Open the shop and delete it (Delete shop), then mark the request done. The owner becomes a customer and can delete the account in the app.'**
+  String get adminRemovalHelp;
+
+  /// No description provided for @adminRemovalEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No requests.'**
+  String get adminRemovalEmpty;
+
+  /// No description provided for @adminRemovalRequestedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Asked on {date}'**
+  String adminRemovalRequestedOn(String date);
+
+  /// No description provided for @adminRemovalShopGone.
+  ///
+  /// In en, this message translates to:
+  /// **'The shop is already removed.'**
+  String get adminRemovalShopGone;
+
+  /// No description provided for @adminRemovalOpenShop.
+  ///
+  /// In en, this message translates to:
+  /// **'Open shop'**
+  String get adminRemovalOpenShop;
+
+  /// No description provided for @adminRemovalMarkDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark done'**
+  String get adminRemovalMarkDone;
+
+  /// No description provided for @adminRemovalDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get adminRemovalDismiss;
+
+  /// No description provided for @portfolioTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Portfolio'**
+  String get portfolioTitle;
+
+  /// No description provided for @portfolioOfBarber.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s work'**
+  String portfolioOfBarber(String name);
+
+  /// No description provided for @portfolioPhotoCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 photo} other{{count} photos}}'**
+  String portfolioPhotoCount(int count);
+
+  /// No description provided for @portfolioShopSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'See their work'**
+  String get portfolioShopSectionTitle;
+
+  /// No description provided for @portfolioShopSectionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Haircuts by this shop\'s barbers'**
+  String get portfolioShopSectionHint;
+
+  /// No description provided for @portfolioSeeWork.
+  ///
+  /// In en, this message translates to:
+  /// **'See {name}\'s work'**
+  String portfolioSeeWork(String name);
+
+  /// No description provided for @portfolioEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No photos yet.'**
+  String get portfolioEmpty;
+
+  /// No description provided for @portfolioBookStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Book this style with {name}'**
+  String portfolioBookStyle(String name);
+
+  /// No description provided for @portfolioViewerCounter.
+  ///
+  /// In en, this message translates to:
+  /// **'{index} / {total}'**
+  String portfolioViewerCounter(int index, int total);
+
+  /// No description provided for @portfolioPhotoSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Portfolio photo {index}'**
+  String portfolioPhotoSemantics(int index);
+
+  /// No description provided for @portfolioManageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Portfolio photos'**
+  String get portfolioManageTitle;
+
+  /// No description provided for @portfolioManageIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Photos of your best haircuts help customers choose you. Up to {max} photos.'**
+  String portfolioManageIntro(int max);
+
+  /// No description provided for @portfolioPublicNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Portfolio photos are public. Only post photos your customers agreed to share, with no names or phone numbers.'**
+  String get portfolioPublicNotice;
+
+  /// No description provided for @portfolioCountOfMax.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of {max} photos'**
+  String portfolioCountOfMax(int count, int max);
+
+  /// No description provided for @portfolioAddPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Add photo'**
+  String get portfolioAddPhoto;
+
+  /// No description provided for @portfolioTakePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo'**
+  String get portfolioTakePhoto;
+
+  /// No description provided for @portfolioChooseFromGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from gallery'**
+  String get portfolioChooseFromGallery;
+
+  /// No description provided for @portfolioCaptionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Style name (optional)'**
+  String get portfolioCaptionLabel;
+
+  /// No description provided for @portfolioCaptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Low fade'**
+  String get portfolioCaptionHint;
+
+  /// No description provided for @portfolioEditCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit style name'**
+  String get portfolioEditCaption;
+
+  /// No description provided for @portfolioDeletePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete photo'**
+  String get portfolioDeletePhoto;
+
+  /// No description provided for @portfolioDeleteConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this photo?'**
+  String get portfolioDeleteConfirmTitle;
+
+  /// No description provided for @portfolioDeleteConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Customers will no longer see it.'**
+  String get portfolioDeleteConfirmBody;
+
+  /// No description provided for @portfolioAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo added.'**
+  String get portfolioAdded;
+
+  /// No description provided for @portfolioDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo deleted.'**
+  String get portfolioDeleted;
+
+  /// No description provided for @portfolioCaptionSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Style name saved.'**
+  String get portfolioCaptionSaved;
+
+  /// No description provided for @portfolioSaving.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving photo...'**
+  String get portfolioSaving;
+
+  /// No description provided for @portfolioFull.
+  ///
+  /// In en, this message translates to:
+  /// **'You have {max} photos. Delete one to add another.'**
+  String portfolioFull(int max);
+
+  /// No description provided for @portfolioErrNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Only this barber and the shop owner can change this portfolio.'**
+  String get portfolioErrNotAllowed;
+
+  /// No description provided for @portfolioErrCaptionTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the style name to {max} characters or fewer.'**
+  String portfolioErrCaptionTooLong(int max);
+
+  /// No description provided for @portfolioErrImage.
+  ///
+  /// In en, this message translates to:
+  /// **'This photo could not be used. Try another one.'**
+  String get portfolioErrImage;
+
+  /// No description provided for @portfolioErrSlotTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'Another photo was just added. Please try again.'**
+  String get portfolioErrSlotTaken;
+
+  /// No description provided for @portfolioErrNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This photo was already deleted.'**
+  String get portfolioErrNotFound;
+
+  /// No description provided for @portfolioLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the photos.'**
+  String get portfolioLoadFailed;
+
+  /// No description provided for @portfolioRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get portfolioRetry;
+
+  /// No description provided for @portfolioDashboardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My portfolio'**
+  String get portfolioDashboardTitle;
+
+  /// No description provided for @portfolioDashboardSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show customers your best haircuts'**
+  String get portfolioDashboardSubtitle;
+
   /// No description provided for @rcptPayTitle.
   ///
   /// In en, this message translates to:
@@ -4070,6 +4670,337 @@ abstract class AppLocalizations {
   /// **'This barbershop is not taking bookings right now.'**
   String get shopNotTakingBookings;
 
+  /// No description provided for @reportsBusyHoursTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Busy hours'**
+  String get reportsBusyHoursTab;
+
+  /// No description provided for @reportsNoShowsTab.
+  ///
+  /// In en, this message translates to:
+  /// **'No-shows'**
+  String get reportsNoShowsTab;
+
+  /// No description provided for @busyRangeLast30.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 30 days'**
+  String get busyRangeLast30;
+
+  /// No description provided for @busyRangeLast90.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 90 days'**
+  String get busyRangeLast90;
+
+  /// No description provided for @busyRangeMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get busyRangeMonth;
+
+  /// No description provided for @busyHoursTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookings by day and hour'**
+  String get busyHoursTitle;
+
+  /// No description provided for @busyHoursNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Addis Ababa time. Each booking counts in the hour it starts. Cancelled bookings are left out.'**
+  String get busyHoursNote;
+
+  /// No description provided for @busyBusiestDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Busiest day'**
+  String get busyBusiestDay;
+
+  /// No description provided for @busyBusiestTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Busiest time'**
+  String get busyBusiestTime;
+
+  /// No description provided for @busyQuietestHour.
+  ///
+  /// In en, this message translates to:
+  /// **'Quietest hour'**
+  String get busyQuietestHour;
+
+  /// No description provided for @busyTotalBookings.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookings'**
+  String get busyTotalBookings;
+
+  /// No description provided for @busyNoBookings.
+  ///
+  /// In en, this message translates to:
+  /// **'No bookings in this period.'**
+  String get busyNoBookings;
+
+  /// No description provided for @busyLegendFewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Fewer'**
+  String get busyLegendFewer;
+
+  /// No description provided for @busyLegendMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get busyLegendMore;
+
+  /// No description provided for @busyLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load this month\'s bookings.'**
+  String get busyLoadFailed;
+
+  /// No description provided for @busyCellSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'{day} {hour}: {count} bookings'**
+  String busyCellSemantics(String day, String hour, int count);
+
+  /// No description provided for @noShowsAutoBlockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-block repeat no-shows'**
+  String get noShowsAutoBlockTitle;
+
+  /// No description provided for @noShowsAutoBlockOn.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{A customer is blocked after 1 no-show at your shop.} other{A customer is blocked after {count} no-shows at your shop.}}'**
+  String noShowsAutoBlockOn(int count);
+
+  /// No description provided for @noShowsAutoBlockOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off. Turn it on to block a customer automatically after repeated no-shows.'**
+  String get noShowsAutoBlockOff;
+
+  /// No description provided for @noShowsAutoBlockLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'No-shows before blocking'**
+  String get noShowsAutoBlockLimit;
+
+  /// No description provided for @noShowsDecrease.
+  ///
+  /// In en, this message translates to:
+  /// **'Fewer'**
+  String get noShowsDecrease;
+
+  /// No description provided for @noShowsIncrease.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get noShowsIncrease;
+
+  /// No description provided for @noShowsSettingsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'The auto-block setting could not be loaded.'**
+  String get noShowsSettingsUnavailable;
+
+  /// No description provided for @noShowsSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search customers by name'**
+  String get noShowsSearchHint;
+
+  /// No description provided for @noShowsFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get noShowsFilterAll;
+
+  /// No description provided for @noShowsFilterBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked ({count})'**
+  String noShowsFilterBlocked(int count);
+
+  /// No description provided for @noShowsListTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Customers by no-show rate'**
+  String get noShowsListTitle;
+
+  /// No description provided for @noShowsRateHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'No-show rate: missed appointments out of completed and missed ones.'**
+  String get noShowsRateHelp;
+
+  /// No description provided for @noShowsNoCustomers.
+  ///
+  /// In en, this message translates to:
+  /// **'No customers yet.'**
+  String get noShowsNoCustomers;
+
+  /// No description provided for @noShowsNoMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No customers match your search.'**
+  String get noShowsNoMatch;
+
+  /// No description provided for @noShowsWindowNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Counts cover the last {days} days of bookings.'**
+  String noShowsWindowNote(int days);
+
+  /// No description provided for @noShowsCustomerStats.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookings {bookings} · Completed {completed} · Cancelled {cancelled} · No-shows {noShows}'**
+  String noShowsCustomerStats(
+      int bookings, int completed, int cancelled, int noShows);
+
+  /// No description provided for @noShowsRateSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'No-show rate {percent}%'**
+  String noShowsRateSemantics(int percent);
+
+  /// No description provided for @customerBlockedChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked'**
+  String get customerBlockedChip;
+
+  /// No description provided for @customerAutoBlockedChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-blocked'**
+  String get customerAutoBlockedChip;
+
+  /// No description provided for @customerBlockAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Block'**
+  String get customerBlockAction;
+
+  /// No description provided for @customerUnblockAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Unblock'**
+  String get customerUnblockAction;
+
+  /// No description provided for @customerBlockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Block {name}?'**
+  String customerBlockTitle(String name);
+
+  /// No description provided for @customerBlockBody.
+  ///
+  /// In en, this message translates to:
+  /// **'They won\'t be able to book or join the queue at your shop. They will see: \"This shop can\'t take your booking right now. Please contact the shop.\"'**
+  String get customerBlockBody;
+
+  /// No description provided for @customerBlockReasonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Note (optional)'**
+  String get customerBlockReasonLabel;
+
+  /// No description provided for @customerBlockReasonHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'For your records. The app doesn\'t show it to the customer.'**
+  String get customerBlockReasonHelper;
+
+  /// No description provided for @customerBlockCancelUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Also cancel their upcoming booking} other{Also cancel their {count} upcoming bookings}}'**
+  String customerBlockCancelUpcoming(int count);
+
+  /// No description provided for @customerBlockCancelPaidNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid bookings are marked for a refund.'**
+  String get customerBlockCancelPaidNote;
+
+  /// No description provided for @customerBlockKeepNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Their upcoming bookings stay unless you cancel them here.'**
+  String get customerBlockKeepNote;
+
+  /// No description provided for @customerBlockedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is blocked.'**
+  String customerBlockedSnack(String name);
+
+  /// No description provided for @customerBlockedCancelledSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{{name} is blocked. 1 booking cancelled.} other{{name} is blocked. {count} bookings cancelled.}}'**
+  String customerBlockedCancelledSnack(int count, String name);
+
+  /// No description provided for @customerUnblockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unblock {name}?'**
+  String customerUnblockTitle(String name);
+
+  /// No description provided for @customerUnblockBody.
+  ///
+  /// In en, this message translates to:
+  /// **'They can book and join the queue at your shop again.'**
+  String get customerUnblockBody;
+
+  /// No description provided for @customerUnblockedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is unblocked.'**
+  String customerUnblockedSnack(String name);
+
+  /// No description provided for @customerBlockedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked on {date}'**
+  String customerBlockedOn(String date);
+
+  /// No description provided for @customerBlockNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note: {reason}'**
+  String customerBlockNote(String reason);
+
+  /// No description provided for @customerAutoBlockedAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Blocked automatically after 1 no-show} other{Blocked automatically after {count} no-shows}}'**
+  String customerAutoBlockedAfter(int count);
+
+  /// No description provided for @customerUnknownName.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer'**
+  String get customerUnknownName;
+
+  /// No description provided for @errCustomerBlockedAtShop.
+  ///
+  /// In en, this message translates to:
+  /// **'This shop can\'t take your booking right now. Please contact the shop.'**
+  String get errCustomerBlockedAtShop;
+
+  /// No description provided for @errCustomerBlockNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the shop owner can block or unblock customers.'**
+  String get errCustomerBlockNotAllowed;
+
   /// No description provided for @barberNotTakingBookings.
   ///
   /// In en, this message translates to:
@@ -4087,6 +5018,138 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No free times left on this day. Please pick another date.'**
   String get noFreeTimes;
+
+  /// No description provided for @yourBarbersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your barbers'**
+  String get yourBarbersTitle;
+
+  /// No description provided for @yourBarbersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites and recent visits'**
+  String get yourBarbersSubtitle;
+
+  /// No description provided for @bookAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Book again'**
+  String get bookAgain;
+
+  /// No description provided for @bookAgainWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Book again with {name}'**
+  String bookAgainWith(String name);
+
+  /// No description provided for @rebookLastService.
+  ///
+  /// In en, this message translates to:
+  /// **'Last time: {service}'**
+  String rebookLastService(String service);
+
+  /// No description provided for @rebookFavoriteTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorite'**
+  String get rebookFavoriteTag;
+
+  /// No description provided for @favoriteBarberAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add {name} to favorites'**
+  String favoriteBarberAdd(String name);
+
+  /// No description provided for @favoriteBarberRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name} from favorites'**
+  String favoriteBarberRemove(String name);
+
+  /// No description provided for @rebookSuggestedSlot.
+  ///
+  /// In en, this message translates to:
+  /// **'Next free time with {name}: {when}. Tap another time to change it.'**
+  String rebookSuggestedSlot(String name, String when);
+
+  /// No description provided for @rebookNoFreeTime.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} has no free time in the next {days} days. Try another barber at this shop.'**
+  String rebookNoFreeTime(String name, int days);
+
+  /// No description provided for @rebookFallbackTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t book again right now'**
+  String get rebookFallbackTitle;
+
+  /// No description provided for @rebookShopGone.
+  ///
+  /// In en, this message translates to:
+  /// **'{shop} is no longer listed in the app. Find another barber in Find Barbers.'**
+  String rebookShopGone(String shop);
+
+  /// No description provided for @rebookShopBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'{shop} isn\'t taking bookings right now. Please try again later.'**
+  String rebookShopBlocked(String shop);
+
+  /// No description provided for @rebookBarberGone.
+  ///
+  /// In en, this message translates to:
+  /// **'{barber} no longer works at {shop}. Another barber there can look after you.'**
+  String rebookBarberGone(String barber, String shop);
+
+  /// No description provided for @rebookBarberUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'{barber} isn\'t taking bookings right now. Another barber at {shop} can look after you.'**
+  String rebookBarberUnavailable(String barber, String shop);
+
+  /// No description provided for @rebookServiceGone.
+  ///
+  /// In en, this message translates to:
+  /// **'{shop} no longer offers {service}. Pick another service with {barber}.'**
+  String rebookServiceGone(String shop, String service, String barber);
+
+  /// No description provided for @rebookNoServices.
+  ///
+  /// In en, this message translates to:
+  /// **'{shop} has no services listed right now. Please try again later.'**
+  String rebookNoServices(String shop);
+
+  /// No description provided for @rebookSeeShop.
+  ///
+  /// In en, this message translates to:
+  /// **'See the shop'**
+  String get rebookSeeShop;
+
+  /// No description provided for @rebookPickService.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a service'**
+  String get rebookPickService;
+
+  /// No description provided for @rebookRemoveFavorite.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from favorites'**
+  String get rebookRemoveFavorite;
+
+  /// No description provided for @rebookSignInNeeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in as a customer to book again.'**
+  String get rebookSignInNeeded;
+
+  /// No description provided for @rebookClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get rebookClose;
 
   /// No description provided for @morning.
   ///
@@ -8257,6 +9320,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The reason can be at most {max} characters.'**
   String admUsrErrReasonTooLong(int max);
+
+  /// No description provided for @nearbyLandmark.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearby landmark'**
+  String get nearbyLandmark;
+
+  /// No description provided for @nearbyLandmarkHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Near Edna Mall'**
+  String get nearbyLandmarkHint;
+
+  /// No description provided for @nearbyLandmarkHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Most customers find shops by landmark. It is shown big on your shop page.'**
+  String get nearbyLandmarkHelper;
+
+  /// No description provided for @shopMapPinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Map pin'**
+  String get shopMapPinTitle;
+
+  /// No description provided for @shopMapPinHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the map to place the shop\'s pin, or use your current location while you are at the shop.'**
+  String get shopMapPinHelp;
+
+  /// No description provided for @useMyCurrentLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Use my current location'**
+  String get useMyCurrentLocation;
+
+  /// No description provided for @findingYourLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Finding your location...'**
+  String get findingYourLocation;
+
+  /// No description provided for @removeMapPin.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove pin'**
+  String get removeMapPin;
+
+  /// No description provided for @noMapPinYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No pin yet. Directions will search for the address and landmark instead.'**
+  String get noMapPinYet;
+
+  /// No description provided for @mapPinCoordinates.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin: {latitude}, {longitude}'**
+  String mapPinCoordinates(String latitude, String longitude);
+
+  /// No description provided for @mapPinOutsideEthiopia.
+  ///
+  /// In en, this message translates to:
+  /// **'This pin is outside Ethiopia. Check it before saving.'**
+  String get mapPinOutsideEthiopia;
+
+  /// No description provided for @locationServiceOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Location is turned off. Turn it on in your phone settings and try again.'**
+  String get locationServiceOff;
+
+  /// No description provided for @locationPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Location permission was not given. You can still tap the map to place the pin.'**
+  String get locationPermissionDenied;
+
+  /// No description provided for @locationPermissionBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Location is blocked for Crown & Blade. Allow it in Settings.'**
+  String get locationPermissionBlocked;
+
+  /// No description provided for @locationUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not get your location. Try again, or tap the map.'**
+  String get locationUnavailable;
+
+  /// No description provided for @openSettingsAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get openSettingsAction;
+
+  /// No description provided for @shopDirections.
+  ///
+  /// In en, this message translates to:
+  /// **'Directions'**
+  String get shopDirections;
+
+  /// No description provided for @shopDirectionsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open a maps app.'**
+  String get shopDirectionsFailed;
+
+  /// No description provided for @shopLandmarkLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Landmark'**
+  String get shopLandmarkLabel;
+
+  /// No description provided for @nearMe.
+  ///
+  /// In en, this message translates to:
+  /// **'Near me'**
+  String get nearMe;
+
+  /// No description provided for @nearMeNeedsLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow location to sort shops by distance.'**
+  String get nearMeNeedsLocation;
+
+  /// No description provided for @distanceKmAway.
+  ///
+  /// In en, this message translates to:
+  /// **'{km} km away'**
+  String distanceKmAway(String km);
+
+  /// No description provided for @distanceMetersAway.
+  ///
+  /// In en, this message translates to:
+  /// **'{meters} m away'**
+  String distanceMetersAway(int meters);
+
+  /// No description provided for @shopMapSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Map showing the shop\'s location'**
+  String get shopMapSemantics;
 }
 
 class _AppLocalizationsDelegate

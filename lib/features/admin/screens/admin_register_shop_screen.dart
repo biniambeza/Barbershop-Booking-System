@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../l10n/l10n.dart';
 import '../../../services/app_repository.dart';
 import '../../../data/addis_locations.dart';
+import '../../shared/widgets/shop_map.dart'; // shop location (maps)
 
 class AdminRegisterShopScreen extends StatefulWidget {
   const AdminRegisterShopScreen({super.key});
@@ -33,6 +34,9 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
   final _cityCtrl = TextEditingController(text: kDefaultCity);
   final _landmarkCtrl = TextEditingController();
   String _subCity = 'Bole';
+  // shop location (maps): the map pin (both null = no pin).
+  double? _latitude;
+  double? _longitude;
 
   // Opening hours are not asked here: the shop starts with the defaults and
   // the owner sets them after signing in.
@@ -103,6 +107,8 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
         city: _cityCtrl.text.trim(),
         subCity: _subCity,
         landmark: _landmarkCtrl.text.trim(),
+        latitude: _latitude,
+        longitude: _longitude,
         description: _shopDescCtrl.text.trim(),
         imageUrl: _imageCtrl.text.trim(),
         isVerified: _isVerified,
@@ -295,11 +301,14 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
                     ),
                     const SizedBox(height: 14),
                     TextFormField(
+                      key: const ValueKey('register-shop-landmark'),
                       controller: _landmarkCtrl,
+                      maxLength: 200,
                       decoration: InputDecoration(
-                        labelText: l.landmark,
-                        prefixIcon: const Icon(Icons.place_outlined),
-                        hintText: l.landmarkHint,
+                        labelText: l.nearbyLandmark,
+                        prefixIcon: const Icon(Icons.assistant_photo_outlined),
+                        hintText: l.nearbyLandmarkHint,
+                        counterText: '',
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -311,6 +320,16 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
                         hintText: l.cityHint,
                       ),
                       validator: (val) => val == null || val.trim().isEmpty ? l.required : null,
+                    ),
+                    // shop location (maps): the map pin.
+                    const SizedBox(height: 16),
+                    ShopLocationPicker(
+                      latitude: _latitude,
+                      longitude: _longitude,
+                      onChanged: (lat, lng) => setState(() {
+                        _latitude = lat;
+                        _longitude = lng;
+                      }),
                     ),
                   ],
                 ),

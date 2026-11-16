@@ -287,6 +287,36 @@ class LocalReviewStore implements ReviewStore {
     }();
   }
 
+  // --- account deletion ---
+  /// [uid]'s reviews get the name "Former customer" and lose their comment;
+  /// stars, reply and dates stay (as the Firestore update). Returns how many
+  /// changed.
+  Future<int> anonymizeCustomer(String uid) async {
+    await _ensureSeeded();
+    var changed = 0;
+    for (final entry in _byShop.entries) {
+      for (final r in entry.value.values.toList()) {
+        if (r.customerId != uid || (r.isFormerCustomer && !r.hasComment)) continue;
+        entry.value[r.bookingId] = Review(
+          bookingId: r.bookingId,
+          shopId: r.shopId,
+          barberId: r.barberId,
+          customerId: r.customerId,
+          customerName: kFormerCustomerReviewName,
+          rating: r.rating,
+          createdAt: r.createdAt,
+          reply: r.reply,
+          replyAt: r.replyAt,
+          editedAt: r.editedAt,
+        );
+        changed++;
+        _changes.add(entry.key);
+      }
+    }
+    return changed;
+  }
+  // --- end account deletion ---
+
   /// Every review of [shopId] (tests, local rating recompute).
   List<Review> reviewsOf(String shopId) => (_byShop[shopId]?.values.toList() ?? <Review>[])..sort(Review.newestFirst);
 

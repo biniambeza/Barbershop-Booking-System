@@ -51,6 +51,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Crown &amp; Blade uses the camera to take a photo of your payment receipt.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Crown &amp; Blade uses your location to place your barbershop on the map and to show the barbershops nearest to you.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Crown &amp; Blade opens your photos so you can choose a picture of your payment receipt.</string>
 	<key>UIBackgroundModes</key>

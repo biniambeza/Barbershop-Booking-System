@@ -15,6 +15,14 @@ rules_version = '2';
 //       and by admins. The payments Cloud Function reads it with the Admin
 //       SDK (rules do not apply).
 //
+//   portfolio/{shopId}/{barberId}/p01.jpg .. p12.jpg
+//       Photos of a barber's work (compressed JPEG, ~150 KB; under 1 MB
+//       accepted), referenced by barbershops/{shopId}/barbers/{barberId}/
+//       portfolio/{pNN}.imagePath. Public read. The shop's owner or that
+//       barber uploads (overwrite allowed: a slot is reused after its photo
+//       is deleted) and deletes; admins delete. Without Storage (free plan,
+//       or the switch off) the photo is stored inline (image).
+//
 // Roles come from Firestore (users/{uid}.role / shopId and
 // barbershops/{shopId}.ownerId), as in firestore.rules isOwnerOf / isAdmin.
 // Everything else is denied.
@@ -43,6 +51,26 @@ service firebase.storage {
         firestore.get(userPath()).data.role == 'barbershopOwner' &&
         firestore.get(userPath()).data.get('shopId', '') == shopId &&
         firestore.get(/databases/(default)/documents/barbershops/$(shopId)).data.get('ownerId', '') == request.auth.uid;
+    }
+
+    // The signed-in barber linked to this barber profile.
+    function isBarberOf(shopId, barberId) {
+      return hasProfile() &&
+        firestore.get(userPath()).data.role == 'barber' &&
+        firestore.get(userPath()).data.get('shopId', '') == shopId &&
+        firestore.get(userPath()).data.get('barberId', '') == barberId;
+    }
+
+    match /portfolio/{shopId}/{barberId}/{fileName} {
+      allow read: if true;
+
+      allow create, update: if fileName.matches('^p(0[1-9]|1[0-2])[.]jpg$') &&
+        request.resource.size > 0 &&
+        request.resource.size < 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*') &&
+        (isOwnerOf(shopId) || isBarberOf(shopId, barberId));
+
+      allow delete: if isOwnerOf(shopId) || isBarberOf(shopId, barberId) || isAdmin();
     }
 
     match /receipts/{shopId}/{fileName} {

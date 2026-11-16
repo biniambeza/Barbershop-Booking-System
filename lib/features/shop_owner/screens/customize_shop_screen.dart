@@ -6,6 +6,7 @@ import '../../../l10n/l10n.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../services/app_repository.dart';
 import '../../customer/screens/barbershop_detail_screen.dart';
+import '../../shared/widgets/shop_map.dart'; // shop location (maps)
 
 class CustomizeShopScreen extends StatefulWidget {
   final Barbershop shop;
@@ -27,6 +28,10 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
   late TextEditingController _imageCtrl;
   late TextEditingController _landmarkCtrl;
   late String _subCity;
+
+  // shop location (maps): the map pin (both null = no pin).
+  double? _latitude;
+  double? _longitude;
 
   late int _openingHour;
   late int _closingHour;
@@ -74,6 +79,10 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
     _imageCtrl = TextEditingController(text: s.imageUrl);
     _landmarkCtrl = TextEditingController(text: s.landmark ?? '');
     _subCity = s.subCity;
+    if (s.hasLocation) {
+      _latitude = s.latitude;
+      _longitude = s.longitude;
+    }
 
     _openingHour = s.openingHour;
     _closingHour = s.closingHour;
@@ -123,6 +132,9 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
       subCity: _subCity,
       landmark: landmark.isEmpty ? null : landmark,
       clearLandmark: landmark.isEmpty,
+      latitude: _latitude,
+      longitude: _longitude,
+      clearLocation: _latitude == null || _longitude == null,
       imageUrl: _imageCtrl.text.trim(),
       openingHour: _openingHour,
       closingHour: _closingHour,
@@ -316,7 +328,7 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
               ),
               const SizedBox(height: 28),
 
-              // Section 2: Physical Location (No Map!)
+              // Section 2: Physical Location (landmark and map pin)
               _buildSectionTitle(l.sectionAddress, Icons.location_on_outlined),
               const SizedBox(height: 12),
               Container(
@@ -344,11 +356,16 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
+                      key: const ValueKey('shop-landmark-field'),
                       controller: _landmarkCtrl,
+                      maxLength: 200,
                       decoration: InputDecoration(
-                        labelText: l.landmark,
-                        hintText: l.landmarkHint,
-                        prefixIcon: const Icon(Icons.place_outlined),
+                        labelText: l.nearbyLandmark,
+                        hintText: l.nearbyLandmarkHint,
+                        helperText: l.nearbyLandmarkHelper,
+                        helperMaxLines: 2,
+                        counterText: '',
+                        prefixIcon: const Icon(Icons.assistant_photo_outlined),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -356,6 +373,16 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
                       controller: _cityCtrl,
                       decoration: InputDecoration(labelText: l.city, prefixIcon: const Icon(Icons.location_city)),
                       validator: (val) => val == null || val.trim().isEmpty ? l.required : null,
+                    ),
+                    // shop location (maps): the map pin.
+                    const SizedBox(height: 16),
+                    ShopLocationPicker(
+                      latitude: _latitude,
+                      longitude: _longitude,
+                      onChanged: (lat, lng) => setState(() {
+                        _latitude = lat;
+                        _longitude = lng;
+                      }),
                     ),
                   ],
                 ),

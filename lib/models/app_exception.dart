@@ -36,6 +36,12 @@ enum AppErrorCode {
   signInToBook,
   shopNotTakingBookings,
 
+  /// customer blocks: the customer is blocked at this shop (neutral text).
+  customerBlockedAtShop,
+
+  /// customer blocks: only the shop's owner blocks / unblocks customers.
+  customerBlockNotAllowed,
+
   /// args: [barber name].
   barberNotTakingBookings,
   invalidTimeSlot,
@@ -134,6 +140,10 @@ enum AppErrorCode {
         return 'Sign in to book an appointment.';
       case AppErrorCode.shopNotTakingBookings:
         return 'This barbershop is not taking bookings right now.';
+      case AppErrorCode.customerBlockedAtShop: // customer blocks
+        return "This shop can't take your booking right now. Please contact the shop.";
+      case AppErrorCode.customerBlockNotAllowed: // customer blocks
+        return 'Only the shop owner can block or unblock customers.';
       case AppErrorCode.barberNotTakingBookings:
         return '${arg(0)} is not taking bookings right now.';
       case AppErrorCode.invalidTimeSlot:

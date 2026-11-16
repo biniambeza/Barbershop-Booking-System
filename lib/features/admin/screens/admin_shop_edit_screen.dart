@@ -6,6 +6,7 @@ import '../../../data/addis_locations.dart';
 import '../../../l10n/l10n.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../services/app_repository.dart';
+import '../../shared/widgets/shop_map.dart'; // shop location (maps)
 import '../../shared/widgets/ui_kit.dart';
 import '../widgets/shop_suspension_widgets.dart';
 import 'admin_shops_screen.dart';
@@ -32,6 +33,9 @@ class _AdminShopEditScreenState extends State<AdminShopEditScreen> {
   final _phone = TextEditingController();
   final _description = TextEditingController();
   String _subCity = '';
+  // shop location (maps): the map pin (both null = no pin).
+  double? _latitude;
+  double? _longitude;
   bool _verified = false;
   String _plan = 'trial';
   SubscriptionStatus _status = SubscriptionStatus.trialing;
@@ -55,6 +59,8 @@ class _AdminShopEditScreenState extends State<AdminShopEditScreen> {
     _phone.text = shop.phone;
     _description.text = shop.description;
     _subCity = shop.subCity;
+    _latitude = shop.hasLocation ? shop.latitude : null;
+    _longitude = shop.hasLocation ? shop.longitude : null;
     _verified = shop.isVerified;
     _plan = shop.subscriptionPlan;
     _status = shop.subscriptionStatus;
@@ -80,6 +86,9 @@ class _AdminShopEditScreenState extends State<AdminShopEditScreen> {
       address: _address.text,
       landmark: _landmark.text,
       clearLandmark: _landmark.text.trim().isEmpty,
+      latitude: _latitude,
+      longitude: _longitude,
+      clearLocation: _latitude == null || _longitude == null,
       phone: phone.isEmpty ? '' : (normalizeEthiopianContactPhone(phone) ?? phone),
       description: _description.text,
       subCity: _subCity,
@@ -343,9 +352,26 @@ class _AdminShopEditScreenState extends State<AdminShopEditScreen> {
         ),
         const SizedBox(height: 12),
         TextFormField(
+          key: const ValueKey('admin-shop-landmark'),
           controller: _landmark,
           maxLength: kMaxShopAddressLength,
-          decoration: InputDecoration(labelText: l.adminShopsFieldLandmark, counterText: ''),
+          decoration: InputDecoration(
+            labelText: l.nearbyLandmark,
+            hintText: l.nearbyLandmarkHint,
+            prefixIcon: const Icon(Icons.assistant_photo_outlined),
+            counterText: '',
+          ),
+        ),
+        const SizedBox(height: 12),
+        // shop location (maps): the map pin.
+        ShopLocationPicker(
+          key: ValueKey('admin-shop-location-${shop.id}'),
+          latitude: _latitude,
+          longitude: _longitude,
+          onChanged: (lat, lng) => setState(() {
+            _latitude = lat;
+            _longitude = lng;
+          }),
         ),
         const SizedBox(height: 12),
         TextFormField(

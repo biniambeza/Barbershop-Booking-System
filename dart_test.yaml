@@ -1,0 +1,6 @@
+# Store screenshots (test/store_screenshots_test.dart) are not part of the
+# normal suite. Run them with:
+#   flutter test --tags screenshots --run-skipped test/store_screenshots_test.dart
+tags:
+  screenshots:
+    skip: "Store screenshots: run with --tags screenshots --run-skipped"

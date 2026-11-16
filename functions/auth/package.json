@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "tsc -p tsconfig.test.json && node --test build-test/test/codes.test.js build-test/test/cleanup.test.js build-test/test/input.test.js build-test/test/rateLimit.test.js build-test/test/templates.test.js build-test/test/inviteEmail.test.js build-test/test/service.test.js build-test/test/shopDeletion.test.js build-test/test/accountDisable.test.js",
+    "test": "tsc -p tsconfig.test.json && node --test build-test/test/codes.test.js build-test/test/cleanup.test.js build-test/test/input.test.js build-test/test/rateLimit.test.js build-test/test/templates.test.js build-test/test/inviteEmail.test.js build-test/test/service.test.js build-test/test/shopDeletion.test.js build-test/test/accountDisable.test.js build-test/test/accountDeletion.test.js",
     "serve": "npm run build && firebase emulators:start --only functions,firestore",
     "deploy": "firebase deploy --only functions:auth"
   },

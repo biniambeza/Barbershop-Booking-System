@@ -25,6 +25,7 @@ import '../../shared/widgets/no_show_dialog.dart';
 import '../../shared/widgets/ui_kit.dart';
 import '../widgets/barber_cancel_dialog.dart';
 import '../widgets/booking_requests_section.dart';
+import '../../portfolio/widgets/portfolio_entries.dart' show BarberPortfolioCard; // barber portfolio
 
 class BarberDashboardScreen extends StatefulWidget {
   const BarberDashboardScreen({super.key});
@@ -180,6 +181,7 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                               const SizedBox(height: 12),
                               QueueDashboardCard(shopId: barber.shopId),
                               BarberReviewsCard(barber: barber),
+                              BarberPortfolioCard(barber: barber), // barber portfolio
                             ],
                           ),
                         ),

@@ -270,7 +270,9 @@ class ReviewTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = context.l10n;
     final fmt = context.fmt;
-    final name = review.displayName.isEmpty ? l.reviewsCustomer : review.displayName;
+    final name = review.isFormerCustomer // account deletion
+        ? l.formerCustomer
+        : (review.displayName.isEmpty ? l.reviewsCustomer : review.displayName);
     return Container(
       key: ValueKey('review-${review.id}'),
       margin: const EdgeInsets.only(bottom: 12),

@@ -8,6 +8,7 @@ import '../../../models/barbershop_model.dart';
 import '../../../models/booking_model.dart';
 import '../../../services/early_finish_service.dart';
 import '../../../services/notification_service.dart';
+import 'shop_location_block.dart' show shopDirectionsUri; // shop location (maps)
 
 /// The newest 'barberFreeEarly' notice for [bookingId] that is younger than
 /// [kEarlyFinishBannerWindow] at [nowUtc], or null.
@@ -121,10 +122,13 @@ class EarlyFinishBanner extends StatelessWidget {
                     key: ValueKey('early-finish-directions-${booking.id}'),
                     icon: Icons.directions_rounded,
                     label: l.earlyFinishDirections,
-                    uri: Uri.https('www.google.com', '/maps/search/', {
-                      'api': '1',
-                      'query': '${shop!.name}, $place',
-                    }),
+                    // shop location (maps): straight to the pin when set.
+                    uri: shop!.hasLocation
+                        ? shopDirectionsUri(shop!)
+                        : Uri.https('www.google.com', '/maps/search/', {
+                            'api': '1',
+                            'query': '${shop!.name}, $place',
+                          }),
                   ),
               ],
             ),

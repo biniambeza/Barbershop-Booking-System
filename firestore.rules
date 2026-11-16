@@ -91,7 +91,9 @@ rules_version = '2';
 //                              adminSuspendedAt? (ISO), adminSuspendedBy?
 //                              (admin uid), subscriptionReceiptId? (the
 //                              subscriptionPayments doc that last extended
-//                              the subscription; set in the approval batch)
+//                              the subscription; set in the approval batch),
+//                              latitude? / longitude? (map pin: numbers,
+//                              both or neither; owner or admin, shopPinOk)
 //     /services/{serviceId}    shopId, name, description, price (ETB),
 //                              durationMinutes
 //     /barbers/{barberId}      shopId, name, title, avatarUrl, rating
@@ -119,6 +121,11 @@ rules_version = '2';
 //                              batch with its locks)
 //       /private/contact       phone (the barber's; owner, admins and that
 //                              barber only)
+//       /portfolio/{p01..p12}  public photos of the barber's work: caption?
+//                              (1..40), image (base64 JPEG <= 210000 chars,
+//                              free plan) XOR imagePath (Storage, Blaze),
+//                              createdAt (ISO). The owner or that barber
+//                              writes; see isValidPortfolioPhoto
 //     /queue/{entryId}         walk-in queue: name, phone?, serviceId?,
 //                              barberId?, status, createdAt,
 //                              servingStartedAt?, finishedAt?, addedBy, source
@@ -138,6 +145,15 @@ rules_version = '2';
 //                              Owner creates; owner deletes within 24 h of
 //                              createdAt; never updated. Read by the owner,
 //                              admins and the barber it pays.
+//     /blockedCustomers/{customerUid}
+//                              a customer the shop blocked (no new bookings
+//                              or remote queue joins there): customerId,
+//                              customerName, source ('owner'|'auto'),
+//                              blockedBy, blockedAt, reason?, noShowCount?
+//                              (isValidCustomerBlock). The customer may get
+//                              their own (pre-check before booking).
+//     /settings/customerBlocks autoBlockNoShows (0..10), updatedBy,
+//                              updatedAt (owner writes, staff read)
 //   Shop policy (owner-editable): cancellationCutoffHours (0..72, default 2),
 //   maxReschedules (0..5, default 2). Barber ratingSum/reviewCount change
 //   only with a new review (isReviewCounterUpdate); shop rating/reviewCount
@@ -175,6 +191,18 @@ rules_version = '2';
 //                              (approved), rejectReason? (rejected)
 //   shopDeletions/{shopId}     an admin's shop deletion in progress (see the
 //                              match)
+//   shopRemovalRequests/{uid}  a shop owner asks the admin to remove their
+//                              shop (so they can delete their account): uid,
+//                              email, name, shopId, shopName, note? (1..500),
+//                              status ('pending'|'done'|'dismissed'),
+//                              createdAt; the admin sets handledAt, handledBy
+//
+// Account deletion (Settings > Delete account, free plan): the person
+// cancels their upcoming bookings (normal cancels), anonymises their
+// bookings and reviews ('Former customer', see isBookingAnonymize and the
+// reviews match), a barber removes their own barber profile, then they
+// delete their inbox, device tokens, invite, application and finally
+// users/{uid} (not an owner whose shop still exists).
 //   insightsApplied/{id}       functions only (no client access)
 //   plans/{planId}             name, priceMonthlyEtb, maxBarbers, features,
 //                              active   (public read, admin write)
@@ -194,8 +222,9 @@ rules_version = '2';
 //                              verifiedAmount, decisionReason, decidedAt
 //   platformConfig/subscriptionPricing
 //                              currency, tiers [{days, amount}], receivers,
-//                              receiptUrls, updatedAt, updatedBy (admin
-//                              writes; owners and admins read)
+//                              receiptUrls, updatedAt, updatedBy,
+//                              storageReceipts? (admin writes; owners,
+//                              barbers and admins read)
 //   notificationLog/{id}       functions only (no client access)
 //   emailCodes/{purpose}_{sha256(email)}
 //                              functions/auth only (no client access):
@@ -632,8 +661,11 @@ service cloud.firestore {
           'adminSuspended', 'adminSuspendedReason', 'adminSuspendedAt',
           'adminSuspendedBy', 'subscriptionReceiptId',
           // Client-side subscription expiry (isSubscriptionLapse).
-          'subscriptionStatusChangedAt'
+          'subscriptionStatusChangedAt',
+          // Map pin (isShopPin).
+          'latitude', 'longitude'
         ]) &&
+        isShopPin(d) &&
         (!('subscriptionStatusChangedAt' in d) || isIsoInstant(d.subscriptionStatusChangedAt)) &&
         optInt(d, 'cancellationCutoffHours', 0, 72) &&
         optInt(d, 'maxReschedules', 0, 5) &&
@@ -686,6 +718,22 @@ service cloud.firestore {
         isValidUrl(d.imageUrl));
     }
 
+    // The shop's map pin: latitude and longitude both present (numbers, a
+    // double or an int, in range; NaN fails the comparisons) or both
+    // absent.
+    function isShopPin(d) {
+      return ('latitude' in d) == ('longitude' in d) &&
+        (!('latitude' in d) ||
+          (d.latitude is number && d.latitude >= -90 && d.latitude <= 90 &&
+            d.longitude is number && d.longitude >= -180 && d.longitude <= 180));
+    }
+
+    // Map pin (owner or admin), checked only when it is set, moved or
+    // removed.
+    function shopPinOk(d, ck) {
+      return !ck.hasAny(['latitude', 'longitude']) || isShopPin(d);
+    }
+
     // Opening hours (owner only) and booking policy (owner or admin).
     function shopHoursPolicyOk(d, ck) {
       return !ck.hasAny(['openingHour', 'closingHour', 'workingDays', 'cancellationCutoffHours',
@@ -726,9 +774,10 @@ service cloud.firestore {
           'imageUrl', 'isVerified', 'subscriptionPlan', 'subscriptionStatus', 'subscriptionEndsAt',
           'createdAt', 'cancellationCutoffHours', 'maxReschedules', 'requireBarberAcceptance',
           'adminSuspended', 'adminSuspendedReason', 'adminSuspendedAt', 'adminSuspendedBy',
-          'subscriptionReceiptId', 'subscriptionStatusChangedAt'
+          'subscriptionReceiptId', 'subscriptionStatusChangedAt', 'latitude', 'longitude'
         ]) &&
         shopProfileOk(d, ck) &&
+        shopPinOk(d, ck) &&
         shopHoursPolicyOk(d, ck) &&
         shopPlatformOk(d, ck) &&
         adminSuspensionOk(ck) &&
@@ -743,10 +792,11 @@ service cloud.firestore {
       return ck.hasOnly([
           'ownerId', 'name', 'description', 'address', 'city', 'subCity', 'landmark', 'phone',
           'imageUrl', 'openingHour', 'closingHour', 'workingDays', 'cancellationCutoffHours',
-          'maxReschedules', 'requireBarberAcceptance'
+          'maxReschedules', 'requireBarberAcceptance', 'latitude', 'longitude'
         ]) &&
         (!ck.hasAny(['ownerId']) || (resource.data.ownerId == '' && d.ownerId == request.auth.uid)) &&
         shopProfileOk(d, ck) &&
+        shopPinOk(d, ck) &&
         shopHoursPolicyOk(d, ck);
     }
 
@@ -934,9 +984,10 @@ service cloud.firestore {
     // and a real service, at that service's price and duration.
     //
     // Document reads of a booking create, worst case: the caller's profile,
-    // five slot locks, shop, barber and service = 9 (limit 10 per document
-    // write, 20 per transaction; each of the at most 8 lock writes reads
-    // the booking once more: 17 even if nothing is shared).
+    // the shop's block of the caller (isBlockedAt), five slot locks, shop,
+    // barber and service = 10 (limit 10 per document write, 20 per
+    // transaction; each of the at most 8 lock writes reads the booking
+    // once more: 18 even if nothing is shared).
     //
     // Barber acceptance: the booking starts 'pending' exactly when the shop
     // has requireBarberAcceptance == true, else 'confirmed'.
@@ -957,6 +1008,13 @@ service cloud.firestore {
         get(barberPath(d.shopId, d.barberId)).data.get('isAvailable', true) == true &&
         svc.price == d.price &&
         svc.durationMinutes == d.durationMinutes;
+    }
+
+    // The shop blocked the caller (barbershops/{shopId}/blockedCustomers/
+    // {uid}): no new bookings or remote queue joins there. Their existing
+    // bookings are not affected (reschedules and cancels still work).
+    function isBlockedAt(shopId) {
+      return exists(/databases/$(database)/documents/barbershops/$(shopId)/blockedCustomers/$(request.auth.uid));
     }
 
     // A lock for a block inside a live booking of the caller's, at this
@@ -1861,6 +1919,86 @@ service cloud.firestore {
     }
 
     // -----------------------------------------------------------------
+    // Customer blocks (barbershops/{shopId}/blockedCustomers, settings)
+    // -----------------------------------------------------------------
+
+    // A block, written by the caller (blockedBy) with one set(): exactly
+    // customerId (== the doc id), customerName (0..100), source, blockedBy,
+    // blockedAt (ISO), reason? (1..200), noShowCount? (0..1000). A missing
+    // required key fails on the read.
+    function isValidCustomerBlock(customerUid, d) {
+      return d.keys().hasOnly(['customerId', 'customerName', 'source', 'blockedBy', 'blockedAt', 'reason', 'noShowCount']) &&
+        d.customerId == customerUid &&
+        d.customerName.matches('(?s)^.{0,100}$') &&
+        d.source in ['owner', 'auto'] &&
+        d.blockedBy == request.auth.uid &&
+        isIsoInstant(d.blockedAt) &&
+        (!('reason' in d) || isString(d.reason, 1, 200)) &&
+        optInt(d, 'noShowCount', 0, 1000);
+    }
+
+    // settings/customerBlocks: exactly {autoBlockNoShows (0..10; 0 = off),
+    // updatedBy (own uid), updatedAt (ISO)}.
+    function isValidBlockSettings(d) {
+      return d.keys().hasOnly(['autoBlockNoShows', 'updatedBy', 'updatedAt']) &&
+        d.autoBlockNoShows is int && d.autoBlockNoShows >= 0 && d.autoBlockNoShows <= 10 &&
+        d.updatedBy == request.auth.uid &&
+        isIsoInstant(d.updatedAt);
+    }
+
+    // -----------------------------------------------------------------
+    // Barber portfolio (barbershops/{shopId}/barbers/{barberId}/portfolio)
+    // -----------------------------------------------------------------
+
+    // The shop's owner or that barber.
+    function portfolioEditor(shopId, barberId) {
+      return isOwnerOf(shopId) || isBarberProfile(shopId, barberId);
+    }
+
+    // A new photo: exactly caption? (1..40), image (base64, <= 210000
+    // chars; free plan) XOR imagePath (the Storage object of this very
+    // slot; Blaze), createdAt (ISO string).
+    function isValidPortfolioPhoto(shopId, barberId, photoId, d) {
+      return d.keys().hasOnly(['caption', 'image', 'imagePath', 'createdAt']) &&
+        d.createdAt is string && d.createdAt.size() <= 40 &&
+        (!('caption' in d) || isString(d.caption, 1, 40)) &&
+        ('image' in d) != ('imagePath' in d) &&
+        (!('image' in d) || isString(d.image, 1, 210000)) &&
+        (!('imagePath' in d) || d.imagePath == 'portfolio/' + shopId + '/' + barberId + '/' + photoId + '.jpg');
+    }
+
+    // -----------------------------------------------------------------
+    // Account deletion and shop removal requests
+    // -----------------------------------------------------------------
+
+    // The customer anonymises their own booking: exactly {customerName:
+    // 'Former customer', customerPhone: ''}. Not while a refund is due
+    // (the shop needs the phone to pay it back).
+    function isBookingAnonymize() {
+      let d = request.resource.data;
+      return changedKeys().hasOnly(['customerName', 'customerPhone']) &&
+        d.customerName == 'Former customer' &&
+        d.customerPhone == '' &&
+        resource.data.get('refundStatus', '') != 'due';
+    }
+
+    // A new removal request of the caller's own shop: exactly uid (== doc
+    // id), email (the profile's), name (1..100), shopId (the owner's
+    // shop), shopName (0..120), note? (1..500), status 'pending',
+    // createdAt (ISO).
+    function isValidRemovalRequest(uid, d) {
+      return d.keys().hasOnly(['uid', 'email', 'name', 'shopId', 'shopName', 'note', 'status', 'createdAt']) &&
+        d.uid == uid &&
+        d.email == me().email &&
+        isString(d.name, 1, 100) &&
+        d.shopId == me().get('shopId', '') &&
+        d.shopName.matches('(?s)^.{0,120}$') &&
+        (!('note' in d) || isString(d.note, 1, 500)) &&
+        d.status == 'pending' &&
+        isIsoInstant(d.createdAt);
+    }
+
+    // -----------------------------------------------------------------
     // Shop applications (shopApplications/{uid})
     // -----------------------------------------------------------------
 
@@ -1986,6 +2124,20 @@ service cloud.firestore {
 
       allow delete: if isAdmin();
 
+      // Account deletion: the person deletes their own profile, last (after
+      // their bookings, reviews, inbox and tokens). A shop owner only once
+      // their shop is gone (they ask the admin: shopRemovalRequests). The
+      // app also keeps the last enabled admin from deleting themselves
+      // (rules cannot count admins).
+      // An owner profile without a shopId (or an empty one) has no shop to
+      // check: get() with a default, no extra document read.
+      allow delete: if signedIn() &&
+        request.auth.uid == userId &&
+        (resource.data.role != 'barbershopOwner' ||
+          !(resource.data.get('shopId', '') is string) ||
+          resource.data.get('shopId', '') == '' ||
+          !exists(shopPath(resource.data.shopId)));
+
       // FCM registration tokens of this user's devices.
       match /devices/{deviceId} {
         allow read, delete: if signedIn() && request.auth.uid == userId;
@@ -2009,6 +2161,8 @@ service cloud.firestore {
           request.auth.uid == userId &&
           changedKeys().hasOnly(['read']) &&
           request.resource.data.read == true;
+        // Account deletion empties the inbox.
+        allow delete: if signedIn() && request.auth.uid == userId;
       }
     }
 
@@ -2152,6 +2306,26 @@ service cloud.firestore {
         );
 
         allow delete: if canManageShop(shopId);
+        // Account deletion: the barber leaves the shop (one batch with
+        // private/contact).
+        allow delete: if isBarberProfile(shopId, barberId);
+
+        // Portfolio: up to 12 public photos (doc ids p01..p12) of the
+        // barber's work, written by the owner or that barber (one
+        // transaction per photo); only the caption may change. Public
+        // read (get, list, count()). The owner's and the admin's deletes
+        // do not need the barber to exist (leftover clean-up).
+        match /portfolio/{photoId} {
+          allow read: if true;
+          allow create: if photoId.matches('^p(0[1-9]|1[0-2])$') &&
+            portfolioEditor(shopId, barberId) &&
+            exists(barberPath(shopId, barberId)) &&
+            isValidPortfolioPhoto(shopId, barberId, photoId, request.resource.data);
+          allow update: if changedKeys().hasOnly(['caption']) &&
+            (!('caption' in request.resource.data) || isString(request.resource.data.caption, 1, 40)) &&
+            portfolioEditor(shopId, barberId);
+          allow delete: if portfolioEditor(shopId, barberId) || isAdmin();
+        }
 
         // The barber's phone, {phone} at private/contact: only the shop's
         // owner, admins and that barber read or write it (customers get
@@ -2234,6 +2408,7 @@ service cloud.firestore {
             (request.resource.data.source == 'remote' &&
               isRole('customer') &&
               me().get('disabled', false) != true &&
+              !isBlockedAt(shopId) &&
               (!('phone' in request.resource.data) || request.resource.data.phone == me().phone) &&
               shopDataOf(shopId).get('subscriptionStatus', 'trialing') != 'suspended' &&
               shopDataOf(shopId).get('adminSuspended', false) != true &&
@@ -2287,6 +2462,15 @@ service cloud.firestore {
           changedKeys().hasOnly(['rating', 'comment', 'editedAt']) &&
           isReviewEdit(shopId, reviewId);
 
+        // Account deletion: the customer anonymises their review (the
+        // stars and the owner's reply stay): {customerName: 'Former
+        // customer'} and the comment removed.
+        allow update: if signedIn() &&
+          resource.data.customerId == request.auth.uid &&
+          changedKeys().hasOnly(['customerName', 'comment']) &&
+          request.resource.data.customerName == 'Former customer' &&
+          !('comment' in request.resource.data);
+
         // Its customer (the barber's counters drop in the same write), or
         // an admin deleting the shop.
         allow delete: if signedIn() &&
@@ -2321,6 +2505,35 @@ service cloud.firestore {
           request.time < isoToTs(resource.data.createdAt) + duration.value(24, 'h');
         allow delete: if isShopDeletionCleanup(shopId);
       }
+
+      // Blocked customers (one doc per customer uid, one set() / delete()
+      // each). The customer gets their own block (the app's pre-check
+      // before booking or joining the queue); booking creates and remote
+      // queue joins check it (isBlockedAt). Staff get one (a barber's
+      // no-show mark checks it); only the owner lists. The owner blocks
+      // and unblocks; a barber of the shop only creates an auto-block
+      // (source 'auto') when a no-show reaches the shop's limit.
+      match /blockedCustomers/{customerUid} {
+        allow get: if signedIn() &&
+          (request.auth.uid == customerUid || isStaffOf(shopId) || isShopDeletionCleanup(shopId));
+        allow list: if isOwnerOf(shopId) || isShopDeletionCleanup(shopId);
+        allow create: if isValidCustomerBlock(customerUid, request.resource.data) &&
+          (isOwnerOf(shopId) ||
+            (request.resource.data.source == 'auto' && isRole('barber') && isQueueStaffOf(shopId)));
+        allow update: if isOwnerOf(shopId) && isValidCustomerBlock(customerUid, request.resource.data);
+        allow delete: if isOwnerOf(shopId) || isShopDeletionCleanup(shopId);
+      }
+
+      // Shop settings: only customerBlocks (the auto-block limit). Staff
+      // read it; the owner writes it.
+      match /settings/{docId} {
+        allow get: if isStaffOf(shopId) || isShopDeletionCleanup(shopId);
+        allow list: if isShopDeletionCleanup(shopId);
+        allow create, update: if docId == 'customerBlocks' &&
+          isOwnerOf(shopId) &&
+          isValidBlockSettings(request.resource.data);
+        allow delete: if isShopDeletionCleanup(shopId);
+      }
     }
 
     // -----------------------------------------------------------------
@@ -2353,8 +2566,39 @@ service cloud.firestore {
           (isApplicationReject() || isApplicationApprove()))
       );
 
-      // Withdraw while pending.
-      allow delete: if signedIn() && request.auth.uid == uid && resource.data.status == 'pending';
+      // Withdraw while pending, or (account deletion) remove a rejected
+      // one. An approved application stays (the admin's record).
+      allow delete: if signedIn() && request.auth.uid == uid && resource.data.status in ['pending', 'rejected'];
+    }
+
+    // -----------------------------------------------------------------
+    // shopRemovalRequests/{uid} - a shop owner asks the admin to remove
+    // their shop so that they can delete their account. The owner creates
+    // it ('pending') and may delete it (withdraw, or replace a dismissed
+    // one); the admin lists them (orderBy createdAt desc, limit 100),
+    // removes the shop with the normal shop deletion and marks the request
+    // 'done' or 'dismissed'. Its uid may read it even after the shop is
+    // gone (they are a customer by then).
+    // -----------------------------------------------------------------
+    match /shopRemovalRequests/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow list: if isAdmin();
+
+      allow create: if signedIn() &&
+        request.auth.uid == uid &&
+        isRole('barbershopOwner') &&
+        isValidRemovalRequest(uid, request.resource.data);
+
+      // Admin: pending -> done | dismissed, exactly {status, handledAt
+      // (ISO), handledBy (own uid)}.
+      allow update: if isAdmin() &&
+        resource.data.status == 'pending' &&
+        changedKeys().hasOnly(['status', 'handledAt', 'handledBy']) &&
+        request.resource.data.status in ['done', 'dismissed'] &&
+        request.resource.data.get('handledBy', null) == request.auth.uid &&
+        isIsoInstant(request.resource.data.get('handledAt', null));
+
+      allow delete: if signedIn() && request.auth.uid == uid;
     }
 
     // -----------------------------------------------------------------
@@ -2389,6 +2633,7 @@ service cloud.firestore {
         request.resource.data.customerId == request.auth.uid &&
         me().get('disabled', false) != true &&
         isValidNewBooking(request.resource.data, bookingId) &&
+        !isBlockedAt(request.resource.data.shopId) &&
         isBookable(request.resource.data);
 
       // Only the status (plus who cancelled) changes after booking.
@@ -2453,6 +2698,13 @@ service cloud.firestore {
         isCompleteBooking() ||
         isStatusUpdate()
       );
+
+      // Account deletion: the customer anonymises their own booking
+      // (isBookingAnonymize). Last, so the other updates never pay for it.
+      allow update: if request.resource.data.customerName == 'Former customer' &&
+        signedIn() &&
+        resource.data.customerId == request.auth.uid &&
+        isBookingAnonymize();
 
       // Bookings are kept for history.
       allow delete: if isAdmin();
@@ -2529,7 +2781,10 @@ service cloud.firestore {
     // owners pay. Other platformConfig docs are closed.
     // -----------------------------------------------------------------
     match /platformConfig/{docId} {
-      allow read: if docId == 'subscriptionPricing' && (isRole('barbershopOwner') || isAdmin());
+      // Barbers read it for the storageReceipts switch (portfolio photos
+      // go to Storage while it is on).
+      allow read: if docId == 'subscriptionPricing' && hasProfile() &&
+        me().role in ['barbershopOwner', 'barber', 'admin'];
       allow create, update: if docId == 'subscriptionPricing' && isAdmin() && isValidPricing(request.resource.data);
       allow delete: if false;
     }

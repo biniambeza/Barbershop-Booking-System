@@ -8,6 +8,8 @@ import '../../../services/app_repository.dart';
 import '../../auth/screens/change_password_screen.dart';
 import 'language_toggle.dart';
 import 'persona_switcher.dart';
+import '../../account/delete_account_screen.dart'; // account deletion
+import '../../legal/privacy_policy_screen.dart'; // privacy policy
 
 /// An extra entry in [AppBarMenu] (e.g. the admin's subscriptions screen).
 class AppBarMenuEntry {
@@ -86,6 +88,14 @@ class AppBarMenu extends StatelessWidget {
           hasPassword ? l.changePasswordMenu : l.setPasswordMenu, () => openPasswordSettings(context),
           key: const ValueKey('app-bar-menu-password'));
     }
+    // --- privacy & account deletion ---
+    add('privacy', Icons.privacy_tip_outlined, l.privacyPolicyTitle, () => openPrivacyPolicy(context),
+        key: const ValueKey('app-bar-menu-privacy'));
+    if (repo.currentUser != null) {
+      add('delete-account', Icons.person_remove_outlined, l.deleteAccountMenu, () => openDeleteAccount(context),
+          key: const ValueKey('app-bar-menu-delete-account'), color: AppTheme.danger);
+    }
+    // --- end privacy & account deletion ---
     items.add(const PopupMenuDivider());
     add('signout', Icons.logout_rounded, l.signOut, () => AppRepository.instance.signOut(),
         key: const ValueKey('app-bar-menu-signout'), color: AppTheme.danger);

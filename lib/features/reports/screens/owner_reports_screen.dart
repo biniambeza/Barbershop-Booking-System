@@ -6,12 +6,16 @@ import '../../../l10n/l10n.dart';
 import '../../../services/app_repository.dart';
 import '../../../services/reports_service.dart';
 import '../../payouts/earnings_cards.dart'; // totals for any period
+import '../widgets/busy_hours_tab.dart'; // owner analytics
+import '../widgets/customer_noshow_tab.dart'; // owner analytics
 import '../../shared/widgets/ui_kit.dart';
 
 /// Owner reports for one shop: an Overview tab (month picker, totals,
 /// 6-month revenue trend, top services, barber performance) and a Clients
 /// tab (frequent clients with no-show badges) and a Totals tab (revenue and
-/// barbers' share for any period, from Firestore aggregates).
+/// barbers' share for any period, from Firestore aggregates). Owner analytics
+/// adds a Busy hours tab (weekday x hour heatmap) and a No-shows tab
+/// (customers by no-show rate, block / unblock, auto-block).
 class OwnerReportsScreen extends StatefulWidget {
   const OwnerReportsScreen({super.key, required this.shopId, this.service, this.now});
 
@@ -53,7 +57,7 @@ class _OwnerReportsScreenState extends State<OwnerReportsScreen> {
   Widget build(BuildContext context) {
     final l = context.l10n;
     return DefaultTabController(
-      length: 3,
+      length: 5, // owner analytics: + Busy hours, No-shows
       child: Scaffold(
         appBar: AppBar(
           title: Text(l.reportsTitle),
@@ -62,6 +66,8 @@ class _OwnerReportsScreenState extends State<OwnerReportsScreen> {
               IconButton(icon: const Icon(Icons.refresh), tooltip: l.reportsRetry, onPressed: _reload),
           ],
           bottom: TabBar(
+            isScrollable: true, // owner analytics: five tabs
+            tabAlignment: TabAlignment.start,
             indicatorColor: AppTheme.ink,
             indicatorWeight: 2.5,
             indicatorSize: TabBarIndicatorSize.label,
@@ -69,7 +75,9 @@ class _OwnerReportsScreenState extends State<OwnerReportsScreen> {
             unselectedLabelColor: AppTheme.textSecondary,
             tabs: [
               Tab(key: const ValueKey('reports-tab-overview'), text: l.reportsOverviewTab),
+              Tab(key: const ValueKey('reports-tab-busy-hours'), text: l.reportsBusyHoursTab),
               Tab(key: const ValueKey('reports-tab-clients'), text: l.reportsClientsTab),
+              Tab(key: const ValueKey('reports-tab-noshows'), text: l.reportsNoShowsTab),
               Tab(key: const ValueKey('reports-tab-totals'), text: l.earningsTab),
             ],
           ),
@@ -126,7 +134,10 @@ class _OwnerReportsScreenState extends State<OwnerReportsScreen> {
           showUpdatedNote: _service.usesFirestore && !report.fromBookings,
           onMonthChanged: (m) => setState(() => _selectedMonth = m),
         ),
+        BusyHoursTab(shopId: widget.shopId, now: widget.now), // owner analytics
         _ClientsTab(clients: report.clients),
+        // owner analytics: the function's all-time client docs when the report has them
+        CustomerNoShowTab(shopId: widget.shopId, clientDocs: report.fromBookings || !_service.usesFirestore ? const [] : report.clients),
         ShopEarningsView(shopId: widget.shopId),
       ],
     );

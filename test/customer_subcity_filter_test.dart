@@ -42,6 +42,13 @@ void main() {
 
   final dropdown = find.byKey(const ValueKey('subcity-filter'));
 
+  /// Shop cards named [name] in the shop list (the "Your barbers" row above
+  /// it names the shops of the customer's barbers too, whatever the filter).
+  Finder listed(String name) => find.byWidgetPredicate((w) =>
+      w is Text &&
+      w.data == name &&
+      find.descendant(of: find.byKey(const ValueKey('your-barbers')), matching: find.byWidget(w)).evaluate().isEmpty);
+
   Future<void> openMenu(WidgetTester tester) async {
     await tester.ensureVisible(dropdown);
     await tester.pumpAndSettle();
@@ -80,8 +87,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(_en.featuredBarbershops(1)), findsOneWidget);
-    expect(find.text('Crown Cuts Bole'), findsOneWidget);
-    expect(find.text('Kazanchis Classic Barbers'), findsNothing);
+    expect(listed('Crown Cuts Bole'), findsOneWidget);
+    expect(listed('Kazanchis Classic Barbers'), findsNothing);
     expect(find.text('Bole'), findsWidgets); // shown in the closed dropdown
 
     await choose(tester, 'All');
@@ -96,7 +103,7 @@ void main() {
 
     await choose(tester, 'Kirkos');
     expect(find.text(_en.featuredBarbershops(1)), findsOneWidget);
-    expect(find.text('Kazanchis Classic Barbers'), findsOneWidget);
+    expect(listed('Kazanchis Classic Barbers'), findsOneWidget);
 
     // A shop from another sub-city: no match while Kirkos is chosen.
     await tester.enterText(find.byType(TextField).first, 'Crown Cuts');
@@ -105,7 +112,7 @@ void main() {
 
     await choose(tester, 'All');
     expect(find.text(_en.featuredBarbershops(1)), findsOneWidget);
-    expect(find.text('Crown Cuts Bole'), findsOneWidget);
+    expect(listed('Crown Cuts Bole'), findsOneWidget);
   });
 
   testWidgets('sub-city names are in Amharic', (tester) async {

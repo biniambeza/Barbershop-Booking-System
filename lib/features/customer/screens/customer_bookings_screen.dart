@@ -14,6 +14,7 @@ import '../../payments/widgets/payment_status_badge.dart';
 import '../../reviews/widgets/booking_review_action.dart';
 import 'booking_flow_screen.dart';
 import '../widgets/early_finish_banner.dart'; // early finish
+import '../widgets/rebook_widgets.dart'; // favourite barbers & rebook
 
 /// My Appointments: every booking of the signed-in customer, with pay,
 /// reschedule and cancel actions. The shop's policy (cancellation cutoff
@@ -178,8 +179,18 @@ class CustomerBookingsScreen extends StatelessWidget {
             children: [
               const Icon(Icons.person_outline, size: 16, color: AppTheme.textSecondary),
               const SizedBox(width: 6),
-              Text(l.barberLabel(booking.barberName),
-                  style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+              Flexible(
+                child: Text(l.barberLabel(booking.barberName),
+                    style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+              ),
+              // favourite barbers & rebook: favourite the barber of a past visit.
+              if (booking.status == BookingStatus.completed)
+                FavoriteBarberButton.ids(
+                  barberId: booking.barberId,
+                  shopId: booking.shopId,
+                  barberName: booking.barberName,
+                  size: 18,
+                ),
             ],
           ),
           // --- private barber phone: only on a confirmed booking ---
@@ -243,6 +254,8 @@ class CustomerBookingsScreen extends StatelessWidget {
                       ),
                     if (booking.status == BookingStatus.completed)
                       BookingReviewAction(key: ValueKey('review-action-${booking.id}'), booking: booking),
+                    // favourite barbers & rebook
+                    if (booking.status == BookingStatus.completed) BookAgainButton(booking: booking, clock: clock),
                     if (upcoming) _RescheduleButton(booking: booking, now: _now),
                     if (booking.status != BookingStatus.cancelled &&
                         booking.status != BookingStatus.completed &&

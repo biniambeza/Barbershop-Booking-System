@@ -222,6 +222,7 @@ const BARBER = 'match /barbers/{barberId} {';
 const TIMEOFF = 'match /timeOff/{timeOffId} {';
 const USERS = 'match /users/{userId} {';
 const INVITES = 'match /invites/{email} {';
+const PORTFOLIO = 'match /portfolio/{photoId} {';
 
 const scenarios = {
   'booking create, 120 min (booking + 8 locks)': async () => {
@@ -297,6 +298,22 @@ const scenarios = {
   },
   'shop owner profile update': async () => {
     await updateDoc(doc(as('owner1'), 'barbershops', 'shop1'), { description: 'Owner text', cancellationCutoffHours: 4 });
+  },
+  'shop owner profile update with a map pin': async () => {
+    await updateDoc(doc(as('owner1'), 'barbershops', 'shop1'), {
+      description: 'Owner text', cancellationCutoffHours: 4, latitude: 9.0105, longitude: 38.7613,
+    });
+  },
+  'shop admin update with a map pin': async () => {
+    await updateDoc(doc(as('admin'), 'barbershops', 'shop1'), {
+      name: 'Renamed', description: 'New text', isVerified: true, latitude: 9.0105, longitude: 38.7613,
+    });
+  },
+  'portfolio photo create (barber, inline image)': async () => {
+    const db = as('barber1');
+    await setDoc(doc(db, 'barbershops/shop1/barbers/b1/portfolio', 'p01'), {
+      caption: 'Skin fade', image: 'a'.repeat(200000), createdAt: new Date().toISOString(),
+    });
   },
   'review edit with new stars (review + barber counters)': async () => {
     const db = as('customer');
@@ -398,6 +415,7 @@ const targets = {
   'shop admin update': [[SHOP, 'update']],
   'shop suspend': [[SHOP, 'update']],
   'shop owner profile': [[SHOP, 'update']],
+  'portfolio photo create': [[PORTFOLIO, 'create']],
   'review edit': [[REVIEW, 'update'], [BARBER, 'update']],
   'review create': [[REVIEW, 'create'], [BARBER, 'update'], [NOTICE, 'create']],
   'whole-day time off': [[TIMEOFF, 'create'], [LOCKS, 'create']],
@@ -412,6 +430,38 @@ const targets = {
 
 const only = process.argv.slice(2);
 let failed = false;
+
+// COVERAGE=1: instead of the padding search, run each scenario once with
+// the plain rules and report how many rule nodes the emulator's coverage
+// report (/emulator/v1/projects/<id>:ruleCoverage) counted for it (the sum
+// of every node's evaluation count, before minus after; about 3x the
+// engine's own expression counter, summed over all documents written).
+async function coverageTotal() {
+  const res = await fetch(`http://${host}/emulator/v1/projects/${PROJECT}:ruleCoverage`);
+  const json = await res.json();
+  let total = 0;
+  const walk = (n) => {
+    for (const v of n.values ?? []) total += v.count ?? 0;
+    for (const c of n.children ?? []) walk(c);
+  };
+  for (const n of Object.values(json.report ?? {})) walk(n);
+  return total;
+}
+
+if (process.env.COVERAGE) {
+  await loadRules(RULES);
+  for (const [name, run] of Object.entries(scenarios)) {
+    if (only.length && !only.some((o) => name.includes(o))) continue;
+    await seed();
+    const before = await coverageTotal();
+    const ok = await succeeds(run);
+    const nodes = (await coverageTotal()) - before;
+    if (!ok) failed = true;
+    console.log(`${name}: ${ok ? 'allowed' : 'DENIED'}, ${nodes} coverage node evaluations`);
+  }
+  await env.cleanup();
+  process.exit(failed ? 1 : 0);
+}
 
 // Calibration: N0 pad terms fill the whole budget of an (almost) empty match.
 const calibrate = () => setDoc(doc(as('admin'), 'budgetCalibration', 'x'), { a: 1 });

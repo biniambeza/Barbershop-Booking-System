@@ -12,6 +12,7 @@ import '../data/seed_dataset.dart' show kSeedAssetPath;
 import '../models/queue_entry.dart';
 import '../models/user_model.dart';
 import 'app_repository.dart';
+import 'customer_blocks.dart' show CustomerBlockService; // customer blocks
 import 'queue_summary_writer.dart';
 import 'queue_wait.dart';
 
@@ -531,6 +532,8 @@ class QueueService {
     final user = _repo.currentUser;
     if (user == null) throw AppStateException(AppErrorCode.signInRequired);
     if (user.role != UserRole.customer) throw QueueException(QueueErrorCode.customersOnly);
+    // customer blocks: a customer the owner blocked cannot join remotely
+    await CustomerBlockService.instance.assertCurrentUserCanBook(shopId);
     final existing = await store.fetchLatestOwn(shopId, user.uid);
     if (existing != null && existing.isActive) return existing;
     var name = user.name.trim();

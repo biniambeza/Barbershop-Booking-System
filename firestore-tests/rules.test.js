@@ -1378,11 +1378,12 @@ describe('users/{uid}/notifications (inbox)', () => {
     await assertSucceeds(batch.commit());
   });
 
-  test('clients cannot create or delete notifications', async () => {
+  test('clients cannot create notifications; only the owner deletes them (account deletion)', async () => {
     const db = as('customer', EMAILS.customer);
     await assertFails(setDoc(doc(inbox(db), 'fake'), note));
-    await assertFails(deleteDoc(doc(inbox(db), 'bk1_confirmed')));
     await assertFails(setDoc(doc(inbox(as('admin', EMAILS.admin)), 'fake'), note));
+    await assertFails(deleteDoc(doc(inbox(as('admin', EMAILS.admin)), 'bk1_confirmed')));
+    await assertSucceeds(deleteDoc(doc(inbox(db), 'bk1_confirmed')));
   });
 
   test('notificationLog is closed to clients', async () => {
@@ -3320,13 +3321,14 @@ describe('shop applications', () => {
     await assertFails(setDoc(appRef(cust()), application()));
   });
 
-  test('the applicant withdraws while pending only', async () => {
+  test('the applicant withdraws while pending, or removes a rejected one (account deletion)', async () => {
     await seedApp('customer2');
     await assertFails(deleteDoc(appRef(cust(), 'customer2')));
     await assertFails(deleteDoc(appRef(admin(), 'customer2')));
     await assertSucceeds(deleteDoc(appRef(as('customer2', EMAILS.customer2), 'customer2')));
     await seedApp('customer', rejected);
-    await assertFails(deleteDoc(appRef(cust())));
+    await assertFails(deleteDoc(appRef(as('customer2', EMAILS.customer2), 'customer')));
+    await assertSucceeds(deleteDoc(appRef(cust())));
   });
 
   test('the admin rejects a pending application with exactly the review fields', async () => {
@@ -5033,5 +5035,544 @@ describe('earnings: aggregate queries', () => {
     const cust = as('customer', EMAILS.customer);
     await assertFails(agg(query(collection(cust, 'bookings'), where('shopId', '==', 'shop1'), where('status', '==', 'completed'))));
     await assertSucceeds(agg(query(collection(cust, 'bookings'), where('customerId', '==', 'customer'), where('status', '==', 'completed'))));
+  });
+});
+
+// ---------------------------------------------------------------------
+// Shop map pin (latitude / longitude on barbershops/{shopId}).
+// ---------------------------------------------------------------------
+describe('shop map pin', () => {
+  const shopRef = (db, id = 'shop1') => doc(db, 'barbershops', id);
+  const owner1 = () => as('owner1', EMAILS.owner1);
+  const admin = () => as('admin', EMAILS.admin);
+  const PIN = { latitude: 9.0105, longitude: 38.7613 };
+
+  test('the owner sets, moves and removes the pin of their own shop', async () => {
+    await assertSucceeds(updateDoc(shopRef(owner1()), PIN));
+    await assertSucceeds(updateDoc(shopRef(owner1()), { latitude: 9.02, longitude: 38.75 }));
+    // Moving only one coordinate is fine while both stay present.
+    await assertSucceeds(updateDoc(shopRef(owner1()), { latitude: 9.03 }));
+    // Whole numbers (seed / admin data) are numbers too.
+    await assertSucceeds(updateDoc(shopRef(owner1()), { latitude: 9, longitude: 38 }));
+    // With other profile fields in the same update (toProfileMap).
+    await assertSucceeds(updateDoc(shopRef(owner1()), { description: 'Near the stadium', latitude: 9.01, longitude: 38.76 }));
+    await assertSucceeds(updateDoc(shopRef(owner1()), { latitude: deleteField(), longitude: deleteField() }));
+    // The ends of the ranges are allowed.
+    await assertSucceeds(updateDoc(shopRef(owner1()), { latitude: -90, longitude: 180 }));
+    await assertSucceeds(updateDoc(shopRef(owner1()), { latitude: 90, longitude: -180 }));
+  });
+
+  test('the admin sets a pin on any shop', async () => {
+    await assertSucceeds(updateDoc(shopRef(admin(), 'shop2'), PIN));
+    await assertSucceeds(updateDoc(shopRef(admin(), 'shop2'), { name: 'Renamed', latitude: 8.99, longitude: 38.8 }));
+    await assertSucceeds(updateDoc(shopRef(admin(), 'shop2'), { latitude: deleteField(), longitude: deleteField() }));
+  });
+
+  test('other owners, barbers, customers and signed-out users cannot set it', async () => {
+    await assertFails(updateDoc(shopRef(as('owner2', EMAILS.owner2)), PIN));
+    await assertFails(updateDoc(shopRef(as('barber1', EMAILS.barber1)), PIN));
+    await assertFails(updateDoc(shopRef(as('customer', EMAILS.customer)), PIN));
+    await assertFails(updateDoc(shopRef(anon()), PIN));
+  });
+
+  test('half a pin, out-of-range or non-number values and other keys are refused', async () => {
+    const db = owner1();
+    await assertFails(updateDoc(shopRef(db), { latitude: 9.01 }));
+    await assertFails(updateDoc(shopRef(db), { longitude: 38.76 }));
+    await assertFails(updateDoc(shopRef(db), { latitude: 91, longitude: 38.76 }));
+    await assertFails(updateDoc(shopRef(db), { latitude: -90.0001, longitude: 38.76 }));
+    await assertFails(updateDoc(shopRef(db), { latitude: 9.01, longitude: -181 }));
+    await assertFails(updateDoc(shopRef(db), { latitude: 9.01, longitude: 180.5 }));
+    await assertFails(updateDoc(shopRef(db), { latitude: '9.01', longitude: 38.76 }));
+    await assertFails(updateDoc(shopRef(db), { latitude: 9.01, longitude: '38.76' }));
+    await assertFails(updateDoc(shopRef(db), { latitude: true, longitude: 38.76 }));
+    await assertFails(updateDoc(shopRef(db), { latitude: NaN, longitude: 38.76 }));
+    await assertFails(updateDoc(shopRef(db), { location: PIN }));
+    await assertFails(updateDoc(shopRef(db), { geo: '9.01,38.76' }));
+    // Deleting only one of the two.
+    await assertSucceeds(updateDoc(shopRef(db), PIN));
+    await assertFails(updateDoc(shopRef(db), { latitude: deleteField() }));
+    await assertFails(updateDoc(shopRef(db), { longitude: deleteField() }));
+    await assertFails(updateDoc(shopRef(db), { latitude: 95 }));
+    // The admin is held to the same checks.
+    await assertFails(updateDoc(shopRef(admin(), 'shop2'), { latitude: 9.01 }));
+    await assertFails(updateDoc(shopRef(admin(), 'shop2'), { latitude: 9.01, longitude: 200 }));
+  });
+
+  test('admin create with and without a pin', async () => {
+    const db = admin();
+    await assertSucceeds(setDoc(shopRef(db, 'pinned'), newShop('', PIN)));
+    await assertSucceeds(setDoc(shopRef(db, 'pinnedInt'), newShop('', { latitude: 9, longitude: 38 })));
+    await assertSucceeds(setDoc(shopRef(db, 'unpinned'), newShop('')));
+    await assertFails(setDoc(shopRef(db, 'half'), newShop('', { latitude: 9.01 })));
+    await assertFails(setDoc(shopRef(db, 'far'), newShop('', { latitude: 9.01, longitude: 181 })));
+    await assertFails(setDoc(shopRef(db, 'text'), newShop('', { latitude: '9', longitude: '38' })));
+    await assertFails(setDoc(shopRef(db, 'geo'), newShop('', { location: PIN })));
+    await assertFails(setDoc(shopRef(as('owner1', EMAILS.owner1), 'mine'), newShop('owner1', PIN)));
+  });
+});
+
+// ---------------------------------------------------------------------
+// Barber portfolio (barbershops/{s}/barbers/{b}/portfolio/{p01..p12}).
+// ---------------------------------------------------------------------
+describe('barber portfolio', () => {
+  const col = (db, shopId = 'shop1', barberId = 'b1') => collection(db, `barbershops/${shopId}/barbers/${barberId}/portfolio`);
+  const ref = (db, id = 'p01', barberId = 'b1', shopId = 'shop1') => doc(col(db, shopId, barberId), id);
+  const photo = (extra = {}) => ({ caption: 'Skin fade', image: 'aGVsbG8=', createdAt: new Date().toISOString(), ...extra });
+  const owner1 = () => as('owner1', EMAILS.owner1);
+  const barber1 = () => as('barber1', EMAILS.barber1);
+
+  // PortfolioStore.create: a transaction that reads the slot, then sets it.
+  const createTx = (db, id, data, barberId = 'b1') =>
+    runTransaction(db, async (tx) => {
+      const r = ref(db, id, barberId);
+      if ((await tx.get(r)).exists()) throw new Error('slot taken');
+      tx.set(r, data);
+    });
+
+  test('everyone, signed out too, reads and counts a portfolio', async () => {
+    await seed('barbershops/shop1/barbers/b1/portfolio', 'p01', photo());
+    for (const db of [anon(), as('customer', EMAILS.customer), owner1()]) {
+      assert.equal((await assertSucceeds(getDocs(col(db)))).size, 1);
+      assert.equal((await assertSucceeds(getCountFromServer(col(db)))).data().count, 1);
+      await assertSucceeds(getDoc(ref(db)));
+    }
+  });
+
+  test('the owner and that barber add photos; nobody else', async () => {
+    await assertSucceeds(createTx(owner1(), 'p01', photo()));
+    await assertSucceeds(createTx(barber1(), 'p02', photo({ caption: 'Taper' })));
+    await assertSucceeds(createTx(barber1(), 'p12', { image: 'aGk=', createdAt: new Date().toISOString() }));
+    await assertFails(createTx(as('barber2', EMAILS.barber2), 'p03', photo()));
+    await assertFails(createTx(as('owner2', EMAILS.owner2), 'p03', photo()));
+    await assertFails(createTx(as('customer', EMAILS.customer), 'p03', photo()));
+    await assertFails(createTx(as('admin', EMAILS.admin), 'p03', photo()));
+    await assertFails(setDoc(ref(anon(), 'p03'), photo()));
+    // A taken slot cannot be overwritten (that would be an update).
+    await assertFails(setDoc(ref(owner1(), 'p01'), photo({ caption: 'Other' })));
+  });
+
+  test('only slots p01..p12, and only under a barber that exists', async () => {
+    for (const id of ['p00', 'p13', 'p1', 'p001', 'x01', 'photo']) {
+      await assertFails(setDoc(ref(owner1(), id), photo()), id);
+    }
+    await assertSucceeds(setDoc(ref(owner1(), 'p10'), photo()));
+    await assertFails(setDoc(ref(owner1(), 'p01', 'b9'), photo()));
+    await assertFails(setDoc(ref(as('owner2', EMAILS.owner2), 'p01', 'b1', 'shop2'), photo()));
+  });
+
+  test('photo shape: one image, size limits, own Storage path, caption 1..40', async () => {
+    const db = owner1();
+    const path = 'portfolio/shop1/b1/p01.jpg';
+    await assertFails(setDoc(ref(db), photo({ extra: 1 })));
+    await assertFails(setDoc(ref(db), photo({ imagePath: path })));
+    await assertFails(setDoc(ref(db), { caption: 'No image', createdAt: new Date().toISOString() }));
+    await assertFails(setDoc(ref(db), photo({ image: '' })));
+    await assertFails(setDoc(ref(db), photo({ image: 'a'.repeat(210001) })));
+    await assertFails(setDoc(ref(db), photo({ image: 12 })));
+    await assertFails(setDoc(ref(db), photo({ caption: '' })));
+    await assertFails(setDoc(ref(db), photo({ caption: 'c'.repeat(41) })));
+    await assertFails(setDoc(ref(db), { image: 'aGk=' }));
+    await assertFails(setDoc(ref(db), photo({ createdAt: 123 })));
+    const stored = { createdAt: new Date().toISOString() };
+    await assertFails(setDoc(ref(db), { ...stored, imagePath: 'portfolio/shop1/b1/p02.jpg' }));
+    await assertFails(setDoc(ref(db), { ...stored, imagePath: 'portfolio/shop2/b1/p01.jpg' }));
+    await assertFails(setDoc(ref(db), { ...stored, imagePath: 'receipts/shop1/p01.jpg' }));
+    await assertSucceeds(setDoc(ref(db), { ...stored, caption: 'c'.repeat(40), imagePath: path }));
+    await assertSucceeds(setDoc(ref(db, 'p02'), photo({ image: 'a'.repeat(210000) })));
+  });
+
+  test('only the caption changes, by the owner or that barber', async () => {
+    await seed('barbershops/shop1/barbers/b1/portfolio', 'p01', photo());
+    await assertSucceeds(updateDoc(ref(barber1()), { caption: 'Low fade' }));
+    await assertSucceeds(updateDoc(ref(owner1()), { caption: deleteField() }));
+    await assertSucceeds(updateDoc(ref(owner1()), { caption: 'Back again' }));
+    await assertFails(updateDoc(ref(owner1()), { caption: '' }));
+    await assertFails(updateDoc(ref(owner1()), { caption: 'c'.repeat(41) }));
+    await assertFails(updateDoc(ref(owner1()), { caption: 7 }));
+    await assertFails(updateDoc(ref(owner1()), { image: 'bmV3' }));
+    await assertFails(updateDoc(ref(owner1()), { imagePath: 'portfolio/shop1/b1/p01.jpg' }));
+    await assertFails(updateDoc(ref(owner1()), { createdAt: new Date().toISOString() }));
+    await assertFails(updateDoc(ref(owner1()), { caption: 'Ok', extra: true }));
+    await assertFails(updateDoc(ref(as('barber2', EMAILS.barber2)), { caption: 'Mine' }));
+    await assertFails(updateDoc(ref(as('owner2', EMAILS.owner2)), { caption: 'Mine' }));
+    await assertFails(updateDoc(ref(as('customer', EMAILS.customer)), { caption: 'Mine' }));
+    await assertFails(updateDoc(ref(as('admin', EMAILS.admin)), { caption: 'Mine' }));
+  });
+
+  test('the owner, that barber or an admin deletes a photo; leftovers too', async () => {
+    for (const id of ['p01', 'p02', 'p03', 'p04']) await seed('barbershops/shop1/barbers/b1/portfolio', id, photo());
+    await assertFails(deleteDoc(ref(as('barber2', EMAILS.barber2), 'p01')));
+    await assertFails(deleteDoc(ref(as('owner2', EMAILS.owner2), 'p01')));
+    await assertFails(deleteDoc(ref(as('customer', EMAILS.customer), 'p01')));
+    await assertFails(deleteDoc(ref(anon(), 'p01')));
+    await assertSucceeds(deleteDoc(ref(barber1(), 'p01')));
+    await assertSucceeds(deleteDoc(ref(owner1(), 'p02')));
+    await assertSucceeds(deleteDoc(ref(as('admin', EMAILS.admin), 'p03')));
+    // The barber was removed: the owner still cleans up, the barber cannot.
+    await env.withSecurityRulesDisabled((ctx) => deleteDoc(doc(ctx.firestore(), 'barbershops/shop1/barbers', 'b1')));
+    await assertFails(deleteDoc(ref(barber1(), 'p04')));
+    await assertFails(setDoc(ref(owner1(), 'p05'), photo()));
+    await assertSucceeds(deleteDoc(ref(owner1(), 'p04')));
+  });
+
+  test('barbers read the Storage switch on the pricing doc; customers do not', async () => {
+    await seed('platformConfig', 'subscriptionPricing', {
+      currency: 'ETB', tiers: [{ days: 30, amount: 500 }], receivers: {}, storageReceipts: true,
+    });
+    const pref = (db) => doc(db, 'platformConfig', 'subscriptionPricing');
+    assert.equal((await assertSucceeds(getDoc(pref(barber1())))).data().storageReceipts, true);
+    await assertSucceeds(getDoc(pref(owner1())));
+    await assertSucceeds(getDoc(pref(as('admin', EMAILS.admin))));
+    await assertFails(getDoc(pref(as('customer', EMAILS.customer))));
+    await assertFails(getDoc(pref(anon())));
+    await assertFails(setDoc(pref(barber1()), { currency: 'ETB', tiers: [{ days: 30, amount: 1 }], receivers: {} }));
+  });
+});
+
+// ---------------------------------------------------------------------
+// Customer blocks (barbershops/{s}/blockedCustomers, settings).
+// ---------------------------------------------------------------------
+describe('customer blocks', () => {
+  const blockRef = (db, uid = 'customer', shopId = 'shop1') => doc(db, `barbershops/${shopId}/blockedCustomers`, uid);
+  const block = (extra = {}) => ({
+    customerId: 'customer', customerName: 'customer', source: 'owner', blockedBy: 'owner1', blockedAt: new Date().toISOString(), ...extra,
+  });
+  const settingsRef = (db, id = 'customerBlocks', shopId = 'shop1') => doc(db, `barbershops/${shopId}/settings`, id);
+  const settings = (extra = {}) => ({ autoBlockNoShows: 3, updatedBy: 'owner1', updatedAt: new Date().toISOString(), ...extra });
+  const owner1 = () => as('owner1', EMAILS.owner1);
+  const barber1 = () => as('barber1', EMAILS.barber1);
+  const cust = () => as('customer', EMAILS.customer);
+  const deletion = () => seed('shopDeletions', 'shop1', {
+    shopId: 'shop1', shopName: 'Shop', requestedBy: 'admin', requestedAt: NOW, staffUids: [], barberAccountUids: [],
+  });
+  const seedBlock = (extra = {}, uid = 'customer') => seed('barbershops/shop1/blockedCustomers', uid, block({ customerId: uid, ...extra }));
+
+  test('the owner blocks, edits, lists and unblocks', async () => {
+    await assertSucceeds(setDoc(blockRef(owner1()), block()));
+    await assertSucceeds(setDoc(blockRef(owner1()), block({ reason: 'Never shows up', noShowCount: 4 })));
+    assert.equal((await assertSucceeds(getDocs(query(collection(owner1(), 'barbershops/shop1/blockedCustomers'), limit(500))))).size, 1);
+    await assertSucceeds(getDoc(blockRef(owner1())));
+    await assertSucceeds(deleteDoc(blockRef(owner1())));
+  });
+
+  test('block shape: own uid as blockedBy, doc id as customerId, no extra keys', async () => {
+    const db = owner1();
+    await assertFails(setDoc(blockRef(db), block({ blockedBy: 'admin' })));
+    await assertFails(setDoc(blockRef(db), block({ customerId: 'customer2' })));
+    await assertFails(setDoc(blockRef(db), block({ extra: 1 })));
+    await assertFails(setDoc(blockRef(db), block({ source: 'admin' })));
+    await assertFails(setDoc(blockRef(db), block({ reason: '' })));
+    await assertFails(setDoc(blockRef(db), block({ reason: 'r'.repeat(201) })));
+    await assertFails(setDoc(blockRef(db), block({ noShowCount: 1001 })));
+    await assertFails(setDoc(blockRef(db), block({ noShowCount: 2.5 })));
+    await assertFails(setDoc(blockRef(db), block({ customerName: 'n'.repeat(101) })));
+    await assertFails(setDoc(blockRef(db), block({ blockedAt: 'yesterday' })));
+    const { customerName, ...noName } = block();
+    await assertFails(setDoc(blockRef(db), noName));
+    await assertSucceeds(setDoc(blockRef(db), block({ customerName: '', reason: 'r'.repeat(200), noShowCount: 1000 })));
+    // Another shop's owner cannot block here.
+    await assertFails(setDoc(blockRef(as('owner2', EMAILS.owner2)), block({ blockedBy: 'owner2' })));
+  });
+
+  test('a barber of the shop creates only an auto-block; never edits or removes one', async () => {
+    const auto = block({ source: 'auto', blockedBy: 'barber1', noShowCount: 3 });
+    await assertFails(setDoc(blockRef(barber1()), block({ blockedBy: 'barber1' })));
+    await assertFails(setDoc(blockRef(barber1(), 'customer', 'shop2'), auto));
+    await assertSucceeds(setDoc(blockRef(barber1()), auto));
+    await assertSucceeds(getDoc(blockRef(barber1())));
+    await assertFails(setDoc(blockRef(barber1()), auto));
+    await assertFails(deleteDoc(blockRef(barber1())));
+    await assertFails(getDocs(collection(barber1(), 'barbershops/shop1/blockedCustomers')));
+    // A barber whose profile was removed cannot auto-block.
+    await env.withSecurityRulesDisabled((ctx) => deleteDoc(doc(ctx.firestore(), 'barbershops/shop1/barbers', 'b2')));
+    await assertFails(setDoc(blockRef(as('barber2', EMAILS.barber2), 'customer2'), block({ customerId: 'customer2', source: 'auto', blockedBy: 'barber2' })));
+  });
+
+  test('the customer gets only their own block; customers never write or list', async () => {
+    await seedBlock();
+    await seedBlock({}, 'customer2');
+    await assertSucceeds(getDoc(blockRef(cust())));
+    // Not blocked elsewhere: the pre-check reads a missing doc.
+    await assertSucceeds(getDoc(blockRef(cust(), 'customer', 'shop2')));
+    await assertFails(getDoc(blockRef(cust(), 'customer2')));
+    await assertFails(getDocs(collection(cust(), 'barbershops/shop1/blockedCustomers')));
+    await assertFails(getDocs(query(collection(cust(), 'barbershops/shop1/blockedCustomers'), where('customerId', '==', 'customer'))));
+    await assertFails(deleteDoc(blockRef(cust())));
+    await assertFails(setDoc(blockRef(cust()), block({ blockedBy: 'customer' })));
+    await assertFails(setDoc(blockRef(as('customer2', EMAILS.customer2), 'customer2', 'shop2'), block({ customerId: 'customer2', blockedBy: 'customer2' })));
+    await assertFails(getDoc(blockRef(anon())));
+  });
+
+  test('the admin only touches blocks while deleting the shop', async () => {
+    await seedBlock();
+    const admin = as('admin', EMAILS.admin);
+    await assertFails(getDoc(blockRef(admin)));
+    await assertFails(getDocs(collection(admin, 'barbershops/shop1/blockedCustomers')));
+    await assertFails(setDoc(blockRef(admin, 'customer2'), block({ customerId: 'customer2', blockedBy: 'admin' })));
+    await assertFails(deleteDoc(blockRef(admin)));
+    await deletion();
+    await assertSucceeds(getDocs(collection(admin, 'barbershops/shop1/blockedCustomers')));
+    await assertSucceeds(deleteDoc(blockRef(admin)));
+    await assertFails(setDoc(blockRef(admin, 'customer2'), block({ customerId: 'customer2', blockedBy: 'admin' })));
+  });
+
+  test('a blocked customer cannot book at that shop, but can elsewhere; others still book there', async () => {
+    await seedBlock();
+    await seed('barbershops/shop2/services', 'srv2', { shopId: 'shop2', name: 'Cut', description: 'Quick cut', price: 300, durationMinutes: 30 });
+    await assertFails(bookTx(cust(), 'blocked', newBooking(addisSlot(5, 9))));
+    await assertSucceeds(bookTx(cust(), 'elsewhere', newBooking(addisSlot(5, 11), {
+      shopId: 'shop2', barberId: 'b3', barberName: 'Kidus', serviceId: 'srv2', serviceName: 'Cut', price: 300, durationMinutes: 30,
+    })));
+    await assertSucceeds(bookTx(as('customer2', EMAILS.customer2), 'other', newBooking(addisSlot(5, 14), {
+      customerId: 'customer2', customerName: 'customer2', customerPhone: PHONES.customer2,
+    })));
+    // Unblocked: books again.
+    await assertSucceeds(deleteDoc(blockRef(owner1())));
+    await assertSucceeds(bookTx(cust(), 'again', newBooking(addisSlot(5, 9))));
+  });
+
+  test("a blocked customer's existing booking can still be moved and cancelled", async () => {
+    await seedBlock();
+    const to = addisSlot(4, 14);
+    await assertSucceeds(rescheduleTx(cust(), 'bk1', to));
+    await assertSucceeds(cancelTx(cust(), 'bk1', to, 40, { cancelledBy: 'customer' }));
+  });
+
+  test('a blocked customer cannot join the queue remotely; staff walk-ins still work', async () => {
+    await seedBlock();
+    const remote = (uid) => ({
+      name: uid, phone: PHONES[uid], status: 'waiting', createdAt: new Date().toISOString(), addedBy: uid, source: 'remote',
+    });
+    const q = (db, id) => doc(db, 'barbershops/shop1/queue', id);
+    await assertFails(setDoc(q(cust(), 'r1'), remote('customer')));
+    await assertSucceeds(setDoc(q(as('customer2', EMAILS.customer2), 'r2'), remote('customer2')));
+    await assertSucceeds(setDoc(q(barber1(), 'w1'), {
+      name: 'customer', phone: PHONES.customer, status: 'waiting', createdAt: new Date().toISOString(), addedBy: 'barber1', source: 'walkIn',
+    }));
+  });
+
+  test('settings/customerBlocks: the owner writes 0..10, staff read it', async () => {
+    const db = owner1();
+    for (const n of [0, 1, 10]) await assertSucceeds(setDoc(settingsRef(db), settings({ autoBlockNoShows: n })), String(n));
+    await assertFails(setDoc(settingsRef(db), settings({ autoBlockNoShows: 11 })));
+    await assertFails(setDoc(settingsRef(db), settings({ autoBlockNoShows: -1 })));
+    await assertFails(setDoc(settingsRef(db), settings({ autoBlockNoShows: '3' })));
+    await assertFails(setDoc(settingsRef(db), settings({ autoBlockNoShows: 2.5 })));
+    await assertFails(setDoc(settingsRef(db), settings({ updatedBy: 'admin' })));
+    await assertFails(setDoc(settingsRef(db), settings({ updatedAt: 'now' })));
+    await assertFails(setDoc(settingsRef(db), settings({ extra: true })));
+    await assertFails(setDoc(settingsRef(db, 'other'), settings()));
+    await assertFails(setDoc(settingsRef(as('owner2', EMAILS.owner2)), settings({ updatedBy: 'owner2' })));
+    await assertFails(setDoc(settingsRef(barber1()), settings({ updatedBy: 'barber1' })));
+    await assertFails(deleteDoc(settingsRef(db)));
+    await assertSucceeds(getDoc(settingsRef(db)));
+    await assertSucceeds(getDoc(settingsRef(barber1())));
+    await assertFails(getDoc(settingsRef(cust())));
+    await assertFails(getDoc(settingsRef(as('owner2', EMAILS.owner2))));
+    await assertFails(getDocs(collection(db, 'barbershops/shop1/settings')));
+    // Shop deletion clean-up.
+    const admin = as('admin', EMAILS.admin);
+    await assertFails(deleteDoc(settingsRef(admin)));
+    await deletion();
+    await assertSucceeds(getDocs(collection(admin, 'barbershops/shop1/settings')));
+    await assertSucceeds(deleteDoc(settingsRef(admin)));
+  });
+
+  test("the owner's no-show count and busy-hours queries are allowed", async () => {
+    await seed('bookings', 'ns1', booking({ status: 'noShow' }));
+    const db = owner1();
+    const noShows = query(collection(db, 'bookings'), where('shopId', '==', 'shop1'), where('customerId', '==', 'customer'), where('status', '==', 'noShow'));
+    assert.equal((await assertSucceeds(getCountFromServer(noShows))).data().count, 1);
+    await assertSucceeds(getDocs(query(collection(db, 'bookings'), where('shopId', '==', 'shop1'),
+      where('startAt', '>=', '2020-01-01T00:00:00.000Z'), where('startAt', '<', '2100-01-01T00:00:00.000Z'), limit(3000))));
+    await assertFails(getCountFromServer(query(collection(as('owner2', EMAILS.owner2), 'bookings'), where('shopId', '==', 'shop1'),
+      where('customerId', '==', 'customer'), where('status', '==', 'noShow'))));
+  });
+});
+
+// ---------------------------------------------------------------------
+// Account deletion and shop removal requests.
+// ---------------------------------------------------------------------
+describe('account deletion', () => {
+  const cust = () => as('customer', EMAILS.customer);
+  const FORMER = { customerName: 'Former customer', customerPhone: '' };
+
+  test('a customer anonymises only their own bookings, exactly as the app does', async () => {
+    await seed('bookings', 'bk2', booking({ customerId: 'customer2', customerName: 'customer2' }));
+    await seed('bookings', 'old', booking({ status: 'completed' }));
+    await assertSucceeds(updateDoc(doc(cust(), 'bookings', 'bk1'), FORMER));
+    await assertSucceeds(updateDoc(doc(cust(), 'bookings', 'old'), FORMER));
+    await assertFails(updateDoc(doc(cust(), 'bookings', 'bk2'), FORMER));
+    await seed('bookings', 'x', booking());
+    await assertFails(updateDoc(doc(as('owner1', EMAILS.owner1), 'bookings', 'x'), FORMER));
+    await assertFails(updateDoc(doc(as('admin', EMAILS.admin), 'bookings', 'x'), FORMER));
+    await assertFails(updateDoc(doc(cust(), 'bookings', 'x'), { customerName: 'Someone else', customerPhone: '' }));
+    await assertFails(updateDoc(doc(cust(), 'bookings', 'x'), { customerName: 'Former customer', customerPhone: '+251911000000' }));
+    await assertFails(updateDoc(doc(cust(), 'bookings', 'x'), { ...FORMER, price: 1 }));
+    await assertFails(updateDoc(doc(cust(), 'bookings', 'x'), { ...FORMER, status: 'completed' }));
+    // Not while a refund is due (the shop needs the phone).
+    await seed('bookings', 'due', booking({
+      status: 'cancelled', cancelledBy: 'customer', paymentStatus: 'paid', paymentMethod: 'chapa',
+      refundStatus: 'due', refundAmount: 450, refundReason: 'customer_cancelled', refundFlaggedAt: NOW,
+    }));
+    await assertFails(updateDoc(doc(cust(), 'bookings', 'due'), FORMER));
+  });
+
+  test('a customer anonymises their review: name replaced, comment removed, stars kept', async () => {
+    const review = (extra = {}) => ({
+      bookingId: 'done', shopId: 'shop1', barberId: 'b1', customerId: 'customer', customerName: 'customer', rating: 4,
+      comment: 'Great cut', createdAt: NOW, reply: 'Thanks', replyAt: NOW, ...extra,
+    });
+    const r = (db, id = 'done') => doc(db, 'barbershops/shop1/reviews', id);
+    await seed('barbershops/shop1/reviews', 'done', review());
+    await seed('barbershops/shop1/reviews', 'other', review({ bookingId: 'other', customerId: 'customer2', customerName: 'customer2' }));
+    await assertFails(updateDoc(r(cust()), { customerName: 'Former customer' }));
+    await assertFails(updateDoc(r(cust()), { customerName: 'Anonymous', comment: deleteField() }));
+    await assertFails(updateDoc(r(cust()), { customerName: 'Former customer', comment: deleteField(), rating: 5 }));
+    await assertFails(updateDoc(r(cust()), { customerName: 'Former customer', comment: deleteField(), reply: deleteField() }));
+    await assertFails(updateDoc(r(cust(), 'other'), { customerName: 'Former customer', comment: deleteField() }));
+    await assertFails(updateDoc(r(as('owner1', EMAILS.owner1)), { customerName: 'Former customer', comment: deleteField() }));
+    await assertSucceeds(updateDoc(r(cust()), { customerName: 'Former customer', comment: deleteField() }));
+    // A review without a comment: only the name changes.
+    const { comment, ...plain } = review({ bookingId: 'plain' });
+    await seed('barbershops/shop1/reviews', 'plain', plain);
+    await assertSucceeds(updateDoc(r(cust(), 'plain'), { customerName: 'Former customer' }));
+  });
+
+  test('a barber removes their own barber profile and private contact in one batch', async () => {
+    await seed('barbershops/shop1/barbers/b1/private', 'contact', { phone: PHONES.barber1 });
+    await seed('barbershops/shop1/barbers/b2/private', 'contact', { phone: PHONES.barber2 });
+    const leave = (db, barberId) => {
+      const batch = writeBatch(db);
+      batch.delete(doc(db, `barbershops/shop1/barbers/${barberId}/private`, 'contact'));
+      batch.delete(doc(db, 'barbershops/shop1/barbers', barberId));
+      return batch.commit();
+    };
+    await assertFails(leave(as('barber1', EMAILS.barber1), 'b2'));
+    await assertFails(leave(as('customer', EMAILS.customer), 'b2'));
+    await assertFails(deleteDoc(doc(as('owner2', EMAILS.owner2), 'barbershops/shop1/barbers', 'b2')));
+    await assertSucceeds(leave(as('barber1', EMAILS.barber1), 'b1'));
+  });
+
+  test('the inbox, device tokens, invite and an unapproved application are deleted by their person only', async () => {
+    const note = { title: 'Hi', body: 'Text', type: 'reminder', read: false, createdAt: NOW };
+    await seed('users/customer/notifications', 'n1', note);
+    await seed('users/customer2/notifications', 'n2', note);
+    await seed('users/customer/devices', 'd1', { token: 't', platform: 'android', updatedAt: NOW });
+    await assertFails(deleteDoc(doc(cust(), 'users/customer2/notifications', 'n2')));
+    await assertFails(deleteDoc(doc(as('admin', EMAILS.admin), 'users/customer/notifications', 'n1')));
+    await assertSucceeds(getDocs(query(collection(cust(), 'users/customer/notifications'), limit(200))));
+    await assertSucceeds(deleteDoc(doc(cust(), 'users/customer/notifications', 'n1')));
+    await assertSucceeds(deleteDoc(doc(cust(), 'users/customer/devices', 'd1')));
+    await seed('invites', EMAILS.customer, invite(EMAILS.customer, 'admin'));
+    await assertSucceeds(getDoc(doc(cust(), 'invites', EMAILS.customer)));
+    await assertSucceeds(deleteDoc(doc(cust(), 'invites', EMAILS.customer)));
+    const app = (status, extra = {}) => ({
+      uid: 'customer', email: EMAILS.customer, ownerName: 'Abebe', shopName: 'Shop', address: 'Bole Road', subCity: 'Bole',
+      phone: '+251911000999', status, createdAt: NOW, ...extra,
+    });
+    await seed('shopApplications', 'customer', app('rejected', { reviewedBy: 'admin', reviewedAt: NOW, rejectReason: 'No' }));
+    await assertFails(deleteDoc(doc(as('customer2', EMAILS.customer2), 'shopApplications', 'customer')));
+    await assertSucceeds(deleteDoc(doc(cust(), 'shopApplications', 'customer')));
+    await seed('shopApplications', 'customer', app('approved', { reviewedBy: 'admin', reviewedAt: NOW, shopId: 'shop1' }));
+    await assertFails(deleteDoc(doc(cust(), 'shopApplications', 'customer')));
+  });
+
+  test('people delete only their own profile; an owner only once the shop is gone', async () => {
+    await assertFails(deleteDoc(doc(as('customer2', EMAILS.customer2), 'users', 'customer')));
+    await assertFails(deleteDoc(doc(anon(), 'users', 'customer')));
+    await assertFails(deleteDoc(doc(as('owner1', EMAILS.owner1), 'users', 'barber1')));
+    await assertSucceeds(deleteDoc(doc(cust(), 'users', 'customer')));
+    await assertSucceeds(deleteDoc(doc(as('barber1', EMAILS.barber1), 'users', 'barber1')));
+    await assertFails(deleteDoc(doc(as('owner1', EMAILS.owner1), 'users', 'owner1')));
+    await env.withSecurityRulesDisabled((ctx) => deleteDoc(doc(ctx.firestore(), 'barbershops', 'shop1')));
+    await assertSucceeds(deleteDoc(doc(as('owner1', EMAILS.owner1), 'users', 'owner1')));
+    // The app keeps the last admin; the rules let an admin leave.
+    await assertSucceeds(deleteDoc(doc(as('admin', EMAILS.admin), 'users', 'admin')));
+  });
+
+  test('an owner profile without a shopId (missing, empty or null) may be deleted', async () => {
+    const owner = (uid, extra) => ({ name: uid, email: `${uid}@example.com`, role: 'barbershopOwner', language: 'en', ...extra });
+    await seed('users', 'ownerNoShop', owner('ownerNoShop', {}));
+    await seed('users', 'ownerEmptyShop', owner('ownerEmptyShop', { shopId: '' }));
+    await seed('users', 'ownerNullShop', owner('ownerNullShop', { shopId: null }));
+    await seed('users', 'ownerGoneShop', owner('ownerGoneShop', { shopId: 'noSuchShop' }));
+    await assertFails(deleteDoc(doc(as('customer', EMAILS.customer), 'users', 'ownerNoShop')));
+    for (const uid of ['ownerNoShop', 'ownerEmptyShop', 'ownerNullShop', 'ownerGoneShop']) {
+      await assertSucceeds(deleteDoc(doc(as(uid, `${uid}@example.com`), 'users', uid)));
+    }
+    // The shop still exists: refused.
+    await assertFails(deleteDoc(doc(as('owner1', EMAILS.owner1), 'users', 'owner1')));
+  });
+
+  test("a leaving barber deletes their own portfolio photos first, not another barber's one", async () => {
+    const photo = { image: 'aGVsbG8=', createdAt: NOW };
+    await seed('barbershops/shop1/barbers/b1/portfolio', 'p01', photo);
+    await seed('barbershops/shop1/barbers/b2/portfolio', 'p01', photo);
+    await assertFails(deleteDoc(doc(as('barber1', EMAILS.barber1), 'barbershops/shop1/barbers/b2/portfolio', 'p01')));
+    const db = as('barber1', EMAILS.barber1);
+    const batch = writeBatch(db);
+    batch.delete(doc(db, 'barbershops/shop1/barbers/b1/portfolio', 'p01'));
+    await assertSucceeds(batch.commit());
+  });
+});
+
+describe('shop removal requests', () => {
+  const ref = (db, uid = 'owner1') => doc(db, 'shopRemovalRequests', uid);
+  const owner1 = () => as('owner1', EMAILS.owner1);
+  const admin = () => as('admin', EMAILS.admin);
+  const request = (extra = {}) => ({
+    uid: 'owner1', email: EMAILS.owner1, name: 'owner1', shopId: 'shop1', shopName: 'Shop', status: 'pending', createdAt: new Date().toISOString(), ...extra,
+  });
+  const resolve = (status = 'done', extra = {}) => ({ status, handledAt: new Date().toISOString(), handledBy: 'admin', ...extra });
+
+  test('an owner asks for the removal of their own shop', async () => {
+    await assertFails(setDoc(ref(owner1()), request({ shopId: 'shop2' })));
+    await assertFails(setDoc(ref(owner1()), request({ uid: 'owner2' })));
+    await assertFails(setDoc(ref(owner1(), 'owner2'), request()));
+    await assertFails(setDoc(ref(owner1()), request({ email: 'other@example.com' })));
+    await assertFails(setDoc(ref(owner1()), request({ status: 'done' })));
+    await assertFails(setDoc(ref(owner1()), request({ note: '' })));
+    await assertFails(setDoc(ref(owner1()), request({ note: 'n'.repeat(501) })));
+    await assertFails(setDoc(ref(owner1()), request({ handledBy: 'admin' })));
+    await assertFails(setDoc(ref(owner1()), request({ createdAt: 'today' })));
+    await assertFails(setDoc(ref(owner1()), request({ name: '' })));
+    await assertFails(setDoc(ref(as('customer', EMAILS.customer), 'customer'), request({ uid: 'customer', email: EMAILS.customer, shopId: '' })));
+    await assertFails(setDoc(ref(as('barber1', EMAILS.barber1), 'barber1'), request({ uid: 'barber1', email: EMAILS.barber1 })));
+    await assertSucceeds(setDoc(ref(owner1()), request({ note: 'n'.repeat(500) })));
+    // A second create is an update: refused (withdraw first).
+    await assertFails(setDoc(ref(owner1()), request()));
+  });
+
+  test('reads: the owner their own, the admin every request', async () => {
+    await seed('shopRemovalRequests', 'owner1', request());
+    await assertSucceeds(getDoc(ref(owner1())));
+    await assertFails(getDoc(ref(as('owner2', EMAILS.owner2))));
+    await assertFails(getDoc(ref(as('customer', EMAILS.customer))));
+    await assertSucceeds(getDoc(ref(as('owner2', EMAILS.owner2), 'owner2')));
+    await assertFails(getDocs(collection(owner1(), 'shopRemovalRequests')));
+    await assertSucceeds(getDoc(ref(admin())));
+    await assertSucceeds(getDocs(query(collection(admin(), 'shopRemovalRequests'), orderBy('createdAt', 'desc'), limit(100))));
+  });
+
+  test('the admin marks a pending request done or dismissed, once', async () => {
+    await seed('shopRemovalRequests', 'owner1', request());
+    await assertFails(updateDoc(ref(owner1()), resolve('done', { handledBy: 'owner1' })));
+    await assertFails(updateDoc(ref(admin()), resolve('pending')));
+    await assertFails(updateDoc(ref(admin()), resolve('done', { handledBy: 'owner1' })));
+    await assertFails(updateDoc(ref(admin()), resolve('done', { handledAt: 'now' })));
+    await assertFails(updateDoc(ref(admin()), { ...resolve('done'), note: 'x' }));
+    await assertSucceeds(updateDoc(ref(admin()), resolve('dismissed')));
+    await assertFails(updateDoc(ref(admin()), resolve('done')));
+  });
+
+  test('the owner withdraws (or replaces) their request; nobody else deletes it', async () => {
+    await seed('shopRemovalRequests', 'owner1', request({ status: 'dismissed', handledBy: 'admin', handledAt: NOW }));
+    await assertFails(deleteDoc(ref(as('owner2', EMAILS.owner2))));
+    await assertFails(deleteDoc(ref(admin())));
+    await assertSucceeds(deleteDoc(ref(owner1())));
+    await assertSucceeds(setDoc(ref(owner1()), request()));
+    await assertSucceeds(deleteDoc(ref(owner1())));
   });
 });

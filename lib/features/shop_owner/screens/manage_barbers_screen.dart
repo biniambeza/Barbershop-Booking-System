@@ -11,6 +11,7 @@ import '../../shared/widgets/ui_kit.dart';
 import '../widgets/add_barber_sheet.dart'; // barber accounts
 import '../../payouts/payouts_screen.dart' show showCommissionDialog; // barber commission
 import '../../../services/payout_service.dart' show commissionOf; // barber commission
+import '../../portfolio/widgets/portfolio_entries.dart' show ManagePortfolioLink; // barber portfolio
 
 class ManageBarbersScreen extends StatefulWidget {
   final String shopId;
@@ -23,7 +24,6 @@ class ManageBarbersScreen extends StatefulWidget {
 
 class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
   final List<String> _avatarPresets = [
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
     'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
     'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
     'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400',
@@ -190,6 +190,7 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                                 ),
                               ],
                             ),
+                            ManagePortfolioLink(barber: barber), // barber portfolio
                           ],
                         ),
                       ),

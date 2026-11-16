@@ -51,6 +51,8 @@ const List<String> kShopSubcollections = [
   'stats',
   'clients',
   'payouts',
+  'blockedCustomers', // customer blocks
+  'settings', // customer blocks: settings/customerBlocks
 ];
 
 /// Subcollections of `barbershops/{id}/barbers/{barberId}` deleted before the

@@ -3,6 +3,11 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- Needed in release builds to reach Firebase. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Shop location (maps): "Use my current location" when an owner sets the
+         shop's map pin, and the customer's "Near me" sort. Asked at runtime,
+         only when the user taps one of them. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
     <application
         android:label="Crown &amp; Blade"
         android:name="${applicationName}"
@@ -58,6 +63,11 @@
         <intent>
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="https"/>
+        </intent>
+        <!-- Shop location (maps): "Directions" falls back to the default maps app. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="geo"/>
         </intent>
     </queries>
 </manifest>

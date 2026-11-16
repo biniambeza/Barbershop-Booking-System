@@ -12,6 +12,11 @@ import '../../reviews/widgets/review_widgets.dart';
 import '../../shared/widgets/app_bar_menu.dart';
 import '../../shared/widgets/ui_kit.dart';
 import 'barbershop_detail_screen.dart';
+import '../widgets/rebook_widgets.dart' show YourBarbersSection; // favourite barbers & rebook
+// shop location (maps): landmark on the cards, "Near me" sort.
+import '../../../services/device_location.dart';
+import '../../../services/shop_maps.dart';
+import '../widgets/shop_location_block.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
   final VoidCallback? onOpenBarbers;
@@ -26,6 +31,38 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   String _searchQuery = '';
   String _selectedCity = 'All';
   String _selectedCategory = 'all';
+
+  // --- shop location (maps): "Near me" ---
+  /// The customer's position while "Near me" is on (shops sorted by
+  /// distance, nearest first; shops without a pin come last).
+  (double, double)? _nearMe;
+  bool _locating = false;
+
+  Future<void> _toggleNearMe() async {
+    if (_nearMe != null) {
+      setState(() => _nearMe = null);
+      return;
+    }
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final l = context.l10n;
+    setState(() => _locating = true);
+    final result = await DeviceLocator.instance.currentPosition();
+    if (!mounted) return;
+    setState(() {
+      _locating = false;
+      if (result.isOk) _nearMe = (result.latitude!, result.longitude!);
+    });
+    if (!result.isOk) {
+      final text = result.status == DeviceLocationStatus.serviceDisabled ? l.locationServiceOff : l.nearMeNeedsLocation;
+      messenger?.showSnackBar(SnackBar(
+        content: Text(text),
+        action: result.status == DeviceLocationStatus.deniedForever
+            ? SnackBarAction(label: l.openSettingsAction, onPressed: () => DeviceLocator.instance.openSettings())
+            : null,
+      ));
+    }
+  }
+  // --- end "Near me" ---
 
   static const List<String> _categories = ['all', 'fades', 'beard', 'shave', 'kids'];
 
@@ -72,6 +109,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
       return matchesSearch && matchesCity;
     }).toList();
+    // shop location (maps): nearest first while "Near me" is on.
+    final nearMe = _nearMe;
+    final shownShops = nearMe == null
+        ? filteredShops
+        : sortByDistance<Barbershop>(
+            filteredShops, nearMe.$1, nearMe.$2, (s) => s.hasLocation ? (s.latitude!, s.longitude!) : null);
 
     final l = context.l10n;
     return Scaffold(
@@ -127,6 +170,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  // favourite barbers & rebook: "Book again with <first name>".
+                  const YourBarbersSection(),
 
                   // Promotional Feature Banner: Find Master Barbers
                   HeroCard(
@@ -240,7 +285,30 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: _categories.map((cat) {
+                      children: [
+                        // shop location (maps): sort by distance.
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: FilterChip(
+                            key: const ValueKey('near-me-chip'),
+                            avatar: _locating
+                                ? const SizedBox(
+                                    width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                : Icon(Icons.near_me_outlined,
+                                    size: 15, color: _nearMe != null ? AppTheme.onInk : AppTheme.green),
+                            label: Text(l.nearMe),
+                            selected: _nearMe != null,
+                            showCheckmark: false,
+                            selectedColor: AppTheme.ink,
+                            labelStyle: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: _nearMe != null ? AppTheme.onInk : AppTheme.textPrimary,
+                            ),
+                            onSelected: _locating ? null : (_) => _toggleNearMe(),
+                          ),
+                        ),
+                        ..._categories.map((cat) {
                         final isSelected = _selectedCategory == cat;
                         return Padding(
                           padding: const EdgeInsets.only(right: 6),
@@ -258,7 +326,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                             },
                           ),
                         );
-                      }).toList(),
+                      }),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -310,10 +379,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
-                    final shop = filteredShops[index];
-                    return _buildShopCard(context, shop, repo);
+                    final shop = shownShops[index];
+                    return _buildShopCard(context, shop, repo,
+                        distanceKm: nearMe != null && shop.hasLocation
+                            ? distanceKm(nearMe.$1, nearMe.$2, shop.latitude!, shop.longitude!)
+                            : null);
                   },
-                  childCount: filteredShops.length,
+                  childCount: shownShops.length,
                 ),
               ),
             ),
@@ -324,7 +396,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     );
   }
 
-  Widget _buildShopCard(BuildContext context, Barbershop shop, AppRepository repo) {
+  Widget _buildShopCard(BuildContext context, Barbershop shop, AppRepository repo, {double? distanceKm}) {
     final services = repo.getServicesForShop(shop.id);
     final barbers = repo.getBarbersForShop(shop.id);
     final isFav = repo.isShopFavorite(shop.id);
@@ -456,6 +528,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       ),
                     ],
                   ),
+                  // shop location (maps): the landmark first, then the address.
+                  if ((shop.landmark ?? '').trim().isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    ShopLandmarkLine(key: ValueKey('shop-card-landmark-${shop.id}'), landmark: shop.landmark!.trim()),
+                  ],
                   const SizedBox(height: 6),
                   Row(
                     children: [
@@ -469,6 +546,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      if (distanceKm != null) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          formatShopDistance(l, distanceKm),
+                          key: ValueKey('shop-card-distance-${shop.id}'),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.success),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 6),

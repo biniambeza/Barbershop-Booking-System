@@ -9,6 +9,398 @@ class AppLocalizationsAm extends AppLocalizations {
   AppLocalizationsAm([String locale = 'am']) : super(locale);
 
   @override
+  String get privacyPolicyTitle => 'የግላዊነት መመሪያ';
+
+  @override
+  String privacyPolicyUpdated(String date) {
+    return 'መጨረሻ የተዘመነው $date';
+  }
+
+  @override
+  String get privacyOpenWeb => 'በድረ-ገጽ ክፈት';
+
+  @override
+  String get privacyDeletePageLink => 'መለያዎን እንዴት እንደሚሰርዙ';
+
+  @override
+  String get privacyLinkFailed => 'ሊንኩን መክፈት አልተቻለም።';
+
+  @override
+  String get privacyConsentPrefix => 'በመመዝገብ ወይም በመግባት በዚህ ይስማማሉ፦';
+
+  @override
+  String get deleteAccountMenu => 'መለያ ሰርዝ';
+
+  @override
+  String get deleteAccountTitle => 'መለያ ሰርዝ';
+
+  @override
+  String get deleteAccountHeroTitle => 'መለያዎን ይሰርዙ';
+
+  @override
+  String get deleteAccountHeroBody =>
+      'መገለጫዎና መግቢያዎ ለዘለቄታው ይሰረዛሉ። ይህን መመለስ አይቻልም።';
+
+  @override
+  String get deleteAccountWhatHappens => 'የሚሆነው';
+
+  @override
+  String deleteAccountCancelCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count መጪ ቀጠሮዎችዎ ይሰረዛሉ።',
+      one: '1 መጪ ቀጠሮዎ ይሰረዛል።',
+      zero: 'የሚሰረዝ መጪ ቀጠሮ የለዎትም።',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deleteAccountPaidRefund(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'የተከፈለባቸው $count ቀጠሮዎች ለተመላሽ ገንዘብ ይመዘገባሉ። ገንዘቡ እስኪመለስልዎ ድረስ ፀጉር ቤቱ ስልክ ቁጥርዎን በእነሱ ላይ ያቆያል።',
+      one:
+          'የተከፈለበት 1 ቀጠሮ ለተመላሽ ገንዘብ ይመዘገባል። ገንዘቡ እስኪመለስልዎ ድረስ ፀጉር ቤቱ ስልክ ቁጥርዎን በዚያ ቀጠሮ ላይ ያቆያል።',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deleteAccountKeptInCutoff(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count ቀጠሮዎች በቅርቡ ስለሚጀምሩ በመተግበሪያው መሰረዝ አይቻልም። ያለ ስምዎ ከፀጉር ቤቱ ጋር ይቆያሉ፤ የማይመጡ ከሆነ ለፀጉር ቤቱ ይደውሉ።',
+      one:
+          '1 ቀጠሮ በቅርቡ ስለሚጀምር በመተግበሪያው መሰረዝ አይቻልም። ያለ ስምዎ ከፀጉር ቤቱ ጋር ይቆያል፤ የማይመጡ ከሆነ ለፀጉር ቤቱ ይደውሉ።',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deleteAccountBarberCancel(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'ከእርስዎ ጋር ያሉ $count የደንበኛ ቀጠሮዎች ይሰረዛሉ፤ ደንበኞቹ ይነገራቸዋል።',
+      one: 'ከእርስዎ ጋር ያለ 1 የደንበኛ ቀጠሮ ይሰረዛል፤ ደንበኛው ይነገረዋል።',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String deleteAccountBarberLeaves(String shop) {
+    return 'ከ$shop ይወገዳሉ።';
+  }
+
+  @override
+  String get deleteAccountYourShop => 'ፀጉር ቤትዎ';
+
+  @override
+  String get deleteAccountReviews =>
+      'ግምገማዎችዎ ኮከባቸውን ይዘው ይቆያሉ፤ ነገር ግን \"የቀድሞ ደንበኛ\" ተብለው ይታያሉ፣ አስተያየታቸውም ይሰረዛል።';
+
+  @override
+  String get deleteAccountBookingsHistory =>
+      'ያለፉ ቀጠሮዎች ያለ ስምዎና ስልክ ቁጥርዎ በፀጉር ቤቱ መዝገብ ይቀራሉ።';
+
+  @override
+  String get deleteAccountPersonalData =>
+      'መገለጫዎ፣ የመልዕክት ሳጥንዎ፣ ግብዣዎችዎ፣ ተወዳጆችዎና መግቢያዎ ይሰረዛሉ።';
+
+  @override
+  String get deleteAccountPendingLogin =>
+      'መረጃዎ ቀድሞውኑ ተሰርዟል። መግቢያዎን ለመሰረዝ እርስዎ መሆንዎን አንድ ጊዜ ያረጋግጡ።';
+
+  @override
+  String get deleteAccountReauthTitle => 'እርስዎ መሆንዎን ያረጋግጡ';
+
+  @override
+  String deleteAccountConfirmLabel(String word) {
+    return 'ለማረጋገጥ $word ብለው ይጻፉ';
+  }
+
+  @override
+  String get deleteAccountConfirmMismatch => 'ለማረጋገጥ DELETE ብለው በትክክል ይጻፉ።';
+
+  @override
+  String get deleteAccountPasswordLabel => 'የይለፍ ቃልዎ';
+
+  @override
+  String get deleteAccountPasswordOrGoogle => 'ወይም በGoogle ለማረጋገጥ ባዶ ይተዉት።';
+
+  @override
+  String get deleteAccountReauthGoogle => 'እንደገና በGoogle እንዲገቡ ይጠየቃሉ።';
+
+  @override
+  String get deleteAccountSubmit => 'መለያዬን ሰርዝ';
+
+  @override
+  String get deleteAccountDone => 'መለያዎ ተሰርዟል።';
+
+  @override
+  String get deleteAccountErrReauth =>
+      'ለደህንነትዎ፣ መለያዎን መሰረዝ ለመጨረስ እንደገና ይግቡ፤ ከዚያ ሰርዝን እንደገና ይጫኑ።';
+
+  @override
+  String get deleteAccountErrReauthCancelled =>
+      'በGoogle መግባት ተሰርዟል። ምንም አልተሰረዘም።';
+
+  @override
+  String deleteAccountErrStep(String step) {
+    return 'መሰረዙ እዚህ ቆሟል፦ $step ካቆመበት ለመቀጠል ሰርዝን እንደገና ይጫኑ።';
+  }
+
+  @override
+  String get deleteAccountErrFailed => 'መለያዎን መሰረዝ አልተቻለም። እንደገና ይሞክሩ።';
+
+  @override
+  String get deleteStepCancelBookings => 'ቀጠሮዎችዎን በመሰረዝ ላይ…';
+
+  @override
+  String get deleteStepReviews => 'ግምገማዎችዎን በማዘመን ላይ…';
+
+  @override
+  String get deleteStepBookings => 'ስምዎን ከቀጠሮዎች በማስወገድ ላይ…';
+
+  @override
+  String get deleteStepLeaveShop => 'ከፀጉር ቤቱ በማስወገድ ላይ…';
+
+  @override
+  String get deleteStepPersonalData => 'የመልዕክት ሳጥንዎንና ግብዣዎችዎን በመሰረዝ ላይ…';
+
+  @override
+  String get deleteStepProfile => 'መገለጫዎን በመሰረዝ ላይ…';
+
+  @override
+  String get deleteStepLogin => 'መግቢያዎን በመሰረዝ ላይ…';
+
+  @override
+  String get deleteAccountOwnerTitle => 'መጀመሪያ ፀጉር ቤትዎን ያስወግዱ';
+
+  @override
+  String deleteAccountOwnerBody(String shop) {
+    return 'የ$shop ባለቤት ነዎት። ፀጉር ቤት ያለው መለያ መሰረዝ አይቻልም። ፀጉር ቤቱን እንዲያስወግድ አስተዳዳሪውን ይጠይቁ፤ መጪ ቀጠሮዎቹ ይሰረዛሉ፣ ደንበኞቹም ይነገራቸዋል። ከዚያ ደንበኛ ይሆናሉ፣ መለያዎንም እዚህ መሰረዝ ይችላሉ።';
+  }
+
+  @override
+  String get deleteAccountLastAdminTitle => 'ብቸኛው አስተዳዳሪ እርስዎ ነዎት';
+
+  @override
+  String get deleteAccountLastAdminBody =>
+      'መጀመሪያ ሌላ ሰው አስተዳዳሪ ያድርጉ (የተጠቃሚዎች ትር)፤ ከዚያ መለያዎን መሰረዝ ይችላሉ።';
+
+  @override
+  String get shopRemovalNoteLabel => 'ለአስተዳዳሪው ማስታወሻ (አማራጭ)';
+
+  @override
+  String get shopRemovalRequestButton => 'ፀጉር ቤቴን እንዲያስወግድ አስተዳዳሪውን ጠይቅ';
+
+  @override
+  String get shopRemovalSent => 'ጥያቄው ለአስተዳዳሪው ተልኳል።';
+
+  @override
+  String shopRemovalPending(String date) {
+    return 'በ$date ጠይቀዋል። አስተዳዳሪው ፀጉር ቤቱን ያስወግዳል፤ ሊያገኝዎትም ይችላል።';
+  }
+
+  @override
+  String get shopRemovalWithdraw => 'ጥያቄውን መልስ';
+
+  @override
+  String shopRemovalDismissed(String date) {
+    return 'አስተዳዳሪው በ$date ጥያቄዎን አልተቀበለውም። እንደገና መላክ ይችላሉ።';
+  }
+
+  @override
+  String shopRemovalNoteTooLong(int max) {
+    return 'ማስታወሻው ቢበዛ $max ፊደላት ሊሆን ይችላል።';
+  }
+
+  @override
+  String get shopRemovalStatusPending => 'በመጠባበቅ ላይ';
+
+  @override
+  String get shopRemovalStatusDone => 'ተጠናቋል';
+
+  @override
+  String get shopRemovalStatusDismissed => 'ውድቅ ተደርጓል';
+
+  @override
+  String get formerCustomer => 'የቀድሞ ደንበኛ';
+
+  @override
+  String get adminRemovalRequestsTitle => 'ፀጉር ቤት የማስወገድ ጥያቄዎች';
+
+  @override
+  String get adminRemovalHelp =>
+      'መለያቸውን መሰረዝ የሚፈልጉ ባለቤቶች መጀመሪያ እዚህ ይጠይቃሉ። ፀጉር ቤቱን ከፍተው ይሰርዙት (ፀጉር ቤት ሰርዝ)፤ ከዚያ ጥያቄውን ተጠናቋል ብለው ምልክት ያድርጉ። ባለቤቱ ደንበኛ ይሆናል፣ መለያውንም በመተግበሪያው መሰረዝ ይችላል።';
+
+  @override
+  String get adminRemovalEmpty => 'ምንም ጥያቄ የለም።';
+
+  @override
+  String adminRemovalRequestedOn(String date) {
+    return 'በ$date የተጠየቀ';
+  }
+
+  @override
+  String get adminRemovalShopGone => 'ፀጉር ቤቱ ቀድሞውኑ ተወግዷል።';
+
+  @override
+  String get adminRemovalOpenShop => 'ፀጉር ቤቱን ክፈት';
+
+  @override
+  String get adminRemovalMarkDone => 'ተጠናቋል በል';
+
+  @override
+  String get adminRemovalDismiss => 'ውድቅ አድርግ';
+
+  @override
+  String get portfolioTitle => 'የሥራ ማሳያ';
+
+  @override
+  String portfolioOfBarber(String name) {
+    return 'የ$name ሥራዎች';
+  }
+
+  @override
+  String portfolioPhotoCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ፎቶዎች',
+      one: '1 ፎቶ',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get portfolioShopSectionTitle => 'ሥራዎቻቸውን ይመልከቱ';
+
+  @override
+  String get portfolioShopSectionHint => 'የዚህ ቤት ፀጉር አስተካካዮች የሠሯቸው ቁርጦች';
+
+  @override
+  String portfolioSeeWork(String name) {
+    return 'የ$name ሥራዎችን ይመልከቱ';
+  }
+
+  @override
+  String get portfolioEmpty => 'እስካሁን ምንም ፎቶ የለም።';
+
+  @override
+  String portfolioBookStyle(String name) {
+    return 'ይህን ቁርጥ ከ$name ጋር ይያዙ';
+  }
+
+  @override
+  String portfolioViewerCounter(int index, int total) {
+    return '$index / $total';
+  }
+
+  @override
+  String portfolioPhotoSemantics(int index) {
+    return 'የሥራ ማሳያ ፎቶ $index';
+  }
+
+  @override
+  String get portfolioManageTitle => 'የሥራ ማሳያ ፎቶዎች';
+
+  @override
+  String portfolioManageIntro(int max) {
+    return 'የምርጥ ቁርጦችዎ ፎቶዎች ደንበኞች እርስዎን እንዲመርጡ ይረዳሉ። እስከ $max ፎቶዎች።';
+  }
+
+  @override
+  String get portfolioPublicNotice =>
+      'የሥራ ማሳያ ፎቶዎች ለሁሉም ይታያሉ። ደንበኞችዎ እንዲጋሩ የፈቀዱትን ፎቶዎች ብቻ ያስቀምጡ፤ ስም ወይም ስልክ ቁጥር አያካትቱ።';
+
+  @override
+  String portfolioCountOfMax(int count, int max) {
+    return '$count ከ$max ፎቶዎች';
+  }
+
+  @override
+  String get portfolioAddPhoto => 'ፎቶ ያክሉ';
+
+  @override
+  String get portfolioTakePhoto => 'ፎቶ ያንሱ';
+
+  @override
+  String get portfolioChooseFromGallery => 'ከጋለሪ ይምረጡ';
+
+  @override
+  String get portfolioCaptionLabel => 'የቁርጥ ስም (አማራጭ)';
+
+  @override
+  String get portfolioCaptionHint => 'ለምሳሌ፦ ሎው ፌድ';
+
+  @override
+  String get portfolioEditCaption => 'የቁርጥ ስም ያስተካክሉ';
+
+  @override
+  String get portfolioDeletePhoto => 'ፎቶውን ይሰርዙ';
+
+  @override
+  String get portfolioDeleteConfirmTitle => 'ይህን ፎቶ ይሰርዙ?';
+
+  @override
+  String get portfolioDeleteConfirmBody => 'ደንበኞች ከእንግዲህ አያዩትም።';
+
+  @override
+  String get portfolioAdded => 'ፎቶው ታክሏል።';
+
+  @override
+  String get portfolioDeleted => 'ፎቶው ተሰርዟል።';
+
+  @override
+  String get portfolioCaptionSaved => 'የቁርጥ ስሙ ተቀምጧል።';
+
+  @override
+  String get portfolioSaving => 'ፎቶው እየተቀመጠ ነው...';
+
+  @override
+  String portfolioFull(int max) {
+    return '$max ፎቶዎች አሉዎት። ሌላ ለማከል አንዱን ይሰርዙ።';
+  }
+
+  @override
+  String get portfolioErrNotAllowed =>
+      'ይህን የሥራ ማሳያ መቀየር የሚችሉት ፀጉር አስተካካዩ እና የቤቱ ባለቤት ብቻ ናቸው።';
+
+  @override
+  String portfolioErrCaptionTooLong(int max) {
+    return 'የቁርጥ ስሙ ከ$max ፊደላት መብለጥ የለበትም።';
+  }
+
+  @override
+  String get portfolioErrImage => 'ይህን ፎቶ መጠቀም አልተቻለም። ሌላ ይሞክሩ።';
+
+  @override
+  String get portfolioErrSlotTaken => 'ሌላ ፎቶ አሁን ታክሏል። እባክዎ እንደገና ይሞክሩ።';
+
+  @override
+  String get portfolioErrNotFound => 'ይህ ፎቶ አስቀድሞ ተሰርዟል።';
+
+  @override
+  String get portfolioLoadFailed => 'ፎቶዎቹን መጫን አልተቻለም።';
+
+  @override
+  String get portfolioRetry => 'እንደገና ይሞክሩ';
+
+  @override
+  String get portfolioDashboardTitle => 'የሥራ ማሳያዬ';
+
+  @override
+  String get portfolioDashboardSubtitle => 'ምርጥ ቁርጦችዎን ለደንበኞች ያሳዩ';
+
+  @override
   String get rcptPayTitle => 'በዝውውር ይክፈሉ';
 
   @override
@@ -2390,6 +2782,228 @@ class AppLocalizationsAm extends AppLocalizations {
   String get shopNotTakingBookings => 'ይህ ፀጉር ቤት በአሁኑ ጊዜ ቀጠሮ አይቀበልም።';
 
   @override
+  String get reportsBusyHoursTab => 'የተጨናነቁ ሰዓታት';
+
+  @override
+  String get reportsNoShowsTab => 'ያልመጡ';
+
+  @override
+  String get busyRangeLast30 => 'ያለፉት 30 ቀናት';
+
+  @override
+  String get busyRangeLast90 => 'ያለፉት 90 ቀናት';
+
+  @override
+  String get busyRangeMonth => 'ወር';
+
+  @override
+  String get busyHoursTitle => 'ቀጠሮዎች በቀን እና በሰዓት';
+
+  @override
+  String get busyHoursNote =>
+      'የአዲስ አበባ ሰዓት። እያንዳንዱ ቀጠሮ በሚጀምርበት ሰዓት ይቆጠራል። የተሰረዙ ቀጠሮዎች አይቆጠሩም።';
+
+  @override
+  String get busyBusiestDay => 'በጣም የተጨናነቀ ቀን';
+
+  @override
+  String get busyBusiestTime => 'በጣም የተጨናነቀ ሰዓት';
+
+  @override
+  String get busyQuietestHour => 'በጣም ጸጥ ያለ ሰዓት';
+
+  @override
+  String get busyTotalBookings => 'ቀጠሮዎች';
+
+  @override
+  String get busyNoBookings => 'በዚህ ጊዜ ውስጥ ቀጠሮ የለም።';
+
+  @override
+  String get busyLegendFewer => 'ጥቂት';
+
+  @override
+  String get busyLegendMore => 'ብዙ';
+
+  @override
+  String get busyLoadFailed => 'የዚህን ወር ቀጠሮዎች መጫን አልተቻለም።';
+
+  @override
+  String busyCellSemantics(String day, String hour, int count) {
+    return '$day $hour: $count ቀጠሮዎች';
+  }
+
+  @override
+  String get noShowsAutoBlockTitle => 'በተደጋጋሚ የማይመጡትን በራስ-ሰር አግድ';
+
+  @override
+  String noShowsAutoBlockOn(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'አንድ ደንበኛ በፀጉር ቤትዎ $count ጊዜ ሳይመጣ ሲቀር ይታገዳል።',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get noShowsAutoBlockOff =>
+      'ጠፍቷል። ደንበኛን በተደጋጋሚ ሳይመጣ ሲቀር በራስ-ሰር ለማገድ ያብሩት።';
+
+  @override
+  String get noShowsAutoBlockLimit => 'ከመታገድ በፊት ያልመጡበት ብዛት';
+
+  @override
+  String get noShowsDecrease => 'ቀንስ';
+
+  @override
+  String get noShowsIncrease => 'ጨምር';
+
+  @override
+  String get noShowsSettingsUnavailable => 'የራስ-ሰር እገዳ ቅንብሩን መጫን አልተቻለም።';
+
+  @override
+  String get noShowsSearchHint => 'ደንበኞችን በስም ይፈልጉ';
+
+  @override
+  String get noShowsFilterAll => 'ሁሉም';
+
+  @override
+  String noShowsFilterBlocked(int count) {
+    return 'የታገዱ ($count)';
+  }
+
+  @override
+  String get noShowsListTitle => 'ደንበኞች ባለመምጣት መጠን';
+
+  @override
+  String get noShowsRateHelp => 'ያለመምጣት መጠን፦ ከተጠናቀቁ እና ካመለጡ ቀጠሮዎች ውስጥ ያመለጡት።';
+
+  @override
+  String get noShowsNoCustomers => 'እስካሁን ደንበኛ የለም።';
+
+  @override
+  String get noShowsNoMatch => 'ከፍለጋዎ ጋር የሚዛመድ ደንበኛ የለም።';
+
+  @override
+  String noShowsWindowNote(int days) {
+    return 'ቁጥሮቹ ያለፉትን $days ቀናት ቀጠሮዎች ይሸፍናሉ።';
+  }
+
+  @override
+  String noShowsCustomerStats(
+      int bookings, int completed, int cancelled, int noShows) {
+    return 'ቀጠሮዎች $bookings · የተጠናቀቁ $completed · የተሰረዙ $cancelled · ያልመጡ $noShows';
+  }
+
+  @override
+  String noShowsRateSemantics(int percent) {
+    return 'ያለመምጣት መጠን $percent%';
+  }
+
+  @override
+  String get customerBlockedChip => 'ታግዷል';
+
+  @override
+  String get customerAutoBlockedChip => 'በራስ-ሰር ታግዷል';
+
+  @override
+  String get customerBlockAction => 'አግድ';
+
+  @override
+  String get customerUnblockAction => 'እገዳ አንሳ';
+
+  @override
+  String customerBlockTitle(String name) {
+    return '$name ይታገዱ?';
+  }
+
+  @override
+  String get customerBlockBody =>
+      'በፀጉር ቤትዎ ቀጠሮ መያዝም ሆነ ወረፋ መግባት አይችሉም። የሚያዩት መልዕክት፦ \"ይህ ፀጉር ቤት አሁን ቀጠሮዎን መቀበል አይችልም። እባክዎ ፀጉር ቤቱን ያነጋግሩ።\"';
+
+  @override
+  String get customerBlockReasonLabel => 'ማስታወሻ (አማራጭ)';
+
+  @override
+  String get customerBlockReasonHelper => 'ለእርስዎ መዝገብ። መተግበሪያው ለደንበኛው አያሳየውም።';
+
+  @override
+  String customerBlockCancelUpcoming(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'የሚመጡትን $count ቀጠሮዎቻቸውንም ሰርዝ',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get customerBlockCancelPaidNote =>
+      'የተከፈለባቸው ቀጠሮዎች ለተመላሽ ገንዘብ ምልክት ይደረግባቸዋል።';
+
+  @override
+  String get customerBlockKeepNote => 'እዚህ ካልሰረዟቸው በስተቀር የሚመጡት ቀጠሮዎቻቸው ይቆያሉ።';
+
+  @override
+  String customerBlockedSnack(String name) {
+    return '$name ታግደዋል።';
+  }
+
+  @override
+  String customerBlockedCancelledSnack(int count, String name) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$name ታግደዋል። $count ቀጠሮዎች ተሰርዘዋል።',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String customerUnblockTitle(String name) {
+    return 'የ$name እገዳ ይነሳ?';
+  }
+
+  @override
+  String get customerUnblockBody => 'በፀጉር ቤትዎ እንደገና ቀጠሮ መያዝ እና ወረፋ መግባት ይችላሉ።';
+
+  @override
+  String customerUnblockedSnack(String name) {
+    return 'የ$name እገዳ ተነስቷል።';
+  }
+
+  @override
+  String customerBlockedOn(String date) {
+    return '$date ታግዷል';
+  }
+
+  @override
+  String customerBlockNote(String reason) {
+    return 'ማስታወሻ፦ $reason';
+  }
+
+  @override
+  String customerAutoBlockedAfter(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'ከ$count ያለመምጣት በኋላ በራስ-ሰር ታግዷል',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get customerUnknownName => 'ደንበኛ';
+
+  @override
+  String get errCustomerBlockedAtShop =>
+      'ይህ ፀጉር ቤት አሁን ቀጠሮዎን መቀበል አይችልም። እባክዎ ፀጉር ቤቱን ያነጋግሩ።';
+
+  @override
+  String get errCustomerBlockNotAllowed =>
+      'ደንበኞችን ማገድ ወይም እገዳ ማንሳት የሚችለው የፀጉር ቤቱ ባለቤት ብቻ ነው።';
+
+  @override
   String barberNotTakingBookings(String barber) {
     return '$barber በአሁኑ ጊዜ ቀጠሮ አይቀበሉም። እባክዎ ሌላ ፀጉር አስተካካይ ይምረጡ።';
   }
@@ -2401,6 +3015,96 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get noFreeTimes => 'በዚህ ቀን ክፍት ሰዓት የለም። እባክዎ ሌላ ቀን ይምረጡ።';
+
+  @override
+  String get yourBarbersTitle => 'የእርስዎ ፀጉር አስተካካዮች';
+
+  @override
+  String get yourBarbersSubtitle => 'ተወዳጆች እና የቅርብ ጊዜ ጉብኝቶች';
+
+  @override
+  String get bookAgain => 'እንደገና ቀጠሮ ያዝ';
+
+  @override
+  String bookAgainWith(String name) {
+    return 'ከ$name ጋር እንደገና ቀጠሮ ያዝ';
+  }
+
+  @override
+  String rebookLastService(String service) {
+    return 'ባለፈው ጊዜ፦ $service';
+  }
+
+  @override
+  String get rebookFavoriteTag => 'ተወዳጅ';
+
+  @override
+  String favoriteBarberAdd(String name) {
+    return 'ወደ ተወዳጆች ያክሉ፦ $name';
+  }
+
+  @override
+  String favoriteBarberRemove(String name) {
+    return 'ከተወዳጆች ያስወግዱ፦ $name';
+  }
+
+  @override
+  String rebookSuggestedSlot(String name, String when) {
+    return 'ከ$name ጋር ቀጣዩ ክፍት ሰዓት፦ $when። ለመቀየር ሌላ ሰዓት ይንኩ።';
+  }
+
+  @override
+  String rebookNoFreeTime(String name, int days) {
+    return '$name በሚቀጥሉት $days ቀናት ክፍት ሰዓት የላቸውም። በዚህ ፀጉር ቤት ሌላ ፀጉር አስተካካይ ይሞክሩ።';
+  }
+
+  @override
+  String get rebookFallbackTitle => 'አሁን እንደገና ቀጠሮ መያዝ አይቻልም';
+
+  @override
+  String rebookShopGone(String shop) {
+    return '$shop ከእንግዲህ በመተግበሪያው ላይ የለም። በ«ፀጉር አስተካካይ ፈልግ» ሌላ ፀጉር አስተካካይ ያግኙ።';
+  }
+
+  @override
+  String rebookShopBlocked(String shop) {
+    return '$shop በአሁኑ ጊዜ ቀጠሮ አይቀበልም። እባክዎ ቆይተው ይሞክሩ።';
+  }
+
+  @override
+  String rebookBarberGone(String barber, String shop) {
+    return '$barber ከእንግዲህ በ$shop አይሰሩም። እዚያ ሌላ ፀጉር አስተካካይ ሊያገለግልዎ ይችላል።';
+  }
+
+  @override
+  String rebookBarberUnavailable(String barber, String shop) {
+    return '$barber በአሁኑ ጊዜ ቀጠሮ አይቀበሉም። በ$shop ሌላ ፀጉር አስተካካይ ሊያገለግልዎ ይችላል።';
+  }
+
+  @override
+  String rebookServiceGone(String shop, String service, String barber) {
+    return '$shop ከእንግዲህ $service አይሰጥም። ከ$barber ጋር ሌላ አገልግሎት ይምረጡ።';
+  }
+
+  @override
+  String rebookNoServices(String shop) {
+    return '$shop በአሁኑ ጊዜ የተመዘገበ አገልግሎት የለውም። እባክዎ ቆይተው ይሞክሩ።';
+  }
+
+  @override
+  String get rebookSeeShop => 'ፀጉር ቤቱን ይመልከቱ';
+
+  @override
+  String get rebookPickService => 'አገልግሎት ይምረጡ';
+
+  @override
+  String get rebookRemoveFavorite => 'ከተወዳጆች ያስወግዱ';
+
+  @override
+  String get rebookSignInNeeded => 'እንደገና ቀጠሮ ለመያዝ እንደ ደንበኛ ይግቡ።';
+
+  @override
+  String get rebookClose => 'ዝጋ';
 
   @override
   String get morning => 'ጠዋት';
@@ -4943,4 +5647,89 @@ class AppLocalizationsAm extends AppLocalizations {
   String admUsrErrReasonTooLong(int max) {
     return 'ምክንያቱ ቢበዛ $max ፊደላት ሊሆን ይችላል።';
   }
+
+  @override
+  String get nearbyLandmark => 'በአቅራቢያ ያለ መለያ ቦታ';
+
+  @override
+  String get nearbyLandmarkHint => 'ለምሳሌ ኤድና ሞል አጠገብ';
+
+  @override
+  String get nearbyLandmarkHelper =>
+      'ብዙ ደንበኞች ፀጉር ቤትን የሚያገኙት በመለያ ቦታ ነው። በፀጉር ቤትዎ ገጽ ላይ በትልቁ ይታያል።';
+
+  @override
+  String get shopMapPinTitle => 'የካርታ ምልክት';
+
+  @override
+  String get shopMapPinHelp =>
+      'የፀጉር ቤቱን ምልክት ለማስቀመጥ ካርታውን ይንኩ፣ ወይም ፀጉር ቤቱ ውስጥ ሆነው አሁን ያሉበትን ቦታ ይጠቀሙ።';
+
+  @override
+  String get useMyCurrentLocation => 'አሁን ያለሁበትን ቦታ ተጠቀም';
+
+  @override
+  String get findingYourLocation => 'ቦታዎን በመፈለግ ላይ...';
+
+  @override
+  String get removeMapPin => 'ምልክቱን አስወግድ';
+
+  @override
+  String get noMapPinYet => 'እስካሁን ምልክት የለም። አቅጣጫ ሲጠየቅ አድራሻውና መለያ ቦታው ይፈለጋሉ።';
+
+  @override
+  String mapPinCoordinates(String latitude, String longitude) {
+    return 'ምልክት፦ $latitude፣ $longitude';
+  }
+
+  @override
+  String get mapPinOutsideEthiopia =>
+      'ይህ ምልክት ከኢትዮጵያ ውጭ ነው። ከማስቀመጥዎ በፊት ያረጋግጡ።';
+
+  @override
+  String get locationServiceOff =>
+      'የአካባቢ አገልግሎት ጠፍቷል። በስልክዎ ቅንብሮች ውስጥ አብርተው እንደገና ይሞክሩ።';
+
+  @override
+  String get locationPermissionDenied =>
+      'የአካባቢ ፈቃድ አልተሰጠም። አሁንም ምልክቱን ለማስቀመጥ ካርታውን መንካት ይችላሉ።';
+
+  @override
+  String get locationPermissionBlocked =>
+      'ለCrown & Blade የአካባቢ ፈቃድ ታግዷል። በቅንብሮች ውስጥ ይፍቀዱ።';
+
+  @override
+  String get locationUnavailable =>
+      'ቦታዎን ማግኘት አልተቻለም። እንደገና ይሞክሩ ወይም ካርታውን ይንኩ።';
+
+  @override
+  String get openSettingsAction => 'ቅንብሮች';
+
+  @override
+  String get shopDirections => 'አቅጣጫ';
+
+  @override
+  String get shopDirectionsFailed => 'የካርታ መተግበሪያ መክፈት አልተቻለም።';
+
+  @override
+  String get shopLandmarkLabel => 'መለያ ቦታ';
+
+  @override
+  String get nearMe => 'በአቅራቢያዬ';
+
+  @override
+  String get nearMeNeedsLocation => 'ፀጉር ቤቶችን በርቀት ለመደርደር የአካባቢ ፈቃድ ይስጡ።';
+
+  @override
+  String distanceKmAway(String km) {
+    return '$km ኪ.ሜ ይርቃል';
+  }
+
+  @override
+  String distanceMetersAway(int meters) {
+    return '$meters ሜ ይርቃል';
+  }
+
+  @override
+  String get shopMapSemantics => 'የፀጉር ቤቱን ቦታ የሚያሳይ ካርታ';
 }

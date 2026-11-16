@@ -347,6 +347,10 @@ class LocalDataStore implements DataStore {
       subCity: shop.subCity,
       landmark: shop.landmark,
       clearLandmark: shop.landmark == null,
+      // shop location (maps): the pin is replaced (or removed) as a whole.
+      latitude: shop.hasLocation ? shop.latitude : null,
+      longitude: shop.hasLocation ? shop.longitude : null,
+      clearLocation: !shop.hasLocation,
       phone: shop.phone,
       imageUrl: shop.imageUrl,
       openingHour: shop.openingHour,
@@ -496,6 +500,10 @@ class LocalDataStore implements DataStore {
       subCity: shop.subCity,
       landmark: shop.landmark,
       clearLandmark: shop.landmark == null,
+      // shop location (maps): the pin is replaced (or removed) as a whole.
+      latitude: shop.hasLocation ? shop.latitude : null,
+      longitude: shop.hasLocation ? shop.longitude : null,
+      clearLocation: !shop.hasLocation,
       phone: shop.phone,
       imageUrl: shop.imageUrl,
       isVerified: shop.isVerified,
