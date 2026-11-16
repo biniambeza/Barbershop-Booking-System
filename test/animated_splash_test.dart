@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:barbershop_booking/core/brand/crown_blade_logo.dart';
-import 'package:barbershop_booking/core/theme/app_theme.dart';
 import 'package:barbershop_booking/features/auth/screens/auth_screen.dart';
 import 'package:barbershop_booking/features/splash/animated_splash.dart';
 import 'package:barbershop_booking/l10n/l10n.dart';
@@ -38,7 +37,9 @@ class _Ready extends ChangeNotifier {
 const _appKey = ValueKey('app-under-intro');
 
 /// An app with one button under the intro.
-Widget _harness(_Ready ready, {VoidCallback? onFinished, VoidCallback? onAppTap}) => MaterialApp(
+Widget _harness(_Ready ready,
+        {VoidCallback? onFinished, VoidCallback? onAppTap, Brightness? brightness}) =>
+    MaterialApp(
       theme: ThemeData(),
       locale: const Locale('en'),
       supportedLocales: AppLocalizations.supportedLocales,
@@ -47,6 +48,7 @@ Widget _harness(_Ready ready, {VoidCallback? onFinished, VoidCallback? onAppTap}
         isReady: () => ready.value,
         readiness: ready,
         onFinished: onFinished,
+        brightness: brightness,
         child: child!,
       ),
       home: Scaffold(
@@ -70,104 +72,137 @@ Future<void> _advance(WidgetTester tester, double seconds) async {
   }
 }
 
-/// The painter of the drawn (animated) mark.
-CrownBladeLogoPainter _drawn(WidgetTester tester) =>
-    tester.widgetList<CustomPaint>(find.byType(CustomPaint)).map((c) => c.painter).whereType<CrownBladeLogoPainter>().last;
+Finder get _logo => find.byWidgetPredicate((w) => w is CustomPaint && w.painter is IntroLogoPainter);
+
+/// The painter of the intro logo.
+IntroLogoPainter _drawn(WidgetTester tester) => tester.widget<CustomPaint>(_logo).painter! as IntroLogoPainter;
 
 Finder get _overlay => find.byType(IntroScene);
 
+/// The combined opacity of the FadeTransitions above the widget with [key].
+double _fadeAbove(WidgetTester tester, Key key) {
+  final fades = tester.widgetList<FadeTransition>(find.ancestor(of: find.byKey(key), matching: find.byType(FadeTransition)));
+  return fades.fold(1.0, (a, f) => a * f.opacity.value);
+}
+
+const _fields = ['logoScale', 'twinkle', 'glint', 'gemShine', 'lift', 'wordmark', 'tagline'];
+List<double> _values(IntroFrame f) => [f.logoScale, f.twinkle, f.glint, f.gemShine, f.lift, f.wordmark, f.tagline];
+
 void main() {
   group('IntroFrame timeline', () {
-    test('starts on the native splash mark', () {
+    test('starts on exactly the native splash: the static logo, nothing else', () {
       final f = IntroFrame.at(0);
-      expect(f.afterimage, 1);
-      expect(f.logoScale, 1);
-      expect(f.crown, 0);
-      expect(f.blade, 0);
-      expect(f.gem, 0);
-      expect(f.glint, 0);
-      expect(f.wordmark, 0);
-      expect(f.tagline, 0);
+      expect(_values(f), [1, 0, 0, 0, 0, 0, 0]);
+      // The painter draws the full static logo (no effect runs at 0).
+      final p = f.painter(CrownBladeVariant.onLight);
+      expect([p.crownProgress, p.bladeProgress, p.gemProgress], [1, 1, 1]);
+      expect(p.padding, IntroTimeline.logoPadding);
     });
 
     test('values at key times', () {
-      final a = IntroFrame.at(0.2);
-      expect(a.logoScale, closeTo(0.9, 1e-9));
-      expect(a.crown, inExclusiveRange(0, 0.5));
-      expect(a.afterimage, lessThan(0.2));
-
-      final b = IntroFrame.at(0.6);
-      expect(b.crown, inExclusiveRange(0.8, 1));
-      expect(b.blade, closeTo(0.2, 1e-9));
-      expect(b.gem, 0);
-
-      final c = IntroFrame.at(0.7);
-      expect(c.crown, 1);
-      expect(c.afterimage, 0);
-
-      final d = IntroFrame.at(1.0);
-      expect(d.blade, 1);
-      expect(d.gem, inExclusiveRange(0, 1));
-      expect(d.glint, inExclusiveRange(0, 1));
-      expect(d.wordmark, inExclusiveRange(0, 1));
-      expect(d.tagline, 0);
-
-      final e = IntroFrame.at(1.4);
-      expect(e.gem, 1);
-      expect(e.glint, 1);
-      expect(e.lift, 1);
-      expect(e.wordmark, 1);
-      expect(e.tagline, inExclusiveRange(0, 1));
-
-      expect(IntroFrame.at(1.6).tagline, 1);
+      expect(IntroFrame.at(0.4).logoScale, closeTo(IntroTimeline.breathPeak, 1e-9));
+      expect(IntroFrame.at(0.2).logoScale, inExclusiveRange(1, IntroTimeline.breathPeak));
+      expect(IntroFrame.at(0.8).logoScale, closeTo(1, 1e-9));
+      expect(IntroFrame.at(0.5).twinkle, inExclusiveRange(0, 1));
+      expect(IntroFrame.at(0.7).glint, inExclusiveRange(0, 1));
+      expect(IntroFrame.at(1.0).gemShine, inExclusiveRange(0, 1));
+      expect(IntroFrame.at(0.8).lift, 0);
+      expect(IntroFrame.at(1.3).lift, 1);
+      expect(IntroFrame.at(0.9).wordmark, 0);
+      expect(IntroFrame.at(1.2).wordmark, inExclusiveRange(0, 1));
+      expect(IntroFrame.at(1.45).wordmark, 1);
+      expect(IntroFrame.at(1.2).tagline, 0);
+      expect(IntroFrame.at(1.65).tagline, 1);
     });
 
-    test('the logo settles with a soft overshoot and ends on the finished frame', () {
+    test('ends on the finished frame and never goes past the breath peak', () {
+      final end = IntroFrame.at(IntroTimeline.intro.inMilliseconds / 1000);
+      expect(_values(end), _values(IntroFrame.finished));
       var peak = 0.0;
-      for (var t = 0.2; t <= 2.0; t += 0.01) {
+      for (var t = 0.0; t <= 2.0; t += 0.005) {
         final s = IntroFrame.at(t).logoScale;
         if (s > peak) peak = s;
       }
-      expect(peak, inInclusiveRange(1.0, 1.02));
-      final end = IntroFrame.at(IntroTimeline.intro.inMilliseconds / 1000);
-      const fin = IntroFrame.finished;
-      expect(end.logoScale, closeTo(fin.logoScale, 1e-9));
-      for (final pair in [
-        [end.afterimage, fin.afterimage],
-        [end.crown, fin.crown],
-        [end.blade, fin.blade],
-        [end.gem, fin.gem],
-        [end.glint, fin.glint],
-        [end.lift, fin.lift],
-        [end.wordmark, fin.wordmark],
-        [end.tagline, fin.tagline],
-      ]) {
-        expect(pair[0], pair[1]);
+      expect(peak, lessThanOrEqualTo(IntroTimeline.breathPeak + 1e-9));
+    });
+
+    test('is smooth: no value jumps between two 60 Hz frames', () {
+      // Largest change allowed per 1/60 s for each value.
+      const maxStep = {
+        'logoScale': 0.004, // < 1.2 dp on the 288 dp canvas
+        'twinkle': 0.03,
+        'glint': 0.05,
+        'gemShine': 0.06,
+        'lift': 0.11, // < 4.4 dp
+        'wordmark': 0.09,
+        'tagline': 0.11,
+      };
+      var prev = _values(IntroFrame.at(0));
+      for (var i = 1; i <= 120; i++) {
+        final cur = _values(IntroFrame.at(i / 60));
+        for (var k = 0; k < cur.length; k++) {
+          expect((cur[k] - prev[k]).abs(), lessThan(maxStep[_fields[k]]!), reason: '${_fields[k]} at frame $i');
+        }
+        prev = cur;
+      }
+      // The exit too: no step larger than 12 % of the whole move.
+      final frames = (IntroTimeline.exit.inMilliseconds / 1000 * 60).ceil();
+      for (final a in [IntroTimeline.exitOpacity, IntroTimeline.exitScale, IntroTimeline.exitRise]) {
+        final range = (a.transform(1) - a.transform(0)).abs();
+        var p = a.transform(0);
+        for (var i = 1; i <= frames; i++) {
+          final v = a.transform((i / frames).clamp(0.0, 1.0));
+          expect((v - p).abs() / range, lessThan(0.12));
+          p = v;
+        }
       }
     });
   });
 
   group('AnimatedSplash', () {
+    testWidgets('first frame: the native splash logo, same size and place', (tester) async {
+      final ready = _Ready(true);
+      await _start(tester, _harness(ready));
+      final screen = tester.getRect(find.byType(MaterialApp));
+      expect(tester.getRect(_logo), Rect.fromCenter(center: screen.center, width: 288, height: 288));
+      expect(_values(_drawn(tester).frame), _values(IntroFrame.at(0)));
+      expect(_fadeAbove(tester, const ValueKey('intro-wordmark')), 0);
+    });
+
+    for (final (brightness, background, variant) in [
+      (Brightness.light, const Color(0xFFFFFFFF), CrownBladeVariant.onLight),
+      (Brightness.dark, const Color(0xFF0A0A0A), CrownBladeVariant.onDark),
+    ]) {
+      testWidgets('follows the device brightness (${brightness.name})', (tester) async {
+        tester.platformDispatcher.platformBrightnessTestValue = brightness;
+        addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+        await _start(tester, _harness(_Ready(true)));
+        final material = tester.widget<Material>(find.descendant(of: _overlay, matching: find.byType(Material)).first);
+        expect(material.color, background);
+        expect(_drawn(tester).variant, variant);
+        expect(SystemChrome.latestStyle?.statusBarIconBrightness,
+            brightness == Brightness.dark ? Brightness.light : Brightness.dark);
+      });
+    }
+
     testWidgets('plays the timeline over the app, which builds underneath', (tester) async {
       final ready = _Ready(true);
       await _start(tester, _harness(ready));
       expect(_overlay, findsOneWidget);
       expect(find.byKey(_appKey), findsOneWidget); // built under the intro
-      expect(_drawn(tester).crownProgress, 0);
 
-      await _advance(tester, 0.6);
-      final p = _drawn(tester);
-      expect(p.crownProgress, closeTo(IntroFrame.at(0.6).crown, 0.02));
-      expect(p.bladeProgress, closeTo(0.2, 0.02));
-      expect(p.gemProgress, 0);
+      await _advance(tester, 0.7);
+      final f = _drawn(tester).frame;
+      expect(f.glint, closeTo(IntroFrame.at(0.7).glint, 0.03));
+      expect(f.glint, inExclusiveRange(0, 1));
 
-      await _advance(tester, 0.4); // 1.0 s
-      expect(_drawn(tester).bladeProgress, closeTo(1, 1e-3));
-      expect(_drawn(tester).gemProgress, greaterThan(0));
+      await _advance(tester, 0.8); // 1.5 s
       expect(find.text('CROWN & BLADE'), findsOneWidget);
+      expect(_fadeAbove(tester, const ValueKey('intro-wordmark')), closeTo(1, 1e-6));
 
-      await _advance(tester, 0.6); // 1.6 s
+      await _advance(tester, 0.2); // 1.7 s
       expect(find.text('Book your barber in Addis Ababa'), findsOneWidget);
+      expect(_fadeAbove(tester, const ValueKey('intro-tagline')), closeTo(1, 1e-6));
       expect(_overlay, findsOneWidget);
     });
 
@@ -177,18 +212,24 @@ void main() {
       var appTaps = 0;
       await _start(tester, _harness(ready, onFinished: () => finished++, onAppTap: () => appTaps++));
 
-      // While the intro plays, taps don't reach the app.
       await _advance(tester, 0.3);
       expect(_overlay, findsOneWidget);
       await _advance(tester, 1.6); // 1.9 s: not finished yet
       expect(_overlay, findsOneWidget);
 
-      await _advance(tester, 0.1 + 0.4); // 2.0 s + the exit
+      await _advance(tester, 0.1 + 0.25); // mid-exit: the logo rises and grows
+      expect(_overlay, findsOneWidget);
+      final scales = tester
+          .widgetList<ScaleTransition>(find.ancestor(of: _logo, matching: find.byType(ScaleTransition)))
+          .map((s) => s.scale.value);
+      expect(scales.any((s) => s > 1.02), isTrue);
+
+      await _advance(tester, 0.25); // 2.0 s + the exit
       expect(_overlay, findsNothing);
       expect(finished, 1);
       await tester.tap(find.byKey(_appKey));
       expect(appTaps, 1);
-      // Light status bar icons during the intro; the app's style after.
+      // The app's style after the intro.
       expect(SystemChrome.latestStyle?.statusBarIconBrightness, Brightness.dark);
     });
 
@@ -199,11 +240,10 @@ void main() {
       await _advance(tester, 3);
       expect(_overlay, findsOneWidget);
       expect(find.byKey(const ValueKey('intro-progress')), findsOneWidget);
-      expect(_drawn(tester).crownProgress, 1);
-      expect(_drawn(tester).gemProgress, 1);
+      expect(_values(_drawn(tester).frame), _values(IntroFrame.finished));
 
       ready.set(true);
-      await _advance(tester, 0.4);
+      await _advance(tester, 0.5);
       expect(_overlay, findsNothing);
       expect(finished, 1);
     });
@@ -230,7 +270,7 @@ void main() {
       await _start(tester, _harness(ready));
       await _advance(tester, IntroTimeline.maxHold.inMilliseconds / 1000 - 0.2);
       expect(_overlay, findsOneWidget);
-      await _advance(tester, 0.7);
+      await _advance(tester, 0.75);
       expect(_overlay, findsNothing);
     });
 
@@ -239,7 +279,7 @@ void main() {
       await _start(tester, _harness(ready));
       await _advance(tester, 0.3);
       await tester.tapAt(const Offset(200, 200));
-      await _advance(tester, 0.4);
+      await _advance(tester, 0.5);
       expect(_overlay, findsNothing);
 
       // Not ready: the tap is remembered and the intro leaves when ready.
@@ -251,7 +291,7 @@ void main() {
       await _advance(tester, 0.5);
       expect(_overlay, findsOneWidget);
       notReady.set(true);
-      await _advance(tester, 0.4);
+      await _advance(tester, 0.5);
       expect(_overlay, findsNothing);
     });
 
@@ -260,9 +300,9 @@ void main() {
       addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
       final ready = _Ready(true);
       await _start(tester, _harness(ready));
-      final p = _drawn(tester);
-      expect([p.crownProgress, p.bladeProgress, p.gemProgress, p.glintProgress], [1, 1, 1, 1]);
+      expect(_values(_drawn(tester).frame), _values(IntroFrame.finished));
       expect(find.text('CROWN & BLADE'), findsOneWidget);
+      expect(_fadeAbove(tester, const ValueKey('intro-wordmark')), 1);
 
       await _advance(tester, 0.7); // past the short hold: fading
       expect(_overlay, findsOneWidget);
@@ -274,7 +314,7 @@ void main() {
         }),
         isEmpty,
       );
-      await _advance(tester, 0.4);
+      await _advance(tester, 0.5);
       expect(_overlay, findsNothing);
     });
 
@@ -283,7 +323,7 @@ void main() {
       await _start(tester, _harness(_Ready(true)));
       expect(find.bySemanticsLabel('Crown & Blade'), findsOneWidget);
       expect(find.bySemanticsLabel('APP'), findsNothing); // the app is hidden
-      await _advance(tester, 2.5);
+      await _advance(tester, 2.6);
       expect(find.bySemanticsLabel('APP'), findsOneWidget);
       handle.dispose();
     });
@@ -297,10 +337,11 @@ void main() {
       expect(find.text('APP'), findsOneWidget);
     });
 
-    testWidgets('StartupHoldScreen shows the finished logo with a progress bar', (tester) async {
-      await tester.pumpWidget(MaterialApp(theme: ThemeData(), home: const StartupHoldScreen()));
+    testWidgets('StartupHoldScreen: the finished logo with a progress bar, in the theme brightness', (tester) async {
+      await tester.pumpWidget(MaterialApp(theme: ThemeData(brightness: Brightness.dark), home: const StartupHoldScreen()));
       expect(find.byKey(const ValueKey('intro-progress')), findsOneWidget);
       expect(find.text('CROWN & BLADE'), findsOneWidget);
+      expect(_drawn(tester).variant, CrownBladeVariant.onDark);
     });
   });
 
@@ -314,7 +355,7 @@ void main() {
     await _start(tester, const BarbershopApp());
     expect(_overlay, findsOneWidget);
     expect(find.byType(AuthScreen), findsOneWidget); // built underneath
-    await _advance(tester, 2.5);
+    await _advance(tester, 2.6);
     expect(_overlay, findsNothing);
     expect(find.byType(AuthScreen), findsOneWidget);
 
@@ -328,56 +369,59 @@ void main() {
   // ---------------------------------------------------------------------------
   // Frames for review (not part of the normal suite: 'brand' is skipped).
   //   flutter test --tags brand --run-skipped test/animated_splash_test.dart
+  // Writes 30 frames of the intro and its exit, light and dark, at 360 x 640
+  // into $SPLASH_FRAMES_DIR/{light,dark} (default build/splash_frames).
   // ---------------------------------------------------------------------------
-  testWidgets('render intro frames to PNG', (tester) async {
-    final outDir = Platform.environment['SPLASH_FRAMES_DIR'] ?? 'build/splash_frames';
-    GoogleFonts.config.allowRuntimeFetching = false;
-    await tester.runAsync(_loadFonts);
-    loadTestSeed();
-    final previous = LocaleController.instance;
-    LocaleController.instance = LocaleController(deviceLocale: const Locale('en'));
-    addTearDown(() => LocaleController.instance = previous);
+  for (final brightness in Brightness.values) {
+    testWidgets('render intro frames to PNG (${brightness.name})', (tester) async {
+      final outDir = '${Platform.environment['SPLASH_FRAMES_DIR'] ?? 'build/splash_frames'}/${brightness.name}';
+      GoogleFonts.config.allowRuntimeFetching = false;
+      await tester.runAsync(_loadFonts);
+      tester.view.physicalSize = const Size(360 * 3, 640 * 3);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      tester.platformDispatcher.platformBrightnessTestValue = brightness;
+      addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
 
-    tester.view.physicalSize = const Size(412 * 2.5, 892 * 2.5);
-    tester.view.devicePixelRatio = 2.5;
-    addTearDown(tester.view.reset);
+      final boundary = GlobalKey();
+      Future<void> shot(int i, double t) async {
+        await tester.runAsync(() async {
+          final ro = boundary.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+          final image = await ro.toImage(pixelRatio: 1);
+          final data = await image.toByteData(format: ui.ImageByteFormat.png);
+          image.dispose();
+          File('$outDir/f${i.toString().padLeft(2, '0')}_t${t.toStringAsFixed(3)}.png')
+            ..parent.createSync(recursive: true)
+            ..writeAsBytesSync(Uint8List.view(data!.buffer));
+        });
+      }
 
-    final boundary = GlobalKey();
-    Future<void> shot(String name) async {
-      await tester.runAsync(() async {
-        final ro = boundary.currentContext!.findRenderObject()! as RenderRepaintBoundary;
-        final image = await ro.toImage(pixelRatio: 1.5);
-        final data = await image.toByteData(format: ui.ImageByteFormat.png);
-        image.dispose();
-        File('$outDir/$name.png')
-          ..parent.createSync(recursive: true)
-          ..writeAsBytesSync(Uint8List.view(data!.buffer));
-      });
-    }
-
-    await _start(tester, RepaintBoundary(key: boundary, child: const BarbershopApp()));
-    await shot('t0.00');
-    var t = 0.0;
-    for (final at in [0.1, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.7, 1.98]) {
-      await _advance(tester, at - t);
-      t = at;
-      await shot('t${at.toStringAsFixed(2)}');
-    }
-    for (final at in [2.15, 2.3, 2.5]) {
-      await _advance(tester, at - t);
-      t = at;
-      await shot('t${at.toStringAsFixed(2)}-exit');
-    }
-
-    // The "still loading" hold (RootGate while the session is restored).
-    await tester.pumpWidget(RepaintBoundary(
-      key: boundary,
-      child: MaterialApp(theme: AppTheme.lightTheme, home: const StartupHoldScreen()),
-    ));
-    await tester.pump(const Duration(milliseconds: 700));
-    await shot('hold');
-    await tester.pumpWidget(const SizedBox());
-  }, tags: ['brand']);
+      final dark = brightness == Brightness.dark;
+      final app = MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(brightness: brightness, colorSchemeSeed: const Color(0xFF16A34A)),
+        locale: const Locale('en'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        builder: (context, child) => AnimatedSplash(child: child!),
+        home: Scaffold(
+          backgroundColor: dark ? const Color(0xFF0A0A0A) : Colors.white,
+          appBar: AppBar(title: const Text('App')),
+          body: const Center(child: Text('The app')),
+        ),
+      );
+      await _start(tester, RepaintBoundary(key: boundary, child: app));
+      // 30 frames from 0 to 2.45 s (the 2.0 s intro and the 0.45 s exit).
+      var shown = 0.0;
+      for (var i = 0; i < 30; i++) {
+        final t = i * 2.45 / 29;
+        await _advance(tester, t - shown);
+        shown = (t * 60).round() / 60;
+        await shot(i, t);
+      }
+      await tester.pumpWidget(const SizedBox());
+    }, tags: ['brand']);
+  }
 }
 
 Finder get _ignorePointer => find.descendant(

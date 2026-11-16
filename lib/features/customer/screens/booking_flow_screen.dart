@@ -313,7 +313,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppTheme.card,
-        icon: const Icon(Icons.event_busy_rounded, color: AppTheme.ink, size: 40),
+        icon: Icon(Icons.event_busy_rounded, color: AppTheme.ink, size: 40),
         title: Text(context.l10n.slotJustTaken),
         content: Text(context.l10n.slotJustTakenBody),
         actions: [
@@ -368,20 +368,20 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                 shape: BoxShape.circle,
               ),
               child: awaiting
-                  ? const Icon(Icons.hourglass_top_rounded, size: 54, color: AppTheme.warning)
-                  : const Icon(Icons.check_circle_rounded, size: 54, color: AppTheme.green),
+                  ? Icon(Icons.hourglass_top_rounded, size: 54, color: AppTheme.warning)
+                  : Icon(Icons.check_circle_rounded, size: 54, color: AppTheme.green),
             ),
             const SizedBox(height: 16),
             Text(
               awaiting ? l.acceptRequestSentTitle : l.bookingConfirmed,
               key: const ValueKey('booking-result-title'),
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
             ),
             const SizedBox(height: 8),
             Text(
               awaiting ? l.acceptRequestSentBody(barberName) : l.seatReserved(barberName),
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 16),
             Container(
@@ -401,7 +401,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             if (awaiting && _paymentMethod == PaymentMethod.chapa) ...[
               Text(l.acceptPayAfterAcceptance,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
               const SizedBox(height: 12),
             ],
             if (payOnline) ...[
@@ -446,12 +446,12 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+          Text(label, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
           Text(
             value,
             style: TextStyle(
               fontWeight: isHighlight ? FontWeight.bold : FontWeight.w500,
-              color: isHighlight ? AppTheme.ink : AppTheme.textPrimary,
+              color: isHighlight ? AppTheme.success : AppTheme.textPrimary,
               fontSize: isHighlight ? 14 : 12,
             ),
           ),
@@ -508,7 +508,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                 const SizedBox(height: 4),
                 Text(
                   l.durationAddisTime(moving?.durationMinutes ?? service.durationMinutes),
-                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                 ),
                 const SizedBox(height: 12),
                 ..._buildSuggestion(barber, selected), // favourite barbers & rebook
@@ -585,11 +585,11 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(l.serviceAndPrice(moving.serviceName, fmt.birr(moving.price)),
-              style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+              style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
           const SizedBox(height: 4),
-          Text(l.barberLabel(moving.barberName), style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+          Text(l.barberLabel(moving.barberName), style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
           const SizedBox(height: 4),
-          Text(l.rescheduleCurrent(when), style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13)),
+          Text(l.rescheduleCurrent(when), style: TextStyle(color: AppTheme.textPrimary, fontSize: 13)),
         ],
       ),
     );
@@ -621,7 +621,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               children: [
                 Text(shop.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 Text(context.l10n.shopAddress(shop),
-                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
               ],
             ),
           ),
@@ -668,7 +668,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                           backgroundColor: AppTheme.surface,
                           child: barber.avatarUrl == null
                               ? Text(barber.name.isEmpty ? '?' : barber.name.substring(0, 1),
-                                  style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700))
+                                  style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700))
                               : null,
                         ),
                         const SizedBox(height: 4),
@@ -680,7 +680,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                         BarberRatingInline(barber: barber, fontSize: 10.5),
                         if (!barber.isAvailable)
                           Text(context.l10n.unavailable,
-                              style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
+                              style: TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
                       ],
                     ),
                   ),
@@ -817,9 +817,9 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
         decoration: AppTheme.panelDecoration(color: AppTheme.card),
         child: Row(
           children: [
-            const Icon(Icons.event_busy_rounded, color: AppTheme.textSecondary, size: 20),
+            Icon(Icons.event_busy_rounded, color: AppTheme.textSecondary, size: 20),
             const SizedBox(width: 10),
-            Expanded(child: Text(emptyMessage, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13))),
+            Expanded(child: Text(emptyMessage, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13))),
           ],
         ),
       );
@@ -844,7 +844,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             Padding(
               padding: const EdgeInsets.only(bottom: 8, top: 4),
               child: Text(entry.key,
-                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
             ),
             Wrap(
               spacing: 10,
@@ -898,14 +898,14 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               Expanded(
                 child: Text(
                   _paymentMethod == PaymentMethod.cash ? l.totalPayAtSalon : l.totalPayOnline,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.onInkMuted),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppTheme.onInkMuted),
                 ),
               ),
               const SizedBox(width: 8),
               Text(
                 _etb(service.price),
-                style: const TextStyle(
-                    fontSize: 26, fontWeight: FontWeight.w700, color: AppTheme.onInk, letterSpacing: -0.5),
+                style: TextStyle(
+                    fontSize: 26, fontWeight: FontWeight.w700, color: AppTheme.onHero, letterSpacing: -0.5),
               ),
             ],
           ),
@@ -915,7 +915,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
               alignment: Alignment.centerLeft,
               child: Text(
                 l.dateAtTime(context.fmt.dayShort(_date), _slotDisplay(selected)),
-                style: const TextStyle(color: AppTheme.onInkMuted, fontSize: 12.5),
+                style: TextStyle(color: AppTheme.onInkMuted, fontSize: 12.5),
               ),
             ),
           ],
@@ -928,20 +928,21 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
             width: double.infinity,
             child: ElevatedButton(
               key: const ValueKey('confirm-booking'),
-              // White pill on the charcoal summary card.
+              // White pill on the green hero summary card (fixed deep green
+              // text: AA on white in both modes).
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
-                foregroundColor: AppTheme.ink,
+                foregroundColor: BrandColors.greenDeep,
                 disabledBackgroundColor: Colors.white.withValues(alpha: 0.14),
                 disabledForegroundColor: AppTheme.onInkMuted,
                 minimumSize: const Size(0, 56),
               ),
               onPressed: _isSubmitting || selected == null ? null : _confirmBooking,
               child: _isSubmitting
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 20,
                       width: 20,
-                      child: CircularProgressIndicator(color: AppTheme.ink, strokeWidth: 2),
+                      child: CircularProgressIndicator(color: BrandColors.greenDeep, strokeWidth: 2),
                     )
                   : Text(selected == null
                       ? l.selectATime
@@ -959,6 +960,9 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
     final l = context.l10n;
     Widget option(PaymentMethod method, IconData icon, String title, String subtitle) {
       final selected = _paymentMethod == method;
+      // On the green hero card: the selected option is tinted green with a
+      // strong green outline and a check, so it stands out in both modes.
+      final accent = AppTheme.isDark ? AppTheme.primary : AppTheme.primaryDeep;
       return InkWell(
         key: ValueKey('pay-method-${method.name}'),
         borderRadius: BorderRadius.circular(AppTheme.radiusPanel),
@@ -966,23 +970,23 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: AppTheme.card,
+            color: selected ? AppTheme.greenSoft : AppTheme.card,
             borderRadius: BorderRadius.circular(AppTheme.radiusPanel),
-            border: Border.all(color: selected ? AppTheme.ink : AppTheme.hairline, width: selected ? 1.6 : 1),
+            border: Border.all(color: selected ? accent : AppTheme.hairline, width: selected ? 2 : 1),
           ),
           child: Row(
             children: [
               Icon(selected ? Icons.radio_button_checked : Icons.radio_button_off,
-                  size: 18, color: selected ? AppTheme.ink : AppTheme.textSecondary),
+                  size: 18, color: selected ? accent : AppTheme.textSecondary),
               const SizedBox(width: 10),
-              Icon(icon, size: 18, color: AppTheme.textSecondary),
+              Icon(icon, size: 18, color: selected ? accent : AppTheme.textSecondary),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                    Text(subtitle, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+                    Text(subtitle, style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
                   ],
                 ),
               ),

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 
-/// Shared visual building blocks for the light "fintech" design system.
+/// Shared visual building blocks of the Crown & Blade design system
+/// (white + green light theme, black + green dark theme). Every widget here
+/// reads the active palette through `AppTheme.xxx`, so it works in both modes.
 
-/// White rounded content card with a hairline border and a soft shadow.
+/// Rounded content card (white / near-black) with a hairline border and a
+/// soft shadow.
 class AppCard extends StatelessWidget {
   const AppCard({
     super.key,
@@ -42,7 +45,8 @@ class AppCard extends StatelessWidget {
   }
 }
 
-/// Near-black charcoal gradient card for the key summary of a screen.
+/// Key summary card of a screen: green gradient (light) / dark green into
+/// black (dark). Text and icons inside default to [AppTheme.onHero].
 class HeroCard extends StatelessWidget {
   const HeroCard({super.key, required this.child, this.padding = const EdgeInsets.all(20), this.margin});
 
@@ -56,9 +60,9 @@ class HeroCard extends StatelessWidget {
       margin: margin,
       decoration: AppTheme.heroDecoration,
       child: DefaultTextStyle.merge(
-        style: const TextStyle(color: AppTheme.onInk),
+        style: TextStyle(color: AppTheme.onHero),
         child: IconTheme.merge(
-          data: const IconThemeData(color: AppTheme.onInk),
+          data: IconThemeData(color: AppTheme.onHero),
           child: Padding(padding: padding, child: child),
         ),
       ),
@@ -78,22 +82,22 @@ class HeroChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.10),
+        color: Colors.white.withValues(alpha: AppTheme.isDark ? 0.08 : 0.16),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: Colors.white.withValues(alpha: AppTheme.isDark ? 0.12 : 0.22)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 13, color: AppTheme.onInk),
+            Icon(icon, size: 13, color: AppTheme.onHero),
             const SizedBox(width: 5),
           ],
           Flexible(
             child: Text(
               label,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppTheme.onInk),
+              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppTheme.onHero),
             ),
           ),
         ],
@@ -126,8 +130,12 @@ class HeroActionButton extends StatelessWidget {
               Container(
                 width: 44,
                 height: 44,
-                decoration: const BoxDecoration(shape: BoxShape.circle, gradient: AppTheme.metallicGradient),
-                child: Icon(icon, size: 20, color: AppTheme.ink),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppTheme.metallicGradient,
+                  border: AppTheme.isDark ? Border.all(color: AppTheme.hairline) : null,
+                ),
+                child: Icon(icon, size: 20, color: AppTheme.primary),
               ),
               const SizedBox(height: 6),
               ExcludeSemantics(
@@ -135,7 +143,7 @@ class HeroActionButton extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppTheme.onInkMuted),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: AppTheme.onHeroMuted),
                 ),
               ),
             ],
@@ -146,12 +154,14 @@ class HeroActionButton extends StatelessWidget {
   }
 }
 
-/// 44-48 px white rounded square with a coloured outline icon.
+/// 44-48 px rounded square with a coloured outline icon.
 class IconTile extends StatelessWidget {
-  const IconTile({super.key, required this.icon, this.color = AppTheme.ink, this.size = 46, this.background});
+  const IconTile({super.key, required this.icon, this.color, this.size = 46, this.background});
 
   final IconData icon;
-  final Color color;
+
+  /// Icon colour; defaults to [AppTheme.primary].
+  final Color? color;
   final double size;
   final Color? background;
 
@@ -165,7 +175,7 @@ class IconTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppTheme.radiusTile),
         border: Border.all(color: AppTheme.hairline),
       ),
-      child: Icon(icon, color: color, size: size * 0.48),
+      child: Icon(icon, color: color ?? AppTheme.primary, size: size * 0.48),
     );
   }
 }
@@ -188,7 +198,7 @@ class SectionHeader extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary, letterSpacing: -0.2),
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary, letterSpacing: -0.2),
             ),
           ),
           if (actionLabel != null)
@@ -201,8 +211,8 @@ class SectionHeader extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(actionLabel!,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
-                    const Icon(Icons.chevron_right_rounded, size: 18, color: AppTheme.textSecondary),
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.success)),
+                    Icon(Icons.chevron_right_rounded, size: 18, color: AppTheme.success),
                   ],
                 ),
               ),
@@ -213,7 +223,7 @@ class SectionHeader extends StatelessWidget {
   }
 }
 
-/// Pale-background status chip with strong-coloured text ("+112%" style).
+/// Soft-background status chip with strong-coloured text ("+112%" style).
 class StatusChip extends StatelessWidget {
   const StatusChip({super.key, required this.label, required this.color, this.icon, this.background});
 
@@ -244,12 +254,158 @@ class StatusChip extends StatelessWidget {
   }
 }
 
+/// Selectable pill (filters, categories): green fill when selected, card
+/// with a hairline otherwise.
+class AppPill extends StatelessWidget {
+  const AppPill({super.key, required this.label, this.selected = false, this.onTap, this.icon});
+
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = selected ? AppTheme.onPrimary : AppTheme.textPrimary;
+    return Semantics(
+      button: onTap != null,
+      selected: selected,
+      child: Material(
+        color: selected ? AppTheme.primary : AppTheme.card,
+        shape: StadiumBorder(side: BorderSide(color: selected ? AppTheme.primary : AppTheme.hairline)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 15, color: selected ? AppTheme.onPrimary : AppTheme.primary),
+                  const SizedBox(width: 6),
+                ],
+                Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: fg)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Small metric tile: icon, big value, label (dashboards).
+class StatTile extends StatelessWidget {
+  const StatTile({super.key, required this.label, required this.value, this.icon, this.color, this.onTap});
+
+  final String label;
+  final String value;
+  final IconData? icon;
+
+  /// Accent of the icon; defaults to [AppTheme.primary].
+  final Color? color;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = color ?? AppTheme.primary;
+    return AppCard(
+      radius: AppTheme.radiusPanel,
+      padding: const EdgeInsets.all(14),
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(color: AppTheme.softOf(accent), borderRadius: BorderRadius.circular(10)),
+              child: Icon(icon, size: 18, color: accent),
+            ),
+            const SizedBox(height: 10),
+          ],
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppTheme.textPrimary, letterSpacing: -0.4),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppTheme.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Centered "nothing here yet" block: soft green circle with an icon, a
+/// title, an optional message and an optional action.
+class EmptyState extends StatelessWidget {
+  const EmptyState({
+    super.key,
+    required this.icon,
+    required this.title,
+    this.message,
+    this.action,
+    this.padding = const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+  });
+
+  final IconData icon;
+  final String title;
+  final String? message;
+  final Widget? action;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: padding,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(color: AppTheme.greenSoft, shape: BoxShape.circle),
+            child: Icon(icon, size: 32, color: AppTheme.primary),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+          ),
+          if (message != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              message!,
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13.5, height: 1.4, color: AppTheme.textSecondary),
+            ),
+          ],
+          if (action != null) ...[const SizedBox(height: 18), action!],
+        ],
+      ),
+    );
+  }
+}
+
 /// Thin (6 px) rounded progress bar.
 class AppProgressBar extends StatelessWidget {
-  const AppProgressBar({super.key, required this.value, this.color = AppTheme.green, this.height = 6});
+  const AppProgressBar({super.key, required this.value, this.color, this.height = 6});
 
   final double value;
-  final Color color;
+
+  /// Defaults to [AppTheme.green].
+  final Color? color;
   final double height;
 
   @override
@@ -259,7 +415,7 @@ class AppProgressBar extends StatelessWidget {
       child: LinearProgressIndicator(
         value: value.clamp(0.0, 1.0),
         minHeight: height,
-        color: color,
+        color: color ?? AppTheme.green,
         backgroundColor: AppTheme.track,
       ),
     );
@@ -275,8 +431,9 @@ class PillNavItem {
   final String label;
 }
 
-/// Floating black pill navigation bar. The selected destination is a white
-/// circle with a dark icon. Use with `Scaffold(extendBody: true)`.
+/// Floating pill navigation bar (white in light mode, near-black in dark
+/// mode). The selected destination is a green circle. Use with
+/// `Scaffold(extendBody: true)`.
 class FloatingPillNavBar extends StatelessWidget {
   const FloatingPillNavBar({
     super.key,
@@ -305,7 +462,14 @@ class FloatingPillNavBar extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppTheme.navBar,
             borderRadius: BorderRadius.circular(999),
-            boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 24, offset: Offset(0, 10))],
+            border: Border.all(color: AppTheme.navBarBorder),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.isDark ? const Color(0x80000000) : const Color(0x260F2A1A),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -353,12 +517,12 @@ class _PillNavButton extends StatelessWidget {
             height: 52,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: selected ? Colors.white : Colors.transparent,
+              color: selected ? AppTheme.navSelected : Colors.transparent,
             ),
             child: Icon(
               selected ? item.selectedIcon : item.icon,
               size: 22,
-              color: selected ? AppTheme.ink : const Color(0xFFA1A1A8),
+              color: selected ? AppTheme.onNavSelected : AppTheme.navIcon,
             ),
           ),
         ),

@@ -68,7 +68,7 @@ class _ShopApplicationScreenState extends State<ShopApplicationScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
+            child: Text(l.cancel, style: TextStyle(color: AppTheme.textSecondary)),
           ),
           ElevatedButton(
             key: const ValueKey('appl-withdraw-confirm'),
@@ -100,10 +100,10 @@ class _ShopApplicationScreenState extends State<ShopApplicationScreen> {
         stream: _stream,
         builder: (context, snap) {
           if (snap.hasError) {
-            return Center(child: Text(l.applLoadFailed, style: const TextStyle(color: AppTheme.textSecondary)));
+            return Center(child: Text(l.applLoadFailed, style: TextStyle(color: AppTheme.textSecondary)));
           }
           if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
-            return const Center(child: CircularProgressIndicator(color: AppTheme.ink));
+            return Center(child: CircularProgressIndicator(color: AppTheme.ink));
           }
           final app = snap.data;
           final Widget content;
@@ -164,7 +164,7 @@ class _ShopApplicationScreenState extends State<ShopApplicationScreen> {
                   Expanded(
                     child: Text(
                       app.shopName,
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppTheme.onInk),
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppTheme.onHero),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -177,15 +177,15 @@ class _ShopApplicationScreenState extends State<ShopApplicationScreen> {
                 ],
               ),
               const SizedBox(height: 10),
-              Text(message, style: const TextStyle(fontSize: 13.5, color: AppTheme.onInkMuted, height: 1.35)),
+              Text(message, style: TextStyle(fontSize: 13.5, color: AppTheme.onInkMuted, height: 1.35)),
               if (app.isRejected && app.rejectReason != null) ...[
                 const SizedBox(height: 8),
                 Text(
                   l.applRejectReasonLine(app.rejectReason!),
-                  style: const TextStyle(fontSize: 13.5, color: AppTheme.onInk, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 13.5, color: AppTheme.onHero, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 6),
-                Text(l.applRejectedHint, style: const TextStyle(fontSize: 12.5, color: AppTheme.onInkMuted)),
+                Text(l.applRejectedHint, style: TextStyle(fontSize: 12.5, color: AppTheme.onInkMuted)),
               ],
             ],
           ),
@@ -230,7 +230,7 @@ class _ShopApplicationScreenState extends State<ShopApplicationScreen> {
         if (app.isApproved)
           ElevatedButton.icon(
             key: const ValueKey('appl-open-dashboard'),
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.green, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.green, foregroundColor: AppTheme.onPrimary),
             onPressed: _busy ? null : () => _openDashboard(app),
             icon: const Icon(Icons.dashboard_outlined, size: 18),
             label: Text(l.applOpenDashboard),
@@ -246,7 +246,7 @@ class _ShopApplicationScreenState extends State<ShopApplicationScreen> {
           children: [
             Icon(icon, size: 18, color: AppTheme.textSecondary),
             const SizedBox(width: 10),
-            Expanded(child: Text(text, style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary))),
+            Expanded(child: Text(text, style: TextStyle(fontSize: 14, color: AppTheme.textPrimary))),
           ],
         ),
       );

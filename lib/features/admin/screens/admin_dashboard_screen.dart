@@ -52,18 +52,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           children: [
             Text(
               context.l10n.brandUpper,
-              style: const TextStyle(
+              style: TextStyle(
                   fontWeight: FontWeight.w800, letterSpacing: 1.2, fontSize: 16, color: AppTheme.textPrimary),
             ),
             Row(
               children: [
-                const Icon(Icons.shield, size: 12, color: AppTheme.green),
+                Icon(Icons.shield, size: 12, color: AppTheme.green),
                 const SizedBox(width: 4),
                 Flexible(
                   child: Text(
                     context.l10n.adminSubtitle,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
                   ),
                 ),
               ],

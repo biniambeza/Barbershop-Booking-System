@@ -163,7 +163,7 @@ class _AdminPricingScreenState extends State<AdminPricingScreen> {
               : ListView(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                   children: [
-                    Text(l.rcptPricingIntro, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                    Text(l.rcptPricingIntro, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                     const SizedBox(height: 16),
                     AppCard(
                       child: Column(
@@ -196,7 +196,7 @@ class _AdminPricingScreenState extends State<AdminPricingScreen> {
                                     onPressed: _rows.length <= 1
                                         ? null
                                         : () => setState(() => _rows.removeAt(i).dispose()),
-                                    icon: const Icon(Icons.remove_circle_outline, color: AppTheme.danger),
+                                    icon: Icon(Icons.remove_circle_outline, color: AppTheme.danger),
                                   ),
                                 ],
                               ),
@@ -296,7 +296,7 @@ class _AdminPricingScreenState extends State<AdminPricingScreen> {
                           title: Text(l.rcptStorageToggle,
                               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                           subtitle: Text(l.rcptStorageHelp,
-                              style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                           isThreeLine: true,
                         ),
                       ),
@@ -306,7 +306,7 @@ class _AdminPricingScreenState extends State<AdminPricingScreen> {
                       key: const ValueKey('pricing-save'),
                       onPressed: _saving ? null : _save,
                       icon: _saving
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.onInk))

@@ -209,9 +209,9 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
             const Icon(Icons.person_remove_outlined, size: 28),
             const SizedBox(height: 10),
             Text(l.deleteAccountHeroTitle,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.onInk)),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.onHero)),
             const SizedBox(height: 6),
-            Text(l.deleteAccountHeroBody, style: const TextStyle(fontSize: 13, color: AppTheme.onInkMuted, height: 1.4)),
+            Text(l.deleteAccountHeroBody, style: TextStyle(fontSize: 13, color: AppTheme.onInkMuted, height: 1.4)),
             if ((user.email ?? '').isNotEmpty) ...[
               const SizedBox(height: 12),
               HeroChip(icon: Icons.alternate_email_rounded, label: user.email!),
@@ -266,20 +266,21 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                 key: const ValueKey('delete-account-password'),
                 controller: _password,
                 label: l.deleteAccountPasswordLabel,
+                labelAbove: false,
                 helperText: methods.contains(ReauthMethod.google) ? l.deleteAccountPasswordOrGoogle : null,
                 errorText: _passwordError,
                 textInputAction: TextInputAction.done,
               ),
             ] else if (methods.contains(ReauthMethod.google)) ...[
               const SizedBox(height: 10),
-              Text(l.deleteAccountReauthGoogle, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+              Text(l.deleteAccountReauthGoogle, style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
             ],
             const SizedBox(height: 16),
             if (_busy && _step != null) ...[
               Row(
                 key: const ValueKey('delete-account-progress'),
                 children: [
-                  const SizedBox(
+                  SizedBox(
                       width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.ink)),
                   const SizedBox(width: 10),
                   Expanded(child: Text(_stepLabel(_step!), style: const TextStyle(fontSize: 13))),
@@ -319,7 +320,7 @@ class _Bullet extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 6, right: 10),
             child: Icon(Icons.circle, size: 6, color: AppTheme.danger),
           ),
@@ -339,7 +340,7 @@ class _LastAdminBlocked extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const IconTile(icon: Icons.admin_panel_settings_outlined, color: AppTheme.purple, size: 40),
+          IconTile(icon: Icons.admin_panel_settings_outlined, color: AppTheme.purple, size: 40),
           const SizedBox(height: 12),
           Text(l.deleteAccountLastAdminTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
@@ -416,11 +417,11 @@ class _OwnerBlockedState extends State<_OwnerBlocked> {
               const Icon(Icons.storefront_rounded, size: 28),
               const SizedBox(height: 10),
               Text(l.deleteAccountOwnerTitle,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.onInk)),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.onHero)),
               const SizedBox(height: 6),
               Text(l.deleteAccountOwnerBody(widget.shop.name),
                   key: const ValueKey('delete-account-owner-blocked'),
-                  style: const TextStyle(fontSize: 13, color: AppTheme.onInkMuted, height: 1.4)),
+                  style: TextStyle(fontSize: 13, color: AppTheme.onInkMuted, height: 1.4)),
             ],
           ),
         ),
@@ -450,7 +451,7 @@ class _OwnerBlockedState extends State<_OwnerBlocked> {
               children.addAll([
                 if (dismissed) ...[
                   Text(l.shopRemovalDismissed(fmt.addisDateMedium(request.handledAt ?? request.createdAt)),
-                      style: const TextStyle(fontSize: 14, height: 1.4, color: AppTheme.warning)),
+                      style: TextStyle(fontSize: 14, height: 1.4, color: AppTheme.warning)),
                   const SizedBox(height: 12),
                 ],
                 TextField(

@@ -44,11 +44,11 @@ class _AdminShopApplicationsScreenState extends State<AdminShopApplicationsScree
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
+            child: Text(l.cancel, style: TextStyle(color: AppTheme.textSecondary)),
           ),
           ElevatedButton(
             key: const ValueKey('appl-approve-confirm'),
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.green, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.green, foregroundColor: AppTheme.onPrimary),
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(l.applAdminApprove),
           ),
@@ -94,9 +94,9 @@ class _AdminShopApplicationsScreenState extends State<AdminShopApplicationsScree
         stream: _stream,
         builder: (context, snap) {
           if (snap.hasError) {
-            return Center(child: Text(l.applLoadFailed, style: const TextStyle(color: AppTheme.textSecondary)));
+            return Center(child: Text(l.applLoadFailed, style: TextStyle(color: AppTheme.textSecondary)));
           }
-          if (!snap.hasData) return const Center(child: CircularProgressIndicator(color: AppTheme.ink));
+          if (!snap.hasData) return Center(child: CircularProgressIndicator(color: AppTheme.ink));
           final all = snap.data!;
           final pending = all.where((a) => a.isPending).toList();
           final decided = all.where((a) => !a.isPending).toList();
@@ -107,9 +107,9 @@ class _AdminShopApplicationsScreenState extends State<AdminShopApplicationsScree
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const IconTile(icon: Icons.assignment_outlined, color: AppTheme.textSecondary, size: 54),
+                    IconTile(icon: Icons.assignment_outlined, color: AppTheme.textSecondary, size: 54),
                     const SizedBox(height: 12),
-                    Text(l.applAdminEmpty, style: const TextStyle(color: AppTheme.textSecondary)),
+                    Text(l.applAdminEmpty, style: TextStyle(color: AppTheme.textSecondary)),
                   ],
                 ),
               ),
@@ -123,7 +123,7 @@ class _AdminShopApplicationsScreenState extends State<AdminShopApplicationsScree
               if (pending.isEmpty)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(l.applAdminPendingCount(0), style: const TextStyle(color: AppTheme.textSecondary)),
+                  child: Text(l.applAdminPendingCount(0), style: TextStyle(color: AppTheme.textSecondary)),
                 ),
               for (final a in pending) _card(a),
               if (decided.isNotEmpty) ...[
@@ -156,20 +156,20 @@ class _AdminShopApplicationsScreenState extends State<AdminShopApplicationsScree
         children: [
           Row(
             children: [
-              const IconTile(icon: Icons.storefront_outlined, color: AppTheme.ink, size: 42),
+              IconTile(icon: Icons.storefront_outlined, color: AppTheme.ink, size: 42),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(a.shopName,
-                        style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                        style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
                     const SizedBox(height: 2),
                     Text(
                       a.isPending || a.reviewedAt == null
                           ? l.applAdminSubmittedOn(fmt.addisDateMedium(a.createdAt))
                           : l.applAdminReviewedOn(fmt.addisDateMedium(a.reviewedAt!)),
-                      style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                      style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                     ),
                   ],
                 ),
@@ -201,12 +201,12 @@ class _AdminShopApplicationsScreenState extends State<AdminShopApplicationsScree
                   child: ElevatedButton(
                     key: ValueKey('appl-approve-${a.uid}'),
                     onPressed: busy ? null : () => _approve(a),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.green, foregroundColor: Colors.white),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.green, foregroundColor: AppTheme.onPrimary),
                     child: busy
-                        ? const SizedBox(
+                        ? SizedBox(
                             height: 18,
                             width: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.onPrimary),
                           )
                         : Text(l.applAdminApprove),
                   ),
@@ -226,7 +226,7 @@ class _AdminShopApplicationsScreenState extends State<AdminShopApplicationsScree
           children: [
             Icon(icon, size: 16, color: AppTheme.textSecondary),
             const SizedBox(width: 8),
-            Expanded(child: Text(text, style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary))),
+            Expanded(child: Text(text, style: TextStyle(fontSize: 13, color: AppTheme.textPrimary))),
           ],
         ),
       );
@@ -277,7 +277,7 @@ class _RejectDialogState extends State<_RejectDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
+          child: Text(l.cancel, style: TextStyle(color: AppTheme.textSecondary)),
         ),
         ElevatedButton(
           key: const ValueKey('appl-reject-confirm'),

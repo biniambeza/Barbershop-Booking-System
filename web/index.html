@@ -11,7 +11,8 @@
   <!-- iOS meta tags & icons -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="theme-color" content="#18181B">
+  <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0A0A0A" media="(prefers-color-scheme: dark)">
   <meta name="apple-mobile-web-app-title" content="Crown & Blade">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
@@ -21,10 +22,23 @@
   <title>Crown & Blade - Barbershop Booking</title>
   <link rel="manifest" href="manifest.json">
   <style>
+    /* Light: white, like the native splash; dark: near-black. */
+    :root {
+      --cb-bg: #FFFFFF;
+      --cb-track: rgba(15, 23, 42, 0.12);
+      --cb-accent: #16A34A;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --cb-bg: #0A0A0A;
+        --cb-track: rgba(255, 255, 255, 0.12);
+        --cb-accent: #22C55E;
+      }
+    }
     body {
       margin: 0;
       padding: 0;
-      background-color: #18181B;
+      background-color: var(--cb-bg);
       overflow: hidden;
       -webkit-tap-highlight-color: transparent;
     }
@@ -32,18 +46,49 @@
       to { transform: rotate(360deg); }
     }
     #loading-indicator {
+      position: fixed;
+      inset: 0;
+      background: var(--cb-bg);
+      z-index: 99999;
       transition: opacity 0.4s ease-out;
+    }
+    #loading-indicator img {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 128px;
+      height: 128px;
+      transform: translate(-50%, -50%);
+    }
+    #loading-indicator .cb-spinner {
+      position: absolute;
+      left: 50%;
+      top: calc(50% + 120px);
+      width: 28px;
+      height: 28px;
+      margin-left: -14px;
+      box-sizing: border-box;
+      border: 2.5px solid var(--cb-track);
+      border-top-color: var(--cb-accent);
+      border-radius: 50%;
+      animation: cb-spin 0.9s linear infinite;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #loading-indicator .cb-spinner { animation-duration: 2.4s; }
     }
   </style>
 </head>
 <body>
-  <!-- Start-up loader: the Crown & Blade mark on the ink background, the
-       same size and place as the native splash and the first frame of the
-       Flutter intro (lib/features/splash/animated_splash.dart), which then
-       takes over. -->
-  <div id="loading-indicator" role="progressbar" aria-label="Crown &amp; Blade" style="position: fixed; inset: 0; background: #18181B; z-index: 99999;">
-    <img src="icons/logo-mark.png" alt="" width="128" height="128" style="position: absolute; left: 50%; top: 50%; width: 128px; height: 128px; transform: translate(-50%, -50%);">
-    <div style="position: absolute; left: 50%; top: calc(50% + 120px); width: 28px; height: 28px; margin-left: -14px; box-sizing: border-box; border: 2.5px solid rgba(255,255,255,0.12); border-top-color: #22B14C; border-radius: 50%; animation: cb-spin 0.9s linear infinite;"></div>
+  <!-- Start-up loader: the Crown & Blade mark on white (or on near-black
+       in dark mode), the same size and place as the native splash and the
+       first frame of the Flutter intro
+       (lib/features/splash/animated_splash.dart), which then takes over. -->
+  <div id="loading-indicator" role="progressbar" aria-label="Crown &amp; Blade">
+    <picture>
+      <source srcset="icons/logo-mark-dark.png" media="(prefers-color-scheme: dark)">
+      <img src="icons/logo-mark.png" alt="" width="128" height="128">
+    </picture>
+    <div class="cb-spinner"></div>
   </div>
 
   <script>

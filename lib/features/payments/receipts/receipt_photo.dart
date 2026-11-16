@@ -87,7 +87,7 @@ class _ReceiptPhotoState extends State<ReceiptPhoto> {
   Widget _error(BuildContext context) {
     if (widget.compact) {
       return widget.placeholder ??
-          _box(const Icon(Icons.broken_image_outlined, color: AppTheme.textSecondary));
+          _box(Icon(Icons.broken_image_outlined, color: AppTheme.textSecondary));
     }
     final l = context.l10n;
     return Padding(
@@ -96,10 +96,10 @@ class _ReceiptPhotoState extends State<ReceiptPhoto> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.broken_image_outlined, color: AppTheme.textSecondary, size: 32),
+          Icon(Icons.broken_image_outlined, color: AppTheme.textSecondary, size: 32),
           const SizedBox(height: 8),
           Text(l.rcptPhotoLoadFailed,
-              textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textSecondary)),
+              textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textSecondary)),
           const SizedBox(height: 4),
           TextButton.icon(
             key: const ValueKey('receipt-photo-retry'),

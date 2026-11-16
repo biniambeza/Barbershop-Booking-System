@@ -129,7 +129,7 @@ class ShopLocationBlock extends StatelessWidget {
                   color: AppTheme.greenSoft,
                   borderRadius: BorderRadius.circular(AppTheme.radiusTile),
                 ),
-                child: const Icon(Icons.assistant_photo_outlined, color: AppTheme.success, size: 22),
+                child: Icon(Icons.assistant_photo_outlined, color: AppTheme.success, size: 22),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -138,7 +138,7 @@ class ShopLocationBlock extends StatelessWidget {
                   children: [
                     Text(
                       l.shopLandmarkLabel.toUpperCase(),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10.5,
                         letterSpacing: 0.8,
                         fontWeight: FontWeight.w700,
@@ -148,7 +148,7 @@ class ShopLocationBlock extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       landmark,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         height: 1.2,
                         fontWeight: FontWeight.w800,
@@ -165,13 +165,13 @@ class ShopLocationBlock extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.storefront, size: 15, color: AppTheme.textSecondary),
+            Icon(Icons.storefront, size: 15, color: AppTheme.textSecondary),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
                 l.shopAddress(shop),
                 key: const ValueKey('shop-address'),
-                style: const TextStyle(fontSize: 13.5, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 13.5, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
               ),
             ),
           ],

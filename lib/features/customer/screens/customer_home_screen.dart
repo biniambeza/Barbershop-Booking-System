@@ -166,7 +166,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     onChanged: (val) => setState(() => _searchQuery = val),
                     decoration: InputDecoration(
                       hintText: l.searchShopsHint,
-                      prefixIcon: const Icon(Icons.search, color: AppTheme.textSecondary),
+                      prefixIcon: Icon(Icons.search, color: AppTheme.textSecondary),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -188,18 +188,18 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                               width: 44,
                               height: 44,
                               decoration:
-                                  const BoxDecoration(shape: BoxShape.circle, gradient: AppTheme.metallicGradient),
-                              child: const Icon(Icons.content_cut, color: AppTheme.ink, size: 20),
+                                  BoxDecoration(shape: BoxShape.circle, gradient: AppTheme.metallicGradient),
+                              child: Icon(Icons.content_cut, color: AppTheme.ink, size: 20),
                             ),
                           ],
                         ),
                         const SizedBox(height: 14),
                         Text(
                           l.bookWithMasters,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w700,
-                            color: AppTheme.onInk,
+                            color: AppTheme.onHero,
                             letterSpacing: -0.4,
                             height: 1.15,
                           ),
@@ -207,13 +207,15 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         const SizedBox(height: 6),
                         Text(
                           l.bookWithMastersSubtitle,
-                          style: const TextStyle(fontSize: 13, color: AppTheme.onInkMuted, height: 1.35),
+                          style: TextStyle(fontSize: 13, color: AppTheme.onInkMuted, height: 1.35),
                         ),
                         const SizedBox(height: 18),
                         ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
+                            // White pill on the green hero: fixed deep green
+                            // text (AA on white in both modes).
                             backgroundColor: Colors.white,
-                            foregroundColor: AppTheme.ink,
+                            foregroundColor: BrandColors.greenDeep,
                             minimumSize: const Size(0, 46),
                             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                           ),
@@ -240,7 +242,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       isDense: true,
                       borderRadius: BorderRadius.circular(16),
                       dropdownColor: AppTheme.card,
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.textSecondary),
+                      icon: Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.textSecondary),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -249,7 +251,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       decoration: InputDecoration(
                         labelText: l.subCity,
                         isDense: true,
-                        prefixIcon: const Icon(Icons.location_on_outlined, size: 20, color: AppTheme.green),
+                        prefixIcon: Icon(Icons.location_on_outlined, size: 20, color: AppTheme.green),
                         prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
                         contentPadding: const EdgeInsets.fromLTRB(0, 12, 12, 12),
                       ),
@@ -338,14 +340,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         child: Text(
                           l.featuredBarbershops(filteredShops.length),
                           style:
-                              const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+                              TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                         ),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         _selectedCity == 'All' ? l.allLocations : l.placeName(_selectedCity),
-                        style:
-                            const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+                        style: TextStyle(fontSize: 12.5, color: AppTheme.success, fontWeight: FontWeight.w600),
                       ),
                     ],
                   ),
@@ -362,11 +363,17 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   padding: const EdgeInsets.all(32),
                   child: Column(
                     children: [
-                      const Icon(Icons.storefront, size: 54, color: AppTheme.textSecondary),
+                      Container(
+                        width: 88,
+                        height: 88,
+                        decoration: BoxDecoration(color: AppTheme.greenSoft, shape: BoxShape.circle),
+                        child: Icon(Icons.storefront, size: 40, color: AppTheme.success),
+                      ),
                       const SizedBox(height: 12),
                       Text(
                         l.noShopsMatching(_searchQuery),
-                        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
                       ),
                     ],
                   ),
@@ -430,7 +437,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   errorBuilder: (context, error, stackTrace) => Container(
                     height: 160,
                     color: AppTheme.surface,
-                    child: const Center(
+                    child: Center(
                       child: Icon(Icons.storefront, size: 48, color: AppTheme.ink),
                     ),
                   ),
@@ -442,7 +449,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     constraints: const BoxConstraints(maxWidth: 210),
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppTheme.card,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     // Average of the rated barbers' averages ("4.6 · 3 barbers rated") or "New".
@@ -458,7 +465,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppTheme.success,
+                            color: AppTheme.primaryDeep,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
@@ -481,13 +488,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppTheme.ink.withValues(alpha: 0.85),
+                      // Dark glass on the photo in both modes.
+                      color: const Color(0xD90A0A0A),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.location_city, size: 12, color: AppTheme.onInk),
+                        const Icon(Icons.location_city, size: 12, color: Colors.white),
                         const SizedBox(width: 4),
                         Text(
                           l.shopArea(shop),
@@ -513,7 +521,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         child: Text(
                           shop.name,
                           style:
-                              const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                              TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                         ),
                       ),
                       IconButton(
@@ -536,12 +544,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      const Icon(Icons.location_on_outlined, size: 14, color: AppTheme.textSecondary),
+                      Icon(Icons.location_on_outlined, size: 14, color: AppTheme.textSecondary),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           context.l10n.shopAddress(shop),
-                          style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary),
+                          style: TextStyle(fontSize: 12.5, color: AppTheme.textSecondary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -551,7 +559,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         Text(
                           formatShopDistance(l, distanceKm),
                           key: ValueKey('shop-card-distance-${shop.id}'),
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.success),
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.success),
                         ),
                       ],
                     ],
@@ -564,11 +572,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.schedule, size: 14, color: AppTheme.textSecondary),
+                          Icon(Icons.schedule, size: 14, color: AppTheme.textSecondary),
                           const SizedBox(width: 4),
                           Text(
                             fmt.hoursRange(shop.openingHour, shop.closingHour),
-                            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                            style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                           ),
                           const SizedBox(width: 12),
                         ],
@@ -582,11 +590,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.people_outline, size: 14, color: AppTheme.success),
+                              Icon(Icons.people_outline, size: 14, color: AppTheme.success),
                               const SizedBox(width: 3),
                               Text(
                                 l.barbersCount(barbers.length),
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 11.5, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
                               ),
                             ],
@@ -594,11 +602,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.content_cut, size: 13, color: AppTheme.blue),
+                              Icon(Icons.content_cut, size: 13, color: AppTheme.blue),
                               const SizedBox(width: 3),
                               Text(
                                 l.servicesCount(services.length),
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 11.5, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
                               ),
                             ],

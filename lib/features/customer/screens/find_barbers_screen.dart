@@ -90,7 +90,7 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                       onChanged: (val) => setState(() => _searchQuery = val),
                       decoration: InputDecoration(
                         hintText: context.l10n.searchBarbersHint,
-                        prefixIcon: const Icon(Icons.search, color: AppTheme.textSecondary),
+                        prefixIcon: Icon(Icons.search, color: AppTheme.textSecondary),
                         contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                       ),
                     ),
@@ -136,11 +136,11 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.search_off, size: 56, color: AppTheme.textSecondary),
+                      Icon(Icons.search_off, size: 56, color: AppTheme.textSecondary),
                       const SizedBox(height: 12),
                       Text(
                         context.l10n.noBarbersMatching(_searchQuery),
-                        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
                       ),
                     ],
                   ),
@@ -191,7 +191,7 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                           Expanded(
                             child: Text(
                               barber.name,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                             ),
                           ),
@@ -211,16 +211,16 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                       Text(
                         barber.title,
                         style:
-                            const TextStyle(fontSize: 13, color: AppTheme.textSecondary, fontWeight: FontWeight.w500),
+                            TextStyle(fontSize: 13, color: AppTheme.textSecondary, fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(Icons.star_rounded, color: AppTheme.orange, size: 16),
+                          Icon(Icons.star_rounded, color: AppTheme.orange, size: 16),
                           const SizedBox(width: 4),
                           Text(
                             context.l10n.barberRatingText(barberRatingSummary(barber)),
-                            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                            style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                           ),
                         ],
                       ),
@@ -249,7 +249,7 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.storefront, size: 16, color: AppTheme.ink),
+                    Icon(Icons.storefront, size: 16, color: AppTheme.ink),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Column(
@@ -258,7 +258,7 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                           Text(
                             shop.name,
                             style:
-                                const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+                                TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                           ),
                           // shop location (maps): landmark first.
                           Text(
@@ -266,13 +266,13 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                               if ((shop.landmark ?? '').trim().isNotEmpty) shop.landmark!.trim(),
                               context.l10n.shopAddress(shop),
                             ].join(' · '),
-                            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                            style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
                     ),
-                    const Icon(Icons.chevron_right, size: 18, color: AppTheme.textSecondary),
+                    Icon(Icons.chevron_right, size: 18, color: AppTheme.textSecondary),
                   ],
                 ),
               ),
@@ -285,14 +285,14 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
               children: barber.specialties.map((spec) {
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  // Soft green tag (tint + green text) in both modes.
                   decoration: BoxDecoration(
-                    color: AppTheme.card,
+                    color: AppTheme.greenSoft,
                     borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: AppTheme.hairline),
                   ),
                   child: Text(
                     spec,
-                    style: const TextStyle(fontSize: 11, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 11, color: AppTheme.success, fontWeight: FontWeight.w600),
                   ),
                 );
               }).toList(),

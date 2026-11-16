@@ -183,7 +183,7 @@ class _OverviewTab extends StatelessWidget {
           child: Row(
             children: [
               Text(l.reportsMonthLabel,
-                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
               const SizedBox(width: 12),
               Expanded(
                 child: DropdownButton<String>(
@@ -193,7 +193,7 @@ class _OverviewTab extends StatelessWidget {
                   underline: const SizedBox(),
                   borderRadius: BorderRadius.circular(AppTheme.radiusPanel),
                   dropdownColor: AppTheme.card,
-                  icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.textSecondary),
+                  icon: Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.textSecondary),
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(color: AppTheme.textPrimary),
                   items: [
                     for (final m in report.months)
@@ -213,11 +213,11 @@ class _OverviewTab extends StatelessWidget {
           Row(
             key: const ValueKey('reports-from-bookings-note'),
             children: [
-              const Icon(Icons.info_outline, size: 14, color: AppTheme.textSecondary),
+              Icon(Icons.info_outline, size: 14, color: AppTheme.textSecondary),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(l.freePlanReportsFromBookings(kReportFallbackDays),
-                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
               ),
             ],
           ),
@@ -262,7 +262,7 @@ class _OverviewTab extends StatelessWidget {
         ),
         if (stats.isEmpty) ...[
           const SizedBox(height: 12),
-          Text(l.reportsNoBookingsMonth, style: const TextStyle(color: AppTheme.textSecondary)),
+          Text(l.reportsNoBookingsMonth, style: TextStyle(color: AppTheme.textSecondary)),
         ],
         const SizedBox(height: 22),
         _SectionTitle(l.reportsRevenueTrend),
@@ -270,7 +270,7 @@ class _OverviewTab extends StatelessWidget {
         const SizedBox(height: 22),
         _SectionTitle(l.reportsTopServices),
         if (stats.topServices.isEmpty)
-          Text(l.reportsNoCompletedMonth, style: const TextStyle(color: AppTheme.textSecondary))
+          Text(l.reportsNoCompletedMonth, style: TextStyle(color: AppTheme.textSecondary))
         else
           for (final s in stats.topServices)
             _RankRow(
@@ -282,7 +282,7 @@ class _OverviewTab extends StatelessWidget {
         const SizedBox(height: 22),
         _SectionTitle(l.reportsBarberPerformance),
         if (stats.barberPerformance.isEmpty)
-          Text(l.reportsNoCompletedMonth, style: const TextStyle(color: AppTheme.textSecondary))
+          Text(l.reportsNoCompletedMonth, style: TextStyle(color: AppTheme.textSecondary))
         else
           for (final b in stats.barberPerformance)
             _RankRow(
@@ -293,7 +293,7 @@ class _OverviewTab extends StatelessWidget {
                 amount: fmt.birr(b.revenueEtb)),
         if (showUpdatedNote) ...[
           const SizedBox(height: 20),
-          Text(l.reportsUpdatedNote, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
+          Text(l.reportsUpdatedNote, style: TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
         ],
       ],
     );
@@ -308,7 +308,7 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: 10, left: 2),
         child: Text(text,
-            style: const TextStyle(
+            style: TextStyle(
                 fontWeight: FontWeight.w700, fontSize: 17, color: AppTheme.textPrimary, letterSpacing: -0.2)),
       );
 }
@@ -337,7 +337,7 @@ class _MetricTile extends StatelessWidget {
                     Container(
                       width: 44,
                       height: 44,
-                      decoration: const BoxDecoration(shape: BoxShape.circle, gradient: AppTheme.metallicGradient),
+                      decoration: BoxDecoration(shape: BoxShape.circle, gradient: AppTheme.metallicGradient),
                       child: Icon(icon, size: 20, color: AppTheme.ink),
                     ),
                     const SizedBox(width: 14),
@@ -346,7 +346,7 @@ class _MetricTile extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(label,
-                              style: const TextStyle(fontSize: 12, color: AppTheme.onInkMuted),
+                              style: TextStyle(fontSize: 12, color: AppTheme.onHeroMuted),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis),
                           const SizedBox(height: 4),
@@ -354,10 +354,10 @@ class _MetricTile extends StatelessWidget {
                             fit: BoxFit.scaleDown,
                             alignment: Alignment.centerLeft,
                             child: Text(value,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 28,
                                     fontWeight: FontWeight.w700,
-                                    color: AppTheme.onInk,
+                                    color: AppTheme.onHero,
                                     letterSpacing: -0.6)),
                           ),
                         ],
@@ -375,12 +375,12 @@ class _MetricTile extends StatelessWidget {
                     IconTile(icon: icon, color: color ?? AppTheme.ink, size: 40),
                     const SizedBox(height: 12),
                     Text(label,
-                        style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 2),
                     Text(value,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w700,
                             color: AppTheme.textPrimary,
@@ -422,7 +422,7 @@ class _RevenueBars extends StatelessWidget {
                       FittedBox(
                         child: Text(
                           s.revenueEtb > 0 ? NumberFormat.compact(locale: 'en').format(s.revenueEtb) : '0',
-                          style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                          style: TextStyle(fontSize: 10, color: AppTheme.textSecondary),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -438,7 +438,7 @@ class _RevenueBars extends StatelessWidget {
                       const SizedBox(height: 8),
                       FittedBox(
                         child: Text(_monthLabel(context, s.month, short: true),
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.w500)),
                       ),
                     ],
@@ -486,13 +486,13 @@ class _RankRow extends StatelessWidget {
     required this.subtitle,
     required this.amount,
     this.icon = Icons.content_cut,
-    this.color = AppTheme.ink,
+    this.color,
   });
   final String title;
   final String subtitle;
   final String amount;
   final IconData icon;
-  final Color color;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -501,11 +501,11 @@ class _RankRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-        leading: IconTile(icon: icon, color: color, size: 42),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
-        subtitle: Text(subtitle, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
+        leading: IconTile(icon: icon, color: color ?? AppTheme.ink, size: 42),
+        title: Text(title, style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+        subtitle: Text(subtitle, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
         trailing: Text(amount,
-            style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 14.5)),
+            style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 14.5)),
       ),
     );
   }
@@ -520,7 +520,7 @@ class _ClientsTab extends StatelessWidget {
     final l = context.l10n;
     final fmt = context.fmt;
     if (clients.isEmpty) {
-      return Center(child: Text(l.reportsNoClients, style: const TextStyle(color: AppTheme.textSecondary)));
+      return Center(child: Text(l.reportsNoClients, style: TextStyle(color: AppTheme.textSecondary)));
     }
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -542,17 +542,17 @@ class _ClientsTab extends StatelessWidget {
               backgroundColor: AppTheme.surface,
               child: Text(
                 c.name.isNotEmpty ? c.name.characters.first.toUpperCase() : '?',
-                style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700),
+                style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700),
               ),
             ),
             title: Text(c.name.isNotEmpty ? c.name : fmt.phone(c.phone),
-                style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
             subtitle: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (c.phone.isNotEmpty && c.name.isNotEmpty)
-                  Text(fmt.phone(c.phone), style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-                Text(details, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  Text(fmt.phone(c.phone), style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                Text(details, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
               ],
             ),
             trailing: c.noShowCount > 0
@@ -565,7 +565,7 @@ class _ClientsTab extends StatelessWidget {
                     ),
                     child: Text(
                       l.reportsClientNoShows(c.noShowCount),
-                      style: const TextStyle(fontSize: 11, color: AppTheme.warning, fontWeight: FontWeight.w700),
+                      style: TextStyle(fontSize: 11, color: AppTheme.warning, fontWeight: FontWeight.w700),
                     ),
                   )
                 : null,

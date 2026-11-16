@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- CrownBladeLogo.splashDark: the dark-mode native splash, the window
+         behind Flutter and the start-up intro share it. -->
+    <color name="splash_background">#0A0A0A</color>
+</resources>

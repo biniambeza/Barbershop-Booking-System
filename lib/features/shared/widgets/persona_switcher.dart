@@ -37,7 +37,7 @@ void showPersonaSwitcher(BuildContext context, {required UserRole current}) {
           ),
           title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
           subtitle: Text(subtitle),
-          trailing: active ? const Icon(Icons.check, color: AppTheme.ink) : null,
+          trailing: active ? Icon(Icons.check, color: AppTheme.ink) : null,
           onTap: () {
             Navigator.pop(ctx);
             if (!active) onSelect();
@@ -54,13 +54,13 @@ void showPersonaSwitcher(BuildContext context, {required UserRole current}) {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.swap_horiz, color: AppTheme.ink),
+                  Icon(Icons.swap_horiz, color: AppTheme.ink),
                   const SizedBox(width: 8),
                   Text(l.personaTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 ],
               ),
               const SizedBox(height: 6),
-              Text(l.personaSubtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+              Text(l.personaSubtitle, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
               const SizedBox(height: 12),
               tile(
                 role: UserRole.admin,

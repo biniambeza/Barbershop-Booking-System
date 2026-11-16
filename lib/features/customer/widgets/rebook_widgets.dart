@@ -140,13 +140,13 @@ Future<void> _showRebookFallback(BuildContext context, RebookCandidate c, Rebook
       key: const ValueKey('rebook-fallback'),
       backgroundColor: AppTheme.card,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      icon: const IconTile(icon: Icons.event_busy_rounded, color: AppTheme.warning),
+      icon: IconTile(icon: Icons.event_busy_rounded, color: AppTheme.warning),
       title: Text(l.rebookFallbackTitle, textAlign: TextAlign.center),
       content: Text(
         message,
         key: ValueKey('rebook-fallback-${check.problem!.name}'),
         textAlign: TextAlign.center,
-        style: const TextStyle(color: AppTheme.textSecondary, height: 1.4),
+        style: TextStyle(color: AppTheme.textSecondary, height: 1.4),
       ),
       actionsAlignment: MainAxisAlignment.center,
       actionsOverflowDirection: VerticalDirection.down,
@@ -245,7 +245,7 @@ class YourBarbersSection extends StatelessWidget {
             children: [
               SectionHeader(title: l.yourBarbersTitle),
               const SizedBox(height: 2),
-              Text(l.yourBarbersSubtitle, style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary)),
+              Text(l.yourBarbersSubtitle, style: TextStyle(fontSize: 12.5, color: AppTheme.textSecondary)),
               const SizedBox(height: 10),
               SizedBox(
                 height: 176,
@@ -293,7 +293,7 @@ class _YourBarberCard extends StatelessWidget {
                 backgroundImage: avatar != null ? NetworkImage(avatar) : null,
                 onBackgroundImageError: avatar != null ? (error, stackTrace) {} : null,
                 child: avatar == null
-                    ? Text(initial, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700))
+                    ? Text(initial, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700))
                     : null,
               ),
               const SizedBox(width: 10),
@@ -304,11 +304,11 @@ class _YourBarberCard extends StatelessWidget {
                     Text(c.barberName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                        style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
                     Text(c.shopName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                   ],
                 ),
               ),
@@ -320,7 +320,7 @@ class _YourBarberCard extends StatelessWidget {
             Text(l.rebookLastService(c.serviceName!),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary))
+                style: TextStyle(fontSize: 12, color: AppTheme.textSecondary))
           else if (c.isFavorite)
             StatusChip(label: l.rebookFavoriteTag, color: AppTheme.danger, icon: Icons.favorite),
           const Spacer(),

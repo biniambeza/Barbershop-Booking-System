@@ -71,14 +71,14 @@ class _AdminReceiptsScreenState extends State<AdminReceiptsScreen> {
                 builder: (context, _) => ListView(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                   children: [
-                    Text(l.rcptAdminIntro, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                    Text(l.rcptAdminIntro, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                     const SizedBox(height: 16),
                     SectionHeader(title: '${l.rcptAdminOpenSection} (${open.length})'),
                     const SizedBox(height: 8),
                     if (open.isEmpty)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Text(l.rcptAdminEmpty, style: const TextStyle(color: AppTheme.textSecondary)),
+                        child: Text(l.rcptAdminEmpty, style: TextStyle(color: AppTheme.textSecondary)),
                       ),
                     for (final p in open) _AdminReceiptCard(payment: p, pricing: pricing, service: _service, onTap: () => _open(p)),
                     if (decided.isNotEmpty) ...[
@@ -138,11 +138,11 @@ class _AdminReceiptCard extends StatelessWidget {
                 width: 56,
                 height: 56,
                 compact: true,
-                placeholder: IconTile(icon: receiptMethodIcon(p.method), size: 56),
+                placeholder: IconTile(icon: receiptMethodIcon(p.method), background: AppTheme.greenSoft, size: 56),
               ),
             )
           else
-            IconTile(icon: receiptMethodIcon(p.method), size: 56),
+            IconTile(icon: receiptMethodIcon(p.method), background: AppTheme.greenSoft, size: 56),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -154,7 +154,7 @@ class _AdminReceiptCard extends StatelessWidget {
                       child: Text(shop?.name ?? p.shopId,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                          style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
                     ),
                     const SizedBox(width: 6),
                     Flexible(
@@ -169,7 +169,7 @@ class _AdminReceiptCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text('${l.receiptMethodLabel(p.method, short: true)} • ${p.transactionId}',
-                    style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary)),
+                    style: TextStyle(fontSize: 12.5, color: AppTheme.textSecondary)),
                 const SizedBox(height: 2),
                 Text(
                   [
@@ -177,7 +177,7 @@ class _AdminReceiptCard extends StatelessWidget {
                     days == null ? l.rcptAdminTooLow : l.rcptAdminWouldGrant(l.rcptDays(days)),
                     l.rcptAdminSubmitted(context.fmt.addisDateMedium(p.createdAt)),
                   ].join(' • '),
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                 ),
                 if (p.decisionReason != null)
                   Padding(
@@ -309,7 +309,13 @@ class _AdminReceiptDetailScreenState extends State<AdminReceiptDetailScreen> {
                   ),
                 )
               else
-                AppCard(child: Text(l.rcptAdminNoImage, style: const TextStyle(color: AppTheme.textSecondary))),
+                AppCard(
+                  child: Row(children: [
+                    IconTile(icon: Icons.hide_image_outlined, color: AppTheme.textSecondary, background: AppTheme.surface, size: 40),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text(l.rcptAdminNoImage, style: TextStyle(color: AppTheme.textSecondary))),
+                  ]),
+                ),
               const SizedBox(height: 12),
               AppCard(
                 child: Column(
@@ -346,7 +352,7 @@ class _AdminReceiptDetailScreenState extends State<AdminReceiptDetailScreen> {
                         label: Text(l.rcptAdminOpenOfficial),
                       )
                     else
-                      Text(l.rcptAdminNoOfficial, style: const TextStyle(fontSize: 12.5, color: AppTheme.warning)),
+                      Text(l.rcptAdminNoOfficial, style: TextStyle(fontSize: 12.5, color: AppTheme.warning)),
                   ],
                 ),
               ),
@@ -370,7 +376,7 @@ class _AdminReceiptDetailScreenState extends State<AdminReceiptDetailScreen> {
                       if (newEnd != null) ...[
                         const SizedBox(height: 8),
                         Text(l.rcptAdminNewEnd(context.fmt.addisDateMedium(newEnd)),
-                            style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.success)),
+                            style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.success)),
                       ],
                       const SizedBox(height: 14),
                       Row(
@@ -413,7 +419,7 @@ class _AdminReceiptDetailScreenState extends State<AdminReceiptDetailScreen> {
           children: [
             SizedBox(
               width: 130,
-              child: Text(label, style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary)),
+              child: Text(label, style: TextStyle(fontSize: 12.5, color: AppTheme.textSecondary)),
             ),
             Expanded(child: SelectableText(value, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600))),
           ],
@@ -458,7 +464,7 @@ class _RejectDialogState extends State<_RejectDialog> {
         TextButton(
           key: const ValueKey('admin-receipt-reject-confirm'),
           onPressed: text.isEmpty ? null : () => Navigator.pop(context, text),
-          child: Text(l.rcptReject, style: const TextStyle(color: AppTheme.danger)),
+          child: Text(l.rcptReject, style: TextStyle(color: AppTheme.danger)),
         ),
       ],
     );
@@ -508,7 +514,7 @@ class _ReceiptsToReviewButtonState extends State<ReceiptsToReviewButton> {
       tooltip: context.l10n.rcptAdminTitle,
       icon: Badge(
         label: Text('$_count'),
-        child: const Icon(Icons.receipt_long_outlined, color: AppTheme.textPrimary),
+        child: Icon(Icons.receipt_long_outlined, color: AppTheme.textPrimary),
       ),
       onPressed: () => Navigator.push(
         context,

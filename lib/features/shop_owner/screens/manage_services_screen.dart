@@ -62,7 +62,7 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
                 ),
                 if (error != null) ...[
                   const SizedBox(height: 10),
-                  Text(error!, style: const TextStyle(color: AppTheme.danger, fontSize: 12)),
+                  Text(error!, style: TextStyle(color: AppTheme.danger, fontSize: 12)),
                 ],
               ],
             ),
@@ -70,7 +70,7 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
+              child: Text(l.cancel, style: TextStyle(color: AppTheme.textSecondary)),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -125,11 +125,11 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.content_cut, size: 48, color: AppTheme.textSecondary),
+                  Icon(Icons.content_cut, size: 48, color: AppTheme.textSecondary),
                   const SizedBox(height: 12),
                   Text(l.noServicesYet, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
-                  Text(l.noServicesHint, style: const TextStyle(color: AppTheme.textSecondary)),
+                  Text(l.noServicesHint, style: TextStyle(color: AppTheme.textSecondary)),
                 ],
               ),
             )
@@ -148,11 +148,10 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
                         width: 46,
                         height: 46,
                         decoration: BoxDecoration(
-                          color: AppTheme.card,
+                          color: AppTheme.greenSoft,
                           borderRadius: BorderRadius.circular(AppTheme.radiusTile),
-                          border: Border.all(color: AppTheme.hairline),
                         ),
-                        child: const Icon(Icons.content_cut, color: AppTheme.blue, size: 22),
+                        child: Icon(Icons.content_cut, color: AppTheme.success, size: 22),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -161,20 +160,20 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
                           children: [
                             Text(
                               service.name,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontWeight: FontWeight.w700, fontSize: 16, color: AppTheme.textPrimary),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               service.description,
-                              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 6),
                             Text(
                               l.minutesShort(service.durationMinutes),
-                              style: const TextStyle(
+                              style: TextStyle(
                                   color: AppTheme.textSecondary, fontSize: 12, fontWeight: FontWeight.w600),
                             ),
                           ],
@@ -182,7 +181,7 @@ class _ManageServicesScreenState extends State<ManageServicesScreen> {
                       ),
                       Text(
                         fmt.birr(service.price),
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: AppTheme.textPrimary),
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18, color: AppTheme.textPrimary),
                       ),
                     ],
                   ),

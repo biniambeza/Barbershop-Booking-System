@@ -205,8 +205,8 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
         actions: [
           TextButton.icon(
             onPressed: _previewShopAsCustomer,
-            icon: const Icon(Icons.remove_red_eye_outlined, size: 16, color: AppTheme.ink),
-            label: Text(l.preview, style: const TextStyle(color: AppTheme.ink, fontWeight: FontWeight.w600)),
+            icon: Icon(Icons.remove_red_eye_outlined, size: 16, color: AppTheme.ink),
+            label: Text(l.preview, style: TextStyle(color: AppTheme.ink, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -218,8 +218,8 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
             child: ElevatedButton.icon(
               onPressed: _isSaving ? null : _saveChanges,
               icon: _isSaving
-                  ? const SizedBox(
-                      width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.onInk))
+                  ? SizedBox(
+                      width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.textSecondary))
                   : const Icon(Icons.check),
               label: Text(_isSaving ? l.savingUpdates : l.publishCustomizations,
                   style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
@@ -240,7 +240,7 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
                 decoration: AppTheme.cardDecoration(),
                 child: Row(
                   children: [
-                    const CircleAvatar(
+                    CircleAvatar(
                       backgroundColor: AppTheme.ink,
                       radius: 22,
                       child: Icon(Icons.brush, color: AppTheme.onInk, size: 20),
@@ -253,7 +253,7 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
                           Text(l.brandProfile,
                               style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                           const SizedBox(height: 2),
-                          Text(l.brandProfileHint, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                          Text(l.brandProfileHint, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                         ],
                       ),
                     ),
@@ -294,7 +294,7 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
 
               // Theme Presets
               Text(l.themePresets,
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -423,7 +423,7 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
               ),
               const SizedBox(height: 16),
               Text(l.openWorkingDays,
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
+                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -436,7 +436,7 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
               // Section 4: Booking policy (cancellation cutoff, reschedules)
               _buildSectionTitle(l.policySectionTitle, Icons.policy_outlined),
               const SizedBox(height: 8),
-              Text(l.policyCutoffHelp, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+              Text(l.policyCutoffHelp, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
                 key: const ValueKey('policy-cutoff'),
@@ -477,9 +477,9 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
                   activeTrackColor: AppTheme.green,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                   title: Text(l.acceptPolicyToggle,
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textPrimary)),
+                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.textPrimary)),
                   subtitle: Text(l.acceptPolicyToggleHelp,
-                      style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                      style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                   onChanged: (val) => setState(() => _requireAcceptance = val),
                   ),
                 ),
@@ -509,7 +509,7 @@ class _CustomizeShopScreenState extends State<CustomizeShopScreen> {
         Expanded(
           child: Text(
             title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
           ),
         ),
       ],

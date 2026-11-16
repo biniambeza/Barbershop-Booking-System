@@ -183,7 +183,7 @@ class _RatePromptBannerState extends State<RatePromptBanner> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 2),
             child: Icon(Icons.star_rounded, color: AppTheme.orange, size: 26),
           ),
@@ -194,12 +194,12 @@ class _RatePromptBannerState extends State<RatePromptBanner> {
               children: [
                 Text(
                   l.ratePromptTitle,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: AppTheme.textPrimary),
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: AppTheme.textPrimary),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   l.ratePromptBody(booking.barberName, booking.serviceName, booking.shopName),
-                  style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary, height: 1.3),
+                  style: TextStyle(fontSize: 12.5, color: AppTheme.textSecondary, height: 1.3),
                 ),
                 const SizedBox(height: 10),
                 Wrap(
@@ -230,7 +230,7 @@ class _RatePromptBannerState extends State<RatePromptBanner> {
             key: const ValueKey('rate-prompt-dismiss'),
             tooltip: l.ratePromptDismiss,
             visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.close_rounded, size: 18, color: AppTheme.textSecondary),
+            icon: Icon(Icons.close_rounded, size: 18, color: AppTheme.textSecondary),
             onPressed: () => setState(() => _dismissed.add(booking.id)),
           ),
         ],

@@ -69,12 +69,12 @@ class PrivacyPolicyScreen extends StatelessWidget {
                       const SizedBox(height: 10),
                       Text(
                         l.privacyPolicyTitle,
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.onInk),
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.onHero),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         l.privacyPolicyUpdated(kPrivacyPolicyUpdated),
-                        style: const TextStyle(fontSize: 12, color: AppTheme.onInkMuted),
+                        style: TextStyle(fontSize: 12, color: AppTheme.onInkMuted),
                       ),
                       const SizedBox(height: 14),
                       Wrap(
@@ -132,11 +132,11 @@ class _PillLink extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 16, color: AppTheme.onInk),
+              Icon(icon, size: 16, color: AppTheme.onHero),
               const SizedBox(width: 6),
               Flexible(
                 child: Text(label,
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.onInk)),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.onHero)),
               ),
             ],
           ),
@@ -153,7 +153,7 @@ class _SectionBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const body = TextStyle(fontSize: 14, height: 1.45, color: AppTheme.textPrimary);
+    final body = TextStyle(fontSize: 14, height: 1.45, color: AppTheme.textPrimary);
     final lines = section.body.split('\n');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,7 +169,7 @@ class _SectionBody extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(top: 7, right: 8),
                     child: Icon(Icons.circle, size: 6, color: AppTheme.green),
                   ),
@@ -196,7 +196,7 @@ class PrivacyConsentNote extends StatelessWidget {
       alignment: WrapAlignment.center,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Text(l.privacyConsentPrefix, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+        Text(l.privacyConsentPrefix, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
         InkWell(
           key: const ValueKey('privacy-consent-link'),
           borderRadius: BorderRadius.circular(6),
@@ -205,7 +205,7 @@ class PrivacyConsentNote extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 6),
             child: Text(
               l.privacyPolicyTitle,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
                 color: AppTheme.success,

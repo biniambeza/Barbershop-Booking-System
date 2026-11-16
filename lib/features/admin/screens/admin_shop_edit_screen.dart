@@ -209,11 +209,15 @@ class _AdminShopEditScreenState extends State<AdminShopEditScreen> {
         children: [
           Row(
             children: [
-              IconTile(icon: icon, color: color ?? AppTheme.ink, size: 36),
+              IconTile(
+                  icon: icon,
+                  color: color ?? AppTheme.primary,
+                  background: AppTheme.softOf(color ?? AppTheme.primary),
+                  size: 36),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(title,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
               ),
             ],
           ),
@@ -234,7 +238,7 @@ class _AdminShopEditScreenState extends State<AdminShopEditScreen> {
       color: shop.isBlocked ? AppTheme.danger : AppTheme.green,
       children: [
         Text(shop.name,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
         const SizedBox(height: 8),
         AdminShopStatusChip(shop: shop),
         if (shop.adminSuspended) ...[
@@ -243,7 +247,7 @@ class _AdminShopEditScreenState extends State<AdminShopEditScreen> {
             l.adminShopsSuspendedSince(
                 shop.adminSuspendedAt != null ? fmt.addisDateMedium(shop.adminSuspendedAt!) : '-', reason),
             key: const ValueKey('admin-shop-suspended-since'),
-            style: const TextStyle(fontSize: 13, color: AppTheme.danger),
+            style: TextStyle(fontSize: 13, color: AppTheme.danger),
           ),
         ],
         const SizedBox(height: 14),
@@ -299,11 +303,11 @@ class _AdminShopEditScreenState extends State<AdminShopEditScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                  Text(title, style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
                   if (subtitle.isNotEmpty)
                     Text(subtitle,
                         key: const ValueKey('admin-shop-owner-status'),
-                        style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary)),
+                        style: TextStyle(fontSize: 12.5, color: AppTheme.textSecondary)),
                 ],
               ),
             ),
@@ -397,7 +401,7 @@ class _AdminShopEditScreenState extends State<AdminShopEditScreen> {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.access_time, size: 16, color: AppTheme.textSecondary),
+            Icon(Icons.access_time, size: 16, color: AppTheme.textSecondary),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
@@ -406,7 +410,7 @@ class _AdminShopEditScreenState extends State<AdminShopEditScreen> {
                   fmt.hoursRange(shop.openingHour, shop.closingHour),
                 ),
                 key: const ValueKey('admin-shop-hours-readonly'),
-                style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary),
+                style: TextStyle(fontSize: 12.5, color: AppTheme.textSecondary),
               ),
             ),
           ],
@@ -425,7 +429,7 @@ class _AdminShopEditScreenState extends State<AdminShopEditScreen> {
       icon: Icons.workspace_premium_rounded,
       color: AppTheme.purple,
       children: [
-        Text(l.adminShopsOverrideHint, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+        Text(l.adminShopsOverrideHint, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
         Material(
           type: MaterialType.transparency,
           child: SwitchListTile(

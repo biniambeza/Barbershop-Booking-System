@@ -48,14 +48,14 @@ class _QueueDashboardCardState extends State<QueueDashboardCard> {
           clipBehavior: Clip.antiAlias,
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            leading: const IconTile(icon: Icons.groups_outlined, color: AppTheme.green, size: 44),
+            leading: IconTile(icon: Icons.groups_outlined, color: AppTheme.green, size: 44),
             title: Text(l.queueTitle,
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: AppTheme.textPrimary)),
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: AppTheme.textPrimary)),
             subtitle: Text(
               l.queueDashboardSubtitle(waiting, serving),
-              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5),
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12.5),
             ),
-            trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary),
+            trailing: Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary),
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => QueueScreen(shopId: widget.shopId)),

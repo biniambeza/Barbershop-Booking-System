@@ -169,7 +169,7 @@ class _AddBarberSheetState extends State<AddBarberSheet> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
+            child: Text(l.cancel, style: TextStyle(color: AppTheme.textSecondary)),
           ),
           ElevatedButton(
             key: const ValueKey('add-barber-send-invite'),
@@ -232,12 +232,12 @@ class _AddBarberSheetState extends State<AddBarberSheet> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(l.staffAcctSheetTitle,
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            Text(l.staffAcctSheetIntro, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+            Text(l.staffAcctSheetIntro, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
             const SizedBox(height: 18),
             TextField(
               key: const ValueKey('add-barber-name'),
@@ -362,14 +362,14 @@ class _AddBarberSheetState extends State<AddBarberSheet> {
               const SizedBox(height: 12),
               Text(_formError!,
                   key: const ValueKey('add-barber-error'),
-                  style: const TextStyle(color: AppTheme.danger, fontSize: 12.5)),
+                  style: TextStyle(color: AppTheme.danger, fontSize: 12.5)),
             ],
             const SizedBox(height: 20),
             Row(
               children: [
                 TextButton(
                   onPressed: _busy ? null : () => Navigator.of(context).pop(),
-                  child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
+                  child: Text(l.cancel, style: TextStyle(color: AppTheme.textSecondary)),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -377,10 +377,10 @@ class _AddBarberSheetState extends State<AddBarberSheet> {
                     key: const ValueKey('add-barber-create'),
                     onPressed: _busy ? null : _create,
                     icon: _busy
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 16,
                             height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.onInk),
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.textSecondary),
                           )
                         : const Icon(Icons.person_add_alt_1_rounded, size: 18),
                     label: Text(l.staffAcctCreate),
@@ -397,9 +397,9 @@ class _AddBarberSheetState extends State<AddBarberSheet> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(l.staffAcctInviteSectionTitle,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.textPrimary)),
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.textPrimary)),
                   const SizedBox(height: 4),
-                  Text(l.barberInviteHelper, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
+                  Text(l.barberInviteHelper, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
                   const SizedBox(height: 10),
                   Align(
                     alignment: Alignment.centerLeft,
@@ -490,31 +490,31 @@ class _BarberLoginDetailsSheetState extends State<BarberLoginDetailsSheet> {
         children: [
           Row(
             children: [
-              const IconTile(icon: Icons.verified_user_rounded, color: AppTheme.success, size: 42),
+              IconTile(icon: Icons.verified_user_rounded, color: AppTheme.success, size: 42),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(l.staffAcctCreatedTitle,
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          Text(l.staffAcctCreatedBody(widget.name), style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+          Text(l.staffAcctCreatedBody(widget.name), style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
           const SizedBox(height: 16),
           HeroCard(
             padding: const EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(l.staffAcctEmailField, style: const TextStyle(color: AppTheme.onInkMuted, fontSize: 12)),
+                Text(l.staffAcctEmailField, style: TextStyle(color: AppTheme.onHeroMuted, fontSize: 12)),
                 const SizedBox(height: 2),
                 SelectableText(
                   account.email,
                   key: const ValueKey('barber-login-email'),
-                  style: const TextStyle(color: AppTheme.onInk, fontSize: 16, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: AppTheme.onHero, fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 14),
-                Text(l.staffAcctTempPasswordLabel, style: const TextStyle(color: AppTheme.onInkMuted, fontSize: 12)),
+                Text(l.staffAcctTempPasswordLabel, style: TextStyle(color: AppTheme.onHeroMuted, fontSize: 12)),
                 const SizedBox(height: 2),
                 Row(
                   children: [
@@ -522,8 +522,8 @@ class _BarberLoginDetailsSheetState extends State<BarberLoginDetailsSheet> {
                       child: SelectableText(
                         account.temporaryPassword,
                         key: const ValueKey('barber-login-password'),
-                        style: const TextStyle(
-                          color: AppTheme.onInk,
+                        style: TextStyle(
+                          color: AppTheme.onHero,
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
                           fontFamily: 'monospace',
@@ -534,7 +534,7 @@ class _BarberLoginDetailsSheetState extends State<BarberLoginDetailsSheet> {
                     IconButton(
                       tooltip: _copiedPassword ? l.staffAcctCopied : l.staffAcctCopyPassword,
                       icon: Icon(_copiedPassword ? Icons.check_rounded : Icons.copy_rounded,
-                          color: _copiedPassword ? AppTheme.green : AppTheme.onInk),
+                          color: _copiedPassword && AppTheme.isDark ? AppTheme.success : AppTheme.onHero),
                       onPressed: _copyPassword,
                     ),
                   ],
@@ -546,11 +546,11 @@ class _BarberLoginDetailsSheetState extends State<BarberLoginDetailsSheet> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.info_outline_rounded, size: 16, color: AppTheme.warning),
+              Icon(Icons.info_outline_rounded, size: 16, color: AppTheme.warning),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(l.staffAcctShownOnce,
-                    style: const TextStyle(color: AppTheme.warning, fontSize: 12.5, fontWeight: FontWeight.w600)),
+                    style: TextStyle(color: AppTheme.warning, fontSize: 12.5, fontWeight: FontWeight.w600)),
               ),
             ],
           ),
@@ -605,7 +605,7 @@ class BarberAccountStatus extends StatelessWidget {
                 Flexible(
                   child: Text(
                     ownerCreated ? l.staffAcctWaitingFirstLogin : l.barberInviteWaiting,
-                    style: const TextStyle(color: AppTheme.warning, fontSize: 12, fontWeight: FontWeight.w600),
+                    style: TextStyle(color: AppTheme.warning, fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
@@ -614,13 +614,13 @@ class BarberAccountStatus extends StatelessWidget {
             Text(
               invite.email,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11.5),
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 11.5),
             ),
             if (ownerCreated) ...[
               const SizedBox(height: 2),
               Text(
                 l.staffAcctLostPasswordHint,
-                style: const TextStyle(color: AppTheme.textTertiary, fontSize: 11),
+                style: TextStyle(color: AppTheme.textTertiary, fontSize: 11),
               ),
             ],
           ],

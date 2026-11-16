@@ -126,7 +126,7 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
                         decoration:
                             BoxDecoration(color: SubscriptionStatusChip.colorFor(status), shape: BoxShape.circle))),
                 label: Text(context.l10n.statusCountChip(context.l10n.subscriptionStatus(status), counts[status] ?? 0)),
-                side: const BorderSide(color: AppTheme.hairline),
+                side: BorderSide(color: AppTheme.hairline),
               ),
           ],
         ),
@@ -154,7 +154,7 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
         subtitle: Text(
           '${l.planName(shop.subscriptionPlan, _repo.getPlan(shop.subscriptionPlan))} • $endText'
           '${shop.subCity.isEmpty ? '' : '\n${l.placeName(shop.subCity)}'}',
-          style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
         ),
         isThreeLine: shop.subCity.isNotEmpty,
         trailing: SubscriptionStatusChip(status: shop.effectiveStatusAt(_now)), // subscription expiry
@@ -213,7 +213,7 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
         const SizedBox(height: 8),
         Text(
           l.plansExplainer,
-          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
         ),
         const SizedBox(height: 12),
         if (plans.isEmpty) Text(l.noPlansYet),
@@ -227,7 +227,7 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
               subtitle: Text(
                 '${l.perMonth(context.fmt.birr(plan.priceMonthlyEtb))} • ${l.barberLimit(plan)}'
                 '${plan.features.isEmpty ? '' : '\n${plan.features.join(' • ')}'}',
-                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
               ),
               isThreeLine: plan.features.isNotEmpty,
               onTap: () => _editPlan(plan, const []),
@@ -307,7 +307,7 @@ class _SubscriptionDialogState extends State<_SubscriptionDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(l.manualSubscriptionHint, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+            Text(l.manualSubscriptionHint, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _plan,
@@ -535,7 +535,7 @@ class _PlanDialogState extends State<_PlanDialog> {
               title: Text(l.availableToOwners),
               onChanged: (v) => setState(() => _active = v),
             ),
-            if (_error != null) Text(_error!, style: const TextStyle(color: AppTheme.danger, fontSize: 12)),
+            if (_error != null) Text(_error!, style: TextStyle(color: AppTheme.danger, fontSize: 12)),
           ],
         ),
       ),

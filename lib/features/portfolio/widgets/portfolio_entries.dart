@@ -82,7 +82,7 @@ class _ShopPortfolioSectionState extends State<ShopPortfolioSection> {
             const SizedBox(height: 4),
             SectionHeader(title: l.portfolioShopSectionTitle),
             const SizedBox(height: 2),
-            Text(l.portfolioShopSectionHint, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
+            Text(l.portfolioShopSectionHint, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
             const SizedBox(height: 12),
             SizedBox(
               height: 64,
@@ -123,7 +123,7 @@ class _BarberWorkChip extends StatelessWidget {
       color: AppTheme.card,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusPanel),
-        side: const BorderSide(color: AppTheme.hairline),
+        side: BorderSide(color: AppTheme.hairline),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -133,7 +133,7 @@ class _BarberWorkChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const IconTile(icon: Icons.photo_library_outlined, color: AppTheme.green, size: 40),
+              IconTile(icon: Icons.photo_library_outlined, color: AppTheme.green, size: 40),
               const SizedBox(width: 10),
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -144,9 +144,9 @@ class _BarberWorkChip extends StatelessWidget {
                     child: Text(barber.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: AppTheme.textPrimary)),
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: AppTheme.textPrimary)),
                   ),
-                  Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  Text(label, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                 ],
               ),
             ],
@@ -217,7 +217,7 @@ class _BarberPortfolioLinkState extends State<BarberPortfolioLink> {
           child: OutlinedButton.icon(
             key: ValueKey('barber-portfolio-link-${widget.barber.id}'),
             onPressed: _open,
-            icon: const Icon(Icons.photo_library_outlined, size: 18, color: AppTheme.green),
+            icon: Icon(Icons.photo_library_outlined, size: 18, color: AppTheme.green),
             label: Text('${l.portfolioSeeWork(widget.barber.name)} · ${l.portfolioPhotoCount(count)}',
                 maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5)),
           ),
@@ -267,23 +267,23 @@ class BarberPortfolioCard extends StatelessWidget {
                     ),
                   )
                 else
-                  const IconTile(icon: Icons.photo_library_outlined, color: AppTheme.green, size: 44),
+                  IconTile(icon: Icons.photo_library_outlined, color: AppTheme.green, size: 44),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(l.portfolioDashboardTitle,
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: AppTheme.textPrimary)),
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: AppTheme.textPrimary)),
                       const SizedBox(height: 2),
                       Text(
                         count == null ? l.portfolioDashboardSubtitle : l.portfolioCountOfMax(count, kMaxPortfolioPhotos),
-                        style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary),
+                        style: TextStyle(fontSize: 11.5, color: AppTheme.textSecondary),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
+                Icon(Icons.chevron_right, color: AppTheme.textSecondary),
               ],
             ),
           );
@@ -315,15 +315,15 @@ class ManagePortfolioLink extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.photo_library_outlined, size: 14, color: AppTheme.green),
+            Icon(Icons.photo_library_outlined, size: 14, color: AppTheme.green),
             const SizedBox(width: 4),
             Flexible(
               child: Text(l.portfolioManageTitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
             ),
-            const Icon(Icons.chevron_right_rounded, size: 16, color: AppTheme.textSecondary),
+            Icon(Icons.chevron_right_rounded, size: 16, color: AppTheme.textSecondary),
           ],
         ),
       ),

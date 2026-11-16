@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- AppTheme.ink: the native splash, the window behind Flutter and the
-         start-up intro share it, so there is no white flash at start-up. -->
-    <color name="splash_background">#18181B</color>
+    <!-- CrownBladeLogo.splashLight: the native splash, the window behind
+         Flutter and the start-up intro share it (dark mode:
+         values-night/splash_colors.xml), so there is no flash at start-up. -->
+    <color name="splash_background">#FFFFFF</color>
 </resources>

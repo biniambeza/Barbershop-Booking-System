@@ -38,12 +38,12 @@ class OwnerReviewsButton extends StatelessWidget {
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.textPrimary,
                 backgroundColor: AppTheme.card,
-                side: const BorderSide(color: AppTheme.hairline),
+                side: BorderSide(color: AppTheme.hairline),
                 minimumSize: const Size(0, 54),
                 alignment: Alignment.centerLeft,
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               ),
-              icon: const Icon(Icons.reviews_outlined, size: 18, color: AppTheme.blue),
+              icon: Icon(Icons.reviews_outlined, size: 18, color: AppTheme.blue),
               label: Row(
                 children: [
                   Expanded(
@@ -51,7 +51,7 @@ class OwnerReviewsButton extends StatelessWidget {
                         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                   ),
                   if (!rating.isNew) ...[
-                    const Icon(Icons.star_rounded, size: 16, color: AppTheme.orange),
+                    Icon(Icons.star_rounded, size: 16, color: AppTheme.orange),
                     const SizedBox(width: 3),
                     // "4.6 · 3 barbers rated"
                     Flexible(
@@ -59,13 +59,13 @@ class OwnerReviewsButton extends StatelessWidget {
                         l.shopRatingText(rating),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 12.5, fontWeight: FontWeight.w700, color: AppTheme.textSecondary),
                       ),
                     ),
                     const SizedBox(width: 6),
                   ],
-                  const Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.textSecondary),
+                  Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.textSecondary),
                 ],
               ),
             );
@@ -97,14 +97,14 @@ class BarberReviewsCard extends StatelessWidget {
           clipBehavior: Clip.antiAlias,
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            leading: const IconTile(icon: Icons.star_outline_rounded, color: AppTheme.orange, size: 44),
+            leading: IconTile(icon: Icons.star_outline_rounded, color: AppTheme.orange, size: 44),
             title: Text(l.reviewsMyReviews,
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: AppTheme.textPrimary)),
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: AppTheme.textPrimary)),
             subtitle: Text(
               l.reviewsSummaryText(summary),
-              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5),
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12.5),
             ),
-            trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary),
+            trailing: Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary),
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(

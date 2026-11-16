@@ -97,7 +97,7 @@ class _AdminUserEditScreenState extends State<AdminUserEditScreen> {
                   padding: const EdgeInsets.all(14),
                   child: Row(
                     children: [
-                      const Icon(Icons.info_outline, color: AppTheme.textSecondary),
+                      Icon(Icons.info_outline, color: AppTheme.textSecondary),
                       const SizedBox(width: 10),
                       Expanded(child: Text(l.admUsrSelfNote, style: const TextStyle(fontSize: 13))),
                     ],
@@ -129,7 +129,7 @@ class _AdminUserEditScreenState extends State<AdminUserEditScreen> {
             children: [
               Icon(icon, size: 18, color: AppTheme.textSecondary),
               const SizedBox(width: 10),
-              Text('$label: ', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+              Text('$label: ', style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
               Expanded(
                 child: SelectableText(value,
                     key: ValueKey(key), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
@@ -153,7 +153,7 @@ class _AdminUserEditScreenState extends State<AdminUserEditScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(user.name,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
               ),
               StatusChip(label: adminRoleLabel(l, user.role), color: color),
             ],
@@ -171,7 +171,7 @@ class _AdminUserEditScreenState extends State<AdminUserEditScreen> {
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Text(l.admUsrJoined(context.fmt.dateMedium(user.createdAt)),
-                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
           ),
         ],
       ),
@@ -325,12 +325,12 @@ class _AdminUserEditScreenState extends State<AdminUserEditScreen> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(top: 3),
                     child: Icon(Icons.subdirectory_arrow_right, size: 16, color: AppTheme.textSecondary),
                   ),
                   const SizedBox(width: 6),
-                  Expanded(child: Text(e, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary))),
+                  Expanded(child: Text(e, style: TextStyle(fontSize: 13, color: AppTheme.textSecondary))),
                 ],
               ),
             ],
@@ -339,7 +339,7 @@ class _AdminUserEditScreenState extends State<AdminUserEditScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
+            child: Text(l.cancel, style: TextStyle(color: AppTheme.textSecondary)),
           ),
           ElevatedButton(
             key: const ValueKey('admin-user-role-confirm'),
@@ -389,7 +389,7 @@ class _AdminUserEditScreenState extends State<AdminUserEditScreen> {
                     ),
                     if (user.disabled && user.disabledReason != null)
                       Text(l.admUsrDisabledReason(user.disabledReason!),
-                          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
+                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
                   ],
                 ),
               ),
@@ -446,7 +446,7 @@ class _AdminUserEditScreenState extends State<AdminUserEditScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
+            child: Text(l.cancel, style: TextStyle(color: AppTheme.textSecondary)),
           ),
           ElevatedButton(
             key: const ValueKey('admin-user-enable-confirm'),
@@ -513,7 +513,7 @@ class _DisableUserDialogState extends State<_DisableUserDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(l.admUsrDisableBody, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+            Text(l.admUsrDisableBody, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
             const SizedBox(height: 12),
             TextField(
               key: const ValueKey('admin-user-disable-reason'),
@@ -542,14 +542,14 @@ class _DisableUserDialogState extends State<_DisableUserDialog> {
               },
             ),
             if (!_cancel)
-              Text(l.admUsrBookingsStay, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+              Text(l.admUsrBookingsStay, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
           ],
         ),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
+          child: Text(l.cancel, style: TextStyle(color: AppTheme.textSecondary)),
         ),
         ElevatedButton(
           key: const ValueKey('admin-user-disable-confirm'),

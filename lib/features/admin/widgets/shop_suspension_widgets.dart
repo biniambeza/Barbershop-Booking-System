@@ -93,7 +93,7 @@ class AdminSuspensionBanner extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.block_rounded, color: AppTheme.danger),
+          Icon(Icons.block_rounded, color: AppTheme.danger),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -101,20 +101,20 @@ class AdminSuspensionBanner extends StatelessWidget {
               children: [
                 Text(
                   l.adminShopsOwnerBannerTitle,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.danger),
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.danger),
                 ),
                 const SizedBox(height: 4),
-                Text(l.adminShopsOwnerBannerBody, style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary)),
+                Text(l.adminShopsOwnerBannerBody, style: TextStyle(fontSize: 13, color: AppTheme.textPrimary)),
                 if (reason.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Text(
                     l.adminShopsOwnerBannerReason(reason),
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
                   ),
                 ],
                 const SizedBox(height: 6),
                 Text(l.adminShopsOwnerBannerContact,
-                    style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                    style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
               ],
             ),
           ),
@@ -148,16 +148,16 @@ class ShopUnavailableNotice extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.event_busy_rounded, color: AppTheme.danger),
+          Icon(Icons.event_busy_rounded, color: AppTheme.danger),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(l.adminShopsUnavailableTitle,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.danger)),
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.danger)),
                 const SizedBox(height: 4),
-                Text(l.adminShopsUnavailableBody, style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary)),
+                Text(l.adminShopsUnavailableBody, style: TextStyle(fontSize: 13, color: AppTheme.textPrimary)),
               ],
             ),
           ),

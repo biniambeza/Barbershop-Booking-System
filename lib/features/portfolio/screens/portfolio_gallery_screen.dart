@@ -104,7 +104,7 @@ class _PortfolioGalleryScreenState extends State<PortfolioGalleryScreen> {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                     sliver: SliverToBoxAdapter(
                       child: Text(l.portfolioPhotoCount(photos.length),
-                          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                     ),
                   ),
                   SliverPadding(
@@ -178,7 +178,7 @@ class PortfolioGrid extends StatelessWidget {
                               photo.caption!,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: AppTheme.onInk, fontSize: 11.5, fontWeight: FontWeight.w600),
+                              style: TextStyle(color: AppTheme.onHero, fontSize: 11.5, fontWeight: FontWeight.w600),
                             ),
                           ),
                         ),
@@ -244,12 +244,12 @@ class _PortfolioViewerScreenState extends State<PortfolioViewerScreen> {
     final photos = widget.photos;
     final photo = photos.isEmpty ? null : photos[_index];
     return Scaffold(
-      backgroundColor: AppTheme.charcoalDeep,
+      backgroundColor: AppTheme.photoBackdrop,
       appBar: AppBar(
-        backgroundColor: AppTheme.charcoalDeep,
-        foregroundColor: AppTheme.onInk,
-        iconTheme: const IconThemeData(color: AppTheme.onInk),
-        actionsIconTheme: const IconThemeData(color: AppTheme.onInk),
+        backgroundColor: AppTheme.photoBackdrop,
+        foregroundColor: AppTheme.onHero,
+        iconTheme: IconThemeData(color: AppTheme.onHero),
+        actionsIconTheme: IconThemeData(color: AppTheme.onHero),
         systemOverlayStyle: SystemUiOverlayStyle.light,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -261,7 +261,7 @@ class _PortfolioViewerScreenState extends State<PortfolioViewerScreen> {
         title: Text(
           photos.isEmpty ? '' : l.portfolioViewerCounter(_index + 1, photos.length),
           key: const ValueKey('portfolio-viewer-counter'),
-          style: const TextStyle(color: AppTheme.onInk, fontSize: 15, fontWeight: FontWeight.w600),
+          style: TextStyle(color: AppTheme.onHero, fontSize: 15, fontWeight: FontWeight.w600),
         ),
         actions: photo == null || widget.actions == null ? null : widget.actions!(context, photo),
       ),
@@ -299,14 +299,14 @@ class _PortfolioViewerScreenState extends State<PortfolioViewerScreen> {
                       photo!.caption!,
                       key: const ValueKey('portfolio-viewer-caption'),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppTheme.onInk, fontSize: 17, fontWeight: FontWeight.w700),
+                      style: TextStyle(color: AppTheme.onHero, fontSize: 17, fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 4),
                   ],
                   Text(
                     widget.barber.name,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppTheme.onInkMuted, fontSize: 13),
+                    style: TextStyle(color: AppTheme.onInkMuted, fontSize: 13),
                   ),
                   if (widget.canBook) ...[
                     const SizedBox(height: 14),
@@ -346,9 +346,9 @@ class _Message extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconTile(icon: icon, color: AppTheme.textSecondary, size: 56),
+            IconTile(icon: icon, color: AppTheme.success, size: 56),
             const SizedBox(height: 12),
-            Text(text, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textSecondary)),
+            Text(text, textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textSecondary)),
             if (action != null) ...[const SizedBox(height: 8), action!],
           ],
         ),

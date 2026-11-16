@@ -40,7 +40,7 @@ class _BarberCancelDialogState extends State<_BarberCancelDialog> {
     final b = widget.booking;
     return AlertDialog(
       backgroundColor: AppTheme.card,
-      icon: const Icon(Icons.event_busy_rounded, color: AppTheme.danger, size: 36),
+      icon: Icon(Icons.event_busy_rounded, color: AppTheme.danger, size: 36),
       title: Text(l.barberCancelTitle),
       content: SingleChildScrollView(
         child: Column(
@@ -69,7 +69,7 @@ class _BarberCancelDialogState extends State<_BarberCancelDialog> {
         TextButton(
           key: const ValueKey('barber-cancel-keep'),
           onPressed: () => Navigator.of(context).pop(),
-          child: Text(l.barberCancelKeep, style: const TextStyle(color: AppTheme.textSecondary)),
+          child: Text(l.barberCancelKeep, style: TextStyle(color: AppTheme.textSecondary)),
         ),
         ElevatedButton(
           key: const ValueKey('barber-cancel-confirm'),

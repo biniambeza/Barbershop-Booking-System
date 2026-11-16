@@ -36,8 +36,24 @@ List<Widget> _baseLayers() => [
           userAgentPackageName: kMapUserAgentPackage,
           tileProvider: NetworkTileProvider(httpClient: ShopMapTiles._client, silenceExceptions: true),
           maxZoom: 19,
+          // Dark mode: the same OSM tiles, slightly dimmed and desaturated so
+          // the map does not glare on a black page (pin and attribution are
+          // other layers and stay crisp).
+          tileBuilder: AppTheme.isDark ? _dimTileForDarkMode : null,
         ),
     ];
+
+/// Dims the tile layer in dark mode: about 60% brightness, a little less
+/// saturation. Not an inversion, so the map still reads like a street map.
+Widget _dimTileForDarkMode(BuildContext context, Widget tiles, TileImage tile) => ColorFiltered(
+      colorFilter: const ColorFilter.matrix(<double>[
+        0.52, 0.06, 0.02, 0, 0, //
+        0.03, 0.56, 0.02, 0, 0, //
+        0.03, 0.06, 0.51, 0, 0, //
+        0, 0, 0, 1, 0, //
+      ]),
+      child: tiles,
+    );
 
 /// "© OpenStreetMap contributors" in the bottom-right corner, linking to
 /// the OSM copyright page. One line that shortens with an ellipsis instead
@@ -56,7 +72,7 @@ Widget _attribution() => Align(
             color: Colors.white.withValues(alpha: 0.85),
             borderRadius: const BorderRadius.only(topLeft: Radius.circular(6)),
           ),
-          child: const Text(
+          child: Text(
             '© OpenStreetMap contributors',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -71,7 +87,7 @@ Marker _pinMarker(LatLng point) => Marker(
       width: 44,
       height: 44,
       alignment: Alignment.topCenter,
-      child: const Icon(Icons.location_on, size: 44, color: AppTheme.danger, shadows: [
+      child: Icon(Icons.location_on, size: 44, color: AppTheme.danger, shadows: [
         Shadow(color: Color(0x55000000), blurRadius: 6, offset: Offset(0, 2)),
       ]),
     );
@@ -222,14 +238,14 @@ class _ShopLocationPickerState extends State<ShopLocationPicker> {
       children: [
         Row(
           children: [
-            const Icon(Icons.push_pin_outlined, size: 18, color: AppTheme.green),
+            Icon(Icons.push_pin_outlined, size: 18, color: AppTheme.green),
             const SizedBox(width: 6),
             Text(l.shopMapPinTitle,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
           ],
         ),
         const SizedBox(height: 4),
-        Text(l.shopMapPinHelp, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.35)),
+        Text(l.shopMapPinHelp, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.35)),
         const SizedBox(height: 10),
         ClipRRect(
           borderRadius: BorderRadius.circular(AppTheme.radiusPanel),
@@ -262,31 +278,31 @@ class _ShopLocationPickerState extends State<ShopLocationPicker> {
         ),
         const SizedBox(height: 8),
         if (pin == null)
-          Text(l.noMapPinYet, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary))
+          Text(l.noMapPinYet, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary))
         else ...[
           Text(
             l.mapPinCoordinates(pin.latitude.toStringAsFixed(5), pin.longitude.toStringAsFixed(5)),
             key: const ValueKey('shop-location-coordinates'),
-            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+            style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
           ),
           if (!isInEthiopia(pin.latitude, pin.longitude))
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(l.mapPinOutsideEthiopia,
-                  style: const TextStyle(fontSize: 12, color: AppTheme.warning, fontWeight: FontWeight.w600)),
+                  style: TextStyle(fontSize: 12, color: AppTheme.warning, fontWeight: FontWeight.w600)),
             ),
         ],
         if (_problem != null) ...[
           const SizedBox(height: 6),
           Row(
             children: [
-              const Icon(Icons.info_outline, size: 16, color: AppTheme.warning),
+              Icon(Icons.info_outline, size: 16, color: AppTheme.warning),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   _problemText(context, _problem!),
                   key: const ValueKey('shop-location-problem'),
-                  style: const TextStyle(fontSize: 12, color: AppTheme.warning),
+                  style: TextStyle(fontSize: 12, color: AppTheme.warning),
                 ),
               ),
               if (_problem == DeviceLocationStatus.deniedForever)

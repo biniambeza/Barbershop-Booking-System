@@ -99,13 +99,13 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
           children: [
             Text(
               shop.name,
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: AppTheme.textPrimary),
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: AppTheme.textPrimary),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
             Text(
               l.partnerPortal,
-              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11.5, fontWeight: FontWeight.w500),
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 11.5, fontWeight: FontWeight.w500),
             ),
           ],
         ),
@@ -137,7 +137,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                       Expanded(
                         child: Text(
                           l.metricEstRevenue,
-                          style: const TextStyle(fontSize: 13, color: AppTheme.onInkMuted, fontWeight: FontWeight.w500),
+                          style: TextStyle(fontSize: 13, color: AppTheme.onHeroMuted, fontWeight: FontWeight.w500),
                         ),
                       ),
                       HeroChip(label: l.metricGrossSales, icon: Icons.payments_outlined),
@@ -149,10 +149,10 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                     alignment: Alignment.centerLeft,
                     child: Text(
                       fmt.birr(totalRevenue),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 34,
                         fontWeight: FontWeight.w700,
-                        color: AppTheme.onInk,
+                        color: AppTheme.onHero,
                         letterSpacing: -0.8,
                       ),
                     ),
@@ -165,8 +165,8 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                       Container(
                         width: 40,
                         height: 40,
-                        decoration: const BoxDecoration(shape: BoxShape.circle, gradient: AppTheme.metallicGradient),
-                        child: const Icon(Icons.calendar_today_outlined, size: 18, color: AppTheme.ink),
+                        decoration: BoxDecoration(shape: BoxShape.circle, gradient: AppTheme.metallicGradient),
+                        child: Icon(Icons.calendar_today_outlined, size: 18, color: AppTheme.ink),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -175,12 +175,12 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                           children: [
                             Text(
                               l.metricBookings,
-                              style: const TextStyle(fontSize: 11.5, color: AppTheme.onInkMuted),
+                              style: TextStyle(fontSize: 11.5, color: AppTheme.onHeroMuted),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               '${bookings.length}',
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppTheme.onInk),
+                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppTheme.onHero),
                             ),
                           ],
                         ),
@@ -194,12 +194,12 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.trending_up_rounded, size: 13, color: AppTheme.success),
+                            Icon(Icons.trending_up_rounded, size: 13, color: AppTheme.success),
                             const SizedBox(width: 4),
                             Text(
                               l.activeCount(confirmedCount),
                               style:
-                                  const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppTheme.success),
+                                  TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppTheme.success),
                             ),
                           ],
                         ),
@@ -221,7 +221,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 children: [
                   Row(
                     children: [
-                      const IconTile(icon: Icons.dashboard_customize_outlined, color: AppTheme.blue),
+                      IconTile(icon: Icons.dashboard_customize_outlined, color: AppTheme.blue),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Column(
@@ -229,13 +229,13 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                           children: [
                             Text(
                               l.customizableApp,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontWeight: FontWeight.w700, fontSize: 15, color: AppTheme.textPrimary),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               l.customizableAppSubtitle,
-                              style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                             ),
                           ],
                         ),
@@ -309,7 +309,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                   MaterialPageRoute(builder: (_) => OwnerReportsScreen(shopId: shop.id)),
                 ),
                 style: _rowButtonStyle,
-                icon: const Icon(Icons.insights_rounded, size: 18, color: AppTheme.orange),
+                icon: Icon(Icons.insights_rounded, size: 18, color: AppTheme.orange),
                 label: _rowLabel(l.reportsOpenButton),
               ),
             ),
@@ -331,7 +331,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 key: const ValueKey('open-subscription'),
                 onPressed: () => _openSubscription(shop.id),
                 style: _rowButtonStyle,
-                icon: const Icon(Icons.workspace_premium_rounded, size: 18, color: AppTheme.purple),
+                icon: Icon(Icons.workspace_premium_rounded, size: 18, color: AppTheme.purple),
                 label: _rowLabel(l.subscriptionAndBilling),
               ),
             ),
@@ -342,7 +342,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               padding: const EdgeInsets.all(14),
               child: Row(
                 children: [
-                  const IconTile(icon: Icons.location_on_outlined, color: AppTheme.danger),
+                  IconTile(icon: Icons.location_on_outlined, color: AppTheme.danger),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -351,14 +351,14 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                         Text(
                           shop.name,
                           style:
-                              const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.textPrimary),
+                              TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.textPrimary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2),
                         Text(
                           l.shopAddress(shop),
-                          style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                         ),
                       ],
                     ),
@@ -406,7 +406,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 Expanded(
                   child: Text(
                     l.appointmentsSchedule,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -415,7 +415,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                   dropdownColor: AppTheme.card,
                   borderRadius: BorderRadius.circular(AppTheme.radiusPanel),
                   underline: const SizedBox(),
-                  icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.textSecondary),
+                  icon: Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.textSecondary),
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(color: AppTheme.textPrimary, fontSize: 13.5),
                   items: [
                     DropdownMenuItem(value: 'All', child: Text(l.all)),
@@ -480,10 +480,10 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     });
   }
 
-  static final ButtonStyle _rowButtonStyle = OutlinedButton.styleFrom(
+  static ButtonStyle get _rowButtonStyle => OutlinedButton.styleFrom(
     foregroundColor: AppTheme.textPrimary,
     backgroundColor: AppTheme.card,
-    side: const BorderSide(color: AppTheme.hairline),
+    side: BorderSide(color: AppTheme.hairline),
     minimumSize: const Size(0, 54),
     alignment: Alignment.centerLeft,
     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
@@ -495,7 +495,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
           Expanded(
             child: Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
           ),
-          const Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.textSecondary),
+          Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.textSecondary),
         ],
       );
 
@@ -515,13 +515,13 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
             children: [
               IconTile(icon: icon, color: color, size: 42),
               const Spacer(),
-              const Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.textSecondary),
+              Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.textSecondary),
             ],
           ),
           const SizedBox(height: 12),
           Text(
             label,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
           ),
         ],
       ),
@@ -561,7 +561,8 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
         statusColor = AppTheme.warning;
         break;
       case BookingStatus.completed:
-        statusColor = AppTheme.ink;
+        // Teal: done, and different from the green "confirmed".
+        statusColor = AppTheme.teal;
         break;
       case BookingStatus.cancelled:
         statusColor = AppTheme.danger;
@@ -584,7 +585,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               Expanded(
                 child: Text(
                   booking.customerName,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppTheme.textPrimary),
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppTheme.textPrimary),
                 ),
               ),
               const SizedBox(width: 8),
@@ -594,32 +595,31 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
           const SizedBox(height: 4),
           Text(
             l.serviceAndPrice(booking.serviceName, fmt.birr(booking.price)),
-            style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13.5, fontWeight: FontWeight.w600),
+            style: TextStyle(color: AppTheme.textPrimary, fontSize: 13.5, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 6),
           PaymentStatusBadge(booking: booking),
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.content_cut, size: 14, color: AppTheme.textSecondary),
+              Icon(Icons.content_cut, size: 14, color: AppTheme.textSecondary),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   l.barberLabel(booking.barberName),
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const Icon(Icons.schedule, size: 14, color: AppTheme.textSecondary),
+              Icon(Icons.schedule, size: 14, color: AppTheme.textSecondary),
               const SizedBox(width: 4),
               Text(l.dateAtTime(fmt.monthDay(fmt.bookingDay(booking)), fmt.bookingTime(booking)),
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary)),
+                  style: TextStyle(fontSize: 12, color: AppTheme.textPrimary)),
             ],
           ),
-          const Divider(height: 20, color: AppTheme.hairline),
-
           // Action Buttons (Mark as Complete / Cancel)
-          if (booking.status == BookingStatus.confirmed)
+          if (booking.status == BookingStatus.confirmed) ...[
+            Divider(height: 20, color: AppTheme.hairline),
             Row(
               children: [
                 Expanded(
@@ -640,7 +640,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                       minimumSize: const Size(0, 42),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                       foregroundColor: AppTheme.danger,
-                      side: const BorderSide(color: AppTheme.hairline),
+                      side: BorderSide(color: AppTheme.hairline),
                     ),
                     child: Text(l.cancelSlot, style: const TextStyle(fontSize: 12)),
                   ),
@@ -662,7 +662,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                         minimumSize: const Size(0, 42),
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                         foregroundColor: AppTheme.slate,
-                        side: const BorderSide(color: AppTheme.hairline),
+                        side: BorderSide(color: AppTheme.hairline),
                       ),
                       child: Text(l.noShowAction, style: const TextStyle(fontSize: 12)),
                     ),
@@ -670,6 +670,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 ],
               ],
             ),
+          ],
         ],
       ),
     );

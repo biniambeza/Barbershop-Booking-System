@@ -118,7 +118,7 @@ class _ShopApplicationFormState extends State<ShopApplicationForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(l.applFormIntro, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13, height: 1.35)),
+          Text(l.applFormIntro, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, height: 1.35)),
           const SizedBox(height: 16),
           TextField(
             key: const ValueKey('appl-owner'),
@@ -198,7 +198,7 @@ class _ShopApplicationFormState extends State<ShopApplicationForm> {
             Text(
               _error!,
               key: const ValueKey('appl-error'),
-              style: const TextStyle(color: AppTheme.danger, fontSize: 13),
+              style: TextStyle(color: AppTheme.danger, fontSize: 13),
             ),
           ],
           const SizedBox(height: 14),
@@ -206,7 +206,7 @@ class _ShopApplicationFormState extends State<ShopApplicationForm> {
             key: const ValueKey('appl-save'),
             onPressed: _saving ? null : _save,
             child: _saving
-                ? const SizedBox(
+                ? SizedBox(
                     height: 20,
                     width: 20,
                     child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.onInk),
@@ -220,7 +220,7 @@ class _ShopApplicationFormState extends State<ShopApplicationForm> {
           if (widget.onCancel != null)
             TextButton(
               onPressed: _saving ? null : widget.onCancel,
-              child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
+              child: Text(l.cancel, style: TextStyle(color: AppTheme.textSecondary)),
             ),
         ],
       ),

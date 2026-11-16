@@ -76,11 +76,11 @@ class _OwnerSubscriptionScreenState extends State<OwnerSubscriptionScreen> {
               // --- end subscription receipts ---
               const SizedBox(height: 24),
               Text(l.plansTitle,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
               const SizedBox(height: 4),
               Text(
                 l.plansIntro,
-                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
               ),
               const SizedBox(height: 12),
               if (plans.isEmpty)
@@ -91,7 +91,7 @@ class _OwnerSubscriptionScreenState extends State<OwnerSubscriptionScreen> {
               for (final plan in plans) _buildPlan(shop, plan, barberCount),
               const SizedBox(height: 24),
               Text(l.paymentHistory,
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
               const SizedBox(height: 8),
               _buildHistory(),
               const SizedBox(height: 24),
@@ -136,20 +136,20 @@ class _OwnerSubscriptionScreenState extends State<OwnerSubscriptionScreen> {
                   borderRadius: BorderRadius.circular(AppTheme.radiusTile),
                   border: Border.all(color: AppTheme.hairline),
                 ),
-                child: const Icon(Icons.workspace_premium_rounded, color: AppTheme.purple, size: 22),
+                child: Icon(Icons.workspace_premium_rounded, color: AppTheme.purple, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   l.planName(shop.subscriptionPlan, plan),
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                 ),
               ),
               SubscriptionStatusChip(status: shop.effectiveStatusAt(_now)), // subscription expiry
             ],
           ),
           const SizedBox(height: 14),
-          Text(endText, style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w500)),
+          Text(endText, style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w500)),
           const SizedBox(height: 4),
           Text(
             plan == null
@@ -157,7 +157,7 @@ class _OwnerSubscriptionScreenState extends State<OwnerSubscriptionScreen> {
                 : plan.isUnlimited
                     ? l.barbersUsageUnlimited(barberCount)
                     : l.barbersUsageOf(barberCount, plan.maxBarbers),
-            style: const TextStyle(color: AppTheme.textSecondary),
+            style: TextStyle(color: AppTheme.textSecondary),
           ),
         ],
       ),
@@ -182,22 +182,22 @@ class _OwnerSubscriptionScreenState extends State<OwnerSubscriptionScreen> {
             children: [
               Expanded(
                 child: Text(l.planName(plan.id, plan),
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
               ),
               Text(
                 l.perMonth(context.fmt.birr(plan.priceMonthlyEtb)),
-                style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 15),
+                style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 15),
               ),
             ],
           ),
           const SizedBox(height: 6),
-          Text(l.barberLimit(plan), style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+          Text(l.barberLimit(plan), style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
           for (final f in plan.features)
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Row(
                 children: [
-                  const Icon(Icons.check_circle_rounded, size: 15, color: AppTheme.green),
+                  Icon(Icons.check_circle_rounded, size: 15, color: AppTheme.green),
                   const SizedBox(width: 6),
                   Expanded(child: Text(f, style: const TextStyle(fontSize: 12))),
                 ],
@@ -209,7 +209,7 @@ class _OwnerSubscriptionScreenState extends State<OwnerSubscriptionScreen> {
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
                 l.planTooSmall(barberCount, plan.maxBarbers),
-                style: const TextStyle(color: AppTheme.warning, fontSize: 12),
+                style: TextStyle(color: AppTheme.warning, fontSize: 12),
               ),
             ),
           SizedBox(
@@ -218,8 +218,8 @@ class _OwnerSubscriptionScreenState extends State<OwnerSubscriptionScreen> {
               key: ValueKey('pay-plan-${plan.id}'),
               onPressed: !fits || _busyPlanId != null ? null : () => _pay(shop, plan),
               icon: busy
-                  ? const SizedBox(
-                      width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.onInk))
+                  ? SizedBox(
+                      width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.textSecondary))
                   : const Icon(Icons.lock_outline_rounded, size: 16),
               label: Text(isCurrent ? l.renewWithChapa : l.payWithChapa),
             ),
@@ -234,11 +234,11 @@ class _OwnerSubscriptionScreenState extends State<OwnerSubscriptionScreen> {
       stream: _history,
       builder: (context, snap) {
         if (snap.hasError) {
-          return Text(context.l10n.paymentHistoryUnavailable, style: const TextStyle(color: AppTheme.textSecondary));
+          return Text(context.l10n.paymentHistoryUnavailable, style: TextStyle(color: AppTheme.textSecondary));
         }
         final items = (snap.data ?? const <PaymentRecord>[]).where((p) => p.type == PaymentType.subscription).toList();
         if (items.isEmpty) {
-          return Text(context.l10n.noSubscriptionPayments, style: const TextStyle(color: AppTheme.textSecondary));
+          return Text(context.l10n.noSubscriptionPayments, style: TextStyle(color: AppTheme.textSecondary));
         }
         return Container(
           decoration: AppTheme.cardDecoration(),
@@ -249,17 +249,17 @@ class _OwnerSubscriptionScreenState extends State<OwnerSubscriptionScreen> {
                 ListTile(
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   leading: switch (p.status) {
-                    PaymentRecordStatus.success => const Icon(Icons.check_circle_rounded, color: AppTheme.success),
-                    PaymentRecordStatus.failed => const Icon(Icons.cancel_rounded, color: AppTheme.danger),
-                    PaymentRecordStatus.refunded => const Icon(Icons.undo_rounded, color: AppTheme.blue),
-                    PaymentRecordStatus.pending => const Icon(Icons.hourglass_top_rounded, color: AppTheme.warning),
+                    PaymentRecordStatus.success => Icon(Icons.check_circle_rounded, color: AppTheme.success),
+                    PaymentRecordStatus.failed => Icon(Icons.cancel_rounded, color: AppTheme.danger),
+                    PaymentRecordStatus.refunded => Icon(Icons.undo_rounded, color: AppTheme.blue),
+                    PaymentRecordStatus.pending => Icon(Icons.hourglass_top_rounded, color: AppTheme.warning),
                   },
                   title: Text(
                       '${context.l10n.planName(p.plan ?? '', _repo.getPlan(p.plan ?? ''))} • ${context.fmt.birr(p.amount)}'),
                   subtitle: Text(
                     '${_date(p.createdAt)} • ${context.l10n.paymentRecordStatus(p.status)}'
                     '${p.periodEndsAt != null ? ' • ${context.l10n.untilDate(_date(p.periodEndsAt!))}' : ''}',
-                    style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                    style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                   ),
                 ),
             ],

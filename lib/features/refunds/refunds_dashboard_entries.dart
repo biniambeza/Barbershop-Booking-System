@@ -21,7 +21,7 @@ class RefundsCountBadge extends StatelessWidget {
       margin: const EdgeInsets.only(right: 6),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(color: AppTheme.red, borderRadius: BorderRadius.circular(20)),
-      child: Text('$count', style: const TextStyle(color: AppTheme.onInk, fontWeight: FontWeight.w800, fontSize: 12)),
+      child: Text('$count', style: TextStyle(color: AppTheme.onHero, fontWeight: FontWeight.w800, fontSize: 12)),
     );
   }
 }
@@ -74,19 +74,19 @@ class _OwnerRefundsButtonState extends State<OwnerRefundsButton> {
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.textPrimary,
                 backgroundColor: AppTheme.card,
-                side: const BorderSide(color: AppTheme.hairline),
+                side: BorderSide(color: AppTheme.hairline),
                 minimumSize: const Size(0, 54),
                 alignment: Alignment.centerLeft,
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               ),
-              icon: const Icon(Icons.currency_exchange_rounded, size: 18, color: AppTheme.warning),
+              icon: Icon(Icons.currency_exchange_rounded, size: 18, color: AppTheme.warning),
               label: Row(
                 children: [
                   Expanded(
                     child: Text(l.refundsDueTitle, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                   ),
                   RefundsCountBadge(count: count),
-                  const Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.textSecondary),
+                  Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.textSecondary),
                 ],
               ),
             ),
@@ -131,7 +131,7 @@ class _AdminRefundsCardState extends State<AdminRefundsCard> {
           ),
           child: Row(
             children: [
-              const IconTile(icon: Icons.currency_exchange_rounded, color: AppTheme.warning),
+              IconTile(icon: Icons.currency_exchange_rounded, color: AppTheme.warning),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -141,13 +141,13 @@ class _AdminRefundsCardState extends State<AdminRefundsCard> {
                     const SizedBox(height: 2),
                     Text(
                       l.refundsDueCount(count),
-                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5),
+                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 12.5),
                     ),
                   ],
                 ),
               ),
               RefundsCountBadge(count: count),
-              const Icon(Icons.chevron_right_rounded, color: AppTheme.textTertiary),
+              Icon(Icons.chevron_right_rounded, color: AppTheme.textTertiary),
             ],
           ),
         );

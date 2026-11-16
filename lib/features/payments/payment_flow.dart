@@ -68,7 +68,7 @@ Future<PaymentVerification?> _runCheckout(
     checkout = await _withProgress(context, create(), l10n.preparingCheckout);
   } on PaymentException catch (e) {
     if (e.code == 'already-exists') {
-      messenger?.showSnackBar(SnackBar(content: Text(l10n.paymentError(e)), backgroundColor: AppTheme.success));
+      messenger?.showSnackBar(SnackBar(content: Text(l10n.paymentError(e)), backgroundColor: AppTheme.primaryDeep));
     } else if (context.mounted) {
       await showPaymentError(context, e);
     }
@@ -121,7 +121,7 @@ Future<T> _withProgress<T>(BuildContext context, Future<T> future, String label)
         backgroundColor: AppTheme.card,
         content: Row(
           children: [
-            const SizedBox(
+            SizedBox(
               width: 22,
               height: 22,
               child: CircularProgressIndicator(strokeWidth: 2.5, color: AppTheme.ink),
@@ -146,7 +146,7 @@ Future<void> showPaymentError(BuildContext context, PaymentException error) {
     context: context,
     builder: (ctx) => AlertDialog(
       backgroundColor: AppTheme.card,
-      icon: const Icon(Icons.error_outline_rounded, color: AppTheme.danger, size: 40),
+      icon: Icon(Icons.error_outline_rounded, color: AppTheme.danger, size: 40),
       title: Text(context.l10n.paymentProblem),
       content: Text(context.l10n.paymentError(error)),
       actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(context.l10n.ok))],
@@ -170,7 +170,7 @@ void showPaymentResult(BuildContext context, PaymentVerification? result, {doubl
     final until = result.periodEndsAt;
     final extra = until == null ? '' : l.subscriptionActiveUntilSentence(fmt.addisDateMedium(until));
     messenger.showSnackBar(SnackBar(
-      backgroundColor: AppTheme.success,
+      backgroundColor: AppTheme.primaryDeep,
       content: Text(l.paymentReceivedAmount(fmt.birr(result.amount), extra)),
     ));
     return;
@@ -205,7 +205,7 @@ class _SimulatedChapaCheckoutDialogState extends State<SimulatedChapaCheckoutDia
       backgroundColor: AppTheme.card,
       title: Row(
         children: [
-          const Icon(Icons.lock_outline_rounded, color: AppTheme.ink, size: 20),
+          Icon(Icons.lock_outline_rounded, color: AppTheme.ink, size: 20),
           const SizedBox(width: 8),
           Expanded(child: Text(l.chapaCheckoutDemo)),
         ],
@@ -215,11 +215,11 @@ class _SimulatedChapaCheckoutDialogState extends State<SimulatedChapaCheckoutDia
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(widget.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-          Text(widget.subtitle, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+          Text(widget.subtitle, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
           const SizedBox(height: 12),
           Text(
             context.fmt.birr(widget.amount),
-            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppTheme.textPrimary, letterSpacing: -0.5),
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppTheme.textPrimary, letterSpacing: -0.5),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -236,7 +236,7 @@ class _SimulatedChapaCheckoutDialogState extends State<SimulatedChapaCheckoutDia
           const SizedBox(height: 12),
           Text(
             l.chapaDemoNotice,
-            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11),
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 11),
           ),
         ],
       ),
@@ -340,7 +340,7 @@ class _PaymentWaitingDialogState extends State<PaymentWaitingDialog> with Widget
     final l = context.l10n;
     return AlertDialog(
       backgroundColor: AppTheme.card,
-      icon: const Icon(Icons.open_in_browser_rounded, color: AppTheme.ink, size: 40),
+      icon: Icon(Icons.open_in_browser_rounded, color: AppTheme.ink, size: 40),
       title: Text(l.completeYourPayment),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -351,11 +351,11 @@ class _PaymentWaitingDialogState extends State<PaymentWaitingDialog> with Widget
           ),
           if (_checking) ...[
             const SizedBox(height: 16),
-            const LinearProgressIndicator(color: AppTheme.ink),
+            LinearProgressIndicator(color: AppTheme.ink),
           ],
           if (_message != null) ...[
             const SizedBox(height: 12),
-            Text(_message!, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+            Text(_message!, textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
           ],
         ],
       ),
@@ -418,7 +418,7 @@ class _PaymentReturnScreenState extends State<PaymentReturnScreen> {
       body = Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const CircularProgressIndicator(color: AppTheme.ink),
+          CircularProgressIndicator(color: AppTheme.ink),
           const SizedBox(height: 16),
           Text(l.checkingPayment),
         ],
@@ -463,7 +463,7 @@ class _PaymentReturnScreenState extends State<PaymentReturnScreen> {
         const SizedBox(height: 12),
         Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        Text(text, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textSecondary)),
+        Text(text, textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textSecondary)),
       ],
     );
   }

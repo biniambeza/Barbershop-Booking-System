@@ -96,7 +96,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Text(l.changePasswordIntro, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                    Text(l.changePasswordIntro, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                     const SizedBox(height: 16),
                     PasswordField(
                       key: const ValueKey('change-password-current'),
@@ -189,12 +189,12 @@ class SetPasswordScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Icon(Icons.key_rounded, size: 36, color: AppTheme.ink),
+                    Icon(Icons.key_rounded, size: 36, color: AppTheme.ink),
                     const SizedBox(height: 12),
                     Text(
                       l.setPasswordBody(email),
                       key: const ValueKey('set-password-guidance'),
-                      style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary, height: 1.4),
+                      style: TextStyle(fontSize: 14, color: AppTheme.textPrimary, height: 1.4),
                     ),
                     const SizedBox(height: 18),
                     ElevatedButton.icon(

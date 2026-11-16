@@ -79,7 +79,7 @@ class _BusyHoursTabState extends State<BusyHoursTab> {
     final l = context.l10n;
     return Column(
       children: [
-        Text(l.busyLoadFailed, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textSecondary)),
+        Text(l.busyLoadFailed, textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textSecondary)),
         const SizedBox(height: 8),
         TextButton(onPressed: _retry, child: Text(l.reportsRetry)),
       ],
@@ -136,7 +136,7 @@ class _BusyHoursTabState extends State<BusyHoursTab> {
               underline: const SizedBox(),
               borderRadius: BorderRadius.circular(AppTheme.radiusPanel),
               dropdownColor: AppTheme.card,
-              icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.textSecondary),
+              icon: Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.textSecondary),
               style: Theme.of(context).textTheme.titleSmall?.copyWith(color: AppTheme.textPrimary),
               items: [
                 for (final m in recentMonthKeys(_now, 12))
@@ -174,7 +174,7 @@ class _BusyHoursTabState extends State<BusyHoursTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(l.busyTotalBookings, style: const TextStyle(fontSize: 12, color: AppTheme.onInkMuted)),
+            Text(l.busyTotalBookings, style: TextStyle(fontSize: 12, color: AppTheme.onHeroMuted)),
             const SizedBox(height: 2),
             Text('${map.total}',
                 key: const ValueKey('busy-total'),
@@ -207,13 +207,13 @@ class _BusyHoursTabState extends State<BusyHoursTab> {
       Padding(
         padding: const EdgeInsets.only(bottom: 10, left: 2),
         child: Text(l.busyHoursTitle,
-            style: const TextStyle(
+            style: TextStyle(
                 fontWeight: FontWeight.w700, fontSize: 17, color: AppTheme.textPrimary, letterSpacing: -0.2)),
       ),
       if (map.isEmpty)
         AppCard(
           child: Text(l.busyNoBookings,
-              key: const ValueKey('busy-empty'), style: const TextStyle(color: AppTheme.textSecondary)),
+              key: const ValueKey('busy-empty'), style: TextStyle(color: AppTheme.textSecondary)),
         )
       else
         AppCard(
@@ -223,10 +223,10 @@ class _BusyHoursTabState extends State<BusyHoursTab> {
       const SizedBox(height: 10),
       Row(
         children: [
-          const Icon(Icons.info_outline, size: 14, color: AppTheme.textSecondary),
+          Icon(Icons.info_outline, size: 14, color: AppTheme.textSecondary),
           const SizedBox(width: 6),
           Expanded(
-            child: Text(l.busyHoursNote, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+            child: Text(l.busyHoursNote, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
           ),
         ],
       ),
@@ -248,12 +248,12 @@ class _Callout extends StatelessWidget {
             Text(label,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 11.5, color: AppTheme.onInkMuted)),
+                style: TextStyle(fontSize: 11.5, color: AppTheme.onHeroMuted)),
             const SizedBox(height: 3),
             Text(value,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppTheme.onInk)),
+                style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: AppTheme.onHero)),
           ],
         ),
       );
@@ -273,11 +273,30 @@ class BusyHoursGrid extends StatelessWidget {
   static const double _minCell = 24;
   static const double _cellHeight = 26;
 
+  // Three-stop green ramps: pale mint -> fresh green -> deep green on white;
+  // deep forest -> brand green -> bright mint on black. Both low ends stay
+  // clearly apart from the empty-cell track, so one booking never looks
+  // like none, and the busiest cell is the most prominent in either mode.
+  static const List<Color> _rampLight = [Color(0xFFBBF7D0), Color(0xFF4ADE80), Color(0xFF15803D)];
+  static const List<Color> _rampDark = [Color(0xFF14532D), Color(0xFF16A34A), Color(0xFF4ADE80)];
+
+  /// Colour of the ramp at [t] (0 = fewest, 1 = most bookings).
+  static Color rampColor(double t) {
+    final stops = AppTheme.isDark ? _rampDark : _rampLight;
+    final x = t.clamp(0.0, 1.0) * (stops.length - 1);
+    final i = x.floor().clamp(0, stops.length - 2);
+    return Color.lerp(stops[i], stops[i + 1], x - i)!;
+  }
+
   static Color cellColor(int count, int max) {
     if (count <= 0 || max <= 0) return AppTheme.track;
-    final t = 0.2 + 0.8 * (count / max);
-    return Color.lerp(AppTheme.greenSoft, AppTheme.green, t)!;
+    return rampColor(count / max);
   }
+
+  /// Readable count on a cell of colour [cell]: deep green on the light end
+  /// of the ramp, white on the dark end.
+  static Color countColor(Color cell) =>
+      cell.computeLuminance() > 0.3 ? const Color(0xFF052E16) : const Color(0xFFFFFFFF);
 
   @override
   Widget build(BuildContext context) {
@@ -305,7 +324,7 @@ class BusyHoursGrid extends StatelessWidget {
                     child: Text(
                       (h - from) % showEvery == 0 ? h.toString().padLeft(2, '0') : '',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                      style: TextStyle(fontSize: 10, color: AppTheme.textSecondary),
                     ),
                   ),
               ],
@@ -319,7 +338,7 @@ class BusyHoursGrid extends StatelessWidget {
                     child: Text(fmt.weekdayName(d),
                         maxLines: 1,
                         overflow: TextOverflow.clip,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 11.5, color: AppTheme.textSecondary, fontWeight: FontWeight.w600)),
                   ),
                   for (final h in hours)
@@ -340,7 +359,7 @@ class BusyHoursGrid extends StatelessWidget {
                                 style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w700,
-                                    color: map.at(d, h) / max > 0.55 ? AppTheme.onInk : AppTheme.success))
+                                    color: countColor(cellColor(map.at(d, h), max))))
                             : null,
                       ),
                     ),
@@ -350,20 +369,20 @@ class BusyHoursGrid extends StatelessWidget {
             Row(
               children: [
                 const SizedBox(width: _labelWidth),
-                Text(l.busyLegendFewer, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                Text(l.busyLegendFewer, style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
                 const SizedBox(width: 6),
-                for (final t in const [0.0, 0.25, 0.5, 0.75, 1.0])
+                for (final t in const [0.0, 0.1, 0.4, 0.7, 1.0])
                   Container(
                     width: 16,
                     height: 12,
                     margin: const EdgeInsets.symmetric(horizontal: 1.5),
                     decoration: BoxDecoration(
-                      color: t == 0 ? AppTheme.track : Color.lerp(AppTheme.greenSoft, AppTheme.green, 0.2 + 0.8 * t),
+                      color: t == 0 ? AppTheme.track : rampColor(t),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
                 const SizedBox(width: 6),
-                Text(l.busyLegendMore, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                Text(l.busyLegendMore, style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
               ],
             ),
           ],

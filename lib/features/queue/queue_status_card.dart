@@ -121,11 +121,11 @@ class _QueueStatusCardState extends State<QueueStatusCard> {
                 children: [
                   Row(
                     children: [
-                      const IconTile(icon: Icons.groups_outlined, color: AppTheme.green, size: 40),
+                      IconTile(icon: Icons.groups_outlined, color: AppTheme.green, size: 40),
                       const SizedBox(width: 12),
                       Text(l.queueTitle,
                           style:
-                              const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                              TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -134,14 +134,14 @@ class _QueueStatusCardState extends State<QueueStatusCard> {
                         ? l.queueSummaryEmpty
                         : l.queueSummaryWaiting(summary.waitingCount, summary.estimatedWaitMinutes),
                     key: const Key('queueSummaryText'),
-                    style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                    style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
                   ),
                   if (mine != null) ...[
                     const SizedBox(height: 10),
                     Text(
                       _myStatus(context, mine, summary),
                       key: const Key('queueMyStatus'),
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.success),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.success),
                     ),
                     if (mine.status == QueueStatus.waiting) ...[
                       const SizedBox(height: 10),
@@ -162,7 +162,7 @@ class _QueueStatusCardState extends State<QueueStatusCard> {
                     ),
                   ] else if (user == null) ...[
                     const SizedBox(height: 6),
-                    Text(l.queueSignInToJoin, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                    Text(l.queueSignInToJoin, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                   ],
                 ],
               ),
@@ -220,7 +220,7 @@ class _JoinQueueDialogState extends State<_JoinQueueDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(l.queueJoinBody, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+            Text(l.queueJoinBody, style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
             const SizedBox(height: 12),
             DropdownButtonFormField<String?>(
               initialValue: _serviceId,

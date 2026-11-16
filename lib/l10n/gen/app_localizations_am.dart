@@ -1169,6 +1169,27 @@ class AppLocalizationsAm extends AppLocalizations {
   String get languageTooltip => 'ቋንቋ ቀይር';
 
   @override
+  String get darkModeMenu => 'ጨለማ ገጽታ';
+
+  @override
+  String get themeSwitchToDark => 'ወደ ጨለማ ገጽታ ቀይር';
+
+  @override
+  String get themeSwitchToLight => 'ወደ ብሩህ ገጽታ ቀይር';
+
+  @override
+  String get themeModeTitle => 'ገጽታ';
+
+  @override
+  String get themeModeSystem => 'የስልኩ ቅንብር';
+
+  @override
+  String get themeModeLight => 'ብሩህ';
+
+  @override
+  String get themeModeDark => 'ጨለማ';
+
+  @override
   String get serviceUnavailable => 'አገልግሎቱ አይገኝም';
 
   @override
@@ -1760,6 +1781,27 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get authSubtitle => 'ይግቡ ወይም አዲስ መለያ ይፍጠሩ';
+
+  @override
+  String get authWelcomeBack => 'እንኳን በደህና ተመለሱ';
+
+  @override
+  String get authCreateAccountTitle => 'መለያዎን ይፍጠሩ';
+
+  @override
+  String get authNoAccount => 'መለያ የለዎትም?';
+
+  @override
+  String get authHaveAccount => 'መለያ አለዎት?';
+
+  @override
+  String get authSignUp => 'ይመዝገቡ';
+
+  @override
+  String get authEmailHint => 'you@example.com';
+
+  @override
+  String get authPasswordHint => 'የይለፍ ቃልዎን ያስገቡ';
 
   @override
   String get continueWithGoogle => 'በGoogle ይቀጥሉ';

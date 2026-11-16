@@ -51,11 +51,17 @@ class CustomerBookingsScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.calendar_month_outlined, size: 64, color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+                  // Green-tinted circle: the white + green / black + green look.
+                  Container(
+                    width: 96,
+                    height: 96,
+                    decoration: BoxDecoration(color: AppTheme.greenSoft, shape: BoxShape.circle),
+                    child: Icon(Icons.calendar_month_outlined, size: 44, color: AppTheme.success),
+                  ),
                   const SizedBox(height: 16),
                   Text(context.l10n.noBookingsYet, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text(context.l10n.noBookingsHint, style: const TextStyle(color: AppTheme.textSecondary)),
+                  Text(context.l10n.noBookingsHint, style: TextStyle(color: AppTheme.textSecondary)),
                 ],
               ),
             )
@@ -79,7 +85,8 @@ class CustomerBookingsScreen extends StatelessWidget {
       case BookingStatus.pending:
         return AppTheme.warning;
       case BookingStatus.completed:
-        return AppTheme.ink;
+        // Teal: done, and different from the green "confirmed".
+        return AppTheme.teal;
       case BookingStatus.cancelled:
         return AppTheme.danger;
       case BookingStatus.noShow:
@@ -133,21 +140,21 @@ class CustomerBookingsScreen extends StatelessWidget {
             const SizedBox(height: 6),
             Text(l.acceptExpiredNote,
                 key: ValueKey('request-expired-${booking.id}'),
-                style: const TextStyle(fontSize: 12, color: AppTheme.danger)),
+                style: TextStyle(fontSize: 12, color: AppTheme.danger)),
           ] else if (acceptance.isAwaitingAcceptance(booking)) ...[
             const SizedBox(height: 6),
             Text(l.acceptWaitingFor(booking.barberName),
-                style: const TextStyle(fontSize: 12, color: AppTheme.warning, fontWeight: FontWeight.w600)),
+                style: TextStyle(fontSize: 12, color: AppTheme.warning, fontWeight: FontWeight.w600)),
           ] else if (acceptance.wasDeclined(booking) || acceptance.wasNotAccepted(booking)) ...[
             const SizedBox(height: 6),
             Text(
               acceptance.wasDeclined(booking) ? l.acceptDeclinedNote : l.acceptExpiredNote,
               key: ValueKey('request-ended-${booking.id}'),
-              style: const TextStyle(fontSize: 12, color: AppTheme.danger),
+              style: TextStyle(fontSize: 12, color: AppTheme.danger),
             ),
             if (booking.declineReason != null && acceptance.wasDeclined(booking))
               Text(l.acceptDeclineReasonNote(booking.declineReason!),
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
           ],
           const SizedBox(height: 8),
           Row(
@@ -155,7 +162,7 @@ class CustomerBookingsScreen extends StatelessWidget {
               Flexible(
                 child: Text(
                   booking.serviceName,
-                  style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 14, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
                 ),
               ),
               if (booking.rescheduleCount > 0) ...[
@@ -167,7 +174,7 @@ class CustomerBookingsScreen extends StatelessWidget {
                     color: AppTheme.blueSoft,
                     borderRadius: BorderRadius.circular(999),
                   ),
-                  child: Text(l.rescheduledBadge, style: const TextStyle(fontSize: 10, color: AppTheme.blue)),
+                  child: Text(l.rescheduledBadge, style: TextStyle(fontSize: 10, color: AppTheme.blue)),
                 ),
               ],
             ],
@@ -177,11 +184,11 @@ class CustomerBookingsScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.person_outline, size: 16, color: AppTheme.textSecondary),
+              Icon(Icons.person_outline, size: 16, color: AppTheme.textSecondary),
               const SizedBox(width: 6),
               Flexible(
                 child: Text(l.barberLabel(booking.barberName),
-                    style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+                    style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
               ),
               // favourite barbers & rebook: favourite the barber of a past visit.
               if (booking.status == BookingStatus.completed)
@@ -199,12 +206,12 @@ class CustomerBookingsScreen extends StatelessWidget {
           const SizedBox(height: 6),
           Row(
             children: [
-              const Icon(Icons.event_outlined, size: 16, color: AppTheme.textSecondary),
+              Icon(Icons.event_outlined, size: 16, color: AppTheme.textSecondary),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   l.dateAtTime(fmt.dayLong(fmt.bookingDay(booking)), fmt.bookingTime(booking)),
-                  style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary, fontWeight: FontWeight.w500),
+                  style: TextStyle(fontSize: 13, color: AppTheme.textPrimary, fontWeight: FontWeight.w500),
                 ),
               ),
             ],
@@ -219,17 +226,17 @@ class CustomerBookingsScreen extends StatelessWidget {
                   ? '${l.reschedulePolicyNote(shop.cancellationCutoffHours)} ${l.rescheduleLeft(reschedulesLeft(booking, shop))}'
                   : l.rescheduleCallShop,
               key: ValueKey('policy-note-${booking.id}'),
-              style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+              style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
             ),
           ],
-          const Divider(height: 24, color: AppTheme.hairline),
+          Divider(height: 24, color: AppTheme.hairline),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 fmt.birr(booking.price),
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 19, fontWeight: FontWeight.w700, color: AppTheme.textPrimary, letterSpacing: -0.3),
               ),
               const SizedBox(width: 8),
@@ -290,13 +297,13 @@ class _BarberPhoneRow extends StatelessWidget {
       padding: const EdgeInsets.only(top: 6),
       child: Row(
         children: [
-          const Icon(Icons.phone_outlined, size: 16, color: AppTheme.textSecondary),
+          Icon(Icons.phone_outlined, size: 16, color: AppTheme.textSecondary),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
               l.barberPhoneOnBooking(context.fmt.phone(phone)),
               key: ValueKey('barber-phone-${booking.id}'),
-              style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
             ),
           ),
           TextButton.icon(
@@ -380,8 +387,8 @@ class _RescheduleButton extends StatelessWidget {
       key: ValueKey('reschedule-booking-${booking.id}'),
       onPressed: () => _open(context),
       style: OutlinedButton.styleFrom(
-        foregroundColor: AppTheme.ink,
-        side: const BorderSide(color: AppTheme.hairline),
+        foregroundColor: AppTheme.success,
+        side: BorderSide(color: AppTheme.hairline),
         minimumSize: const Size(0, 38),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       ),
@@ -435,7 +442,7 @@ class _CancelBookingButtonState extends State<_CancelBookingButton> {
       onPressed: _busy ? null : _cancel,
       style: OutlinedButton.styleFrom(
         foregroundColor: AppTheme.danger,
-        side: const BorderSide(color: AppTheme.hairline),
+        side: BorderSide(color: AppTheme.hairline),
         minimumSize: const Size(0, 38),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       ),

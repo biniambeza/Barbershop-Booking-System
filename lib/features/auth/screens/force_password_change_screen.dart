@@ -5,6 +5,7 @@ import '../../../core/utils/password_utils.dart';
 import '../../../l10n/l10n.dart';
 import '../../../services/app_repository.dart';
 import '../../shared/widgets/language_toggle.dart';
+import '../../shared/widgets/theme_mode_toggle.dart';
 import '../../shared/widgets/ui_kit.dart';
 import '../widgets/auth_form_fields.dart';
 
@@ -82,7 +83,7 @@ class _ForcePasswordChangeScreenState extends State<ForcePasswordChangeScreen> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title: Text(l.staffAcctForceTitle),
-        actions: const [LanguageToggle(), SizedBox(width: 8)],
+        actions: const [ThemeModeToggle(), LanguageToggle(), SizedBox(width: 8)],
       ),
       body: SafeArea(
         child: Center(
@@ -101,14 +102,14 @@ class _ForcePasswordChangeScreenState extends State<ForcePasswordChangeScreen> {
                       l.staffAcctForceIntro,
                       key: const ValueKey('force-password-intro'),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13.5, height: 1.4),
+                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 13.5, height: 1.4),
                     ),
                     if (email.isNotEmpty) ...[
                       const SizedBox(height: 6),
                       Text(
                         email,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
+                        style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textPrimary),
                       ),
                     ],
                     const SizedBox(height: 18),
@@ -149,7 +150,7 @@ class _ForcePasswordChangeScreenState extends State<ForcePasswordChangeScreen> {
                     TextButton(
                       key: const ValueKey('force-password-sign-out'),
                       onPressed: _busy ? null : () => repo.signOut(),
-                      child: Text(l.signOut, style: const TextStyle(color: AppTheme.textSecondary)),
+                      child: Text(l.signOut, style: TextStyle(color: AppTheme.textSecondary)),
                     ),
                   ],
                 ),

@@ -156,7 +156,7 @@ class _PayoutsScreenState extends State<PayoutsScreen> {
           Text(
             '${l.payoutsTotalCarried}: ${fmt.birr(totals.carriedOver)} · ${l.payoutsCarryHint}',
             key: const ValueKey('payouts-total-carried'),
-            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
           ),
         ],
         if (carryFailed) ...[
@@ -164,13 +164,13 @@ class _PayoutsScreenState extends State<PayoutsScreen> {
           Text(
             l.payoutsCarryUnavailable,
             key: const ValueKey('payouts-carry-failed'),
-            style: const TextStyle(color: AppTheme.warning, fontSize: 12),
+            style: TextStyle(color: AppTheme.warning, fontSize: 12),
           ),
         ],
         const SizedBox(height: 18),
         if (rows.isEmpty)
           AppCard(
-            child: Text(l.payoutsNoBarbers, style: const TextStyle(color: AppTheme.textSecondary)),
+            child: Text(l.payoutsNoBarbers, style: TextStyle(color: AppTheme.textSecondary)),
           )
         else
           for (final r in rows) ...[
@@ -185,7 +185,7 @@ class _PayoutsScreenState extends State<PayoutsScreen> {
         SectionHeader(title: l.payoutsHistory),
         const SizedBox(height: 10),
         if (payouts.isEmpty)
-          Text(l.payoutsNoHistory, style: const TextStyle(color: AppTheme.textSecondary))
+          Text(l.payoutsNoHistory, style: TextStyle(color: AppTheme.textSecondary))
         else
           for (final p in payouts)
             PayoutTile(
@@ -238,7 +238,7 @@ class _PayoutsScreenState extends State<PayoutsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
+            child: Text(l.cancel, style: TextStyle(color: AppTheme.textSecondary)),
           ),
           ElevatedButton(
             key: const ValueKey('payout-delete-confirm'),
@@ -281,7 +281,7 @@ class _MonthPicker extends StatelessWidget {
       child: Row(
         children: [
           Text(l.payoutsMonthLabel,
-              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
           const SizedBox(width: 12),
           Expanded(
             child: DropdownButton<PayoutMonth>(
@@ -291,7 +291,7 @@ class _MonthPicker extends StatelessWidget {
               underline: const SizedBox(),
               borderRadius: BorderRadius.circular(AppTheme.radiusPanel),
               dropdownColor: AppTheme.card,
-              icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.textSecondary),
+              icon: Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.textSecondary),
               style: Theme.of(context).textTheme.titleSmall?.copyWith(color: AppTheme.textPrimary),
               items: [
                 for (final m in items) DropdownMenuItem(value: m, child: Text(payoutMonthLabel(fmt, m))),
@@ -319,7 +319,7 @@ class _HeroFigure extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: AppTheme.onInkMuted, fontSize: 12)),
+        Text(label, style: TextStyle(color: AppTheme.onHeroMuted, fontSize: 12)),
         const SizedBox(height: 6),
         FittedBox(
           fit: BoxFit.scaleDown,
@@ -327,7 +327,9 @@ class _HeroFigure extends StatelessWidget {
           child: Text(
             value,
             style: TextStyle(
-              color: accent ? AppTheme.green : AppTheme.onInk,
+              // The accent green is for the dark hero; on the green light-mode
+              // hero it would vanish, so the figure stays white there.
+              color: accent && AppTheme.isDark ? AppTheme.success : AppTheme.onHero,
               fontSize: 18,
               fontWeight: FontWeight.w800,
             ),
@@ -392,11 +394,11 @@ class _BarberRow extends StatelessWidget {
         children: [
           Row(
             children: [
-              const IconTile(icon: Icons.content_cut_rounded, color: AppTheme.ink, size: 40),
+              IconTile(icon: Icons.content_cut_rounded, color: AppTheme.ink, size: 40),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(r.barberName,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5, color: AppTheme.textPrimary)),
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5, color: AppTheme.textPrimary)),
               ),
               InkWell(
                 key: ValueKey('payout-commission-${r.barberId}'),
@@ -426,7 +428,7 @@ class _BarberRow extends StatelessWidget {
           PayoutFigureLine(label: l.payoutsGross, value: fmt.birr(r.gross)),
           PayoutFigureLine(label: l.payoutsBarberShare, value: fmt.birr(r.share)),
           PayoutFigureLine(label: l.payoutsAlreadyPaid, value: fmt.birr(r.paid)),
-          const Divider(height: 18, color: AppTheme.hairline),
+          Divider(height: 18, color: AppTheme.hairline),
           PayoutFigureLine(
             key: ValueKey('payout-balance-${r.barberId}'),
             label: l.payoutsBalanceOwed,
@@ -475,7 +477,7 @@ class PayoutTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const IconTile(icon: Icons.payments_outlined, color: AppTheme.green, background: AppTheme.greenSoft, size: 40),
+          IconTile(icon: Icons.payments_outlined, color: AppTheme.green, background: AppTheme.greenSoft, size: 40),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -483,18 +485,18 @@ class PayoutTile extends StatelessWidget {
               children: [
                 Text(
                   barberName == null ? fmt.birr(payout.amount) : '${fmt.birr(payout.amount)} · $barberName',
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: AppTheme.textPrimary),
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: AppTheme.textPrimary),
                 ),
                 const SizedBox(height: 3),
                 for (final d in details)
-                  Text(d, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
+                  Text(d, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
               ],
             ),
           ),
           if (onDelete != null)
             IconButton(
               key: ValueKey('payout-delete-${payout.id}'),
-              icon: const Icon(Icons.delete_outline, size: 20, color: AppTheme.danger),
+              icon: Icon(Icons.delete_outline, size: 20, color: AppTheme.danger),
               tooltip: l.payoutsDelete,
               onPressed: onDelete,
             ),
@@ -597,20 +599,20 @@ class _RecordPayoutSheetState extends State<RecordPayoutSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(l.payoutsRecordTitle(widget.summary.barberName),
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
             const SizedBox(height: 4),
-            Text(l.payoutsPeriod(period), style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+            Text(l.payoutsPeriod(period), style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
             const SizedBox(height: 4),
             Text('${l.payoutsBalanceOwed}: ${fmt.birr(widget.balance)}',
                 key: const ValueKey('payout-sheet-balance'),
-                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
             if (widget.carriedOver != 0) ...[
               const SizedBox(height: 4),
               Text(
                 '${l.payoutsCarriedOver(payoutMonthLabel(fmt, widget.month.previous()))}: '
                 '${fmt.birr(widget.carriedOver)}. ${l.payoutsCarryHint}',
                 key: const ValueKey('payout-sheet-carry'),
-                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
               ),
             ],
             const SizedBox(height: 16),
@@ -645,7 +647,7 @@ class _RecordPayoutSheetState extends State<RecordPayoutSheet> {
             ),
             if (_error != null) ...[
               const SizedBox(height: 4),
-              Text(_error!, key: const ValueKey('payout-error'), style: const TextStyle(color: AppTheme.danger, fontSize: 12.5)),
+              Text(_error!, key: const ValueKey('payout-error'), style: TextStyle(color: AppTheme.danger, fontSize: 12.5)),
             ],
             const SizedBox(height: 14),
             SizedBox(
@@ -746,7 +748,7 @@ class _CommissionDialogState extends State<CommissionDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
+          child: Text(l.cancel, style: TextStyle(color: AppTheme.textSecondary)),
         ),
         ElevatedButton(
           key: const ValueKey('commission-save'),

@@ -68,10 +68,10 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
             expandedHeight: 240,
             pinned: true,
             // Image header: dark bar (collapsed) with white text/icons.
-            backgroundColor: AppTheme.ink,
-            foregroundColor: AppTheme.onInk,
-            iconTheme: const IconThemeData(color: AppTheme.onInk),
-            actionsIconTheme: const IconThemeData(color: AppTheme.onInk),
+            backgroundColor: AppTheme.heroStart,
+            foregroundColor: AppTheme.onHero,
+            iconTheme: IconThemeData(color: AppTheme.onHero),
+            actionsIconTheme: IconThemeData(color: AppTheme.onHero),
             systemOverlayStyle: SystemUiOverlayStyle.light,
             shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(bottom: Radius.circular(24))),
             clipBehavior: Clip.antiAlias,
@@ -87,10 +87,10 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
             flexibleSpace: FlexibleSpaceBar(
               title: Text(
                 widget.shop.name,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: AppTheme.onInk,
+                  color: AppTheme.onHero,
                   shadows: [Shadow(color: Colors.black54, blurRadius: 6)],
                 ),
               ),
@@ -100,7 +100,9 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                   Image.network(
                     widget.shop.imageUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(color: AppTheme.surface),
+                    // No photo: the hero gradient, so the white title stays readable.
+                    errorBuilder: (context, error, stackTrace) =>
+                        DecoratedBox(decoration: BoxDecoration(gradient: AppTheme.heroGradient)),
                   ),
                   Container(
                     decoration: BoxDecoration(
@@ -135,10 +137,10 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.verified, size: 12, color: AppTheme.success),
+                              Icon(Icons.verified, size: 12, color: AppTheme.success),
                               const SizedBox(width: 4),
                               Text(l.verifiedPartnerBadge,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontSize: 10.5, fontWeight: FontWeight.w700, color: AppTheme.success)),
                             ],
                           ),
@@ -155,7 +157,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                   // Description
                   Text(
                     widget.shop.description,
-                    style: const TextStyle(color: AppTheme.textSecondary, height: 1.4, fontSize: 14),
+                    style: TextStyle(color: AppTheme.textSecondary, height: 1.4, fontSize: 14),
                   ),
                   const SizedBox(height: 16),
 
@@ -168,11 +170,11 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                       children: [
                         Row(
                           children: [
-                            const IconTile(icon: Icons.location_on_outlined, color: AppTheme.green, size: 38),
+                            IconTile(icon: Icons.location_on_outlined, color: AppTheme.green, size: 38),
                             const SizedBox(width: 10),
                             Text(
                               l.locationAndHours,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
                                 color: AppTheme.textPrimary,
@@ -187,13 +189,13 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                         const SizedBox(height: 12),
                         Row(
                           children: [
-                            const Icon(Icons.schedule, size: 15, color: AppTheme.textSecondary),
+                            Icon(Icons.schedule, size: 15, color: AppTheme.textSecondary),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 l.hoursWithDays(
                                     fmt.hoursRange(widget.shop.openingHour, widget.shop.closingHour), shopDays),
-                                style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                                style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
                               ),
                             ),
                           ],
@@ -202,11 +204,11 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              const Icon(Icons.phone, size: 15, color: AppTheme.textSecondary),
+                              Icon(Icons.phone, size: 15, color: AppTheme.textSecondary),
                               const SizedBox(width: 8),
                               Text(
                                 formatEthiopianContactPhone(widget.shop.phone),
-                                style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                                style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
                               ),
                             ],
                           ),
@@ -215,7 +217,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                     ),
                   ),
                   QueueStatusCard(shop: widget.shop),
-                  const Divider(height: 32, color: AppTheme.hairline),
+                  Divider(height: 32, color: AppTheme.hairline),
 
                   // Barbers Team Section
                   Text(
@@ -260,7 +262,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                                   child: barber.avatarUrl == null
                                       ? Text(barber.name.substring(0, 1),
                                           style:
-                                              const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700))
+                                              TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700))
                                       : null,
                                 ),
                                 const SizedBox(height: 6),
@@ -292,7 +294,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                     onBookStyle: blocked ? null : (barber) => _bookStyle(barber, services),
                   ),
                   // --- end barber portfolio ---
-                  const Divider(height: 32, color: AppTheme.hairline),
+                  Divider(height: 32, color: AppTheme.hairline),
 
                   // Services Section
                   Text(
@@ -337,14 +339,14 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                           children: [
                             const SizedBox(height: 4),
                             Text(service.description,
-                                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                                style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                             const SizedBox(height: 6),
                             Row(
                               children: [
-                                const Icon(Icons.timer_outlined, size: 14, color: AppTheme.blue),
+                                Icon(Icons.timer_outlined, size: 14, color: AppTheme.blue),
                                 const SizedBox(width: 4),
                                 Text(l.minutesShort(service.durationMinutes),
-                                    style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                                    style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                               ],
                             ),
                           ],
@@ -355,7 +357,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                           children: [
                             Text(
                               fmt.birr(service.price),
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                             ),
                             const SizedBox(height: 4),
@@ -393,12 +395,12 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
       // Bottom Bar
       bottomSheet: Container(
         padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: AppTheme.card,
           borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           border: Border(top: BorderSide(color: AppTheme.hairline)),
           boxShadow: [
-            BoxShadow(color: Color(0x14000000), blurRadius: 24, offset: Offset(0, -6)),
+            BoxShadow(color: AppTheme.palette.shadow, blurRadius: 24, offset: const Offset(0, -6)),
           ],
         ),
         child: SafeArea(
@@ -419,7 +421,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                       _selectedService != null
                           ? '${fmt.birr(_selectedService!.price)} • ${l.minutesShort(_selectedService!.durationMinutes)}'
                           : l.selectToSeePrice,
-                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
+                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),

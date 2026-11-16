@@ -46,7 +46,7 @@ class _AdminRemovalRequestsScreenState extends State<AdminRemovalRequestsScreen>
             if (snap.hasError) {
               return Center(child: Text(l.errorText(snap.error!), textAlign: TextAlign.center));
             }
-            if (!snap.hasData) return const Center(child: CircularProgressIndicator(color: AppTheme.ink));
+            if (!snap.hasData) return Center(child: CircularProgressIndicator(color: AppTheme.ink));
             final requests = snap.data!;
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
@@ -54,16 +54,14 @@ class _AdminRemovalRequestsScreenState extends State<AdminRemovalRequestsScreen>
                 AppCard(
                   color: AppTheme.surface,
                   child: Text(l.adminRemovalHelp,
-                      style: const TextStyle(fontSize: 13, height: 1.4, color: AppTheme.textSecondary)),
+                      style: TextStyle(fontSize: 13, height: 1.4, color: AppTheme.textSecondary)),
                 ),
                 const SizedBox(height: 12),
                 if (requests.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 40),
-                    child: Text(l.adminRemovalEmpty,
-                        key: const ValueKey('admin-removal-empty'),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: AppTheme.textSecondary)),
+                  EmptyState(
+                    key: const ValueKey('admin-removal-empty'),
+                    icon: Icons.inbox_outlined,
+                    title: l.adminRemovalEmpty,
                   ),
                 for (final r in requests) ...[
                   _RequestCard(
@@ -107,7 +105,7 @@ class _RequestCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const IconTile(icon: Icons.storefront_rounded, color: AppTheme.ink, size: 40),
+              IconTile(icon: Icons.storefront_rounded, color: AppTheme.primary, background: AppTheme.greenSoft, size: 40),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -116,7 +114,7 @@ class _RequestCard extends StatelessWidget {
                     Text(request.shopName, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
                     Text('${request.name} · ${request.email}',
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                   ],
                 ),
               ),
@@ -125,14 +123,14 @@ class _RequestCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(l.adminRemovalRequestedOn(fmt.addisDateMedium(request.createdAt)),
-              style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
           if (request.note != null) ...[
             const SizedBox(height: 8),
             Text('"${request.note}"', style: const TextStyle(fontSize: 14, height: 1.4)),
           ],
           if (!shopExists) ...[
             const SizedBox(height: 8),
-            Text(l.adminRemovalShopGone, style: const TextStyle(fontSize: 12, color: AppTheme.success)),
+            Text(l.adminRemovalShopGone, style: TextStyle(fontSize: 12, color: AppTheme.success)),
           ],
           if (request.isPending) ...[
             const SizedBox(height: 12),
@@ -153,7 +151,7 @@ class _RequestCard extends StatelessWidget {
                 FilledButton(
                   key: ValueKey('removal-done-${request.uid}'),
                   style: FilledButton.styleFrom(
-                      backgroundColor: AppTheme.green, foregroundColor: Colors.white, shape: const StadiumBorder()),
+                      backgroundColor: AppTheme.green, foregroundColor: AppTheme.onPrimary, shape: const StadiumBorder()),
                   onPressed: busy ? null : () => onResolve(ShopRemovalStatus.done),
                   child: Text(l.adminRemovalMarkDone),
                 ),

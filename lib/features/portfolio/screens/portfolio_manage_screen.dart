@@ -154,8 +154,8 @@ class _PortfolioManageScreenState extends State<PortfolioManageScreen> {
             ),
             ListTile(
               key: const ValueKey('portfolio-action-delete'),
-              leading: const Icon(Icons.delete_outline, color: AppTheme.danger),
-              title: Text(l.portfolioDeletePhoto, style: const TextStyle(color: AppTheme.danger)),
+              leading: Icon(Icons.delete_outline, color: AppTheme.danger),
+              title: Text(l.portfolioDeletePhoto, style: TextStyle(color: AppTheme.danger)),
               onTap: () => Navigator.pop(context, 'delete'),
             ),
             const SizedBox(height: 8),
@@ -216,7 +216,7 @@ class _PortfolioManageScreenState extends State<PortfolioManageScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(l.portfolioLoadFailed, style: const TextStyle(color: AppTheme.textSecondary)),
+                      Text(l.portfolioLoadFailed, style: TextStyle(color: AppTheme.textSecondary)),
                       TextButton.icon(
                         key: const ValueKey('portfolio-retry'),
                         onPressed: _retry,
@@ -276,7 +276,7 @@ class _PortfolioManageScreenState extends State<PortfolioManageScreen> {
             children: [
               Expanded(
                 child: Text(widget.barber.name,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.onInk)),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.onHero)),
               ),
               HeroChip(
                 key: const ValueKey('portfolio-count'),
@@ -287,17 +287,27 @@ class _PortfolioManageScreenState extends State<PortfolioManageScreen> {
           ),
           const SizedBox(height: 8),
           Text(l.portfolioManageIntro(kMaxPortfolioPhotos),
-              style: const TextStyle(color: AppTheme.onInkMuted, fontSize: 13)),
+              style: TextStyle(color: AppTheme.onInkMuted, fontSize: 13)),
           const SizedBox(height: 12),
-          AppProgressBar(value: count / kMaxPortfolioPhotos),
+          // White fill on a translucent track: readable on the green hero
+          // card (light) and the dark green one (dark).
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: (count / kMaxPortfolioPhotos).clamp(0.0, 1.0),
+              minHeight: 6,
+              color: AppTheme.isDark ? AppTheme.primary : AppTheme.onHero,
+              backgroundColor: AppTheme.onHero.withValues(alpha: 0.22),
+            ),
+          ),
           const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.public_rounded, size: 15, color: AppTheme.onInkMuted),
+              Icon(Icons.public_rounded, size: 15, color: AppTheme.onInkMuted),
               const SizedBox(width: 6),
               Expanded(
-                child: Text(l.portfolioPublicNotice, style: const TextStyle(color: AppTheme.onInkMuted, fontSize: 12)),
+                child: Text(l.portfolioPublicNotice, style: TextStyle(color: AppTheme.onInkMuted, fontSize: 12)),
               ),
             ],
           ),
@@ -305,7 +315,7 @@ class _PortfolioManageScreenState extends State<PortfolioManageScreen> {
             const SizedBox(height: 10),
             Text(l.portfolioFull(kMaxPortfolioPhotos),
                 key: const ValueKey('portfolio-full'),
-                style: const TextStyle(color: AppTheme.onInk, fontSize: 12.5, fontWeight: FontWeight.w600)),
+                style: TextStyle(color: AppTheme.onHero, fontSize: 12.5, fontWeight: FontWeight.w600)),
           ],
         ],
       ),
@@ -320,11 +330,12 @@ class _AddTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Soft green "add" tile (green tint + green outline) in both modes.
     return Material(
-      color: AppTheme.card,
+      color: AppTheme.greenSoft,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusTile + 2),
-        side: const BorderSide(color: AppTheme.hairline, width: 1.2),
+        side: BorderSide(color: AppTheme.green.withValues(alpha: 0.45), width: 1.2),
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -333,11 +344,11 @@ class _AddTile extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.add_a_photo_outlined, color: AppTheme.green),
+            Icon(Icons.add_a_photo_outlined, color: AppTheme.success),
             const SizedBox(height: 6),
             Text(context.l10n.portfolioAddPhoto,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.success)),
           ],
         ),
       ),

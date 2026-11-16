@@ -98,9 +98,9 @@ class _QueueScreenState extends State<QueueScreen> {
                   ),
                   if (servingBy.containsKey(b.id))
                     Text(l.queueBarberServing(servingBy[b.id]!.name),
-                        style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary))
+                        style: TextStyle(fontSize: 11, color: AppTheme.textSecondary))
                   else if (!b.isAvailable)
-                    Text(l.queueBarberOff, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                    Text(l.queueBarberOff, style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
                 ],
               ),
             ),
@@ -152,7 +152,7 @@ class _QueueScreenState extends State<QueueScreen> {
               );
             }
             if (!snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator(color: AppTheme.ink));
+              return Center(child: CircularProgressIndicator(color: AppTheme.ink));
             }
             return _buildBody(context, snapshot.data!);
           },
@@ -178,7 +178,7 @@ class _QueueScreenState extends State<QueueScreen> {
     Widget header(String text) => Padding(
           padding: const EdgeInsets.only(top: 20, bottom: 8),
           child: Text(text,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
         );
 
     return ListView(
@@ -189,7 +189,7 @@ class _QueueScreenState extends State<QueueScreen> {
           estimate.waitingCount == 0
               ? l.queueSummaryEmpty
               : l.queueSummaryWaiting(estimate.waitingCount, estimate.estimatedWaitMinutes),
-          style: const TextStyle(color: AppTheme.textSecondary),
+          style: TextStyle(color: AppTheme.textSecondary),
         ),
         if (me != null) ...[
           const SizedBox(height: 12),
@@ -220,7 +220,7 @@ class _QueueScreenState extends State<QueueScreen> {
             color: AppTheme.card,
             child: ListTile(
               key: Key('queueServing_${e.id}'),
-              leading: const CircleAvatar(
+              leading: CircleAvatar(
                 backgroundColor: AppTheme.blueSoft,
                 child: Icon(Icons.content_cut, color: AppTheme.blue, size: 18),
               ),
@@ -231,7 +231,7 @@ class _QueueScreenState extends State<QueueScreen> {
                   if (e.serviceId != null && serviceNames[e.serviceId] != null) serviceNames[e.serviceId]!,
                   if (e.servingStartedAt != null) l.queueServingSince(fmt.addisTime(e.servingStartedAt!)),
                 ].where((s) => s.isNotEmpty).join(' · '),
-                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
               ),
               trailing: FilledButton(
                 onPressed: _busy.contains(e.id) ? null : () => _run(e.id, () => _queue.finish(e)),
@@ -244,7 +244,7 @@ class _QueueScreenState extends State<QueueScreen> {
         if (waiting.isEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Text(l.queueEmpty, style: const TextStyle(color: AppTheme.textSecondary)),
+            child: Text(l.queueEmpty, style: TextStyle(color: AppTheme.textSecondary)),
           ),
         for (final e in waiting)
           _waitingTile(
@@ -346,17 +346,17 @@ class _QueueScreenState extends State<QueueScreen> {
                         const SizedBox(width: 6),
                         Tooltip(
                           message: l.queueRemoteBadge,
-                          child: const Icon(Icons.phone_iphone, size: 14, color: AppTheme.blue),
+                          child: Icon(Icons.phone_iphone, size: 14, color: AppTheme.blue),
                         ),
                       ],
                     ],
                   ),
                   const SizedBox(height: 2),
-                  Text(details.join(' · '), style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  Text(details.join(' · '), style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                   const SizedBox(height: 2),
                   Text(
                     pos == 1 || position == null ? l.queueNextUp : l.queueWaitAbout(position.waitMinutes),
-                    style: const TextStyle(fontSize: 12, color: AppTheme.success, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 12, color: AppTheme.success, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
@@ -365,13 +365,13 @@ class _QueueScreenState extends State<QueueScreen> {
               key: Key('queueStart_${e.id}'),
               tooltip: l.queueStart,
               onPressed: canStart ? onStart : null,
-              icon: const Icon(Icons.play_circle_fill_rounded, color: AppTheme.green),
+              icon: Icon(Icons.play_circle_fill_rounded, color: AppTheme.green),
             ),
             IconButton(
               key: Key('queueLeft_${e.id}'),
               tooltip: l.queueMarkLeft,
               onPressed: _busy.contains(e.id) ? null : () => _run(e.id, () => _queue.markLeft(e)),
-              icon: const Icon(Icons.directions_walk_rounded, color: AppTheme.textSecondary),
+              icon: Icon(Icons.directions_walk_rounded, color: AppTheme.textSecondary),
             ),
           ],
         ),
@@ -487,7 +487,7 @@ class _AddWalkInDialogState extends State<AddWalkInDialog> {
             ),
             if (_error != null) ...[
               const SizedBox(height: 12),
-              Text(_error!, style: const TextStyle(color: AppTheme.danger, fontSize: 12.5)),
+              Text(_error!, style: TextStyle(color: AppTheme.danger, fontSize: 12.5)),
             ],
           ],
         ),

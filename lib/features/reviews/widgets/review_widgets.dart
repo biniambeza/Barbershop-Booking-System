@@ -115,11 +115,13 @@ class RatingBadge extends StatelessWidget {
 /// loaded barbers): "★ 4.6 · 3 barbers rated", or "New". Rebuilds when the
 /// repository changes (e.g. a barber's counters after a new review).
 class ShopRatingBadge extends StatelessWidget {
-  const ShopRatingBadge({super.key, required this.shopId, this.fontSize = 12, this.color = AppTheme.textPrimary});
+  const ShopRatingBadge({super.key, required this.shopId, this.fontSize = 12, this.color});
 
   final String shopId;
   final double fontSize;
-  final Color color;
+
+  /// Defaults to AppTheme.textPrimary.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -145,7 +147,7 @@ class ShopRatingBadge extends StatelessWidget {
                 style: TextStyle(
                   fontSize: fontSize,
                   fontWeight: FontWeight.w700,
-                  color: rating.isNew ? AppTheme.textSecondary : color,
+                  color: rating.isNew ? AppTheme.textSecondary : (color ?? AppTheme.textPrimary),
                 ),
               ),
             ),
@@ -185,20 +187,20 @@ class RatingSummaryCard extends StatelessWidget {
               Text(
                 summary.count == 0 ? '–' : summary.rating.toStringAsFixed(1),
                 key: const ValueKey('rating-average'),
-                style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: AppTheme.textPrimary, letterSpacing: -0.8),
+                style: TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: AppTheme.textPrimary, letterSpacing: -0.8),
               ),
               StarRatingDisplay(rating: summary.rating, size: 15),
               const SizedBox(height: 4),
               Text(
                 l.reviewsCountLabel(summary.count),
                 key: const ValueKey('rating-count'),
-                style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary),
+                style: TextStyle(fontSize: 11.5, color: AppTheme.textSecondary),
               ),
               if (caption != null)
                 Text(
                   caption!,
                   key: const ValueKey('rating-caption'),
-                  style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                 ),
             ],
           ),
@@ -214,9 +216,9 @@ class RatingSummaryCard extends StatelessWidget {
                       children: [
                         SizedBox(
                           width: 12,
-                          child: Text('$star', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                          child: Text('$star', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
                         ),
-                        const Icon(Icons.star_rounded, size: 11, color: AppTheme.textSecondary),
+                        Icon(Icons.star_rounded, size: 11, color: AppTheme.textSecondary),
                         const SizedBox(width: 6),
                         Expanded(
                           child: ClipRRect(
@@ -226,7 +228,7 @@ class RatingSummaryCard extends StatelessWidget {
                               value: dist?.fraction(star) ?? 0,
                               minHeight: 6,
                               backgroundColor: AppTheme.track,
-                              valueColor: const AlwaysStoppedAnimation(AppTheme.green),
+                              valueColor: AlwaysStoppedAnimation(AppTheme.green),
                             ),
                           ),
                         ),
@@ -237,7 +239,7 @@ class RatingSummaryCard extends StatelessWidget {
                             dist == null ? '' : '${dist.counts[star]}',
                             key: ValueKey('rating-bar-count-$star'),
                             textAlign: TextAlign.end,
-                            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                            style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                           ),
                         ),
                       ],
@@ -288,7 +290,7 @@ class ReviewTile extends StatelessWidget {
                 backgroundColor: AppTheme.surface,
                 child: Text(
                   name.isEmpty ? '?' : String.fromCharCode(name.runes.first),
-                  style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700),
+                  style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700),
                 ),
               ),
               const SizedBox(width: 10),
@@ -296,11 +298,11 @@ class ReviewTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.textPrimary)),
+                    Text(name, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.textPrimary)),
                     if (barberName != null && barberName!.isNotEmpty)
                       Text(
                         l.barberLabel(barberName!),
-                        style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary),
+                        style: TextStyle(fontSize: 11.5, color: AppTheme.textSecondary),
                       ),
                   ],
                 ),
@@ -315,7 +317,7 @@ class ReviewTile extends StatelessWidget {
                         ? '${fmt.addisDateMedium(review.createdAt)} · ${l.reviewsEdited}'
                         : fmt.addisDateMedium(review.createdAt),
                     key: ValueKey('review-date-${review.id}'),
-                    style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                    style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                   ),
                 ],
               ),
@@ -323,7 +325,7 @@ class ReviewTile extends StatelessWidget {
           ),
           if (review.hasComment) ...[
             const SizedBox(height: 10),
-            Text(review.comment!, style: const TextStyle(fontSize: 13.5, height: 1.4, color: AppTheme.textPrimary)),
+            Text(review.comment!, style: TextStyle(fontSize: 13.5, height: 1.4, color: AppTheme.textPrimary)),
           ],
           if (review.hasReply) ...[
             const SizedBox(height: 10),
@@ -341,10 +343,10 @@ class ReviewTile extends StatelessWidget {
                 children: [
                   Text(
                     l.reviewsOwnerReply,
-                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+                    style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                   ),
                   const SizedBox(height: 4),
-                  Text(review.reply!, style: const TextStyle(fontSize: 13, height: 1.4, color: AppTheme.textPrimary)),
+                  Text(review.reply!, style: TextStyle(fontSize: 13, height: 1.4, color: AppTheme.textPrimary)),
                 ],
               ),
             ),
@@ -352,7 +354,7 @@ class ReviewTile extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               l.reviewsAwaitingReply,
-              style: const TextStyle(fontSize: 11.5, color: AppTheme.warning),
+              style: TextStyle(fontSize: 11.5, color: AppTheme.warning),
             ),
           ],
           if (onReply != null)

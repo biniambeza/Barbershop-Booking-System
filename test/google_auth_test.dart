@@ -277,6 +277,11 @@ void main() {
 
   testWidgets('Sign-in screen: Continue with Google, then profile setup with a phone number', (tester) async {
     loadTestSeed();
+    // A phone-height window: the sign-in and profile screens are taller
+    // than 800 x 600.
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     // English UI regardless of the machine's language.
     final previous = LocaleController.instance;
     LocaleController.instance = LocaleController(deviceLocale: const Locale('en'));

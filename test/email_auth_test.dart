@@ -388,6 +388,10 @@ void main() {
   });
 
   Future<void> tapKey(WidgetTester tester, Key key) async {
+    // Let the focused field's scroll-into-view (started on the next frame
+    // after enterText) finish: the scroll view ignores taps while it scrolls.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     await tester.ensureVisible(find.byKey(key));
     await tester.tap(find.byKey(key));
     await tester.pump();

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import '../../../core/brand/crown_blade_logo.dart';
 import '../../../core/config/app_config.dart';
@@ -5,10 +7,12 @@ import '../../../core/theme/app_theme.dart';
 import '../../../l10n/l10n.dart';
 import '../../../models/user_model.dart';
 import '../../shared/widgets/language_toggle.dart';
+import '../../shared/widgets/theme_mode_toggle.dart';
 import '../../shared/widgets/ui_kit.dart';
 import '../../../services/app_repository.dart';
 import '../widgets/email_login_form.dart';
 import '../widgets/email_register_form.dart';
+import '../widgets/auth_ui.dart';
 import '../widgets/forgot_password_form.dart';
 import '../../legal/privacy_policy_screen.dart' show PrivacyConsentNote; // privacy policy
 
@@ -81,141 +85,172 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget build(BuildContext context) {
     final repo = AppRepository.instance;
     final error = _error ?? repo.authError;
-
     final l = context.l10n;
+    final dark = AppTheme.isDark;
+    final theme = Theme.of(context);
+    final pageColor = dark ? AppTheme.background : AppTheme.card;
+
+    // Staggered entrance, once, when the screen first appears.
+    var order = 0;
+    Widget enter(Widget child) => AuthFadeSlideIn(
+          delay: Duration(milliseconds: 60 * order++),
+          duration: const Duration(milliseconds: 440),
+          child: child,
+        );
+
+    final heading = switch (_mode) {
+      _AuthMode.login => l.authWelcomeBack,
+      _AuthMode.register => l.authCreateAccountTitle,
+      _AuthMode.forgot => null,
+    };
+
+    final top = <Widget>[
+      enter(const _BrandHeader()),
+      const SizedBox(height: 22),
+      if (_accountDeleted) ...[
+        // account deletion
+        enter(AuthBanner(
+          key: const ValueKey('account-deleted-notice'),
+          color: AppTheme.success,
+          icon: Icons.check_circle_outline_rounded,
+          child: Text(l.deleteAccountDone),
+        )),
+        const SizedBox(height: 18),
+      ],
+      if (heading != null) ...[
+        enter(AnimatedSwitcher(
+          duration: const Duration(milliseconds: 260),
+          transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+          child: Column(
+            key: ValueKey(_mode),
+            children: [
+              Text(
+                heading,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.headlineSmall?.copyWith(fontSize: 24, fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
+        )),
+        const SizedBox(height: 18),
+      ],
+      if (_mode != _AuthMode.forgot) ...[
+        enter(AuthModeSwitch(
+          key: const ValueKey('auth-tabs'),
+          labels: [l.authTabLogin, l.authTabRegister],
+          labelKeys: const [ValueKey('auth-tab-login'), ValueKey('auth-tab-register')],
+          selected: _mode == _AuthMode.login ? 0 : 1,
+          onChanged: (i) => _setMode(i == 0 ? _AuthMode.login : _AuthMode.register),
+        )),
+        const SizedBox(height: 22),
+      ],
+      enter(
+        // A new key per mode plays the entrance again: the forms switch
+        // with a short fade and slide.
+        AuthFadeSlideIn(
+          key: ValueKey('form-$_mode'),
+          duration: const Duration(milliseconds: 340),
+          offset: 10,
+          child: _buildEmailForm(),
+        ),
+      ),
+      const SizedBox(height: 22),
+      enter(AuthOrDivider(label: l.authOr)),
+      const SizedBox(height: 22),
+      enter(_GoogleButton(
+        busy: _isLoading,
+        label: l.continueWithGoogle,
+        onPressed: _isLoading ? null : () => _run(repo.signInWithGoogle),
+      )),
+      const SizedBox(height: 10),
+      enter(Text(
+        kDemoMode ? l.demoGoogleNotice : l.googleSignInNotice,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 12,
+          height: 1.4,
+          color: kDemoMode ? AppTheme.textPrimary : AppTheme.textTertiary,
+          fontWeight: kDemoMode ? FontWeight.w500 : FontWeight.w400,
+        ),
+      )),
+      if (error != null) ...[
+        const SizedBox(height: 14),
+        AuthBanner(
+          color: AppTheme.danger,
+          icon: Icons.error_outline_rounded,
+          child: Text(l.authError(error)),
+        ),
+      ],
+      if (kDemoMode) ..._buildDemoPanel(),
+    ];
+
+    final bottom = <Widget>[
+      const SizedBox(height: 24),
+      if (_mode != _AuthMode.forgot) enter(_buildFooterSwitch()),
+      const SizedBox(height: 4),
+      enter(const PrivacyConsentNote()), // privacy policy
+    ];
+
     return Scaffold(
+      backgroundColor: pageColor,
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        backgroundColor: Colors.transparent,
+        backgroundColor: pageColor,
         elevation: 0,
-        actions: const [LanguageToggle(), SizedBox(width: 8)],
+        actions: const [ThemeModeToggle(), LanguageToggle(), SizedBox(width: 8)],
       ),
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        gradient: AppTheme.heroGradient,
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: AppTheme.heroShadow,
-                      ),
-                      child: const CrownBladeLogo.full(size: 56, padding: 0.17),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    l.brandUpper,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontSize: 24,
-                          letterSpacing: 2,
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l.authSubtitle,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondary),
-                  ),
-                  const SizedBox(height: 24),
-                  if (_accountDeleted) ...[
-                    // account deletion
-                    Container(
-                      key: const ValueKey('account-deleted-notice'),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.greenSoft,
-                        borderRadius: BorderRadius.circular(AppTheme.radiusPanel),
-                      ),
-                      child: Text(
-                        l.deleteAccountDone,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: AppTheme.success, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  if (_mode != _AuthMode.forgot) ...[
-                    SegmentedButton<_AuthMode>(
-                      key: const ValueKey('auth-tabs'),
-                      showSelectedIcon: false,
-                      segments: [
-                        ButtonSegment(
-                          value: _AuthMode.login,
-                          label: Text(l.authTabLogin, key: const ValueKey('auth-tab-login')),
-                        ),
-                        ButtonSegment(
-                          value: _AuthMode.register,
-                          label: Text(l.authTabRegister, key: const ValueKey('auth-tab-register')),
-                        ),
-                      ],
-                      selected: {_mode},
-                      onSelectionChanged: (s) => _setMode(s.first),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-                  _buildEmailForm(),
-                  const SizedBox(height: 20),
-                  Row(
+        top: false,
+        child: Theme(
+          data: theme.copyWith(inputDecorationTheme: authInputTheme(theme.inputDecorationTheme)),
+          child: LayoutBuilder(
+            builder: (context, viewport) => SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+              child: Center(
+                child: ConstrainedBox(
+                  // At least the screen's height, so the footer sits at the
+                  // bottom on tall phones; scrolls on small ones.
+                  constraints: BoxConstraints(maxWidth: 440, minHeight: math.max(0, viewport.maxHeight - 16)),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Expanded(child: Divider(color: AppTheme.hairline)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text(l.authOr, style: const TextStyle(color: AppTheme.textSecondary)),
-                      ),
-                      const Expanded(child: Divider(color: AppTheme.hairline)),
+                      Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: top),
+                      Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: bottom),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  OutlinedButton.icon(
-                    key: const ValueKey('google-sign-in'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      foregroundColor: AppTheme.textPrimary,
-                      side: const BorderSide(color: AppTheme.hairline),
-                    ),
-                    onPressed: _isLoading ? null : () => _run(repo.signInWithGoogle),
-                    icon: _isLoading ? _spinner() : const _GoogleMark(),
-                    label: Text(l.continueWithGoogle),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    kDemoMode ? l.demoGoogleNotice : l.googleSignInNotice,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: kDemoMode ? AppTheme.textPrimary : AppTheme.textSecondary,
-                      fontWeight: kDemoMode ? FontWeight.w500 : FontWeight.w400,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const PrivacyConsentNote(), // privacy policy
-                  if (error != null) ...[
-                    const SizedBox(height: 14),
-                    Text(
-                      l.authError(error),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: AppTheme.danger, fontSize: 13),
-                    ),
-                  ],
-                  if (kDemoMode) ..._buildDemoPanel(),
-                ],
+                ),
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  /// "Don't have an account? Sign up" / "Already have an account? Log in".
+  Widget _buildFooterSwitch() {
+    final l = context.l10n;
+    final login = _mode == _AuthMode.login;
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text(
+          login ? l.authNoAccount : l.authHaveAccount,
+          style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+        ),
+        TextButton(
+          key: const ValueKey('auth-footer-switch'),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            minimumSize: const Size(0, 40),
+            textStyle: authFont(14, FontWeight.w800),
+          ),
+          onPressed: () => _setMode(login ? _AuthMode.register : _AuthMode.login),
+          child: Text(login ? l.authSignUp : l.authTabLogin),
+        ),
+      ],
     );
   }
 
@@ -270,7 +305,7 @@ class _AuthScreenState extends State<AuthScreen> {
     AppUser? first(UserRole role) => users.where((u) => u.role == role && u.email != null).firstOrNull;
     final personas = <(String, AppUser?, IconData, Color)>[
       (l.roleAdminShort, first(UserRole.admin), Icons.admin_panel_settings, AppTheme.purple),
-      (l.roleOwner, first(UserRole.barbershopOwner), Icons.storefront, AppTheme.ink),
+      (l.roleOwner, first(UserRole.barbershopOwner), Icons.storefront, AppTheme.green),
       (l.roleBarber, first(UserRole.barber), Icons.content_cut, AppTheme.teal),
       (l.roleCustomer, first(UserRole.customer), Icons.person, AppTheme.blue),
     ];
@@ -279,12 +314,12 @@ class _AuthScreenState extends State<AuthScreen> {
       const SizedBox(height: 28),
       Row(
         children: [
-          const Expanded(child: Divider(color: AppTheme.hairline)),
+          Expanded(child: Divider(color: AppTheme.hairline)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: Text(
               l.demoAccounts,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
                 color: AppTheme.textSecondary,
                 letterSpacing: 1,
@@ -292,7 +327,7 @@ class _AuthScreenState extends State<AuthScreen> {
               ),
             ),
           ),
-          const Expanded(child: Divider(color: AppTheme.hairline)),
+          Expanded(child: Divider(color: AppTheme.hairline)),
         ],
       ),
       const SizedBox(height: 14),
@@ -309,7 +344,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
                     backgroundColor: AppTheme.card,
-                    side: const BorderSide(color: AppTheme.hairline),
+                    side: BorderSide(color: AppTheme.hairline),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusPanel + 2)),
                   ),
                   onPressed:
@@ -322,13 +357,13 @@ class _AuthScreenState extends State<AuthScreen> {
                       Text(
                         l.demoContinueAs(label),
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         user.email!,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                        style: TextStyle(fontSize: 10, color: AppTheme.textSecondary),
                       ),
                     ],
                   ),
@@ -339,29 +374,95 @@ class _AuthScreenState extends State<AuthScreen> {
     ];
   }
 
-  Widget _spinner() {
-    return const SizedBox(
-      height: 20,
-      width: 20,
-      child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.ink),
+}
+
+/// "CROWN & BLADE" with the logo: the top of the sign-in screen.
+class _BrandHeader extends StatelessWidget {
+  const _BrandHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = AppTheme.isDark;
+    return Column(
+      children: [
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [
+                AppTheme.primary.withValues(alpha: dark ? 0.22 : 0.14),
+                AppTheme.primary.withValues(alpha: 0),
+              ],
+            ),
+          ),
+          alignment: Alignment.center,
+          child: const CrownBladeLogo.adaptive(size: 66),
+        ),
+        const SizedBox(height: 4),
+        Semantics(
+          header: true,
+          child: Text(
+            context.l10n.brandUpper,
+            textAlign: TextAlign.center,
+            style: authFont(21, FontWeight.w800, letterSpacing: 3.4, color: AppTheme.textPrimary, height: 1.1),
+          ),
+        ),
+        const SizedBox(height: 10),
+        // A short green "blade" under the wordmark.
+        Container(
+          width: 36,
+          height: 4,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(4),
+            gradient: LinearGradient(colors: [AppTheme.primary, AppTheme.primaryDeep]),
+          ),
+        ),
+      ],
     );
   }
 }
 
-/// A simple "G" mark (no bundled brand asset needed).
-class _GoogleMark extends StatelessWidget {
-  const _GoogleMark();
+/// Full-width white "Continue with Google" pill with the multicolour G (a
+/// hairline in light mode; plain white on the dark page).
+class _GoogleButton extends StatelessWidget {
+  const _GoogleButton({required this.busy, required this.label, required this.onPressed});
+
+  final bool busy;
+  final String label;
+  final VoidCallback? onPressed;
+
+  static const _text = Color(0xFF1F1F1F);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 22,
-      height: 22,
-      alignment: Alignment.center,
-      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-      child: const Text(
-        'G',
-        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF4285F4)),
+    final dark = AppTheme.isDark;
+    return AuthPressScale(
+      enabled: onPressed != null,
+      child: OutlinedButton.icon(
+        key: const ValueKey('google-sign-in'),
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size.fromHeight(56),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          backgroundColor: Colors.white,
+          foregroundColor: _text,
+          disabledBackgroundColor: Colors.white.withValues(alpha: dark ? 0.85 : 1),
+          disabledForegroundColor: _text.withValues(alpha: 0.6),
+          overlayColor: AppTheme.primaryDeep,
+          side: BorderSide(color: dark ? Colors.white : AppTheme.outline, width: 1.3),
+          shape: const StadiumBorder(),
+          textStyle: authFont(16, FontWeight.w700),
+        ),
+        onPressed: onPressed,
+        icon: busy
+            ? SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(strokeWidth: 2.2, color: AppTheme.primaryDeep),
+              )
+            : const GoogleGLogo(size: 20),
+        label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
     );
   }

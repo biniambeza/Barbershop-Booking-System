@@ -88,7 +88,7 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
             padding: const EdgeInsets.all(28),
             child: Column(
               children: [
-                const Icon(Icons.person_search_outlined, size: 44, color: AppTheme.textSecondary),
+                Icon(Icons.person_search_outlined, size: 44, color: AppTheme.textSecondary),
                 const SizedBox(height: 8),
                 Text(l.admUsrEmpty, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold)),
               ],
@@ -181,14 +181,14 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
                         Text(contact,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
+                            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
                       ],
                       if (shopName != null) ...[
                         const SizedBox(height: 4),
                         Text(l.assignedShop(shopName),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: AppTheme.textPrimary, fontSize: 11, fontWeight: FontWeight.w500)),
                       ],
                     ],
@@ -242,7 +242,7 @@ Color adminRoleColor(UserRole role) {
     case UserRole.admin:
       return AppTheme.purple;
     case UserRole.barbershopOwner:
-      return AppTheme.ink;
+      return AppTheme.success;
     case UserRole.barber:
       return AppTheme.teal;
     case UserRole.customer:

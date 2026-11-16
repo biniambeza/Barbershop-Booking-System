@@ -85,6 +85,7 @@ class _AdminPaymentReviewScreenState extends State<AdminPaymentReviewScreen> {
           if (snap.hasError) {
             return _Message(
               icon: Icons.error_outline,
+              color: AppTheme.danger,
               title: l.paymentsToReviewLoadFailed(l.errorText(snap.error!)),
             );
           }
@@ -98,7 +99,7 @@ class _AdminPaymentReviewScreenState extends State<AdminPaymentReviewScreen> {
             builder: (context, _) => ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Text(l.paymentsToReviewIntro, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                Text(l.paymentsToReviewIntro, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                 const SizedBox(height: 12),
                 for (final p in items) _ReviewCard(payment: p, onTap: () => _open(p)),
               ],
@@ -111,9 +112,12 @@ class _AdminPaymentReviewScreenState extends State<AdminPaymentReviewScreen> {
 }
 
 class _Message extends StatelessWidget {
-  const _Message({required this.icon, required this.title, this.body});
+  const _Message({required this.icon, required this.title, this.body, this.color});
 
   final IconData icon;
+
+  /// Icon colour (on its soft tint); defaults to the brand green.
+  final Color? color;
   final String title;
   final String? body;
 
@@ -125,14 +129,19 @@ class _Message extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 48, color: AppTheme.textSecondary),
-            const SizedBox(height: 12),
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(color: AppTheme.softOf(color ?? AppTheme.primary), shape: BoxShape.circle),
+              child: Icon(icon, size: 34, color: color ?? AppTheme.primary),
+            ),
+            const SizedBox(height: 16),
             Text(title,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
             if (body != null) ...[
               const SizedBox(height: 6),
-              Text(body!, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textSecondary)),
+              Text(body!, textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textSecondary)),
             ],
           ],
         ),
@@ -161,7 +170,7 @@ class _ReviewCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusCard),
-        side: const BorderSide(color: AppTheme.hairline),
+        side: BorderSide(color: AppTheme.hairline),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppTheme.radiusCard),
@@ -176,17 +185,17 @@ class _ReviewCard extends StatelessWidget {
                   Container(
                     width: 36,
                     height: 36,
-                    decoration: const BoxDecoration(color: AppTheme.orangeSoft, shape: BoxShape.circle),
-                    child: const Icon(Icons.report_gmailerrorred_rounded, color: AppTheme.warning, size: 19),
+                    decoration: BoxDecoration(color: AppTheme.orangeSoft, shape: BoxShape.circle),
+                    child: Icon(Icons.report_gmailerrorred_rounded, color: AppTheme.warning, size: 19),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(l.reviewReason(reason),
-                        style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                        style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
                   ),
                   Text(
                     fmt.birr(payment.amount),
-                    style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 16),
+                    style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 16),
                   ),
                 ],
               ),
@@ -197,13 +206,13 @@ class _ReviewCard extends StatelessWidget {
                   if (shop != null) shop.name,
                   fmt.addisDateMedium(payment.createdAt),
                 ].join(' • '),
-                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
               ),
               if (booking != null) ...[
                 const SizedBox(height: 4),
                 Text(
                   '${booking.customerName} • ${booking.serviceName} • ${l.bookingStatus(booking.status)}',
-                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                 ),
               ],
             ],
@@ -323,7 +332,7 @@ class _PaymentReviewSheetState extends State<PaymentReviewSheet> {
               const SizedBox(height: 4),
               Text(
                 l.reviewReason(paymentReviewReason(_p, booking)),
-                style: const TextStyle(color: AppTheme.warning, fontWeight: FontWeight.w600),
+                style: TextStyle(color: AppTheme.warning, fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 12),
               for (final (label, value) in rows)
@@ -334,7 +343,7 @@ class _PaymentReviewSheetState extends State<PaymentReviewSheet> {
                     children: [
                       SizedBox(
                         width: 140,
-                        child: Text(label, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                        child: Text(label, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                       ),
                       Expanded(child: SelectableText(value, style: const TextStyle(fontSize: 13))),
                     ],
@@ -350,7 +359,7 @@ class _PaymentReviewSheetState extends State<PaymentReviewSheet> {
                 decoration: InputDecoration(labelText: l.reviewNoteLabel, hintText: l.reviewNoteHint),
               ),
               if (_error != null) ...[
-                Text(_error!, style: const TextStyle(color: AppTheme.danger, fontSize: 12)),
+                Text(_error!, style: TextStyle(color: AppTheme.danger, fontSize: 12)),
                 const SizedBox(height: 8),
               ],
               Wrap(
@@ -423,7 +432,7 @@ class _PaymentsToReviewButtonState extends State<PaymentsToReviewButton> {
       icon: Badge(
         isLabelVisible: _count > 0,
         label: Text('$_count'),
-        child: const Icon(Icons.fact_check_outlined, color: AppTheme.textPrimary),
+        child: Icon(Icons.fact_check_outlined, color: AppTheme.textPrimary),
       ),
       onPressed: () => Navigator.push(
         context,

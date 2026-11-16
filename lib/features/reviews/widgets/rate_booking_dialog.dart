@@ -100,7 +100,7 @@ class _RateBookingDialogState extends State<RateBookingDialog> {
             Text(b.shopName, style: const TextStyle(fontWeight: FontWeight.bold)),
             Text(
               l.reviewsRateSubtitle(b.serviceName, b.barberName),
-              style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary),
+              style: TextStyle(fontSize: 12.5, color: AppTheme.textSecondary),
             ),
             const SizedBox(height: 14),
             StarRatingInput(value: _rating, onChanged: _busy ? (_) {} : (v) => setState(() => _rating = v)),
@@ -110,7 +110,7 @@ class _RateBookingDialogState extends State<RateBookingDialog> {
                 child: Text(
                   l.reviewsStarsLabel(_rating),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12, color: AppTheme.warning, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 12, color: AppTheme.warning, fontWeight: FontWeight.w600),
                 ),
               ),
             const SizedBox(height: 14),
@@ -127,7 +127,7 @@ class _RateBookingDialogState extends State<RateBookingDialog> {
               Text(
                 _error!,
                 key: const ValueKey('review-error'),
-                style: const TextStyle(color: AppTheme.danger, fontSize: 12.5),
+                style: TextStyle(color: AppTheme.danger, fontSize: 12.5),
               ),
           ],
         ),

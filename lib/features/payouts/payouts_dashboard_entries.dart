@@ -33,18 +33,18 @@ class OwnerPayoutsButton extends StatelessWidget {
           style: OutlinedButton.styleFrom(
             foregroundColor: AppTheme.textPrimary,
             backgroundColor: AppTheme.card,
-            side: const BorderSide(color: AppTheme.hairline),
+            side: BorderSide(color: AppTheme.hairline),
             minimumSize: const Size(0, 54),
             alignment: Alignment.centerLeft,
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
           ),
-          icon: const Icon(Icons.account_balance_wallet_outlined, size: 18, color: AppTheme.green),
+          icon: Icon(Icons.account_balance_wallet_outlined, size: 18, color: AppTheme.green),
           label: Row(
             children: [
               Expanded(
                 child: Text(l.payoutsOpenButton, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
               ),
-              const Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.textSecondary),
+              Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.textSecondary),
             ],
           ),
         ),
@@ -128,7 +128,7 @@ class _BarberPayoutsCardState extends State<BarberPayoutsCard> {
                   children: [
                     Row(
                       children: [
-                        const IconTile(
+                        IconTile(
                             icon: Icons.account_balance_wallet_outlined,
                             color: AppTheme.green,
                             background: AppTheme.greenSoft,
@@ -139,10 +139,10 @@ class _BarberPayoutsCardState extends State<BarberPayoutsCard> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(l.payoutsYourShare,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontWeight: FontWeight.w700, fontSize: 14.5, color: AppTheme.textPrimary)),
                               Text(l.payoutsThisMonth(payoutMonthLabel(fmt, _month)),
-                                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
+                                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
                             ],
                           ),
                         ),
@@ -150,14 +150,14 @@ class _BarberPayoutsCardState extends State<BarberPayoutsCard> {
                           fmt.birr(s.share),
                           key: const ValueKey('barber-payouts-share'),
                           style:
-                              const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+                              TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Text(
                       l.payoutsShareLine(s.commissionPercent, s.completedJobs, fmt.birr(s.gross)),
-                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5),
+                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 12.5),
                     ),
                     const SizedBox(height: 10),
                     PayoutFigureLine(
@@ -181,8 +181,8 @@ class _BarberPayoutsCardState extends State<BarberPayoutsCard> {
                     if (carrySnap.hasError)
                       Text(l.payoutsCarryUnavailable,
                           key: const ValueKey('barber-payouts-carry-failed'),
-                          style: const TextStyle(color: AppTheme.warning, fontSize: 12)),
-                    const Divider(height: 22, color: AppTheme.hairline),
+                          style: TextStyle(color: AppTheme.warning, fontSize: 12)),
+                    Divider(height: 22, color: AppTheme.hairline),
                     SectionHeader(
                       title: l.payoutsMyPayouts,
                       actionLabel: payouts.length > latest.length ? l.payoutsSeeAll : null,
@@ -193,10 +193,10 @@ class _BarberPayoutsCardState extends State<BarberPayoutsCard> {
                     ),
                     const SizedBox(height: 8),
                     if (payoutSnap.hasError)
-                      Text(l.payoutsLoadFailed, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5))
+                      Text(l.payoutsLoadFailed, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12.5))
                     else if (latest.isEmpty)
                       Text(l.payoutsMyPayoutsEmpty,
-                          style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5))
+                          style: TextStyle(color: AppTheme.textSecondary, fontSize: 12.5))
                     else
                       for (final p in latest) PayoutTile(payout: p),
                   ],
@@ -237,7 +237,7 @@ class _BarberPayoutsScreenState extends State<BarberPayoutsScreen> {
           if (!snap.hasData) return const Center(child: CircularProgressIndicator());
           final payouts = snap.data!;
           if (payouts.isEmpty) {
-            return Center(child: Text(l.payoutsMyPayoutsEmpty, style: const TextStyle(color: AppTheme.textSecondary)));
+            return Center(child: Text(l.payoutsMyPayoutsEmpty, style: TextStyle(color: AppTheme.textSecondary)));
           }
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),

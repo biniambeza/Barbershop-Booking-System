@@ -36,7 +36,7 @@ class NotificationsScreen extends StatelessWidget {
                 TextButton(
                   onPressed: svc.markAllRead,
                   child: Text(context.l10n.markAllRead,
-                      style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
+                      style: TextStyle(color: AppTheme.success, fontWeight: FontWeight.w700)),
                 ),
             ],
           ),
@@ -75,18 +75,24 @@ class _EmptyInbox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(32),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.notifications_none_rounded, size: 56, color: AppTheme.textSecondary),
-            SizedBox(height: 12),
-            Text(context.l10n.noNotifications, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            SizedBox(height: 6),
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(color: AppTheme.greenSoft, shape: BoxShape.circle),
+              child: Icon(Icons.notifications_none_rounded, size: 38, color: AppTheme.primary),
+            ),
+            const SizedBox(height: 16),
+            Text(context.l10n.noNotifications,
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+            const SizedBox(height: 6),
             Text(
               context.l10n.noNotificationsHint,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppTheme.textSecondary),
+              style: TextStyle(color: AppTheme.textSecondary),
             ),
           ],
         ),
@@ -112,6 +118,8 @@ class _NotificationTile extends StatelessWidget {
       decoration: AppTheme.cardDecoration(
         radius: AppTheme.radiusPanel + 4,
         color: n.read ? AppTheme.surface : AppTheme.card,
+        // Unread entries get a green outline so they stand out in both modes.
+        borderColor: n.read ? null : AppTheme.primary.withValues(alpha: 0.45),
       ),
       child: Material(
         type: MaterialType.transparency,
@@ -131,10 +139,10 @@ class _NotificationTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 2),
-              Text(text?.body ?? n.body, style: const TextStyle(color: AppTheme.textSecondary)),
+              Text(text?.body ?? n.body, style: TextStyle(color: AppTheme.textSecondary)),
               const SizedBox(height: 4),
               Text(relativeTime(n.createdAt, l10n: context.l10n),
-                  style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
             ],
           ),
           trailing: n.read
@@ -143,7 +151,7 @@ class _NotificationTile extends StatelessWidget {
                   key: const ValueKey('unread-dot'),
                   width: 10,
                   height: 10,
-                  decoration: const BoxDecoration(color: AppTheme.green, shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: AppTheme.green, shape: BoxShape.circle),
                 ),
           isThreeLine: true,
         ),

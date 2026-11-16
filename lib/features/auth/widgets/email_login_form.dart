@@ -129,7 +129,7 @@ class _EmailLoginFormState extends State<EmailLoginForm> {
                 widget.notice!,
                 key: const ValueKey('login-notice'),
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppTheme.success, fontSize: 13),
+                style: TextStyle(color: AppTheme.success, fontSize: 13),
               ),
             ),
           EmailField(key: const ValueKey('login-email'), controller: _email),

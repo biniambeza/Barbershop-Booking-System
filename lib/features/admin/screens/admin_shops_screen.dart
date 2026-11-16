@@ -61,7 +61,7 @@ class _AdminShopsTabState extends State<AdminShopsTab> {
                   Expanded(
                     child: Text(
                       l.adminShopsHeroTitle,
-                      style: const TextStyle(fontSize: 13, color: AppTheme.onInkMuted, fontWeight: FontWeight.w500),
+                      style: TextStyle(fontSize: 13, color: AppTheme.onHeroMuted, fontWeight: FontWeight.w500),
                     ),
                   ),
                   HeroChip(label: l.metricRegistered, icon: Icons.storefront),
@@ -70,10 +70,10 @@ class _AdminShopsTabState extends State<AdminShopsTab> {
               const SizedBox(height: 8),
               Text(
                 '${counts.total}',
-                style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w700, color: AppTheme.onInk, letterSpacing: -0.8),
+                style: TextStyle(fontSize: 34, fontWeight: FontWeight.w700, color: AppTheme.onHero, letterSpacing: -0.8),
               ),
               const SizedBox(height: 18),
-              Container(height: 1, color: Colors.white.withValues(alpha: 0.10)),
+              Container(height: 1, color: AppTheme.onHero.withValues(alpha: 0.16)),
               const SizedBox(height: 14),
               Row(
                 children: [
@@ -132,12 +132,12 @@ class _AdminShopsTabState extends State<AdminShopsTab> {
             padding: const EdgeInsets.all(28),
             child: Column(
               children: [
-                const Icon(Icons.storefront, size: 44, color: AppTheme.textSecondary),
+                Icon(Icons.storefront, size: 44, color: AppTheme.textSecondary),
                 const SizedBox(height: 8),
                 Text(l.noRegisteredShops, style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 Text(l.noRegisteredShopsHint,
-                    textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                    textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
               ],
             ),
           )
@@ -169,7 +169,7 @@ class _AdminShopsTabState extends State<AdminShopsTab> {
           Container(
             width: 34,
             height: 34,
-            decoration: const BoxDecoration(shape: BoxShape.circle, gradient: AppTheme.metallicGradient),
+            decoration: BoxDecoration(shape: BoxShape.circle, gradient: AppTheme.metallicGradient),
             child: Icon(icon, color: AppTheme.ink, size: 16),
           ),
           const SizedBox(width: 8),
@@ -177,9 +177,9 @@ class _AdminShopsTabState extends State<AdminShopsTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(value, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.onInk)),
+                Text(value, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppTheme.onHero)),
                 Text(label,
-                    style: const TextStyle(fontSize: 10.5, color: AppTheme.onInkMuted),
+                    style: TextStyle(fontSize: 10.5, color: AppTheme.onHeroMuted),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
               ],
@@ -243,7 +243,7 @@ class _AdminShopsTabState extends State<AdminShopsTab> {
                       width: 72,
                       height: 72,
                       color: AppTheme.surface,
-                      child: const Icon(Icons.storefront, color: AppTheme.textSecondary),
+                      child: Icon(Icons.storefront, color: AppTheme.textSecondary),
                     ),
                   ),
                 ),
@@ -257,25 +257,25 @@ class _AdminShopsTabState extends State<AdminShopsTab> {
                           Expanded(
                             child: Text(
                               shop.name,
-                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppTheme.textPrimary),
+                              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppTheme.textPrimary),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (shop.isVerified) const Icon(Icons.verified, color: AppTheme.green, size: 17),
+                          if (shop.isVerified) Icon(Icons.verified, color: AppTheme.green, size: 17),
                         ],
                       ),
                       const SizedBox(height: 4),
                       Text(
                         l.shopAddress(shop),
-                        style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         l.ownerLabel(ownerLabel),
-                        style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary, fontWeight: FontWeight.w500),
+                        style: TextStyle(fontSize: 12, color: AppTheme.textPrimary, fontWeight: FontWeight.w500),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -296,7 +296,7 @@ class _AdminShopsTabState extends State<AdminShopsTab> {
                         const SizedBox(height: 6),
                         Text(
                           shop.adminSuspendedReason!,
-                          style: const TextStyle(fontSize: 12, color: AppTheme.danger),
+                          style: TextStyle(fontSize: 12, color: AppTheme.danger),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -307,7 +307,7 @@ class _AdminShopsTabState extends State<AdminShopsTab> {
               ],
             ),
           ),
-          const Divider(height: 1, color: AppTheme.hairline),
+          Divider(height: 1, color: AppTheme.hairline),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
             child: Row(
@@ -340,7 +340,7 @@ class _AdminShopsTabState extends State<AdminShopsTab> {
                     tooltip: l.manageShopPortal,
                     // Demo only: open that shop's owner app.
                     onPressed: () => repo.switchRole(UserRole.barbershopOwner, targetShopId: shop.id),
-                    icon: const Icon(Icons.dashboard_customize, size: 18, color: AppTheme.ink),
+                    icon: Icon(Icons.dashboard_customize, size: 18, color: AppTheme.ink),
                   ),
                 IconButton(
                   key: ValueKey('admin-shop-suspend-${shop.id}'),
@@ -358,7 +358,7 @@ class _AdminShopsTabState extends State<AdminShopsTab> {
                   key: ValueKey('admin-shop-delete-${shop.id}'),
                   tooltip: l.deleteShop,
                   onPressed: () => showDeleteShopDialog(context, shop),
-                  icon: const Icon(Icons.delete_outline, size: 18, color: AppTheme.danger),
+                  icon: Icon(Icons.delete_outline, size: 18, color: AppTheme.danger),
                 ),
                 TextButton(
                   onPressed: () => _openEdit(shop),
@@ -378,7 +378,7 @@ class _AdminShopsTabState extends State<AdminShopsTab> {
       children: [
         Icon(icon, size: 12, color: AppTheme.textSecondary),
         const SizedBox(width: 3),
-        Text(text, style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary)),
+        Text(text, style: TextStyle(fontSize: 11.5, color: AppTheme.textSecondary)),
       ],
     );
   }
@@ -447,7 +447,7 @@ class _SuspendShopDialogState extends State<_SuspendShopDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l.adminShopsSuspendBody, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+          Text(l.adminShopsSuspendBody, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
           const SizedBox(height: 14),
           TextField(
             key: const ValueKey('admin-suspend-reason'),
@@ -463,7 +463,7 @@ class _SuspendShopDialogState extends State<_SuspendShopDialog> {
       actions: [
         TextButton(
           onPressed: _busy ? null : () => Navigator.pop(context, false),
-          child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
+          child: Text(l.cancel, style: TextStyle(color: AppTheme.textSecondary)),
         ),
         ElevatedButton(
           key: const ValueKey('admin-suspend-confirm'),
@@ -488,7 +488,7 @@ Future<bool> showReactivateShopDialog(BuildContext context, Barbershop shop) asy
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(ctx, false),
-          child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
+          child: Text(l.cancel, style: TextStyle(color: AppTheme.textSecondary)),
         ),
         ElevatedButton(
           key: const ValueKey('admin-reactivate-confirm'),
@@ -596,12 +596,12 @@ class _DeleteShopDialogState extends State<_DeleteShopDialog> {
     }
   }
 
-  Widget _item(IconData icon, String text, {Color color = AppTheme.textSecondary}) => Padding(
+  Widget _item(IconData icon, String text, {Color? color}) => Padding(
         padding: const EdgeInsets.only(top: 6),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, size: 16, color: color),
+            Icon(icon, size: 16, color: color ?? AppTheme.textSecondary),
             const SizedBox(width: 8),
             Expanded(child: Text(text, style: const TextStyle(fontSize: 12.5))),
           ],
@@ -671,7 +671,7 @@ class _DeleteShopDialogState extends State<_DeleteShopDialog> {
               Text(
                 _error!,
                 key: const ValueKey('admin-delete-error'),
-                style: const TextStyle(fontSize: 12, color: AppTheme.danger),
+                style: TextStyle(fontSize: 12, color: AppTheme.danger),
               ),
             ],
           ],
@@ -680,7 +680,7 @@ class _DeleteShopDialogState extends State<_DeleteShopDialog> {
       actions: [
         TextButton(
           onPressed: _busy ? null : () => Navigator.pop(context, false),
-          child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
+          child: Text(l.cancel, style: TextStyle(color: AppTheme.textSecondary)),
         ),
         ElevatedButton(
           key: const ValueKey('admin-delete-confirm'),

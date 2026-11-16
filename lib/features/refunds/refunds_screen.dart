@@ -47,9 +47,9 @@ class RefundsScreen extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.currency_exchange_rounded, size: 44, color: AppTheme.textTertiary),
+                    Icon(Icons.currency_exchange_rounded, size: 44, color: AppTheme.textTertiary),
                     const SizedBox(height: 12),
-                    Text(l.refundsEmpty, textAlign: TextAlign.center, style: const TextStyle(color: AppTheme.textSecondary)),
+                    Text(l.refundsEmpty, textAlign: TextAlign.center, style: TextStyle(color: AppTheme.textSecondary)),
                   ],
                 ),
               ),
@@ -88,7 +88,7 @@ class _RefundTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              const IconTile(icon: Icons.currency_exchange_rounded, color: AppTheme.warning),
+              IconTile(icon: Icons.currency_exchange_rounded, color: AppTheme.warning),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -102,7 +102,7 @@ class _RefundTile extends StatelessWidget {
                         if (showShop && booking.shopName.isNotEmpty) booking.shopName,
                         '${fmt.addisDateMedium(booking.startAt)} ${fmt.bookingTime(booking)}',
                       ].join(' · '),
-                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5),
+                      style: TextStyle(color: AppTheme.textSecondary, fontSize: 12.5),
                     ),
                   ],
                 ),
@@ -114,11 +114,11 @@ class _RefundTile extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             '${l.refundReasonName(refund.reason)} · ${l.refundFlaggedOn(fmt.addisDateMedium(refund.flaggedAt))}',
-            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+            style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
           ),
           if (booking.customerPhone.isNotEmpty) ...[
             const SizedBox(height: 2),
-            Text(fmt.phone(booking.customerPhone), style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+            Text(fmt.phone(booking.customerPhone), style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
           ],
           const SizedBox(height: 12),
           SizedBox(
@@ -226,7 +226,7 @@ class _MarkRefundedDialogState extends State<_MarkRefundedDialog> {
               decoration: InputDecoration(labelText: l.refundReferenceLabel, hintText: l.refundReferenceHint),
             ),
             if (_error != null)
-              Text(_error!, style: const TextStyle(color: AppTheme.danger, fontSize: 12.5)),
+              Text(_error!, style: TextStyle(color: AppTheme.danger, fontSize: 12.5)),
           ],
         ),
       ),

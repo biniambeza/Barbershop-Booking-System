@@ -63,8 +63,8 @@ class _BookingReviewActionState extends State<BookingReviewAction> {
             ),
             ListTile(
               key: ValueKey('delete-review-${booking.id}'),
-              leading: const Icon(Icons.delete_outline_rounded, color: AppTheme.danger),
-              title: Text(l.reviewsDeleteAction, style: const TextStyle(color: AppTheme.danger)),
+              leading: Icon(Icons.delete_outline_rounded, color: AppTheme.danger),
+              title: Text(l.reviewsDeleteAction, style: TextStyle(color: AppTheme.danger)),
               onTap: () => Navigator.of(sheet).pop('delete'),
             ),
           ],
@@ -87,7 +87,7 @@ class _BookingReviewActionState extends State<BookingReviewAction> {
           TextButton(
             key: const ValueKey('confirm-delete-review'),
             onPressed: () => Navigator.of(dialog).pop(true),
-            child: Text(l.delete, style: const TextStyle(color: AppTheme.danger)),
+            child: Text(l.delete, style: TextStyle(color: AppTheme.danger)),
           ),
         ],
       ),
@@ -130,16 +130,16 @@ class _BookingReviewActionState extends State<BookingReviewAction> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(l.reviewsYourRating, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                      Text(l.reviewsYourRating, style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
                       const SizedBox(width: 6),
                       StarRatingDisplay(rating: review.rating.toDouble(), size: 13),
                       if (review.isEdited) ...[
                         const SizedBox(width: 6),
                         Text(l.reviewsEdited,
-                            style: const TextStyle(fontSize: 10.5, color: AppTheme.textSecondary, fontStyle: FontStyle.italic)),
+                            style: TextStyle(fontSize: 10.5, color: AppTheme.textSecondary, fontStyle: FontStyle.italic)),
                       ],
                       const SizedBox(width: 4),
-                      const Icon(Icons.more_horiz_rounded, size: 13, color: AppTheme.textSecondary),
+                      Icon(Icons.more_horiz_rounded, size: 13, color: AppTheme.textSecondary),
                     ],
                   ),
                 ),

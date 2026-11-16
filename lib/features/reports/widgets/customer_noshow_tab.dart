@@ -124,9 +124,9 @@ class _CustomerNoShowTabState extends State<CustomerNoShowTab> {
             fillColor: AppTheme.card,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(999), borderSide: const BorderSide(color: AppTheme.hairline)),
+                borderRadius: BorderRadius.circular(999), borderSide: BorderSide(color: AppTheme.hairline)),
             enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(999), borderSide: const BorderSide(color: AppTheme.hairline)),
+                borderRadius: BorderRadius.circular(999), borderSide: BorderSide(color: AppTheme.hairline)),
           ),
         ),
         const SizedBox(height: 10),
@@ -143,7 +143,7 @@ class _CustomerNoShowTabState extends State<CustomerNoShowTab> {
         Padding(
           padding: const EdgeInsets.only(left: 2, bottom: 4),
           child: Text(l.noShowsListTitle,
-              style: const TextStyle(
+              style: TextStyle(
                   fontWeight: FontWeight.w700, fontSize: 17, color: AppTheme.textPrimary, letterSpacing: -0.2)),
         ),
         Padding(
@@ -153,15 +153,15 @@ class _CustomerNoShowTabState extends State<CustomerNoShowTab> {
               l.noShowsRateHelp,
               if (_service.usesFirestore && widget.clientDocs.isEmpty) l.noShowsWindowNote(kReportFallbackDays),
             ].join(' '),
-            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+            style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
           ),
         ),
         if (all.isEmpty)
           Text(l.noShowsNoCustomers,
-              key: const ValueKey('noshow-empty'), style: const TextStyle(color: AppTheme.textSecondary))
+              key: const ValueKey('noshow-empty'), style: TextStyle(color: AppTheme.textSecondary))
         else if (shown.isEmpty)
           Text(l.noShowsNoMatch,
-              key: const ValueKey('noshow-no-match'), style: const TextStyle(color: AppTheme.textSecondary))
+              key: const ValueKey('noshow-no-match'), style: TextStyle(color: AppTheme.textSecondary))
         else
           for (final r in shown)
             _CustomerRowCard(
@@ -258,14 +258,14 @@ class _AutoBlockCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const IconTile(icon: Icons.person_off_outlined, color: AppTheme.warning, size: 40),
+                  IconTile(icon: Icons.person_off_outlined, color: AppTheme.warning, size: 40),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(l.noShowsAutoBlockTitle,
-                            style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                            style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
                         const SizedBox(height: 2),
                         Text(
                           snap.hasError
@@ -276,7 +276,7 @@ class _AutoBlockCard extends StatelessWidget {
                                       ? l.noShowsAutoBlockOn(settings.autoBlockNoShows)
                                       : l.noShowsAutoBlockOff,
                           key: const ValueKey('autoblock-status'),
-                          style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary),
+                          style: TextStyle(fontSize: 12.5, color: AppTheme.textSecondary),
                         ),
                       ],
                     ),
@@ -297,7 +297,7 @@ class _AutoBlockCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(l.noShowsAutoBlockLimit,
-                          style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary)),
+                          style: TextStyle(fontSize: 13, color: AppTheme.textPrimary)),
                     ),
                     IconButton(
                       key: const ValueKey('autoblock-dec'),
@@ -372,7 +372,7 @@ class _CustomerRowCard extends StatelessWidget {
             backgroundColor: AppTheme.surface,
             child: Text(
               name.characters.first.toUpperCase(),
-              style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700),
+              style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700),
             ),
           ),
           const SizedBox(width: 12),
@@ -380,14 +380,14 @@ class _CustomerRowCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                Text(name, style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
                 if (row.phone.isNotEmpty)
-                  Text(fmt.phone(row.phone), style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  Text(fmt.phone(row.phone), style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                 const SizedBox(height: 3),
                 Text(
                   l.noShowsCustomerStats(row.bookings, row.completed, row.cancelled, row.noShows),
                   key: ValueKey('noshow-stats-${row.customerId}'),
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                 ),
                 if (b != null) ...[
                   const SizedBox(height: 6),
@@ -403,15 +403,15 @@ class _CustomerRowCard extends StatelessWidget {
                         icon: Icons.block_rounded,
                       ),
                       Text(l.customerBlockedOn(fmt.addisDateMedium(b.blockedAt)),
-                          style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary)),
+                          style: TextStyle(fontSize: 11.5, color: AppTheme.textSecondary)),
                     ],
                   ),
                   if (b.isAuto && b.noShowCount != null)
                     Text(l.customerAutoBlockedAfter(b.noShowCount!),
-                        style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary)),
+                        style: TextStyle(fontSize: 11.5, color: AppTheme.textSecondary)),
                   if (b.reason != null)
                     Text(l.customerBlockNote(b.reason!),
-                        style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary)),
+                        style: TextStyle(fontSize: 11.5, color: AppTheme.textSecondary)),
                 ],
               ],
             ),
@@ -436,7 +436,7 @@ class _CustomerRowCard extends StatelessWidget {
                         onPressed: busy ? null : onBlock,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppTheme.danger,
-                          side: const BorderSide(color: AppTheme.hairline),
+                          side: BorderSide(color: AppTheme.hairline),
                           shape: const StadiumBorder(),
                           visualDensity: VisualDensity.compact,
                           padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -448,7 +448,7 @@ class _CustomerRowCard extends StatelessWidget {
                         onPressed: busy ? null : onUnblock,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppTheme.textPrimary,
-                          side: const BorderSide(color: AppTheme.hairline),
+                          side: BorderSide(color: AppTheme.hairline),
                           shape: const StadiumBorder(),
                           visualDensity: VisualDensity.compact,
                           padding: const EdgeInsets.symmetric(horizontal: 14),

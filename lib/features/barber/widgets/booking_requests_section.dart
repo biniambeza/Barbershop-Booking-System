@@ -76,7 +76,7 @@ class _BookingRequestsSectionState extends State<BookingRequestsSection> {
           ],
         ),
         const SizedBox(height: 4),
-        Text(l.acceptRequestsHelp, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+        Text(l.acceptRequestsHelp, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
         const SizedBox(height: 10),
         for (final b in widget.requests) _buildRequestCard(b),
       ],
@@ -96,7 +96,7 @@ class _BookingRequestsSectionState extends State<BookingRequestsSection> {
         children: [
           Row(
             children: [
-              const IconTile(icon: Icons.mark_email_unread_outlined, color: AppTheme.warning, size: 38),
+              IconTile(icon: Icons.mark_email_unread_outlined, color: AppTheme.warning, size: 38),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
@@ -105,29 +105,29 @@ class _BookingRequestsSectionState extends State<BookingRequestsSection> {
                     Text(booking.customerName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
                     Text(
                       widget.showBarber ? '${booking.serviceName} • ${booking.barberName}' : booking.serviceName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary),
+                      style: TextStyle(fontSize: 12.5, color: AppTheme.textSecondary),
                     ),
                   ],
                 ),
               ),
               Text(fmt.birr(booking.price),
-                  style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
+                  style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
             ],
           ),
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.access_time, size: 14, color: AppTheme.textSecondary),
+              Icon(Icons.access_time, size: 14, color: AppTheme.textSecondary),
               const SizedBox(width: 6),
               Expanded(
                 child: Text('${fmt.bookingTime(booking)} • ${fmt.dateMedium(fmt.bookingDay(booking))}',
-                    style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                    style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
               ),
             ],
           ),
@@ -139,7 +139,7 @@ class _BookingRequestsSectionState extends State<BookingRequestsSection> {
                   key: ValueKey('decline-request-${booking.id}'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppTheme.danger,
-                    side: const BorderSide(color: AppTheme.hairline),
+                    side: BorderSide(color: AppTheme.hairline),
                     minimumSize: const Size(0, 40),
                   ),
                   onPressed: busy ? null : () => _decline(booking),

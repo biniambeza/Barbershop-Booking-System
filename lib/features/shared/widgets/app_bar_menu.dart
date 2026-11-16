@@ -8,6 +8,7 @@ import '../../../services/app_repository.dart';
 import '../../auth/screens/change_password_screen.dart';
 import 'language_toggle.dart';
 import 'persona_switcher.dart';
+import 'theme_mode_toggle.dart';
 import '../../account/delete_account_screen.dart'; // account deletion
 import '../../legal/privacy_policy_screen.dart'; // privacy policy
 
@@ -18,19 +19,22 @@ class AppBarMenuEntry {
     required this.label,
     required this.onSelected,
     this.key,
-    this.color = AppTheme.textPrimary,
+    this.color,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onSelected;
   final Key? key;
-  final Color color;
+
+  /// Defaults to [AppTheme.textPrimary].
+  final Color? color;
 }
 
 /// Compact overflow menu for the role dashboards' app bars, so the title
 /// stays readable on 360 px phones. Holds the secondary actions: the demo
-/// persona switcher (DEMO_MODE only), the EN / አማ language switch, any
+/// persona switcher (DEMO_MODE only), the EN / አማ language switch, the
+/// dark-mode switch, any
 /// [entries] the screen adds, "Change password" (or "Set a password" for
 /// Google-only accounts) and sign out. Key `app-bar-menu`.
 class AppBarMenu extends StatelessWidget {
@@ -48,7 +52,8 @@ class AppBarMenu extends StatelessWidget {
     final items = <PopupMenuEntry<String>>[];
 
     void add(String id, IconData icon, String label, VoidCallback onSelected,
-        {Key? key, Color color = AppTheme.textPrimary, Widget? trailing}) {
+        {Key? key, Color? color, Widget? trailing}) {
+      color ??= AppTheme.textPrimary;
       actions[id] = onSelected;
       items.add(PopupMenuItem<String>(
         key: key,
@@ -77,6 +82,9 @@ class AppBarMenu extends StatelessWidget {
         key: const ValueKey('app-bar-menu-language'),
         // Shows the current language; the whole row toggles it.
         trailing: const IgnorePointer(child: LanguageToggle()));
+    // Dark mode on / off; the whole row toggles it.
+    add('theme', Icons.dark_mode_outlined, l.darkModeMenu, () => ThemeController.instance.toggle(),
+        key: const ValueKey('app-bar-menu-theme'), trailing: const IgnorePointer(child: ThemeModeSwitch()));
     for (var i = 0; i < entries.length; i++) {
       final e = entries[i];
       add('entry$i', e.icon, e.label, e.onSelected, key: e.key, color: e.color);
@@ -102,7 +110,7 @@ class AppBarMenu extends StatelessWidget {
 
     return PopupMenuButton<String>(
       key: const ValueKey('app-bar-menu'),
-      icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textPrimary),
+      icon: Icon(Icons.more_vert_rounded, color: AppTheme.textPrimary),
       position: PopupMenuPosition.under,
       onSelected: (id) => actions[id]?.call(),
       itemBuilder: (_) => items,

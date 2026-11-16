@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#18181B</color>
+    <!-- Brand green (the adaptive icon itself uses
+         @drawable/ic_launcher_background, the green gradient). -->
+    <color name="ic_launcher_background">#16A34A</color>
 </resources>

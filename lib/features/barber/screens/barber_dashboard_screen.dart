@@ -129,13 +129,13 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                       Text(l.barberWorkspace,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontWeight: FontWeight.w700, fontSize: 16, color: AppTheme.textPrimary)),
                       if (shop != null)
                         Text(shop.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: AppTheme.textSecondary, fontSize: 11.5, fontWeight: FontWeight.w500)),
                     ],
                   ),
@@ -234,11 +234,11 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
             children: [
               Container(
                 padding: const EdgeInsets.all(2.5),
-                decoration: const BoxDecoration(shape: BoxShape.circle, gradient: AppTheme.metallicGradient),
+                decoration: BoxDecoration(shape: BoxShape.circle, gradient: AppTheme.metallicGradient),
                 child: CircleAvatar(
                   radius: 28,
                   backgroundColor: AppTheme.charcoal,
-                  foregroundColor: AppTheme.onInk,
+                  foregroundColor: AppTheme.onHero,
                   backgroundImage: barber.avatarUrl != null ? NetworkImage(barber.avatarUrl!) : null,
                   child: barber.avatarUrl == null ? const Icon(Icons.person, size: 28) : null,
                 ),
@@ -250,23 +250,23 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                   children: [
                     Text(
                       barber.name,
-                      style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: AppTheme.onInk, letterSpacing: -0.2),
+                      style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700, color: AppTheme.onHero, letterSpacing: -0.2),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       barber.title,
-                      style: const TextStyle(fontSize: 13, color: AppTheme.onInkMuted, fontWeight: FontWeight.w500),
+                      style: TextStyle(fontSize: 13, color: AppTheme.onHeroMuted, fontWeight: FontWeight.w500),
                     ),
                     if (shop != null) ...[
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(Icons.storefront, size: 14, color: AppTheme.onInkMuted),
+                          Icon(Icons.storefront, size: 14, color: AppTheme.onHeroMuted),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               shop.name,
-                              style: const TextStyle(fontSize: 12, color: AppTheme.onInkMuted),
+                              style: TextStyle(fontSize: 12, color: AppTheme.onHeroMuted),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -286,11 +286,11 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.star_rounded, color: AppTheme.orange, size: 16),
+                    Icon(Icons.star_rounded, color: AppTheme.orange, size: 16),
                     const SizedBox(width: 4),
                     Text(
                       context.l10n.barberRatingText(barberRatingSummary(barber)),
-                      style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppTheme.onInk),
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppTheme.onHero),
                     ),
                   ],
                 ),
@@ -317,7 +317,8 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                         height: 10,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: barber.isAvailable ? AppTheme.green : AppTheme.orange,
+                          // Light green / orange read on the green and the dark hero.
+                          color: barber.isAvailable ? const Color(0xFF86EFAC) : const Color(0xFFFDBA74),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -327,7 +328,7 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: barber.isAvailable ? const Color(0xFF6EE08F) : const Color(0xFFFFB066),
+                            color: AppTheme.onHero,
                           ),
                         ),
                       ),
@@ -336,8 +337,10 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                 ),
                 Switch(
                   value: barber.isAvailable,
-                  activeThumbColor: Colors.white,
-                  activeTrackColor: AppTheme.green,
+                  // On the green light-mode hero a green track would vanish:
+                  // white track + green thumb there, green track on the dark hero.
+                  activeThumbColor: AppTheme.isDark ? Colors.white : AppTheme.primaryDeep,
+                  activeTrackColor: AppTheme.isDark ? AppTheme.green : Colors.white,
                   inactiveThumbColor: Colors.white,
                   inactiveTrackColor: Colors.white.withValues(alpha: 0.2),
                   onChanged: (val) {
@@ -422,7 +425,7 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
             alignment: Alignment.centerLeft,
             child: Text(
               value,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary, letterSpacing: -0.3),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.textPrimary, letterSpacing: -0.3),
             ),
           ),
           const SizedBox(height: 2),
@@ -432,7 +435,7 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
             child: Text(
               title,
               maxLines: 1,
-              style: const TextStyle(fontSize: 10.5, color: AppTheme.textSecondary, fontWeight: FontWeight.w500),
+              style: TextStyle(fontSize: 10.5, color: AppTheme.textSecondary, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -449,14 +452,14 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
       clipBehavior: Clip.antiAlias,
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-        leading: const IconTile(icon: Icons.schedule, color: AppTheme.blue, size: 44),
+        leading: IconTile(icon: Icons.schedule, color: AppTheme.blue, size: 44),
         title: Text(
           context.l10n.viewWeeklySchedule,
-          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: AppTheme.textPrimary),
+          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: AppTheme.textPrimary),
         ),
         subtitle: Text(context.l10n.viewWeeklyScheduleSubtitle,
-            style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary)),
-        trailing: const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
+            style: TextStyle(fontSize: 11.5, color: AppTheme.textSecondary)),
+        trailing: Icon(Icons.chevron_right, color: AppTheme.textSecondary),
         onTap: () {
           Navigator.push(
             context,
@@ -478,11 +481,11 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.event_available, size: 48, color: AppTheme.textSecondary),
+              Icon(Icons.event_available, size: 48, color: AppTheme.textSecondary),
               const SizedBox(height: 12),
               Text(
                 emptyMsg,
-                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -517,7 +520,8 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
         statusLabel = l.metricInChair;
         break;
       case BookingStatus.completed:
-        statusColor = AppTheme.ink;
+        // Teal: done, and different from the green "confirmed".
+        statusColor = AppTheme.teal;
         statusLabel = l.statusCompleted;
         break;
       case BookingStatus.cancelled:
@@ -550,15 +554,15 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                     Container(
                       width: 36,
                       height: 36,
-                      decoration: const BoxDecoration(shape: BoxShape.circle, color: AppTheme.surface),
-                      child: const Icon(Icons.person_outline, size: 18, color: AppTheme.ink),
+                      decoration: BoxDecoration(shape: BoxShape.circle, color: AppTheme.surface),
+                      child: Icon(Icons.person_outline, size: 18, color: AppTheme.ink),
                     ),
                     const SizedBox(width: 10),
                     Flexible(
                       child: Text(
                         booking.customerName,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+                        style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                       ),
                     ),
                   ],
@@ -575,17 +579,17 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
           const SizedBox(height: 8),
           Row(
             children: [
-              const Icon(Icons.content_cut, size: 14, color: AppTheme.textSecondary),
+              Icon(Icons.content_cut, size: 14, color: AppTheme.textSecondary),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   booking.serviceName,
-                  style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 13, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
                 ),
               ),
               Text(
                 fmt.birr(booking.price),
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
               ),
             ],
           ),
@@ -594,26 +598,26 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
           const SizedBox(height: 6),
           Row(
             children: [
-              const Icon(Icons.access_time, size: 14, color: AppTheme.textSecondary),
+              Icon(Icons.access_time, size: 14, color: AppTheme.textSecondary),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   '${fmt.bookingTime(booking)} • ${_formatDate(fmt, booking)}',
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                 ),
               ),
               if (booking.customerPhone.isNotEmpty) ...[
-                const Icon(Icons.phone, size: 13, color: AppTheme.textSecondary),
+                Icon(Icons.phone, size: 13, color: AppTheme.textSecondary),
                 const SizedBox(width: 4),
                 Text(
                   formatEthiopianPhone(booking.customerPhone),
-                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                 ),
               ],
             ],
           ),
           const SizedBox(height: 12),
-          const Divider(height: 1, color: AppTheme.hairline),
+          Divider(height: 1, color: AppTheme.hairline),
           const SizedBox(height: 10),
 
           // Dynamic Action Buttons according to workflow. Before the start
@@ -629,14 +633,14 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     // --- barber acceptance: answered from the "New requests" section ---
-                    child: Text(l.acceptWaitingForBarber, style: const TextStyle(fontSize: 11, color: AppTheme.warning)),
+                    child: Text(l.acceptWaitingForBarber, style: TextStyle(fontSize: 11, color: AppTheme.warning)),
                   ),
                 if (repo.canBarberCancelBooking(booking))
                   OutlinedButton.icon(
                     key: ValueKey('barber-cancel-${booking.id}'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.danger,
-                      side: const BorderSide(color: AppTheme.danger),
+                      side: BorderSide(color: AppTheme.danger),
                       minimumSize: const Size(0, 40),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       shape: const StadiumBorder(),
@@ -650,7 +654,7 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                     key: ValueKey('barber-no-show-${booking.id}'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.slate,
-                      side: const BorderSide(color: AppTheme.hairline),
+                      side: BorderSide(color: AppTheme.hairline),
                       minimumSize: const Size(0, 40),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       shape: const StadiumBorder(),
@@ -700,13 +704,13 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                     Icon(Icons.check_circle, size: 14, color: AppTheme.success),
                     SizedBox(width: 4),
                     Text(l.serviceCompleted,
-                        style: const TextStyle(fontSize: 11, color: AppTheme.success, fontWeight: FontWeight.bold)),
+                        style: TextStyle(fontSize: 11, color: AppTheme.success, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ] else if (booking.status == BookingStatus.noShow) ...[
-                Text(l.statusNoShow, style: const TextStyle(fontSize: 11, color: AppTheme.slate)),
+                Text(l.statusNoShow, style: TextStyle(fontSize: 11, color: AppTheme.slate)),
               ] else ...[
-                Text(l.appointmentCancelled, style: const TextStyle(fontSize: 11, color: AppTheme.danger)),
+                Text(l.appointmentCancelled, style: TextStyle(fontSize: 11, color: AppTheme.danger)),
               ],
             ],
           ),

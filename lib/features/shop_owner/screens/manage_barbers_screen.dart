@@ -48,7 +48,7 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(context.l10n.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
+            child: Text(context.l10n.cancel, style: TextStyle(color: AppTheme.textSecondary)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.red, foregroundColor: Colors.white),
@@ -112,11 +112,11 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const IconTile(icon: Icons.people_outline, color: AppTheme.textSecondary, size: 64),
+                  IconTile(icon: Icons.people_outline, color: AppTheme.textSecondary, size: 64),
                   const SizedBox(height: 12),
                   Text(context.l10n.noBarbersYet, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
-                  Text(context.l10n.noBarbersHint, style: const TextStyle(color: AppTheme.textSecondary)),
+                  Text(context.l10n.noBarbersHint, style: TextStyle(color: AppTheme.textSecondary)),
                 ],
               ),
             )
@@ -138,7 +138,7 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                         backgroundColor: AppTheme.surface,
                         child: barber.avatarUrl == null
                             ? Text(barber.name.substring(0, 1),
-                                style: const TextStyle(color: AppTheme.onInk, fontSize: 18))
+                                style: TextStyle(color: AppTheme.textPrimary, fontSize: 18))
                             : null,
                       ),
                       const SizedBox(width: 14),
@@ -148,13 +148,13 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                           children: [
                             Text(
                               barber.name,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontWeight: FontWeight.w700, fontSize: 16, color: AppTheme.textPrimary),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               barber.title,
-                              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
                             ),
                             // Barber accounts: waiting for first login / invitation / active.
                             BarberAccountStatus(barber: barber),
@@ -164,7 +164,7 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                               Text(
                                 _scheduleSummary(context, fmt, shop, barber),
                                 key: ValueKey('barber-hours-${barber.id}'),
-                                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                               ),
                             ],
                             // --- barber commission ---
@@ -172,19 +172,19 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                             Text(
                               context.l10n.payoutsCommissionLine(commissionOf(barber)),
                               key: ValueKey('barber-commission-${barber.id}'),
-                              style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                              style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                             ),
                             // --- end barber commission ---
                             const SizedBox(height: 6),
                             Row(
                               children: [
-                                const Icon(Icons.star_rounded, size: 15, color: AppTheme.orange),
+                                Icon(Icons.star_rounded, size: 15, color: AppTheme.orange),
                                 const SizedBox(width: 4),
                                 Flexible(
                                   child: Text(
                                     context.l10n.barberRatingText(barberRatingSummary(barber)),
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontSize: 12, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
                                   ),
                                 ),
@@ -197,19 +197,19 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                       if (shop != null)
                         IconButton(
                           key: ValueKey('edit-hours-${barber.id}'),
-                          icon: const Icon(Icons.schedule, size: 20, color: AppTheme.ink),
+                          icon: Icon(Icons.schedule, size: 20, color: AppTheme.ink),
                           tooltip: context.l10n.editWorkingHours,
                           onPressed: () => _editSchedule(barber, shop),
                         ),
                       // --- barber commission ---
                       IconButton(
                         key: ValueKey('edit-commission-${barber.id}'),
-                        icon: const Icon(Icons.percent_rounded, size: 20, color: AppTheme.ink),
+                        icon: Icon(Icons.percent_rounded, size: 20, color: AppTheme.ink),
                         tooltip: context.l10n.payoutsSetCommission,
                         onPressed: () => _editCommission(barber),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 20, color: AppTheme.danger),
+                        icon: Icon(Icons.delete_outline, size: 20, color: AppTheme.danger),
                         tooltip: context.l10n.removeBarber,
                         onPressed: () => _confirmDeleteBarber(barber.id, barber.name),
                       ),
@@ -258,14 +258,14 @@ class BarberPhoneLine extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.lock_outline_rounded, size: 13, color: AppTheme.textSecondary),
+                Icon(Icons.lock_outline_rounded, size: 13, color: AppTheme.textSecondary),
                 const SizedBox(width: 4),
                 Flexible(
                   child: Text(
                     phone == null ? l.barberPhoneNone : context.fmt.phone(phone),
                     key: ValueKey('barber-phone-${barber.id}'),
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                   ),
                 ),
                 const SizedBox(width: 4),
@@ -343,7 +343,7 @@ class _BarberPhoneDialogState extends State<BarberPhoneDialog> {
       actions: [
         TextButton(
           onPressed: _busy ? null : () => Navigator.of(context).pop(false),
-          child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
+          child: Text(l.cancel, style: TextStyle(color: AppTheme.textSecondary)),
         ),
         ElevatedButton(
           key: const ValueKey('barber-phone-save'),
@@ -440,11 +440,10 @@ class _BarberScheduleDialogState extends State<BarberScheduleDialog> {
               key: const ValueKey('follow-shop-hours'),
               contentPadding: EdgeInsets.zero,
               value: _followShop,
-              activeThumbColor: Colors.white,
               title: Text(l.followShopHours),
               subtitle: Text(
                 '${l.followShopHoursSubtitle}\n${l.shopHoursSummary}: ${fmt.hoursRange(_shop.openingHour, _shop.closingHour)}',
-                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
               ),
               onChanged: _saving ? null : (v) => setState(() => _followShop = v),
             ),
@@ -515,7 +514,7 @@ class _BarberScheduleDialogState extends State<BarberScheduleDialog> {
             ],
             if (_error != null) ...[
               const SizedBox(height: 10),
-              Text(_error!, style: const TextStyle(color: AppTheme.danger, fontSize: 12)),
+              Text(_error!, style: TextStyle(color: AppTheme.danger, fontSize: 12)),
             ],
           ],
         ),
@@ -523,7 +522,7 @@ class _BarberScheduleDialogState extends State<BarberScheduleDialog> {
       actions: [
         TextButton(
           onPressed: _saving ? null : () => Navigator.of(context).pop(false),
-          child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
+          child: Text(l.cancel, style: TextStyle(color: AppTheme.textSecondary)),
         ),
         ElevatedButton(
           key: const ValueKey('save-hours'),

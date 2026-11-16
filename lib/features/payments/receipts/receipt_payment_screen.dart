@@ -141,8 +141,8 @@ class _ReceiptPaymentScreenState extends State<ReceiptPaymentScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                 children: [
                   if (shop != null) _currentCard(shop),
-                  const SizedBox(height: 12),
-                  Text(l.rcptIntro, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                  const SizedBox(height: 16),
+                  Text(l.rcptIntro, style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                   const SizedBox(height: 20),
                   SectionHeader(title: l.rcptPricesTitle),
                   const SizedBox(height: 8),
@@ -175,17 +175,20 @@ class _ReceiptPaymentScreenState extends State<ReceiptPaymentScreen> {
       key: const ValueKey('receipt-current-subscription'),
       child: Row(
         children: [
-          const IconTile(icon: Icons.workspace_premium_rounded, color: AppTheme.onInk, background: AppTheme.charcoal),
+          IconTile(
+              icon: Icons.workspace_premium_rounded,
+              color: AppTheme.onHero,
+              background: AppTheme.onHero.withValues(alpha: 0.16)),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(l.rcptCurrentSub, style: const TextStyle(color: AppTheme.onInkMuted, fontSize: 12)),
+                Text(l.rcptCurrentSub, style: TextStyle(color: AppTheme.onHeroMuted, fontSize: 12)),
                 const SizedBox(height: 4),
                 Text(
                   ends == null ? l.rcptNoEnd : l.rcptPaidUntil(context.fmt.addisDateMedium(ends)),
-                  style: const TextStyle(color: AppTheme.onInk, fontSize: 17, fontWeight: FontWeight.w700),
+                  style: TextStyle(color: AppTheme.onHero, fontSize: 17, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -209,11 +212,11 @@ class _ReceiptPaymentScreenState extends State<ReceiptPaymentScreen> {
             for (final t in pricing.tiers)
               ListTile(
                 key: ValueKey('receipt-tier-${t.days}'),
-                leading: const Icon(Icons.event_repeat_rounded, color: AppTheme.purple),
+                leading: IconTile(icon: Icons.event_repeat_rounded, size: 40, background: AppTheme.greenSoft),
                 title: Text(l.rcptDays(t.days), style: const TextStyle(fontWeight: FontWeight.w600)),
                 trailing: Text(context.fmt.birr(t.amount),
-                    style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
-                subtitle: Text(l.rcptTierUse, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                    style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                subtitle: Text(l.rcptTierUse, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                 onTap: () => _amountController.text = _plainAmount(t.amount),
               ),
           ],
@@ -227,11 +230,11 @@ class _ReceiptPaymentScreenState extends State<ReceiptPaymentScreen> {
   Widget _receiversCard(SubscriptionPricing pricing) {
     final l = context.l10n;
     Widget row(ReceiptMethod method, String label, PaymentReceiver r) => ListTile(
-          leading: IconTile(icon: receiptMethodIcon(method), size: 40),
+          leading: IconTile(icon: receiptMethodIcon(method), background: AppTheme.greenSoft, size: 40),
           title: Text(l.receiptMethodLabel(method), style: const TextStyle(fontWeight: FontWeight.w600)),
           subtitle: r.isConfigured
               ? Text('$label: ${r.account}\n${l.rcptReceiverName(r.name)}', style: const TextStyle(fontSize: 12.5))
-              : Text(l.rcptNotConfigured, style: const TextStyle(fontSize: 12.5, color: AppTheme.warning)),
+              : Text(l.rcptNotConfigured, style: TextStyle(fontSize: 12.5, color: AppTheme.warning)),
           isThreeLine: r.isConfigured,
           trailing: r.isConfigured
               ? IconButton(
@@ -250,7 +253,7 @@ class _ReceiptPaymentScreenState extends State<ReceiptPaymentScreen> {
         child: Column(
           children: [
             if (pricing.telebirrReady) row(ReceiptMethod.telebirr, l.rcptReceiverNumber, pricing.telebirr),
-            if (pricing.telebirrReady && pricing.cbeReady) const Divider(height: 1, color: AppTheme.hairline),
+            if (pricing.telebirrReady && pricing.cbeReady) Divider(height: 1, color: AppTheme.hairline),
             if (pricing.cbeReady) row(ReceiptMethod.cbe, l.rcptReceiverAccount, pricing.cbe),
           ],
         ),
@@ -278,7 +281,7 @@ class _ReceiptPaymentScreenState extends State<ReceiptPaymentScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(l.rcptMethodLabel, style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary)),
+          Text(l.rcptMethodLabel, style: TextStyle(fontSize: 12.5, color: AppTheme.textSecondary)),
           const SizedBox(height: 6),
           SegmentedButton<ReceiptMethod>(
             key: const ValueKey('receipt-method'),
@@ -327,9 +330,9 @@ class _ReceiptPaymentScreenState extends State<ReceiptPaymentScreen> {
             decoration: InputDecoration(labelText: l.rcptAmountLabel, helperText: amountHelper, errorText: amountError),
           ),
           const SizedBox(height: 16),
-          Text(l.rcptPhotoLabel, style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+          Text(l.rcptPhotoLabel, style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
           const SizedBox(height: 2),
-          Text(l.rcptPhotoHint, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+          Text(l.rcptPhotoHint, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
           const SizedBox(height: 10),
           if (_image != null)
             Stack(
@@ -346,7 +349,7 @@ class _ReceiptPaymentScreenState extends State<ReceiptPaymentScreen> {
                     tooltip: l.rcptRemovePhoto,
                     style: IconButton.styleFrom(backgroundColor: AppTheme.ink),
                     onPressed: busy ? null : () => setState(() => _image = null),
-                    icon: const Icon(Icons.close_rounded, color: AppTheme.onInk, size: 18),
+                    icon: Icon(Icons.close_rounded, color: AppTheme.onInk, size: 18),
                   ),
                 ),
               ],
@@ -380,7 +383,7 @@ class _ReceiptPaymentScreenState extends State<ReceiptPaymentScreen> {
             key: const ValueKey('receipt-submit'),
             onPressed: busy ? null : _submit,
             icon: _submitting
-                ? const SizedBox(
+                ? SizedBox(
                     width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.onInk))
                 : const Icon(Icons.send_rounded, size: 18),
             label: Text(l.rcptSubmit),
@@ -396,11 +399,11 @@ class _ReceiptPaymentScreenState extends State<ReceiptPaymentScreen> {
       stream: _history,
       builder: (context, snap) {
         if (snap.hasError) {
-          return Text(l.receiptsErrorText(snap.error!), style: const TextStyle(color: AppTheme.danger));
+          return Text(l.receiptsErrorText(snap.error!), style: TextStyle(color: AppTheme.danger));
         }
         final items = snap.data ?? const <SubscriptionPayment>[];
         if (items.isEmpty) {
-          return Text(l.rcptNoHistory, style: const TextStyle(color: AppTheme.textSecondary));
+          return Text(l.rcptNoHistory, style: TextStyle(color: AppTheme.textSecondary));
         }
         return Column(children: [for (final p in items) ReceiptHistoryTile(payment: p, service: _service)]);
       },
@@ -443,11 +446,11 @@ class ReceiptHistoryTile extends StatelessWidget {
                 width: 48,
                 height: 48,
                 compact: true,
-                placeholder: IconTile(icon: receiptMethodIcon(p.method), size: 48),
+                placeholder: IconTile(icon: receiptMethodIcon(p.method), background: AppTheme.greenSoft, size: 48),
               ),
             )
           else
-            IconTile(icon: receiptMethodIcon(p.method), size: 48),
+            IconTile(icon: receiptMethodIcon(p.method), background: AppTheme.greenSoft, size: 48),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -457,16 +460,16 @@ class ReceiptHistoryTile extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text('${l.receiptMethodLabel(p.method, short: true)} • ${context.fmt.birr(p.amount)}',
-                          style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                          style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
                     ),
                     StatusChip(label: l.receiptStatusLabel(p.status), color: color, icon: receiptStatusIcon(p.status)),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Text(p.transactionId,
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12.5, color: AppTheme.textSecondary)),
+                    style: TextStyle(fontFamily: 'monospace', fontSize: 12.5, color: AppTheme.textSecondary)),
                 const SizedBox(height: 2),
-                Text(details.join(' • '), style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                Text(details.join(' • '), style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                 if (p.decisionReason != null && p.status != ReceiptStatus.verified)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
@@ -494,11 +497,11 @@ class PaymentsNotOpenNotice extends StatelessWidget {
       borderColor: AppTheme.orange,
       child: Row(
         children: [
-          const Icon(Icons.schedule_rounded, color: AppTheme.warning),
+          Icon(Icons.schedule_rounded, color: AppTheme.warning),
           const SizedBox(width: 12),
           Expanded(
             child: Text(context.l10n.rcvPaymentsNotOpen,
-                style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
           ),
         ],
       ),
@@ -545,15 +548,15 @@ class _ReceiptPaymentEntryCardState extends State<ReceiptPaymentEntryCard> {
       child: Row(
         children: [
           open
-              ? const IconTile(icon: Icons.receipt_long_rounded, color: AppTheme.success, background: AppTheme.greenSoft)
-              : const IconTile(icon: Icons.schedule_rounded, color: AppTheme.warning, background: AppTheme.orangeSoft),
+              ? IconTile(icon: Icons.receipt_long_rounded, color: AppTheme.success, background: AppTheme.greenSoft)
+              : IconTile(icon: Icons.schedule_rounded, color: AppTheme.warning, background: AppTheme.orangeSoft),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(l.rcptEntryTitle,
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppTheme.textPrimary)),
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppTheme.textPrimary)),
                 const SizedBox(height: 2),
                 Text(open ? l.rcptEntryBody : l.rcvPaymentsNotOpen,
                     key: const ValueKey('receipt-entry-body'),
@@ -561,7 +564,7 @@ class _ReceiptPaymentEntryCardState extends State<ReceiptPaymentEntryCard> {
               ],
             ),
           ),
-          const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary),
+          Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary),
         ],
       ),
     );

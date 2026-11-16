@@ -177,7 +177,7 @@ Widget _loadFailed(BuildContext context, VoidCallback onRetry) {
     key: const ValueKey('earnings-error'),
     children: [
       Expanded(
-        child: Text(l.earningsLoadFailed, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
+        child: Text(l.earningsLoadFailed, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
       ),
       TextButton(onPressed: onRetry, child: Text(l.reportsRetry)),
     ],
@@ -234,17 +234,17 @@ class _BarberEarningsCardState extends State<BarberEarningsCard>
         children: [
           Row(
             children: [
-              const IconTile(icon: Icons.insights_outlined, color: AppTheme.blue, background: AppTheme.blueSoft, size: 44),
+              IconTile(icon: Icons.insights_outlined, color: AppTheme.blue, background: AppTheme.blueSoft, size: 44),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(l.earningsTitle,
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: AppTheme.textPrimary)),
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: AppTheme.textPrimary)),
                     Text(earningsPeriodLabel(context, period),
                         key: const ValueKey('earnings-period-label'),
-                        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
+                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
                   ],
                 ),
               ),
@@ -277,7 +277,7 @@ class _BarberEarningsCardState extends State<BarberEarningsCard>
             },
           ),
           const SizedBox(height: 6),
-          Text(l.earningsShareNote, style: const TextStyle(color: AppTheme.textTertiary, fontSize: 11.5)),
+          Text(l.earningsShareNote, style: TextStyle(color: AppTheme.textTertiary, fontSize: 11.5)),
         ],
       ),
     );
@@ -322,7 +322,7 @@ class _ShopEarningsViewState extends State<ShopEarningsView> with _EarningsLoade
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [
           Text(l.earningsShopTitle,
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: AppTheme.textPrimary)),
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17, color: AppTheme.textPrimary)),
           const SizedBox(height: 10),
           picker(context),
           const SizedBox(height: 12),
@@ -333,7 +333,7 @@ class _ShopEarningsViewState extends State<ShopEarningsView> with _EarningsLoade
               if (snap.connectionState != ConnectionState.done || !snap.hasData) return _loading;
               final e = snap.data!;
               return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   HeroCard(
                     key: const ValueKey('shop-earnings-hero'),
@@ -342,24 +342,24 @@ class _ShopEarningsViewState extends State<ShopEarningsView> with _EarningsLoade
                       children: [
                         Text(earningsPeriodLabel(context, period),
                             key: const ValueKey('earnings-period-label'),
-                            style: const TextStyle(color: AppTheme.onInkMuted, fontSize: 12.5)),
+                            style: TextStyle(color: AppTheme.onHeroMuted, fontSize: 12.5)),
                         const SizedBox(height: 6),
-                        Text(l.earningsRevenue, style: const TextStyle(color: AppTheme.onInkMuted, fontSize: 13)),
+                        Text(l.earningsRevenue, style: TextStyle(color: AppTheme.onHeroMuted, fontSize: 13)),
                         FittedBox(
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
                           child: Text(
                             fmt.birr(e.shop.revenue),
                             key: const ValueKey('shop-earnings-revenue'),
-                            style: const TextStyle(
-                                color: AppTheme.onInk, fontSize: 30, fontWeight: FontWeight.w700, letterSpacing: -0.6),
+                            style: TextStyle(
+                                color: AppTheme.onHero, fontSize: 30, fontWeight: FontWeight.w700, letterSpacing: -0.6),
                           ),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           l.earningsBarberJobs(e.shop.completed),
                           key: const ValueKey('shop-earnings-completed'),
-                          style: const TextStyle(color: AppTheme.onInkMuted, fontSize: 13),
+                          style: TextStyle(color: AppTheme.onHeroMuted, fontSize: 13),
                         ),
                       ],
                     ),
@@ -386,7 +386,7 @@ class _ShopEarningsViewState extends State<ShopEarningsView> with _EarningsLoade
                   SectionHeader(title: l.earningsByBarber),
                   const SizedBox(height: 10),
                   if (e.barbers.isEmpty)
-                    Text(l.payoutsNoBarbers, style: const TextStyle(color: AppTheme.textSecondary))
+                    Text(l.payoutsNoBarbers, style: TextStyle(color: AppTheme.textSecondary))
                   else
                     for (final b in e.barbers)
                       AppCard(
@@ -394,19 +394,19 @@ class _ShopEarningsViewState extends State<ShopEarningsView> with _EarningsLoade
                         margin: const EdgeInsets.only(bottom: 10),
                         child: Row(
                           children: [
-                            const IconTile(icon: Icons.person_outline, color: AppTheme.green, size: 40),
+                            IconTile(icon: Icons.person_outline, color: AppTheme.green, size: 40),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(b.barberName,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                           fontWeight: FontWeight.w700, fontSize: 14.5, color: AppTheme.textPrimary)),
                                   Text(
                                     '${l.earningsBarberJobs(b.totals.completed)} · '
                                     '${l.payoutsCommissionLine(b.commissionPercent)}',
-                                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5),
+                                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 12.5),
                                   ),
                                 ],
                               ),
@@ -416,17 +416,17 @@ class _ShopEarningsViewState extends State<ShopEarningsView> with _EarningsLoade
                               children: [
                                 Text(fmt.birr(b.totals.revenue),
                                     key: ValueKey('shop-earnings-barber-revenue-${b.barberId}'),
-                                    style: const TextStyle(fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
+                                    style: TextStyle(fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
                                 Text(fmt.birr(b.share),
                                     key: ValueKey('shop-earnings-barber-share-${b.barberId}'),
-                                    style: const TextStyle(color: AppTheme.success, fontSize: 12.5)),
+                                    style: TextStyle(color: AppTheme.success, fontSize: 12.5)),
                               ],
                             ),
                           ],
                         ),
                       ),
                   const SizedBox(height: 6),
-                  Text(l.earningsShareNote, style: const TextStyle(color: AppTheme.textTertiary, fontSize: 11.5)),
+                  Text(l.earningsShareNote, style: TextStyle(color: AppTheme.textTertiary, fontSize: 11.5)),
                 ],
               );
             },

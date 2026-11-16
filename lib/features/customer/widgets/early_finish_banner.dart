@@ -84,7 +84,7 @@ class EarlyFinishBanner extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.directions_walk_rounded, color: AppTheme.success, size: 20),
+              Icon(Icons.directions_walk_rounded, color: AppTheme.success, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -92,12 +92,12 @@ class EarlyFinishBanner extends StatelessWidget {
                   children: [
                     Text(
                       l.earlyFinishBannerTitle,
-                      style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.success, fontSize: 13.5),
+                      style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.success, fontSize: 13.5),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       l.earlyFinishBannerBody(booking.barberName, context.fmt.bookingTime(booking)),
-                      style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary),
+                      style: TextStyle(fontSize: 12, color: AppTheme.textPrimary),
                     ),
                   ],
                 ),
@@ -159,7 +159,7 @@ class _PillAction extends StatelessWidget {
       style: OutlinedButton.styleFrom(
         foregroundColor: AppTheme.success,
         backgroundColor: AppTheme.card,
-        side: const BorderSide(color: AppTheme.hairline),
+        side: BorderSide(color: AppTheme.hairline),
         minimumSize: const Size(0, 36),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         shape: const StadiumBorder(),

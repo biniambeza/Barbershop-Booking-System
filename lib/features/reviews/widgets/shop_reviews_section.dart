@@ -77,7 +77,7 @@ class _ShopReviewsSectionState extends State<ShopReviewsSection> {
       key: const ValueKey('shop-reviews-section'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Divider(height: 32, color: AppTheme.hairline),
+        Divider(height: 32, color: AppTheme.hairline),
         Text(
           l.reviewsTitle,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
@@ -109,7 +109,7 @@ class _ShopReviewsSectionState extends State<ShopReviewsSection> {
                     if (ratedBarbers.isNotEmpty) ...[
                       Text(
                         l.reviewsByBarber,
-                        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppTheme.textSecondary),
+                        style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppTheme.textSecondary),
                       ),
                       const SizedBox(height: 6),
                       Wrap(
@@ -119,7 +119,7 @@ class _ShopReviewsSectionState extends State<ShopReviewsSection> {
                           for (final b in ratedBarbers)
                             ActionChip(
                               key: ValueKey('barber-reviews-${b.id}'),
-                              avatar: const Icon(Icons.star_rounded, size: 16, color: AppTheme.orange),
+                              avatar: Icon(Icons.star_rounded, size: 16, color: AppTheme.orange),
                               label: Text('${b.name} · ${l.barberRatingText(_service.barberSummary(b.id))}'),
                               tooltip: l.ratingSeeBarberReviews(b.name),
                               onPressed: () => openBarberReviews(context, b, service: widget.service),
@@ -129,7 +129,7 @@ class _ShopReviewsSectionState extends State<ShopReviewsSection> {
                       const SizedBox(height: 12),
                     ],
                     if (snapshot.hasError)
-                      Text(l.reviewsLoadFailed, style: const TextStyle(color: AppTheme.textSecondary))
+                      Text(l.reviewsLoadFailed, style: TextStyle(color: AppTheme.textSecondary))
                     else if (data == null)
                       const Center(
                         child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator()),
@@ -138,7 +138,7 @@ class _ShopReviewsSectionState extends State<ShopReviewsSection> {
                       Text(
                         l.reviewsEmpty,
                         key: const ValueKey('reviews-empty'),
-                        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
                       )
                     else ...[
                       for (final review in data.$2.reviews)

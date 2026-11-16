@@ -137,7 +137,7 @@ class AdminPaymentsTab extends StatelessWidget {
                         child: Center(child: CircularProgressIndicator()),
                       )
                     else if (payments.isEmpty)
-                      AppCard(child: Text(l.admPayNoPayments, style: const TextStyle(color: AppTheme.textSecondary)))
+                      AppCard(child: Text(l.admPayNoPayments, style: TextStyle(color: AppTheme.textSecondary)))
                     else
                       ...payments.take(10).map((p) => _paymentRow(context, p)),
                   ],
@@ -160,7 +160,7 @@ class AdminPaymentsTab extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(l.admPayIncomeLabel,
-                    style: const TextStyle(color: AppTheme.onInkMuted, fontWeight: FontWeight.w600)),
+                    style: TextStyle(color: AppTheme.onHeroMuted, fontWeight: FontWeight.w600)),
               ),
               HeroChip(icon: Icons.calendar_month_rounded, label: l.admPayThisMonth),
             ],
@@ -172,7 +172,7 @@ class AdminPaymentsTab extends StatelessWidget {
             child: Text(
               loading ? '—' : context.fmt.birr(s.monthIncome),
               key: const ValueKey('admin-pay-income'),
-              style: const TextStyle(color: AppTheme.onInk, fontSize: 34, fontWeight: FontWeight.w800),
+              style: TextStyle(color: AppTheme.onHero, fontSize: 34, fontWeight: FontWeight.w800),
             ),
           ),
           const SizedBox(height: 14),
@@ -218,7 +218,7 @@ class AdminPaymentsTab extends StatelessWidget {
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                    style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
               ],
             ),
           ),
@@ -252,7 +252,7 @@ class AdminPaymentsTab extends StatelessWidget {
       onTap: onTap,
       child: Row(
         children: [
-          IconTile(icon: icon, color: color),
+          IconTile(icon: icon, color: color, background: AppTheme.softOf(color)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -260,7 +260,7 @@ class AdminPaymentsTab extends StatelessWidget {
               children: [
                 Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                 const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
+                Text(subtitle, style: TextStyle(color: AppTheme.textSecondary, fontSize: 12.5)),
               ],
             ),
           ),
@@ -270,9 +270,9 @@ class AdminPaymentsTab extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(color: AppTheme.red, borderRadius: BorderRadius.circular(20)),
               child: Text('$badge',
-                  style: const TextStyle(color: AppTheme.onInk, fontWeight: FontWeight.w800, fontSize: 12)),
+                  style: TextStyle(color: AppTheme.onHero, fontWeight: FontWeight.w800, fontSize: 12)),
             ),
-          const Icon(Icons.chevron_right_rounded, color: AppTheme.textTertiary),
+          Icon(Icons.chevron_right_rounded, color: AppTheme.textTertiary),
         ],
       ),
     );
@@ -292,7 +292,7 @@ class AdminPaymentsTab extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 5),
               child: Row(
                 children: [
-                  const Icon(Icons.workspace_premium_outlined, size: 18, color: AppTheme.purple),
+                  Icon(Icons.workspace_premium_outlined, size: 18, color: AppTheme.purple),
                   const SizedBox(width: 10),
                   Expanded(child: Text(l.rcptDays(t.days), style: const TextStyle(fontWeight: FontWeight.w600))),
                   Text(context.fmt.birr(t.amount), style: const TextStyle(fontWeight: FontWeight.w800)),
@@ -303,11 +303,11 @@ class AdminPaymentsTab extends StatelessWidget {
             const Divider(height: 20),
             Row(
               children: [
-                const Icon(Icons.warning_amber_rounded, size: 18, color: AppTheme.warning),
+                Icon(Icons.warning_amber_rounded, size: 18, color: AppTheme.warning),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(l.admPayReceiversMissing,
-                      style: const TextStyle(color: AppTheme.warning, fontSize: 12.5, fontWeight: FontWeight.w600)),
+                      style: TextStyle(color: AppTheme.warning, fontSize: 12.5, fontWeight: FontWeight.w600)),
                 ),
               ],
             ),
@@ -327,7 +327,7 @@ class AdminPaymentsTab extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 6),
               child: Row(
                 children: [
-                  const Icon(Icons.storefront_rounded, size: 18, color: AppTheme.textSecondary),
+                  Icon(Icons.storefront_rounded, size: 18, color: AppTheme.textSecondary),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(shop.name,
@@ -356,7 +356,7 @@ class AdminPaymentsTab extends StatelessWidget {
       onTap: () => _open(context, const AdminReceiptsScreen()),
       child: Row(
         children: [
-          IconTile(icon: receiptMethodIcon(p.method), color: color, size: 40),
+          IconTile(icon: receiptMethodIcon(p.method), color: color, background: AppTheme.softOf(color), size: 40),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -370,7 +370,7 @@ class AdminPaymentsTab extends StatelessWidget {
                   '${context.fmt.addisDateMedium(p.decidedAt ?? p.createdAt)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
                 ),
               ],
             ),

@@ -50,7 +50,7 @@ Booking _booking(
     );
 
 Widget _app(Widget home, {Locale locale = const Locale('en')}) => MaterialApp(
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
       locale: locale,
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,

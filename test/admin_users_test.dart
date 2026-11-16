@@ -95,7 +95,7 @@ void _seed({List<Booking> bookings = const []}) {
 Future<void> _signInAdmin() => signInWithGoogleAs('admin@crown.et');
 
 Widget _app(Widget home) => MaterialApp(
-      theme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme,
       locale: const Locale('en'),
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: AppLocalizations.localizationsDelegates,

@@ -1204,6 +1204,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get languageTooltip => 'Change language';
 
   @override
+  String get darkModeMenu => 'Dark mode';
+
+  @override
+  String get themeSwitchToDark => 'Switch to dark mode';
+
+  @override
+  String get themeSwitchToLight => 'Switch to light mode';
+
+  @override
+  String get themeModeTitle => 'Appearance';
+
+  @override
+  String get themeModeSystem => 'System default';
+
+  @override
+  String get themeModeLight => 'Light';
+
+  @override
+  String get themeModeDark => 'Dark';
+
+  @override
   String get serviceUnavailable => 'Service unavailable';
 
   @override
@@ -1825,6 +1846,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get authSubtitle => 'Log in or create an account';
+
+  @override
+  String get authWelcomeBack => 'Welcome back';
+
+  @override
+  String get authCreateAccountTitle => 'Create your account';
+
+  @override
+  String get authNoAccount => 'Don\'t have an account?';
+
+  @override
+  String get authHaveAccount => 'Already have an account?';
+
+  @override
+  String get authSignUp => 'Sign up';
+
+  @override
+  String get authEmailHint => 'you@example.com';
+
+  @override
+  String get authPasswordHint => 'Enter your password';
 
   @override
   String get continueWithGoogle => 'Continue with Google';

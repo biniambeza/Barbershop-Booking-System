@@ -127,7 +127,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                   l.reviewsEmpty,
                   key: const ValueKey('reviews-empty'),
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppTheme.textSecondary),
+                  style: TextStyle(color: AppTheme.textSecondary),
                 ),
               ),
             if (_error != null)
@@ -138,7 +138,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                     Text(
                       l.reviewsLoadFailed,
                       key: const ValueKey('reviews-load-failed'),
-                      style: const TextStyle(color: AppTheme.danger),
+                      style: TextStyle(color: AppTheme.danger),
                     ),
                     TextButton(onPressed: _loadMore, child: Text(l.reviewsRetry)),
                   ],
@@ -230,7 +230,7 @@ class _ReplyDialogState extends State<_ReplyDialog> {
             StarRatingDisplay(rating: review.rating.toDouble(), size: 14),
             if (review.hasComment) ...[
               const SizedBox(height: 6),
-              Text(review.comment!, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+              Text(review.comment!, style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
             ],
             const SizedBox(height: 12),
             TextField(
@@ -247,7 +247,7 @@ class _ReplyDialogState extends State<_ReplyDialog> {
               Text(
                 _error!,
                 key: const ValueKey('review-reply-error'),
-                style: const TextStyle(color: AppTheme.danger, fontSize: 12.5),
+                style: TextStyle(color: AppTheme.danger, fontSize: 12.5),
               ),
           ],
         ),

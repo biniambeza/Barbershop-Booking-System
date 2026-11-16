@@ -112,7 +112,7 @@ class ReceiversSetupCard extends StatelessWidget {
         borderColor: AppTheme.orange,
         child: Row(
           children: [
-            const Icon(Icons.account_balance_wallet_rounded, color: AppTheme.warning, size: 22),
+            Icon(Icons.account_balance_wallet_rounded, color: AppTheme.warning, size: 22),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -120,10 +120,10 @@ class ReceiversSetupCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(l.rcvSetupTitle,
-                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: AppTheme.textPrimary)),
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: AppTheme.textPrimary)),
                   if (constraints.maxWidth >= 560) ...[
                     const SizedBox(height: 2),
-                    Text(l.rcvSetupBody, style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary)),
+                    Text(l.rcvSetupBody, style: TextStyle(fontSize: 12.5, color: AppTheme.textSecondary)),
                   ],
                 ],
               ),

@@ -60,7 +60,7 @@ class _ShopApplicationEntryCardState extends State<ShopApplicationEntryCard> {
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
-              const IconTile(icon: Icons.add_business_outlined, color: AppTheme.green, size: 44),
+              IconTile(icon: Icons.add_business_outlined, color: AppTheme.green, size: 44),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -68,13 +68,13 @@ class _ShopApplicationEntryCardState extends State<ShopApplicationEntryCard> {
                   children: [
                     Text(
                       app?.shopName ?? l.applRegisterShopTitle,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                     ),
                     const SizedBox(height: 3),
                     if (app == null)
                       Text(
                         l.applRegisterShopSubtitle,
-                        style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary, height: 1.3),
+                        style: TextStyle(fontSize: 12.5, color: AppTheme.textSecondary, height: 1.3),
                       )
                     else
                       Align(
@@ -94,9 +94,9 @@ class _ShopApplicationEntryCardState extends State<ShopApplicationEntryCard> {
               const SizedBox(width: 8),
               Text(
                 app == null ? l.applCtaApply : l.applCtaViewStatus,
-                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppTheme.green),
+                style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppTheme.green),
               ),
-              const Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.textSecondary),
+              Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.textSecondary),
             ],
           ),
         );
@@ -145,7 +145,7 @@ class _AdminShopApplicationsButtonState extends State<AdminShopApplicationsButto
             ),
             child: Row(
               children: [
-                const IconTile(icon: Icons.assignment_ind_outlined, color: AppTheme.blue, size: 42),
+                IconTile(icon: Icons.assignment_ind_outlined, color: AppTheme.blue, size: 42),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -153,10 +153,10 @@ class _AdminShopApplicationsButtonState extends State<AdminShopApplicationsButto
                     children: [
                       Text(l.applAdminTitle,
                           style:
-                              const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                              TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
                       const SizedBox(height: 2),
                       Text(l.applAdminPendingCount(pending),
-                          style: const TextStyle(fontSize: 12.5, color: AppTheme.textSecondary)),
+                          style: TextStyle(fontSize: 12.5, color: AppTheme.textSecondary)),
                     ],
                   ),
                 ),
@@ -169,11 +169,16 @@ class _AdminShopApplicationsButtonState extends State<AdminShopApplicationsButto
                     child: Text(
                       '$pending',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                      // Dark text on the brighter dark-mode orange.
+                      style: TextStyle(
+                        color: AppTheme.isDark ? const Color(0xFF0A0A0A) : Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 const SizedBox(width: 4),
-                const Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.textSecondary),
+                Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.textSecondary),
               ],
             ),
           ),

@@ -58,6 +58,8 @@ Future<void> main() async {
   // then the signed-in user's users/{uid}.language.
   await LocaleController.instance.loadSaved();
   LocaleController.instance.start();
+  // Light / dark / system mode picked on this device (default: system).
+  await ThemeController.instance.loadSaved();
 
   runApp(BarbershopApp(firebaseError: firebaseError));
 }
@@ -79,25 +81,30 @@ class BarbershopApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final localeController = LocaleController.instance;
+    final themeController = ThemeController.instance;
     return ListenableBuilder(
-      listenable: localeController,
+      listenable: Listenable.merge([localeController, themeController]),
       builder: (context, _) => MaterialApp(
         onGenerateTitle: (context) => context.l10n.appTitle,
         debugShowCheckedModeBanner: false,
         navigatorKey: NotificationService.navigatorKey,
         scaffoldMessengerKey: NotificationService.messengerKey,
         theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: themeController.mode,
         locale: localeController.locale,
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         // The intro sits above the navigator: it plays once per app start
         // while the app builds underneath, and never on sign-in / sign-out.
-        builder: (context, child) => AnimatedSplash(
+        // ThemeRebuilder repaints AppTheme.xxx colours when light / dark
+        // changes.
+        builder: (context, child) => ThemeRebuilder(child: AnimatedSplash(
           enabled: showIntro,
           isReady: _appReady,
           readiness: AppRepository.instance,
           child: child ?? const SizedBox.shrink(),
-        ),
+        )),
         home: firebaseError != null ? _FirebaseSetupRequired(error: firebaseError!) : const RootGate(),
       ),
     );
@@ -116,8 +123,8 @@ class RootGate extends StatelessWidget {
       builder: (context, _) {
         switch (repo.authStatus) {
           case AuthStatus.initializing:
-            // Brand charcoal, like the native splash and the intro: no
-            // white flash while the session is restored.
+            // The finished intro picture (white, or near-black in dark
+            // mode): no blank flash while the session is restored.
             return const StartupHoldScreen();
           case AuthStatus.signedOut:
             return const AuthScreen();
@@ -162,7 +169,7 @@ class _FirebaseSetupRequired extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.cloud_off, size: 48, color: AppTheme.ink),
+                Icon(Icons.cloud_off, size: 48, color: AppTheme.ink),
                 const SizedBox(height: 16),
                 Text(
                   context.l10n.serviceUnavailable,
@@ -172,13 +179,13 @@ class _FirebaseSetupRequired extends StatelessWidget {
                 Text(
                   context.l10n.serviceUnavailableBody,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppTheme.textSecondary),
+                  style: TextStyle(color: AppTheme.textSecondary),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   error,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                 ),
               ],
             ),
