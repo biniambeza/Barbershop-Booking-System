@@ -399,7 +399,7 @@ void main() {
     final previous = LocaleController.instance;
     LocaleController.instance = LocaleController(deviceLocale: const Locale('en'));
     addTearDown(() => LocaleController.instance = previous);
-    await tester.pumpWidget(const BarbershopApp());
+    await tester.pumpWidget(const BarbershopApp(showIntro: false));
   }
 
   testWidgets('Auth screen: register shows email, then code, then password, then profile setup', (tester) async {

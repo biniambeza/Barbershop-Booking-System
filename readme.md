@@ -121,6 +121,24 @@ On a real project use `--invites`: it writes no fake accounts or bookings. Invit
 
 Edit `lib/l10n/app_en.arb` and `lib/l10n/app_am.arb` (they have the same keys), then run `flutter gen-l10n`. The generated code goes to `lib/l10n/gen`.
 
+### Brand assets
+
+The Crown & Blade logo (a crown standing on a straight-razor blade, with a green gem) is drawn in code in `lib/core/brand/crown_blade_logo.dart`. The start-up intro that animates it is in `lib/features/splash/animated_splash.dart`. It plays once on a cold start, over the app as it builds. Every image is generated from that code. After changing the logo, regenerate them in this order:
+
+```bash
+# 1. Logo PNGs: assets/brand/*.png and store/graphics/icon-512.png (previews go to build/brand_preview/)
+flutter test --tags brand --run-skipped test/brand/generate_brand_assets_test.dart
+# 2. Launcher icons: Android (adaptive + Android 13 themed), iOS and web/icons (flutter_launcher_icons.yaml)
+dart run flutter_launcher_icons
+# 3. Native launch screen: Android (also Android 12+) and iOS (flutter_native_splash.yaml)
+dart run flutter_native_splash:create
+# 4. Optional: Play Store feature graphics, and frames of the intro for review (build/splash_frames/)
+python store/tool/make_graphics.py
+flutter test --tags brand --run-skipped test/animated_splash_test.dart
+```
+
+After step 2, revert any change to `ios/Runner.xcodeproj/project.pbxproj`. flutter_launcher_icons rewrites a setting there by mistake. Also copy `assets/brand/splash-logo-plain-512.png` to `web/icons/logo-mark.png`, which the web loader in `web/index.html` shows. All of these, the Android window background (`@color/splash_background` in `android/app/src/main/res/values/splash_colors.xml`) and the intro use the same ink colour, `#18181B`, so there is no white flash at start-up. The `brand` tag is skipped in normal `flutter test` runs (`dart_test.yaml`).
+
 ## Firebase setup (one time)
 
 1. Install the tools and sign in:

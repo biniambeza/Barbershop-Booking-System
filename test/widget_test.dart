@@ -10,7 +10,7 @@ void main() {
   setUpAll(loadTestSeed);
 
   testWidgets('Barbershop smoke test', (WidgetTester tester) async {
-    await tester.pumpWidget(const BarbershopApp());
+    await tester.pumpWidget(const BarbershopApp(showIntro: false));
     expect(find.byType(BarbershopApp), findsOneWidget);
   });
 

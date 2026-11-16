@@ -5,10 +5,10 @@ Writes into store/graphics/:
   feature-graphic-en.png     1024 x 500 feature graphic, English
   feature-graphic-am.png     1024 x 500 feature graphic, Amharic
 
-The icon redraws the Android launcher icon (android/app/src/main/res/
-mipmap-*/ic_launcher.png: white scissors with a green pivot on the charcoal
-hero gradient) as vector shapes, because the largest launcher PNG is only
-192 px. Colours come from lib/core/theme/app_theme.dart.
+The icon is the Crown & Blade logo (assets/brand/icon-1024.png, rendered
+from lib/core/brand/crown_blade_logo.dart by
+test/brand/generate_brand_assets_test.dart). Colours come from
+lib/core/theme/app_theme.dart.
 
 The feature graphics put the first phone screenshot (store/screenshots/
 01_customer_home.png, from test/store_screenshots_test.dart) in a phone frame
@@ -20,7 +20,6 @@ or Segoe UI, and Noto Sans Ethiopic (or Nyala / Ebrima) for Amharic.
   python store/tool/make_graphics.py
 """
 
-import math
 import os
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
@@ -70,49 +69,12 @@ def gradient(w, h, a=CHARCOAL, b=CHARCOAL_DEEP):
     return img
 
 
-def scissors(draw, cx, cy, s):
-    """The launcher icon's scissors, drawn in a 192-unit box scaled by s,
-    centred on (cx, cy) (the pivot)."""
-    stroke = 9.5 * s
-    ring_r = 15.75 * s
-    rings = [(-33, -30), (-33, 29)]
-    ends = [(50, -38), (50, 38)]
-
-    def p(x, y):
-        return cx + x * s, cy + y * s
-
-    def dot(x, y, r, fill):
-        draw.ellipse([x - r, y - r, x + r, y + r], fill=fill)
-
-    def line(a, b):
-        draw.line([a, b], fill=WHITE, width=round(stroke))
-        dot(*a, stroke / 2, WHITE)
-        dot(*b, stroke / 2, WHITE)
-
-    # Each blade runs from its tip through the pivot into the opposite ring.
-    for (ex, ey), (rx, ry) in zip(ends, reversed(rings)):
-        # Walk from the pivot away from the tip until the ring's centre line.
-        dx, dy = -ex, -ey
-        n = math.hypot(dx, dy)
-        dx, dy = dx / n, dy / n
-        t = 0.0
-        while math.hypot(dx * t - rx, dy * t - ry) > 15.75 and t < 80:
-            t += 0.25
-        line(p(ex, ey), p(dx * t, dy * t))
-    for rx, ry in rings:
-        x, y = p(rx, ry)
-        draw.ellipse([x - ring_r - stroke / 2, y - ring_r - stroke / 2, x + ring_r + stroke / 2, y + ring_r + stroke / 2],
-                     outline=WHITE, width=round(stroke))
-    x, y = p(0, 0)
-    dot(x, y, 5.5 * s, GREEN)
+BRAND_ICON = os.path.join(ROOT, "assets", "brand", "icon-1024.png")
 
 
 def icon(size):
-    big = size * SS
-    img = gradient(big // 4, big // 4).resize((big, big), Image.BILINEAR)
-    d = ImageDraw.Draw(img)
-    scissors(d, big / 2, big / 2, big / 192)
-    return img.resize((size, size), Image.LANCZOS)
+    """The app icon (full square) at size x size."""
+    return Image.open(BRAND_ICON).convert("RGB").resize((size, size), Image.LANCZOS)
 
 
 def rounded_mask(w, h, r):

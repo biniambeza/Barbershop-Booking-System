@@ -1,0 +1,27 @@
+# Native launch screen (shown before Flutter draws its first frame). The
+# Flutter intro in lib/features/splash/ starts on the same ink background with
+# the mark centred, so the hand-off is seamless. Regenerate with:
+#   dart run flutter_native_splash:create
+flutter_native_splash:
+  # AppTheme.ink
+  color: "#18181B"
+  image: assets/brand/splash-logo-plain-512.png
+
+  # No icon_background_color: with one, Android 12+ draws the icon at
+  # 240 dp instead of 288 dp, and the mark would jump in size when the
+  # Flutter intro (288 dp canvas, IntroTimeline.logoCanvas) takes over.
+  android_12:
+    image: assets/brand/splash-logo-1152.png
+    color: "#18181B"
+
+  android: true
+  ios: true
+  # Web keeps its own loader in web/index.html (same ink background and
+  # mark): this package is a dev dependency, so its web splash would never
+  # be removed.
+  web: false
+
+  android_gravity: center
+  ios_content_mode: center
+
+  fullscreen: false

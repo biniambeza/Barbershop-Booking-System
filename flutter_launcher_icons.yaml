@@ -1,0 +1,27 @@
+# App icons for Android, iOS and web, generated from the Crown & Blade logo
+# (lib/core/brand/crown_blade_logo.dart, exported to assets/brand/ by
+# test/brand/generate_brand_assets_test.dart). Regenerate with:
+#   dart run flutter_launcher_icons
+flutter_launcher_icons:
+  image_path: "assets/brand/icon-1024.png"
+
+  android: "ic_launcher"
+  min_sdk_android: 21
+  # Adaptive icon (Android 8+): the mark on a solid ink background.
+  adaptive_icon_background: "#18181B"
+  adaptive_icon_foreground: "assets/brand/icon-foreground-1024.png"
+  # The foreground PNGs already keep the mark inside the 66 dp safe zone of
+  # the 108 dp canvas: no extra inset (the tool's default is 16%).
+  adaptive_icon_foreground_inset: 0
+  # Android 13 themed icon.
+  adaptive_icon_monochrome: "assets/brand/icon-monochrome-1024.png"
+
+  ios: true
+  remove_alpha_ios: true
+  background_color_ios: "#18181B"
+
+  web:
+    generate: true
+    image_path: "assets/brand/icon-1024.png"
+    background_color: "#18181B"
+    theme_color: "#18181B"

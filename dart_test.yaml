@@ -1,6 +1,11 @@
 # Store screenshots (test/store_screenshots_test.dart) are not part of the
 # normal suite. Run them with:
 #   flutter test --tags screenshots --run-skipped test/store_screenshots_test.dart
+# The brand asset generator (test/brand/generate_brand_assets_test.dart)
+# writes assets/brand/*.png. Run it with:
+#   flutter test --tags brand --run-skipped test/brand/generate_brand_assets_test.dart
 tags:
   screenshots:
     skip: "Store screenshots: run with --tags screenshots --run-skipped"
+  brand:
+    skip: "Brand assets: run with --tags brand --run-skipped"

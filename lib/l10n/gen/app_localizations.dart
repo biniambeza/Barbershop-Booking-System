@@ -1928,6 +1928,18 @@ abstract class AppLocalizations {
   /// **'CROWN & BLADE'**
   String get brandUpper;
 
+  /// Brand name (not translated): accessibility label of the logo and start-up intro.
+  ///
+  /// In en, this message translates to:
+  /// **'Crown & Blade'**
+  String get brandName;
+
+  /// Small line under the logo and wordmark on the start-up intro.
+  ///
+  /// In en, this message translates to:
+  /// **'Book your barber in Addis Ababa'**
+  String get introTagline;
+
   /// No description provided for @cancel.
   ///
   /// In en, this message translates to:

@@ -281,7 +281,7 @@ void main() {
     final previous = LocaleController.instance;
     LocaleController.instance = LocaleController(deviceLocale: const Locale('en'));
     addTearDown(() => LocaleController.instance = previous);
-    await tester.pumpWidget(const BarbershopApp());
+    await tester.pumpWidget(const BarbershopApp(showIntro: false));
     expect(find.byType(AuthScreen), findsOneWidget);
     expect(find.text('Continue with Google'), findsOneWidget);
     // No phone field and no demo personas or demo hints in a non-demo build.

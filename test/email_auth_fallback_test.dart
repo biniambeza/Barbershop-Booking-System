@@ -486,7 +486,7 @@ void main() {
     addTearDown(() => LocaleController.instance = previous);
     final service = LocalEmailAuthService(isExistingAccount: seeded, functionsAvailable: false);
     repo.emailAuthService = service;
-    await tester.pumpWidget(const BarbershopApp());
+    await tester.pumpWidget(const BarbershopApp(showIntro: false));
     return service;
   }
 

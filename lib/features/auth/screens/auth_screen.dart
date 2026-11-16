@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/brand/crown_blade_logo.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../l10n/l10n.dart';
@@ -108,7 +109,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         borderRadius: BorderRadius.circular(18),
                         boxShadow: AppTheme.heroShadow,
                       ),
-                      child: const Icon(Icons.content_cut_rounded, size: 28, color: AppTheme.onInk),
+                      child: const CrownBladeLogo.full(size: 56, padding: 0.17),
                     ),
                   ),
                   const SizedBox(height: 12),

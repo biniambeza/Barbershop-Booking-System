@@ -1156,6 +1156,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get brandUpper => 'CROWN & BLADE';
 
   @override
+  String get brandName => 'Crown & Blade';
+
+  @override
+  String get introTagline => 'Book your barber in Addis Ababa';
+
+  @override
   String get cancel => 'Cancel';
 
   @override

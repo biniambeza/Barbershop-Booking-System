@@ -19,6 +19,7 @@ import 'features/shop_owner/screens/owner_dashboard_screen.dart';
 import 'features/admin/screens/admin_dashboard_screen.dart';
 import 'features/barber/screens/barber_dashboard_screen.dart';
 import 'features/auth/screens/force_password_change_screen.dart'; // barber accounts
+import 'features/splash/animated_splash.dart'; // start-up intro
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -62,10 +63,18 @@ Future<void> main() async {
 }
 
 class BarbershopApp extends StatelessWidget {
-  const BarbershopApp({super.key, this.firebaseError});
+  const BarbershopApp({super.key, this.firebaseError, this.showIntro = true});
 
   /// Set when Firebase could not be initialized in a production build.
   final String? firebaseError;
+
+  /// Plays the animated start-up intro over the app (cold start). Tests that
+  /// drive the app pass false.
+  final bool showIntro;
+
+  /// The app can be shown once the saved session has been restored.
+  bool _appReady() =>
+      firebaseError != null || AppRepository.instance.authStatus != AuthStatus.initializing;
 
   @override
   Widget build(BuildContext context) {
@@ -81,6 +90,14 @@ class BarbershopApp extends StatelessWidget {
         locale: localeController.locale,
         supportedLocales: AppLocalizations.supportedLocales,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
+        // The intro sits above the navigator: it plays once per app start
+        // while the app builds underneath, and never on sign-in / sign-out.
+        builder: (context, child) => AnimatedSplash(
+          enabled: showIntro,
+          isReady: _appReady,
+          readiness: AppRepository.instance,
+          child: child ?? const SizedBox.shrink(),
+        ),
         home: firebaseError != null ? _FirebaseSetupRequired(error: firebaseError!) : const RootGate(),
       ),
     );
@@ -99,9 +116,9 @@ class RootGate extends StatelessWidget {
       builder: (context, _) {
         switch (repo.authStatus) {
           case AuthStatus.initializing:
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator(color: AppTheme.ink)),
-            );
+            // Brand charcoal, like the native splash and the intro: no
+            // white flash while the session is restored.
+            return const StartupHoldScreen();
           case AuthStatus.signedOut:
             return const AuthScreen();
           case AuthStatus.needsProfile:

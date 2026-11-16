@@ -1121,6 +1121,12 @@ class AppLocalizationsAm extends AppLocalizations {
   String get brandUpper => 'CROWN & BLADE';
 
   @override
+  String get brandName => 'Crown & Blade';
+
+  @override
+  String get introTagline => 'በአዲስ አበባ የፀጉር አስተካካይዎን ቀጠሮ ይያዙ';
+
+  @override
   String get cancel => 'ይቅር';
 
   @override
