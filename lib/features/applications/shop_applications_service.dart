@@ -524,9 +524,7 @@ class ShopApplicationsService {
       shopPhone: app.phone,
       description: app.description ?? '',
       imageUrl: '',
-      openingHour: 9,
-      closingHour: 20,
-      workingDays: const [1, 2, 3, 4, 5, 6, 7],
+      // Default opening hours; the owner sets them after signing in.
       isVerified: true,
       fromApplication: approval,
     );

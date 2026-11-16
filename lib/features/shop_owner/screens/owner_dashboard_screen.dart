@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../l10n/l10n.dart';
@@ -15,6 +17,8 @@ import 'customize_shop_screen.dart';
 import 'owner_subscription_screen.dart';
 import '../../payments/widgets/payment_status_badge.dart';
 import '../../payments/widgets/subscription_banner.dart';
+import '../../payments/receipts/receipt_payment_screen.dart' show ReceiptPaymentScreen; // subscription expiry
+import '../../admin/widgets/shop_suspension_widgets.dart'; // admin shop management
 import '../../queue/queue_dashboard_card.dart';
 import '../../reports/screens/owner_reports_screen.dart';
 import '../../reviews/widgets/reviews_dashboard_entries.dart';
@@ -30,6 +34,22 @@ class OwnerDashboardScreen extends StatefulWidget {
 
 class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   String _selectedFilter = 'All';
+
+  // --- free plan: close expired booking requests (no Cloud Functions) ---
+  Timer? _expirySweep;
+
+  @override
+  void initState() {
+    super.initState();
+    _expirySweep = AppRepository.instance.startExpiredRequestSweep();
+  }
+
+  @override
+  void dispose() {
+    _expirySweep?.cancel();
+    super.dispose();
+  }
+  // --- end free plan ---
 
   @override
   Widget build(BuildContext context) {
@@ -101,7 +121,9 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Subscription warning (past due / suspended / ending soon)
-            SubscriptionBanner(shop: shop, onManage: () => _openSubscription(shop.id)),
+            // subscription expiry: "pay now" opens the receipt payment screen.
+            SubscriptionBanner(shop: shop, onManage: () => _openReceiptPayment(shop.id)),
+            AdminSuspensionBanner(shop: shop), // admin shop management
 
             // Summary (hero card)
             HeroCard(
@@ -433,6 +455,17 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       ),
     );
   }
+
+  // --- subscription expiry ---
+  void _openReceiptPayment(String shopId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => ReceiptPaymentScreen(shopId: shopId)),
+    ).then((_) {
+      if (mounted) setState(() {});
+    });
+  }
+  // --- end subscription expiry ---
 
   void _openSubscription(String shopId) {
     Navigator.push(

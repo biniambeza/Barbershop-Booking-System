@@ -29,9 +29,6 @@ void main() {
       landmark: 'Near Summit Fiyel Bet',
       description: 'Modern cuts and beard grooming in Summit.',
       imageUrl: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800',
-      openingHour: 8,
-      closingHour: 21,
-      workingDays: [1, 2, 3, 4, 5, 6, 7],
       isVerified: true,
     );
 
@@ -45,6 +42,9 @@ void main() {
     expect(shop.subCity, 'Bole');
     expect(shop.landmark, 'Near Summit Fiyel Bet');
     expect(shop.isVerified, true);
+    // Default opening hours: only the owner changes them.
+    expect((shop.openingHour, shop.closingHour), (9, 20));
+    expect(shop.workingDays, [1, 2, 3, 4, 5, 6, 7]);
     // New shops start on the free trial.
     expect(shop.subscriptionPlan, 'trial');
     expect(shop.subscriptionStatus, SubscriptionStatus.trialing);

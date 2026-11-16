@@ -247,9 +247,18 @@ class AuthSubmitButton extends StatelessWidget {
 }
 
 /// "Resend code" with a countdown; rebuild it with a new [sentAt] after each
-/// code is sent to restart the countdown.
+/// code is sent to restart the countdown. [label] / [waitingLabel] and
+/// [buttonKey] reuse it for emailed links.
 class ResendCodeButton extends StatefulWidget {
-  const ResendCodeButton({super.key, required this.sentAt, required this.cooldownSeconds, required this.onResend});
+  const ResendCodeButton({
+    super.key,
+    required this.sentAt,
+    required this.cooldownSeconds,
+    required this.onResend,
+    this.label,
+    this.waitingLabel,
+    this.buttonKey = const ValueKey('resend-code'),
+  });
 
   /// When the last code was sent; restarts the countdown when it changes.
   final DateTime sentAt;
@@ -257,6 +266,11 @@ class ResendCodeButton extends StatefulWidget {
 
   /// Null while a request is running.
   final VoidCallback? onResend;
+
+  /// Defaults to "Resend code" / "Resend code in N s".
+  final String? label;
+  final String Function(int seconds)? waitingLabel;
+  final Key buttonKey;
 
   @override
   State<ResendCodeButton> createState() => _ResendCodeButtonState();
@@ -299,10 +313,44 @@ class _ResendCodeButtonState extends State<ResendCodeButton> {
   Widget build(BuildContext context) {
     final l = context.l10n;
     final waiting = _remaining > 0;
+    final waitingLabel = widget.waitingLabel ?? l.resendCodeIn;
     return TextButton(
-      key: const ValueKey('resend-code'),
+      key: widget.buttonKey,
       onPressed: waiting ? null : widget.onResend,
-      child: Text(waiting ? l.resendCodeIn(_remaining) : l.resendCode),
+      child: Text(waiting ? waitingLabel(_remaining) : widget.label ?? l.resendCode),
+    );
+  }
+}
+
+/// "Check your email" panel of the free-plan link fallback: an icon, a
+/// title and what to do with the emailed link.
+class AuthLinkSentPanel extends StatelessWidget {
+  const AuthLinkSentPanel({super.key, required this.title, required this.body, this.bodyKey});
+
+  final String title;
+  final String body;
+  final Key? bodyKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context).textTheme;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.success.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.success.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.mark_email_read_outlined, size: 36, color: AppTheme.success),
+          const SizedBox(height: 8),
+          Text(title, textAlign: TextAlign.center, style: theme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 6),
+          Text(body, key: bodyKey, textAlign: TextAlign.center, style: theme.bodyMedium),
+        ],
+      ),
     );
   }
 }

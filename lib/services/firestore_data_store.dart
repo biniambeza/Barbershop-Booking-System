@@ -15,6 +15,7 @@ import '../models/app_exception.dart';
 import 'availability_service.dart';
 import 'data_cache.dart';
 import 'data_store.dart';
+import 'early_finish_service.dart' show EarlyFinishNotice; // early finish
 import 'time_off_service.dart';
 
 /// Firestore-backed [DataStore].
@@ -36,7 +37,8 @@ import 'time_off_service.dart';
 ///  * barber:    doc barbershops/{shopId}; its services and barbers subcollections;
 ///               bookings where shopId == shopId and barberId == barberId (bounded)
 ///  * admin:     barbershops; collectionGroup services; collectionGroup barbers;
-///               bookings orderBy createdAt desc limit 500; users; invites; plans
+///               users; invites; plans (no bookings: the admin manages shops,
+///               not appointments)
 ///
 /// Booking listeners of customers, owners and barbers are bounded by two
 /// queries on `startAt` (needs the composite indexes in
@@ -66,8 +68,6 @@ class FirestoreDataStore implements DataStore {
   /// Called when the signed-in user's own `users/{uid}` document changes
   /// (null when it is deleted).
   final void Function(AppUser? user) onCurrentUserChanged;
-
-  static const int adminBookingLimit = 500;
 
   /// How far back the customer/owner/barber booking listeners reach.
   static const int bookingHistoryDays = 90;
@@ -221,11 +221,8 @@ class FirestoreDataStore implements DataStore {
         listenQuery(_shops, cache.shops, Barbershop.fromMap);
         listenQuery(_db.collectionGroup('services'), cache.services, BarbershopService.fromMap);
         listenQuery(_db.collectionGroup('barbers'), cache.barbers, Barber.fromMap);
-        listenQuery(
-          _bookings.orderBy('createdAt', descending: true).limit(adminBookingLimit),
-          cache.bookings,
-          Booking.fromMap,
-        );
+        // admin shop management: no bookings listener (the admin dashboard
+        // has no bookings list).
         listenQuery(_users, cache.users, AppUser.fromMap);
         listenQuery(_invites, cache.invites, UserInvite.fromMap);
         listenQuery(_db.collection('plans'), cache.plans, SubscriptionPlan.fromMap);
@@ -345,6 +342,14 @@ class FirestoreDataStore implements DataStore {
     });
   }
 
+  // --- subscription expiry (client-side) ---
+  // barbershops/{shopId}.update({subscriptionStatus: 'past_due'|'suspended',
+  // subscriptionStatusChangedAt: ISO}) by the owner or an admin.
+  @override
+  Future<void> setShopSubscriptionTransition(String shopId, Map<String, dynamic> fields) =>
+      _shops.doc(shopId).update(Map<String, dynamic>.of(fields));
+  // --- end subscription expiry ---
+
   @override
   Future<void> deleteShop(String shopId) async {
     // Subcollections are not deleted with their parent; remove them so the
@@ -363,6 +368,15 @@ class FirestoreDataStore implements DataStore {
     batch.delete(_shops.doc(shopId));
     await batch.commit();
   }
+
+  // --- admin shop management ---
+  @override
+  Future<void> adminUpdateShop(Barbershop shop) => _shops.doc(shop.id).update(_forUpdate(shop.toAdminEditMap()));
+
+  @override
+  Future<void> setShopAdminSuspension(String shopId, Map<String, dynamic> fields) =>
+      _shops.doc(shopId).update(_forUpdate(fields));
+  // --- end admin shop management ---
 
   @override
   Future<void> addService(BarbershopService service) =>
@@ -717,4 +731,29 @@ class FirestoreDataStore implements DataStore {
     });
   }
   // --- end barber acceptance ---
+
+  // --- early finish ---
+
+  /// `update` of exactly `status` ('completed') and `completedAt` (UTC ISO).
+  @override
+  Future<void> completeBooking(Booking booking, {required DateTime completedAt}) {
+    return _bookings.doc(booking.id).update({
+      'status': BookingStatus.completed.name,
+      'completedAt': completedAt.toUtc().toIso8601String(),
+    });
+  }
+
+  /// One batch of `set` (creates: the ids are new) at
+  /// `users/{recipientUid}/notifications/{bookingId}_early_{sourceBookingId}`
+  /// with exactly [EarlyFinishNotice.toMap]'s keys.
+  @override
+  Future<void> writeEarlyFinishNotices(List<EarlyFinishNotice> notices) async {
+    if (notices.isEmpty) return;
+    final batch = _db.batch();
+    for (final n in notices) {
+      batch.set(_users.doc(n.recipientUid).collection('notifications').doc(n.id), n.toMap());
+    }
+    await batch.commit();
+  }
+  // --- end early finish ---
 }

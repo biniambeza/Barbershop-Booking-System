@@ -12,9 +12,11 @@ import '../data/seed_dataset.dart' show kSeedAssetPath;
 import '../models/queue_entry.dart';
 import '../models/user_model.dart';
 import 'app_repository.dart';
+import 'queue_summary_writer.dart';
 import 'queue_wait.dart';
 
 export '../models/queue_entry.dart';
+export 'queue_summary_writer.dart' show QueueSummaryWriteOutcome; // free plan
 export 'queue_wait.dart';
 
 /// Queue-specific failures. Screens show them with `queueErrorText`
@@ -136,6 +138,18 @@ class FirestoreQueueStore implements QueueStore {
   @override
   Future<void> update(QueueEntry entry, Map<String, dynamic> fields) =>
       _queue(entry.shopId).doc(entry.id).update(fields);
+
+  // --- free plan: staff-written queue summary (queue_summary_writer.dart) ---
+  DocumentReference<Map<String, dynamic>> _summaryRef(String shopId) =>
+      _db.collection('barbershops').doc(shopId).collection('queueSummary').doc('current');
+
+  /// `queueSummary/current` as stored, or null when missing.
+  Future<Map<String, dynamic>?> readSummaryDoc(String shopId) async => (await _summaryRef(shopId).get()).data();
+
+  /// `set` (replace) of `queueSummary/current` with exactly the function's
+  /// key set (staff of the shop only, see firestore.rules).
+  Future<void> writeSummaryDoc(String shopId, Map<String, dynamic> doc) => _summaryRef(shopId).set(doc);
+  // --- end free plan ---
 }
 
 /// In-memory queue for DEMO_MODE builds and tests. It also plays the part of
@@ -316,7 +330,47 @@ class QueueService {
 
   // --- Reads ---
 
-  Stream<List<QueueEntry>> watchActiveQueue(String shopId) => store.watchActive(shopId);
+  /// Staff listener. With Firestore, every emission also schedules a
+  /// (debounced) rewrite of the public summary (free plan, see
+  /// [summaryWriter]).
+  Stream<List<QueueEntry>> watchActiveQueue(String shopId) => store.watchActive(shopId).map((entries) {
+        _scheduleSummary(shopId, entries: entries);
+        return entries;
+      });
+
+  // --- free plan: staff-written queue summary (queue_summary_writer.dart) ---
+
+  /// Recomputes `queueSummary/current` from the staff app (the queue Cloud
+  /// Function does not run on the Spark plan). Only used with Firestore: the
+  /// local store computes its summary itself.
+  late final QueueSummaryWriter summaryWriter = QueueSummaryWriter(
+    fetchActive: (shopId) => store.fetchActive(shopId),
+    readSummary: (shopId) async {
+      final s = store;
+      return s is FirestoreQueueStore ? s.readSummaryDoc(shopId) : null;
+    },
+    writeSummary: (shopId, doc) async {
+      final s = store;
+      if (s is FirestoreQueueStore) await s.writeSummaryDoc(shopId, doc);
+    },
+    markLeft: (entry, finishedAtIso) =>
+        store.update(entry, {'status': QueueStatus.left.name, 'finishedAt': finishedAtIso}),
+    serviceDurations: serviceDurations,
+    availableBarbers: availableBarberCount,
+  );
+
+  void _scheduleSummary(String shopId, {List<QueueEntry>? entries}) {
+    if (store is! FirestoreQueueStore || !isStaffOf(shopId)) return;
+    summaryWriter.schedule(shopId, entries: entries);
+  }
+
+  /// Staff: recomputes and writes the shop's public summary now (no-op
+  /// without Firestore or for non-staff). Never throws.
+  Future<QueueSummaryWriteOutcome?> refreshSummary(String shopId) async {
+    if (store is! FirestoreQueueStore || !isStaffOf(shopId)) return null;
+    return summaryWriter.recomputeNow(shopId);
+  }
+  // --- end free plan ---
 
   Stream<QueueSummary> watchSummary(String shopId) => store.watchSummary(shopId);
 
@@ -404,6 +458,7 @@ class QueueService {
       source: QueueSource.walkIn,
     );
     await store.add(entry);
+    _scheduleSummary(shopId); // free plan: staff-written summary
     return entry;
   }
 
@@ -423,6 +478,7 @@ class QueueService {
       'barberId': barberId,
       'servingStartedAt': now.toIso8601String(),
     });
+    _scheduleSummary(entry.shopId); // free plan: staff-written summary
     return current.copyWith(status: QueueStatus.serving, barberId: barberId, servingStartedAt: now);
   }
 
@@ -452,6 +508,7 @@ class QueueService {
       'status': QueueStatus.done.name,
       'finishedAt': DateTime.now().toUtc().toIso8601String(),
     });
+    _scheduleSummary(entry.shopId); // free plan: staff-written summary
   }
 
   /// The person left before being served.
@@ -462,6 +519,7 @@ class QueueService {
       'status': QueueStatus.left.name,
       'finishedAt': DateTime.now().toUtc().toIso8601String(),
     });
+    _scheduleSummary(entry.shopId); // free plan: staff-written summary
   }
 
   // --- Customer actions ---

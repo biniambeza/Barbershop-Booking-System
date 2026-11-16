@@ -16,6 +16,7 @@ import 'features/customer/screens/customer_main_nav.dart';
 import 'features/shop_owner/screens/owner_dashboard_screen.dart';
 import 'features/admin/screens/admin_dashboard_screen.dart';
 import 'features/barber/screens/barber_dashboard_screen.dart';
+import 'features/auth/screens/force_password_change_screen.dart'; // barber accounts
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -105,6 +106,8 @@ class RootGate extends StatelessWidget {
 
         final user = repo.currentUser;
         if (user == null) return const AuthScreen();
+        // Barber accounts: the owner's temporary password is replaced first.
+        if (repo.mustChangePassword) return const ForcePasswordChangeScreen();
 
         switch (user.role) {
           case UserRole.admin:

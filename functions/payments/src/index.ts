@@ -31,6 +31,11 @@ import { buildManualChange, computeScheduledUpdate, isPlan } from './logic/subsc
 import { verifyChapaSignature } from './logic/signature';
 import { parseReviewRequest, resolvePaymentReview as resolveReview } from './logic/review';
 import { db, findPaymentByTxRef, firestoreDocStore, markRefunded, PaymentDoc, reverifyPayment } from './store';
+// --- subscription receipts ---
+import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { fetchReceiptPage, ReceiptFlowDeps, verifyReceiptPayment } from './receipts/flow';
+import { RECEIPTS_COLLECTION } from './receipts/pricing';
+// --- end subscription receipts ---
 
 initializeApp();
 setGlobalOptions({ region: REGION, maxInstances: 10 });
@@ -480,3 +485,46 @@ export const dailySubscriptionCheck = onSchedule(
     logger.info('Subscription check done', { scanned, changed });
   },
 );
+
+// --- subscription receipts ---
+// Owners pay by telebirr / CBE transfer and create
+// subscriptionPayments/{method}_{transactionId} (status 'pending'). On the
+// Blaze plan these functions check the official receipt and, when it
+// matches, mark it verified and extend the shop (see receipts/flow.ts). On
+// the free plan nothing runs and admins approve in the app.
+
+function receiptFlowDeps(): ReceiptFlowDeps {
+  return {
+    store: firestoreDocStore(),
+    fetchPage: fetchReceiptPage,
+    async findSameTransaction(transactionId) {
+      const qs = await db().collection(RECEIPTS_COLLECTION).where('transactionId', '==', transactionId).limit(10).get();
+      return qs.docs.map((d) => ({ id: d.id, status: d.get('status'), createdAt: d.get('createdAt') }));
+    },
+    now: () => new Date(),
+  };
+}
+
+/** Verifies every new transfer receipt automatically. */
+export const verifyReceipt = onDocumentCreated(
+  { document: `${RECEIPTS_COLLECTION}/{paymentId}`, timeoutSeconds: 60, retry: false },
+  async (event) => {
+    const paymentId = event.params.paymentId;
+    try {
+      const result = await verifyReceiptPayment(receiptFlowDeps(), paymentId);
+      logger.info('Receipt checked', { paymentId, ...result });
+    } catch (err) {
+      // Leave it 'pending': an admin can still decide it in the app.
+      logger.error('Receipt check failed', { paymentId, err: String(err) });
+    }
+  },
+);
+
+/** Admin: re-run the automatic check of a pending / needs_review receipt. {paymentId} */
+export const recheckReceipt = onCall({ timeoutSeconds: 60 }, async (req) => {
+  const uid = requireAuth(req);
+  await requireAdmin(uid);
+  const paymentId = requireString(req.data, 'paymentId');
+  return verifyReceiptPayment(receiptFlowDeps(), paymentId, { allowNeedsReview: true });
+});
+// --- end subscription receipts ---

@@ -10,6 +10,8 @@
  *   sendBookingReminders    every 15 minutes (Africa/Addis_Ababa)
  *   onShopApplicationWritten Firestore trigger on shopApplications/{uid}
  *                           (applicationApproved / applicationRejected)
+ *   onBookingCompletedEarly Firestore trigger on bookings/{bookingId}
+ *                           (barberFreeEarly / runningEarly push, earlyFinish.ts)
  *
  * Secrets (firebase functions:secrets:set NAME). Set AFROMESSAGE_TOKEN to
  * "none" to keep SMS in log-only mode:
@@ -37,6 +39,9 @@ import { parseIso } from './time';
 import { runReminderSweep } from './reminders';
 import { createSmsProvider, type SmsProvider } from './sms';
 import { detectApplicationEvent, notifyApplication, type ShopApplicationDoc } from './applications'; // shop applications
+import { onDocumentUpdated } from 'firebase-functions/v2/firestore'; // early finish
+import { sendPush } from './dispatch'; // early finish
+import { isCompletionTransition, notifyEarlyFinish } from './earlyFinish'; // early finish
 
 if (getApps().length === 0) initializeApp();
 
@@ -137,3 +142,21 @@ export const onShopApplicationWritten = onDocumentWritten(
   },
 );
 // --- end shop applications ---
+
+// --- early finish ---
+export const onBookingCompletedEarly = onDocumentUpdated(
+  { document: 'bookings/{bookingId}', retry: false },
+  async (event) => {
+    const before = event.data?.before.exists ? (event.data.before.data() as BookingDoc) : null;
+    const after = event.data?.after.exists ? (event.data.after.data() as BookingDoc) : null;
+    if (!isCompletionTransition(before, after)) return;
+    const bookingId = event.params.bookingId;
+    try {
+      const result = await notifyEarlyFinish(getFirestore(), bookingId, before, after, sendPush);
+      logger.info('early finish', { bookingId, ...result });
+    } catch (err) {
+      logger.error('early finish failed', { bookingId, err: String(err) });
+    }
+  },
+);
+// --- end early finish ---

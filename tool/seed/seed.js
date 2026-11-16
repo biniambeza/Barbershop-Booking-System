@@ -125,6 +125,11 @@ function buildDocuments(seed, { now = new Date(), mode = 'users' } = {}) {
     if (subscriptionEndsInDays !== undefined && subscriptionEndsInDays !== null) {
       shop.subscriptionEndsAt = iso(nowMs + subscriptionEndsInDays * DAY_MS);
     }
+    // admin shop management: adminSuspendedDaysAgo -> adminSuspendedAt (UTC ISO).
+    if (shop.adminSuspendedDaysAgo !== undefined) {
+      if (shop.adminSuspendedDaysAgo !== null) shop.adminSuspendedAt = iso(nowMs - shop.adminSuspendedDaysAgo * DAY_MS);
+      delete shop.adminSuspendedDaysAgo;
+    }
     if (shop.landmark === undefined || shop.landmark === null) delete shop.landmark;
     shops.set(id, { id, ...shop });
     docs.push({ path: `barbershops/${id}`, data: shop });
@@ -205,6 +210,7 @@ function buildDocuments(seed, { now = new Date(), mode = 'users' } = {}) {
   if (mode === 'users') docs.push(...buildReviewDocuments(seed, { docs }));
   if (mode === 'users') docs.push(...buildPayoutDocuments(seed, { nowMs, barbers })); // barber payouts
   if (mode === 'users') docs.push(...buildShopApplicationDocuments(seed, { nowMs })); // shop applications
+  docs.push(...buildSubscriptionReceiptDocuments(seed, { nowMs, mode, shops })); // subscription receipts
   return docs;
 }
 
@@ -304,7 +310,10 @@ function buildQueueDocuments(seed, { nowMs, services, barbers }) {
  * reviewsFromSeedJson in lib/services/reviews_service.dart:
  * createdAt = booking start + hoursAfterVisit, replyAt = booking start +
  * replyHoursAfterVisit. Entries without a bookingId (comments) are skipped.
- * The shops' and barbers' rating/reviewCount in the JSON match these reviews.
+ * The barbers' ratingSum/reviewCount in the JSON are the sums/counts of these
+ * reviews (the app adds each new review to them in the review transaction);
+ * the shops' rating is the average of their rated barbers' averages
+ * (lib/services/rating_service.dart).
  */
 function buildReviewDocuments(seed, { docs }) {
   const iso = (ms) => new Date(ms).toISOString();
@@ -408,6 +417,64 @@ function buildShopApplicationDocuments(seed, { nowMs }) {
   return docs;
 }
 // --- end shop applications ---
+
+// --- subscription receipts ---
+/**
+ * Subscription receipts:
+ *  - platformConfig/subscriptionPricing {currency, tiers: [{days, amount}],
+ *    receivers: {telebirr: {number, name}, cbe: {account, name}},
+ *    updatedAt, updatedBy: 'seed'} from seed.subscriptionPricing (both modes:
+ *    it is real configuration).
+ *  - users mode only: subscriptionPayments/{method}_{TRANSACTIONID} {shopId,
+ *    ownerId, method, transactionId, amount, status, durationDays, createdAt,
+ *    and when present verifiedAmount, verifiedBy, decisionReason, decidedAt,
+ *    payerAccountSuffix} per seed.subscriptionPayments entry (entries
+ *    without a transactionId, e.g. `_comment`, are skipped), resolved like
+ *    subscriptionPaymentsFromSeedJson in
+ *    lib/features/payments/receipts/subscription_receipts_service.dart:
+ *    transactionId trimmed, uppercased, whitespace removed; ownerId = the
+ *    shop's ownerId; createdAt = now - createdHoursAgo; decidedAt (decided
+ *    receipts) = now - decidedHoursAgo.
+ */
+function buildSubscriptionReceiptDocuments(seed, { nowMs, mode, shops }) {
+  const iso = (hoursAgo) => new Date(nowMs - Math.round((hoursAgo || 0) * 60) * 60 * 1000).toISOString();
+  const docs = [];
+  const pricing = seed.subscriptionPricing;
+  if (pricing) {
+    const { _comment, ...rest } = pricing;
+    docs.push({
+      path: 'platformConfig/subscriptionPricing',
+      data: { ...rest, updatedAt: new Date(nowMs).toISOString(), updatedBy: 'seed' },
+    });
+  }
+  if (mode !== 'users') return docs;
+  for (const p of seed.subscriptionPayments || []) {
+    if (!p.transactionId) continue;
+    const shop = shops.get(p.shopId);
+    if (!shop) throw new Error(`Subscription payment ${p.transactionId} references a missing shop`);
+    const transactionId = String(p.transactionId).trim().toUpperCase().replace(/\s+/g, '');
+    const status = p.status || 'pending';
+    const data = {
+      shopId: p.shopId,
+      ownerId: shop.ownerId,
+      method: p.method,
+      transactionId,
+      amount: p.amount,
+      status,
+      durationDays: p.durationDays || 0,
+      createdAt: iso(p.createdHoursAgo),
+    };
+    for (const k of ['verifiedAmount', 'verifiedBy', 'decisionReason', 'payerAccountSuffix']) {
+      if (p[k] !== undefined && p[k] !== null) data[k] = p[k];
+    }
+    if (status !== 'pending' && status !== 'needs_review') {
+      data.decidedAt = iso(p.decidedHoursAgo !== undefined ? p.decidedHoursAgo : p.createdHoursAgo);
+    }
+    docs.push({ path: `subscriptionPayments/${p.method}_${transactionId}`, data });
+  }
+  return docs;
+}
+// --- end subscription receipts ---
 
 function summarize(docs) {
   const summary = {};

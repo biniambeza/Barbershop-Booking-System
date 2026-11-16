@@ -181,10 +181,18 @@ class ShopClient {
 
 /// Everything the owner Reports screen shows.
 class ShopReport {
-  ShopReport({required this.shopId, required List<ShopMonthStats> months, required this.clients})
-      : months = List.unmodifiable(months);
+  ShopReport({
+    required this.shopId,
+    required List<ShopMonthStats> months,
+    required this.clients,
+    this.fromBookings = false, // free plan: see services/report_fallback.dart
+  }) : months = List.unmodifiable(months);
 
   final String shopId;
+
+  /// Free plan: computed in the app from the last 90 days of cached bookings
+  /// because the functions' stats docs are missing or stale.
+  final bool fromBookings;
 
   /// The last months, newest first (empty months included).
   final List<ShopMonthStats> months;

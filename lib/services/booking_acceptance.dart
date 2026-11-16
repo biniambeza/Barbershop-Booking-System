@@ -103,13 +103,47 @@ Map<String, dynamic> declineFields(String? reason) => {
       if (reason != null) 'declineReason': reason,
     };
 
-/// A request the barber declined.
+/// A request the barber declined (not one the staff app closed because it
+/// expired, see [isClientExpiredClose]).
 bool wasDeclined(Booking booking) =>
-    booking.status == BookingStatus.cancelled && booking.cancelledBy == kDeclinedBy;
+    booking.status == BookingStatus.cancelled && booking.cancelledBy == kDeclinedBy && !isClientExpiredClose(booking);
 
-/// A request that expired unanswered.
+/// A request that expired unanswered: cancelled by functions/bookings
+/// (cancelReason [kNotAcceptedReason]) or, on the free plan, closed by the
+/// staff app ([isClientExpiredClose]).
 bool wasNotAccepted(Booking booking) =>
-    booking.status == BookingStatus.cancelled && booking.cancelReason == kNotAcceptedReason;
+    booking.status == BookingStatus.cancelled &&
+    (booking.cancelReason == kNotAcceptedReason || isClientExpiredClose(booking));
+
+// --- free plan: the staff app closes expired requests (no Cloud Functions) ---
+//
+// `expirePendingBookings` (functions/bookings, every 15 minutes) does not run
+// on the Spark plan. The barber/owner app closes the expired requests it
+// sees with the existing decline write (no security-rule change): status
+// 'cancelled', cancelledBy 'barber', declineReason [kNotAcceptedReason] (the
+// marker), slot locks released. It waits [kClientExpiryGrace] longer than the
+// function, so on the Blaze plan the function always goes first.
+
+/// Extra wait before the staff app closes an expired request itself.
+const Duration kClientExpiryGrace = Duration(minutes: 15);
+
+/// A pending request inside the expiry window that nobody closed yet: the
+/// customer is told the barber didn't answer; it can no longer be accepted.
+bool isUnansweredExpiredRequest(Booking booking, DateTime nowUtc) =>
+    booking.status == BookingStatus.pending && isRequestExpired(booking, nowUtc);
+
+/// Whether the staff app should close this request now (pending and its
+/// start within `kPendingExpiryLead - kClientExpiryGrace`, or past).
+bool shouldClientCloseExpiredRequest(Booking booking, DateTime nowUtc) =>
+    booking.status == BookingStatus.pending &&
+    !booking.startAt.isAfter(nowUtc.toUtc().add(kPendingExpiryLead - kClientExpiryGrace));
+
+/// A request the staff app closed because it expired (decline + marker).
+bool isClientExpiredClose(Booking booking) =>
+    booking.status == BookingStatus.cancelled &&
+    booking.cancelledBy == kDeclinedBy &&
+    booking.declineReason == kNotAcceptedReason;
+// --- end free plan ---
 
 /// Online payment waits until the barber accepts (pending bookings may still
 /// be declined or expire).

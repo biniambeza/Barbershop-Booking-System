@@ -75,9 +75,9 @@
         { "id": "srv_1_4", "name": "Kids Cut (under 12)", "description": "Gentle, quick cut for children.", "price": 250, "durationMinutes": 30 }
       ],
       "barbers": [
-        { "id": "barber_1", "name": "Yonas Tadesse", "title": "Master Barber / Fade Specialist", "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400", "rating": 5.0, "reviewCount": 2, "phone": "+251911000201", "specialties": ["Skin Fade", "Beard Sculpting", "Hot Razor Shave"], "commissionPercent": 60 },
-        { "id": "barber_2", "name": "Kaleab Mekonnen", "title": "Senior Stylist & Shave Artist", "avatarUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400", "rating": 3.5, "reviewCount": 2, "phone": "+251911000202", "specialties": ["Scissor Cut", "Hot Towel Shave", "Kids Cuts"], "commissionPercent": 50 },
-        { "id": "barber_1_3", "name": "Biniyam Hailu", "title": "Barber", "avatarUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400", "rating": 4.0, "reviewCount": 1, "phone": "+251912450013", "specialties": ["Low Taper", "Line-up"], "workingDays": [2, 3, 4, 5, 6, 7], "startHour": 12, "endHour": 20, "commissionPercent": 40 }
+        { "id": "barber_1", "name": "Yonas Tadesse", "title": "Master Barber / Fade Specialist", "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400", "rating": 5.0, "reviewCount": 2, "ratingSum": 10, "phone": "+251911000201", "specialties": ["Skin Fade", "Beard Sculpting", "Hot Razor Shave"], "commissionPercent": 60 },
+        { "id": "barber_2", "name": "Kaleab Mekonnen", "title": "Senior Stylist & Shave Artist", "avatarUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400", "rating": 3.5, "reviewCount": 2, "ratingSum": 7, "phone": "+251911000202", "specialties": ["Scissor Cut", "Hot Towel Shave", "Kids Cuts"], "commissionPercent": 50 },
+        { "id": "barber_1_3", "name": "Biniyam Hailu", "title": "Barber", "avatarUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400", "rating": 4.0, "reviewCount": 1, "ratingSum": 4, "phone": "+251912450013", "specialties": ["Low Taper", "Line-up"], "workingDays": [2, 3, 4, 5, 6, 7], "startHour": 12, "endHour": 20, "commissionPercent": 40 }
       ]
     },
     {
@@ -109,8 +109,8 @@
         { "id": "srv_2_3", "name": "Executive Cut & Shave", "description": "Classic cut plus full hot-towel shave.", "price": 550, "durationMinutes": 70 }
       ],
       "barbers": [
-        { "id": "barber_2_1", "name": "Tewodros Alemu", "title": "Head Barber", "avatarUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400", "rating": 5.0, "reviewCount": 1, "phone": "+251911000102", "specialties": ["Scissor Cut", "Beard Trim"] },
-        { "id": "barber_2_2", "name": "Dagim Worku", "title": "Barber", "avatarUrl": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400", "rating": 4.0, "reviewCount": 1, "phone": "+251912450022", "specialties": ["Hot Shave", "Afro Shape-up"] }
+        { "id": "barber_2_1", "name": "Tewodros Alemu", "title": "Head Barber", "avatarUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400", "rating": 5.0, "reviewCount": 1, "ratingSum": 5, "phone": "+251911000102", "specialties": ["Scissor Cut", "Beard Trim"] },
+        { "id": "barber_2_2", "name": "Dagim Worku", "title": "Barber", "avatarUrl": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400", "rating": 4.0, "reviewCount": 1, "ratingSum": 4, "phone": "+251912450022", "specialties": ["Hot Shave", "Afro Shape-up"] }
       ]
     },
     {
@@ -141,7 +141,7 @@
         { "id": "srv_3_3", "name": "Cut & Beard Combo", "description": "Haircut plus beard trim and line-up.", "price": 400, "durationMinutes": 50 }
       ],
       "barbers": [
-        { "id": "barber_3_1", "name": "Mulugeta Bekele", "title": "Master Barber", "avatarUrl": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400", "rating": 5.0, "reviewCount": 2, "phone": "+251911000103", "specialties": ["Afro Shape-up", "Straight Razor"] }
+        { "id": "barber_3_1", "name": "Mulugeta Bekele", "title": "Master Barber", "avatarUrl": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400", "rating": 5.0, "reviewCount": 2, "ratingSum": 10, "phone": "+251911000103", "specialties": ["Afro Shape-up", "Straight Razor"] }
       ]
     },
     {
@@ -166,13 +166,17 @@
       "subscriptionEndsInDays": 20,
       "cancellationCutoffHours": 2,
       "maxReschedules": 2,
+      "adminSuspended": true,
+      "adminSuspendedReason": "Business licence expired. Upload a renewed licence to the platform admin to reactivate.",
+      "adminSuspendedDaysAgo": 2,
+      "adminSuspendedBy": "user_admin_1",
       "services": [
         { "id": "srv_4_1", "name": "Textured Crop & Low Fade", "description": "Modern crop with texture powder and clean tapers.", "price": 500, "durationMinutes": 45 },
         { "id": "srv_4_2", "name": "Hair Design / Part", "description": "Freehand razor design or hard part.", "price": 200, "durationMinutes": 20 },
         { "id": "srv_4_3", "name": "Beard Trim & Hydration Mask", "description": "Conditioning treatment, shaping and razor edge.", "price": 350, "durationMinutes": 30 }
       ],
       "barbers": [
-        { "id": "barber_4_1", "name": "Henok Girma", "title": "Fade & Design Specialist", "avatarUrl": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400", "rating": 5.0, "reviewCount": 1, "phone": "+251911000104", "specialties": ["Textured Crop", "Low Taper Fade", "Hair Design"] }
+        { "id": "barber_4_1", "name": "Henok Girma", "title": "Fade & Design Specialist", "avatarUrl": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400", "rating": 5.0, "reviewCount": 1, "ratingSum": 5, "phone": "+251911000104", "specialties": ["Textured Crop", "Low Taper Fade", "Hair Design"] }
       ]
     },
     {
@@ -203,8 +207,8 @@
         { "id": "srv_5_3", "name": "Groom's Wedding Package", "description": "Cut, shave, facial and styling for your big day.", "price": 1500, "durationMinutes": 120 }
       ],
       "barbers": [
-        { "id": "barber_5_1", "name": "Samuel Tesfaye", "title": "Senior Barber", "avatarUrl": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400", "rating": 5.0, "reviewCount": 1, "phone": "+251911000105", "specialties": ["Executive Styling", "Hot Shave"] },
-        { "id": "barber_5_2", "name": "Abel Negash", "title": "Stylist", "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400", "rating": 4.0, "reviewCount": 1, "phone": "+251912450052", "specialties": ["Scissor Cut", "Facials"], "startHour": 13, "endHour": 21 }
+        { "id": "barber_5_1", "name": "Samuel Tesfaye", "title": "Senior Barber", "avatarUrl": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400", "rating": 5.0, "reviewCount": 1, "ratingSum": 5, "phone": "+251911000105", "specialties": ["Executive Styling", "Hot Shave"] },
+        { "id": "barber_5_2", "name": "Abel Negash", "title": "Stylist", "avatarUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400", "rating": 4.0, "reviewCount": 1, "ratingSum": 4, "phone": "+251912450052", "specialties": ["Scissor Cut", "Facials"], "startHour": 13, "endHour": 21 }
       ]
     },
     {
@@ -234,7 +238,7 @@
         { "id": "srv_6_2", "name": "Quick Shave", "description": "Clean shave.", "price": 150, "durationMinutes": 15 }
       ],
       "barbers": [
-        { "id": "barber_6_1", "name": "Bereket Wolde", "title": "Barber", "avatarUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400", "rating": 4.0, "reviewCount": 1, "phone": "+251911000106", "specialties": ["Clipper Cut"] }
+        { "id": "barber_6_1", "name": "Bereket Wolde", "title": "Barber", "avatarUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400", "rating": 4.0, "reviewCount": 1, "ratingSum": 4, "phone": "+251911000106", "specialties": ["Clipper Cut"] }
       ]
     }
   ],
@@ -271,7 +275,7 @@
     { "id": "queue_1_4", "shopId": "shop_1", "name": "Samuel Girma", "barberId": "barber_2", "status": "waiting", "createdMinutesAgo": 5, "addedBy": "owner_1", "source": "walkIn" }
   ],
   "reviews": [
-    { "_comment": "barbershops/{shopId}/reviews/{bookingId}. shopId, barberId, customerId and customerName come from the booking; createdAt = booking start + hoursAfterVisit, replyAt = booking start + replyHoursAfterVisit. Shop and barber rating/reviewCount above match these reviews (average to one decimal)." },
+    { "_comment": "barbershops/{shopId}/reviews/{bookingId}. shopId, barberId, customerId and customerName come from the booking; createdAt = booking start + hoursAfterVisit, replyAt = booking start + replyHoursAfterVisit. Barber ratingSum/reviewCount above are the sums/counts of these reviews (rating = ratingSum / reviewCount, one decimal); shop rating = the average of its rated barbers' averages, reviewCount = all its reviews." },
     { "bookingId": "book_3", "rating": 5, "comment": "ዮናስ በጣም ጎበዝ ነው። ሙሉ የፀጉርና የጺም አገልግሎቱ ድንቅ ነበር፤ ቦታውም ንፁህ ነው።", "hoursAfterVisit": 5, "reply": "ስለ ደግ ቃላትዎ እናመሰግናለን! በቅርቡ እንደገና እንጠብቅዎታለን።", "replyHoursAfterVisit": 20 },
     { "bookingId": "book_9", "rating": 5, "comment": "Cleanest skin fade I've had in Addis. Yonas took his time and the hot towel at the end was a nice touch.", "hoursAfterVisit": 8 },
     { "bookingId": "book_10", "rating": 4, "comment": "ጺሜን በጥሩ ሁኔታ አስተካክሎልኛል። ትንሽ ቆይቶ ነው የተጀመረው እንጂ አገልግሎቱ ጥሩ ነው።", "hoursAfterVisit": 3, "reply": "ስለ አስተያየትዎ እናመሰግናለን። የመጠበቂያ ጊዜውን ለማሳጠር እየሠራን ነው።", "replyHoursAfterVisit": 26 },
@@ -293,6 +297,25 @@
   "shopApplications": [
     { "_comment": "shopApplications/{uid}: a customer's request to list their shop (doc id = applicant uid). email comes from the user (lowercased), ownerName defaults to the user's name, createdAt = now - createdHoursAgo. Loaded by lib/features/applications/shop_applications_service.dart (shopApplicationsFromSeedJson) and tool/seed/seed.js." },
     { "uid": "user_cust_2", "ownerName": "Natnael Assefa", "shopName": "Natty's Fade Studio", "address": "Near Edna Mall, Africa Avenue", "subCity": "Bole", "phone": "+251911223344", "description": "Two chairs, fades and beard work. Open every day.", "status": "pending", "createdHoursAgo": 20 }
+  ],
+  "subscriptionPricing": {
+    "_comment": "platformConfig/subscriptionPricing: subscription lengths and prices (ETB) owners pay by transfer, and where they pay. A payment buys the LONGEST tier whose amount it covers. Replace the XXXX placeholders with the platform's real telebirr number and CBE account. Loaded by lib/features/payments/receipts/subscription_receipts_service.dart and tool/seed/seed.js.",
+    "currency": "ETB",
+    "tiers": [
+      { "days": 30, "amount": 500 },
+      { "days": 90, "amount": 1400 },
+      { "days": 180, "amount": 2700 },
+      { "days": 365, "amount": 5000 }
+    ],
+    "receivers": {
+      "telebirr": { "number": "+2519XXXXXXXX", "name": "Crown & Blade" },
+      "cbe": { "account": "1000XXXXXXXXX", "name": "Crown & Blade" }
+    }
+  },
+  "subscriptionPayments": [
+    { "_comment": "subscriptionPayments/{method}_{transactionId}: an owner's transfer receipt (users mode only). ownerId = the shop's ownerId, createdAt = now - createdHoursAgo, decidedAt = now - decidedHoursAgo. No receipt photos in the demo data." },
+    { "shopId": "shop_2", "method": "cbe", "transactionId": "FT26300ABC12", "amount": 1400, "status": "verified", "durationDays": 90, "verifiedAmount": 1400, "verifiedBy": "user_admin_1", "createdHoursAgo": 240, "decidedHoursAgo": 236 },
+    { "shopId": "shop_5", "method": "telebirr", "transactionId": "CHK7QX2M9P", "amount": 500, "status": "pending", "createdHoursAgo": 5 }
   ],
   "favorites": {
     "_comment": "Demo-only favorites of the signed-in customer (favorites are kept on the device).",

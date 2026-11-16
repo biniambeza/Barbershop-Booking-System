@@ -9,6 +9,423 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get rcptPayTitle => 'Pay by transfer';
+
+  @override
+  String get rcptEntryTitle => 'Pay with telebirr or CBE';
+
+  @override
+  String get rcptEntryBody =>
+      'Send the subscription fee, then upload the receipt. Your subscription is extended once it is verified.';
+
+  @override
+  String get rcptIntro =>
+      '1. Pick a period and send the amount. 2. Enter the transaction number and attach the receipt. 3. Once the receipt is verified, the days are added to your subscription.';
+
+  @override
+  String get rcptCurrentSub => 'Current subscription';
+
+  @override
+  String rcptPaidUntil(String date) {
+    return 'Paid until $date';
+  }
+
+  @override
+  String get rcptNoEnd => 'No end date';
+
+  @override
+  String get rcptPricesTitle => 'Prices';
+
+  @override
+  String rcptDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rcptTierUse => 'Tap to use this amount';
+
+  @override
+  String get rcptWhereToPay => 'Where to pay';
+
+  @override
+  String get rcptMethodTelebirr => 'telebirr';
+
+  @override
+  String get rcptMethodCbe => 'Commercial Bank of Ethiopia (CBE)';
+
+  @override
+  String get rcptMethodCbeShort => 'CBE';
+
+  @override
+  String get rcptMethodOther => 'Other bank';
+
+  @override
+  String get rcptReceiverNumber => 'telebirr number';
+
+  @override
+  String get rcptReceiverAccount => 'Account number';
+
+  @override
+  String rcptReceiverName(String name) {
+    return 'Name: $name';
+  }
+
+  @override
+  String get rcptNotConfigured => 'Not set up yet. Please contact support.';
+
+  @override
+  String get rcvSetupTitle => 'Set up where shop owners pay you';
+
+  @override
+  String get rcvSetupBody =>
+      'Owners can\'t pay their subscription until you add your telebirr number or CBE account.';
+
+  @override
+  String get rcvSetupButton => 'Set up';
+
+  @override
+  String get rcvSetupDotLabel => 'Payment setup needed';
+
+  @override
+  String get rcvErrPhone =>
+      'Enter an Ethiopian mobile number, e.g. 0911 223344.';
+
+  @override
+  String get rcvErrCbe =>
+      'Enter the 13-digit CBE account number that starts with 1000.';
+
+  @override
+  String get rcvErrPlaceholder =>
+      'Replace the XXXX sample with your real number.';
+
+  @override
+  String get rcvErrNameShort =>
+      'Enter the account holder\'s name (at least 2 characters).';
+
+  @override
+  String get rcvErrNameLong => 'Use at most 80 characters.';
+
+  @override
+  String get rcvErrFix => 'Fix the highlighted fields.';
+
+  @override
+  String get rcvTelebirrOptional =>
+      'Leave empty if you don\'t take telebirr. Owners won\'t see it.';
+
+  @override
+  String get rcvCbeOptional =>
+      'Leave empty if you don\'t take CBE transfers. Owners won\'t see it.';
+
+  @override
+  String get rcvPaymentsNotOpen =>
+      'Payments aren\'t open yet — please check back soon.';
+
+  @override
+  String get rcptCopy => 'Copy';
+
+  @override
+  String get rcptCopied => 'Copied';
+
+  @override
+  String get rcptSubmitTitle => 'Submit your receipt';
+
+  @override
+  String get rcptMethodLabel => 'Paid with';
+
+  @override
+  String get rcptTxLabel => 'Transaction number';
+
+  @override
+  String get rcptTxHintTelebirr => 'e.g. CHK1AB2CDE (in the telebirr SMS)';
+
+  @override
+  String get rcptTxHintCbe => 'e.g. FT2412345ABC (on the CBE receipt)';
+
+  @override
+  String get rcptTxHintOther => 'The reference on your receipt';
+
+  @override
+  String get rcptSuffixLabel => 'Last 8 digits of your account (optional)';
+
+  @override
+  String get rcptSuffixHelper => 'Helps us open your CBE receipt.';
+
+  @override
+  String get rcptAmountLabel => 'Amount paid (ETB)';
+
+  @override
+  String rcptAmountGrants(String days) {
+    return 'Adds $days to your subscription';
+  }
+
+  @override
+  String rcptAmountBelowMin(String amount) {
+    return 'The minimum payment is $amount';
+  }
+
+  @override
+  String get rcptPhotoLabel => 'Receipt photo or screenshot';
+
+  @override
+  String get rcptPhotoHint => 'Recommended: it makes verification faster.';
+
+  @override
+  String get rcptTakePhoto => 'Camera';
+
+  @override
+  String get rcptChooseImage => 'Gallery';
+
+  @override
+  String get rcptRemovePhoto => 'Remove photo';
+
+  @override
+  String get rcptPhotoFailed =>
+      'That image can\'t be used. Try another photo or screenshot.';
+
+  @override
+  String get rcptSubmit => 'Submit receipt';
+
+  @override
+  String get rcptSubmitted =>
+      'Receipt submitted. We\'ll notify you when it\'s verified.';
+
+  @override
+  String get rcptHistoryTitle => 'Your receipts';
+
+  @override
+  String get rcptNoHistory => 'No receipts submitted yet.';
+
+  @override
+  String get rcptStatusPending => 'Awaiting verification';
+
+  @override
+  String get rcptStatusVerified => 'Verified';
+
+  @override
+  String get rcptStatusRejected => 'Rejected';
+
+  @override
+  String get rcptStatusNeedsReview => 'Being checked';
+
+  @override
+  String rcptGranted(String days) {
+    return '$days added';
+  }
+
+  @override
+  String get rcptVerifiedAuto => 'Verified automatically';
+
+  @override
+  String get rcptReasonTitle => 'Reason';
+
+  @override
+  String rcptReasonLine(String reason) {
+    return 'Reason: $reason';
+  }
+
+  @override
+  String get rcptReasonAmountTooLow =>
+      'The amount is below the cheapest subscription.';
+
+  @override
+  String get rcptReasonDuplicate => 'This transaction has already been used.';
+
+  @override
+  String get rcptReasonNotFound => 'The official receipt could not be found.';
+
+  @override
+  String get rcptReasonNotCompleted => 'The transaction is not completed.';
+
+  @override
+  String get rcptReasonReceiverMismatch =>
+      'The money was not sent to the platform\'s account.';
+
+  @override
+  String get rcptReasonAmountMismatch => 'The receipt shows a lower amount.';
+
+  @override
+  String get rcptReasonTooOld => 'The receipt is more than 30 days old.';
+
+  @override
+  String get rcptReasonFetchFailed =>
+      'The receipt couldn\'t be checked automatically. An admin will review it.';
+
+  @override
+  String get rcptReasonUnsupported => 'An admin checks payments made this way.';
+
+  @override
+  String get rcptErrOwnerOnly => 'Only the shop owner can do this.';
+
+  @override
+  String get rcptErrAdminOnly => 'Only the platform admin can do this.';
+
+  @override
+  String get rcptErrShopNotFound => 'Shop not found.';
+
+  @override
+  String get rcptErrTxId => 'Enter a valid transaction number.';
+
+  @override
+  String get rcptErrAmount => 'Enter the amount you paid.';
+
+  @override
+  String get rcptErrDuplicate =>
+      'This transaction number has already been submitted.';
+
+  @override
+  String get rcptErrImageTooLarge => 'The photo is too large.';
+
+  @override
+  String get rcptErrNotFound => 'Receipt not found.';
+
+  @override
+  String get rcptErrNotOpen => 'This receipt has already been decided.';
+
+  @override
+  String get rcptErrReason => 'Enter a reason (up to 300 characters).';
+
+  @override
+  String get rcptErrPricing =>
+      'Check the prices: every period needs whole days and an amount, and a longer period must cost more.';
+
+  @override
+  String get rcptAdminTitle => 'Subscription receipts';
+
+  @override
+  String get rcptAdminIntro =>
+      'Open the official receipt and check the amount, receiver and date, then approve or reject.';
+
+  @override
+  String get rcptAdminOpenSection => 'To review';
+
+  @override
+  String get rcptAdminDecidedSection => 'Recently decided';
+
+  @override
+  String get rcptAdminEmpty => 'Nothing to review.';
+
+  @override
+  String rcptAdminLoadFailed(String error) {
+    return 'Couldn\'t load receipts: $error';
+  }
+
+  @override
+  String rcptAdminWouldGrant(String days) {
+    return 'Grants $days';
+  }
+
+  @override
+  String get rcptAdminTooLow => 'Below the cheapest period';
+
+  @override
+  String rcptAdminSubmitted(String date) {
+    return 'Sent $date';
+  }
+
+  @override
+  String get rcptAdminSubmittedLabel => 'Submitted';
+
+  @override
+  String get rcptAdminNoImage => 'No photo attached.';
+
+  @override
+  String get rcptAdminOpenOfficial => 'Open official receipt';
+
+  @override
+  String get rcptAdminNoOfficial =>
+      'This method has no official receipt page. Check the photo and your bank statement.';
+
+  @override
+  String get rcptAdminVerifiedAmount => 'Verified amount (ETB)';
+
+  @override
+  String rcptAdminNewEnd(String date) {
+    return 'New end date: $date';
+  }
+
+  @override
+  String get rcptApprove => 'Approve';
+
+  @override
+  String get rcptReject => 'Reject';
+
+  @override
+  String get rcptRejectTitle => 'Reject receipt';
+
+  @override
+  String get rcptRejectReasonLabel => 'Reason (the owner will see this)';
+
+  @override
+  String rcptApproved(String days, String date) {
+    return 'Approved: $days added, until $date.';
+  }
+
+  @override
+  String get rcptRejectedDone => 'Receipt rejected.';
+
+  @override
+  String get rcptPricingTitle => 'Subscription prices';
+
+  @override
+  String get rcptPricingIntro =>
+      'Owners see these prices. A payment buys the longest period it covers.';
+
+  @override
+  String get rcptPricingDays => 'Days';
+
+  @override
+  String get rcptPricingAmount => 'Amount (ETB)';
+
+  @override
+  String get rcptPricingAddTier => 'Add a period';
+
+  @override
+  String get rcptPricingRemoveTier => 'Remove';
+
+  @override
+  String get rcptPricingTelebirr => 'telebirr receiver';
+
+  @override
+  String get rcptPricingCbe => 'CBE receiver';
+
+  @override
+  String get rcptPricingName => 'Account name';
+
+  @override
+  String get rcptPricingSave => 'Save prices';
+
+  @override
+  String get rcptPricingSaved => 'Prices saved.';
+
+  @override
+  String get rcptNotifApprovedTitle => 'Subscription payment approved';
+
+  @override
+  String rcptNotifApprovedBody(int days, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days were',
+      one: '1 day was',
+    );
+    return '$_temp0 added. Your subscription runs until $date.';
+  }
+
+  @override
+  String get rcptNotifRejectedTitle => 'Subscription payment rejected';
+
+  @override
+  String rcptNotifRejectedBody(String transactionId, String reason) {
+    return 'Transaction $transactionId: $reason';
+  }
+
+  @override
   String get queueTitle => 'Walk-in queue';
 
   @override
@@ -308,6 +725,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Figures update a few seconds after each booking change.';
 
   @override
+  String freePlanReportsFromBookings(int days) {
+    return 'Based on the last $days days of bookings.';
+  }
+
+  @override
+  String get freePlanRequestNoAnswer => 'No answer';
+
+  @override
   String get appTitle => 'Crown & Blade - Barbershop Booking';
 
   @override
@@ -390,18 +815,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String bookingsCount(int count) {
-    return '$count Bookings';
-  }
-
-  @override
   String barberLabel(String name) {
     return 'Barber: $name';
-  }
-
-  @override
-  String clientLabel(String name) {
-    return 'Client: $name';
   }
 
   @override
@@ -818,6 +1233,32 @@ class AppLocalizationsEn extends AppLocalizations {
       'Booking confirmations, changes and reminders will appear here.';
 
   @override
+  String get earlyFinishBannerTitle =>
+      'Your barber is free now — come in early';
+
+  @override
+  String earlyFinishBannerBody(String barber, String time) {
+    return '$barber finished early. You can come in before your $time appointment.';
+  }
+
+  @override
+  String get earlyFinishCallShop => 'Call shop';
+
+  @override
+  String get earlyFinishDirections => 'Directions';
+
+  @override
+  String earlyFinishNotified(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count customers were told they can come early',
+      one: '1 customer was told they can come early',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get justNow => 'Just now';
 
   @override
@@ -970,12 +1411,226 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adminSubtitle => 'Platform System Administration';
 
   @override
-  String get deleteShopTitle => 'Delete Barbershop?';
+  String get adminShopsHeroTitle => 'Barbershops on the platform';
 
   @override
-  String deleteShopBody(String shop) {
-    return 'Are you sure you want to remove \"$shop\" and all associated barbers, services and appointments?';
+  String get adminShopsMetricBookable => 'Bookable';
+
+  @override
+  String get adminShopsMetricSuspended => 'Suspended';
+
+  @override
+  String get adminShopsFilterActive => 'Active';
+
+  @override
+  String get adminShopsFilterSuspended => 'Suspended';
+
+  @override
+  String get adminShopsFilterUnverified => 'Unverified';
+
+  @override
+  String get adminShopsEdit => 'Edit';
+
+  @override
+  String get adminShopsEditTitle => 'Edit barbershop';
+
+  @override
+  String get adminShopsSectionProfile => 'Shop profile';
+
+  @override
+  String get adminShopsSectionPlatform => 'Verification & subscription';
+
+  @override
+  String get adminShopsSectionOwner => 'Owner';
+
+  @override
+  String get adminShopsSectionStatus => 'Availability';
+
+  @override
+  String get adminShopsFieldName => 'Shop name';
+
+  @override
+  String get adminShopsFieldAddress => 'Address';
+
+  @override
+  String get adminShopsFieldSubCity => 'Sub-city';
+
+  @override
+  String get adminShopsFieldLandmark => 'Landmark (optional)';
+
+  @override
+  String get adminShopsFieldPhone => 'Shop phone';
+
+  @override
+  String get adminShopsFieldDescription => 'Description';
+
+  @override
+  String adminShopsHoursReadOnly(String days, String hours) {
+    return 'Opening hours: $days $hours · set by the shop owner';
   }
+
+  @override
+  String get adminShopsFieldVerified => 'Verified partner';
+
+  @override
+  String get adminShopsFieldVerifiedHint =>
+      'Shows the verified badge to customers';
+
+  @override
+  String get adminShopsFieldPlan => 'Plan';
+
+  @override
+  String get adminShopsFieldStatus => 'Subscription status';
+
+  @override
+  String get adminShopsFieldEndsAt => 'Subscription ends';
+
+  @override
+  String get adminShopsNoEndDate => 'No end date';
+
+  @override
+  String get adminShopsClearDate => 'Clear date';
+
+  @override
+  String get adminShopsOverrideHint =>
+      'Admin override: changes here are saved directly to the shop.';
+
+  @override
+  String get adminShopsSave => 'Save changes';
+
+  @override
+  String get adminShopsSaved => 'Shop saved';
+
+  @override
+  String adminShopsOwnerSignedUp(String email) {
+    return 'Signed up · $email';
+  }
+
+  @override
+  String adminShopsOwnerInvitePending(String email) {
+    return 'Invite pending: $email gets owner access when they sign in';
+  }
+
+  @override
+  String get adminShopsOwnerNone => 'No owner assigned';
+
+  @override
+  String get adminShopsStatusActive => 'Active';
+
+  @override
+  String get adminShopsStatusAdminSuspended => 'Suspended by admin';
+
+  @override
+  String get adminShopsStatusUnpaid => 'Subscription suspended';
+
+  @override
+  String adminShopsSuspendedSince(String date, String reason) {
+    return 'Suspended on $date: $reason';
+  }
+
+  @override
+  String get adminShopsSuspend => 'Suspend shop';
+
+  @override
+  String get adminShopsReactivate => 'Reactivate shop';
+
+  @override
+  String adminShopsSuspendTitle(String shop) {
+    return 'Suspend $shop?';
+  }
+
+  @override
+  String get adminShopsSuspendBody =>
+      'Customers will not see this shop or be able to book it. Existing bookings stay. The owner sees your reason.';
+
+  @override
+  String get adminShopsReasonLabel => 'Reason (shown to the owner)';
+
+  @override
+  String adminShopsSuspendedToast(String shop) {
+    return '$shop suspended';
+  }
+
+  @override
+  String adminShopsReactivateTitle(String shop) {
+    return 'Reactivate $shop?';
+  }
+
+  @override
+  String get adminShopsReactivateBody =>
+      'Customers will be able to find and book this shop again.';
+
+  @override
+  String adminShopsReactivatedToast(String shop) {
+    return '$shop reactivated';
+  }
+
+  @override
+  String adminShopsDeleteBody(String shop) {
+    return 'This permanently deletes $shop with its services, barbers and pending invites. Booking history is kept. Type the shop name to confirm.';
+  }
+
+  @override
+  String get adminShopsDeleteTypeName => 'Shop name';
+
+  @override
+  String get adminShopsErrReasonRequired => 'Enter a reason.';
+
+  @override
+  String adminShopsErrReasonTooLong(int max) {
+    return 'Keep the reason under $max characters.';
+  }
+
+  @override
+  String get adminShopsErrNameRequired => 'Enter the shop name.';
+
+  @override
+  String get adminShopsErrNameTooLong => 'The shop name is too long.';
+
+  @override
+  String get adminShopsErrAddressRequired => 'Enter the address.';
+
+  @override
+  String get adminShopsErrTextTooLong => 'Some of the text is too long.';
+
+  @override
+  String get adminShopsErrPlan => 'Unknown plan.';
+
+  @override
+  String get adminShopsErrNotFound => 'This shop no longer exists.';
+
+  @override
+  String get adminShopsErrNotAdmin => 'Only the platform admin can do this.';
+
+  @override
+  String get adminShopsErrNameMismatch => 'The name does not match.';
+
+  @override
+  String get adminShopsUnavailableTitle => 'Temporarily unavailable';
+
+  @override
+  String get adminShopsUnavailableBody =>
+      'This barbershop is not taking bookings right now. Your existing appointments are not affected.';
+
+  @override
+  String get adminShopsOwnerBannerTitle =>
+      'Your shop is suspended by the platform';
+
+  @override
+  String get adminShopsOwnerBannerBody =>
+      'Customers cannot find or book your shop until it is reactivated. Existing bookings stay.';
+
+  @override
+  String adminShopsOwnerBannerReason(String reason) {
+    return 'Reason: $reason';
+  }
+
+  @override
+  String get adminShopsOwnerBannerContact =>
+      'Contact the platform admin to reactivate it.';
+
+  @override
+  String get deleteShopTitle => 'Delete Barbershop?';
 
   @override
   String shopRemoved(String shop) {
@@ -996,11 +1651,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String tabBookings(int count) {
-    return 'Bookings ($count)';
-  }
-
-  @override
   String get registerBarbershop => 'Register Barbershop';
 
   @override
@@ -1016,12 +1666,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get metricAcrossNetwork => 'Across network';
 
   @override
-  String get metricPlatformSales => 'Platform Sales';
-
-  @override
-  String get metricGrossVolume => 'Gross volume';
-
-  @override
   String get searchShopsAdminHint =>
       'Search shops by name, address, or sub-city...';
 
@@ -1029,15 +1673,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get filterVerifiedPartners => 'Verified Partners';
 
   @override
-  String get filterOpenNow => 'Open Now';
-
-  @override
   String registeredBarbershopsCount(int count) {
     return 'Registered Barbershops ($count)';
   }
-
-  @override
-  String get adminActionsEnabled => 'Admin Actions Enabled';
 
   @override
   String get noRegisteredShops => 'No registered barbershops found';
@@ -1080,14 +1718,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String assignedShop(String shop) {
     return 'Assigned Shop: $shop';
-  }
-
-  @override
-  String get noPlatformAppointments => 'No platform appointments recorded yet';
-
-  @override
-  String scheduleAt(String when) {
-    return 'Schedule: $when';
   }
 
   @override
@@ -1162,10 +1792,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sectionHours => '4. Business Hours & Verification';
 
   @override
-  String get openingTime => 'Opening Time';
-
-  @override
-  String get closingTime => 'Closing Time';
+  String get adminRegisterHoursOwnerNote =>
+      'The shop owner sets the opening hours after signing in.';
 
   @override
   String get markVerifiedPartner => 'Mark as Verified Partner Shop';
@@ -1484,7 +2112,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get findBarbers => 'Find Barbers';
 
   @override
-  String get subCityFilterLabel => 'Sub-city:';
+  String get allSubCities => 'All sub-cities';
+
+  @override
+  String get subCityFilterTooltip => 'Filter barbershops by sub-city';
+
+  @override
+  String subCityOptionCount(String name, int count) {
+    return '$name ($count)';
+  }
 
   @override
   String get catFades => 'Fades & Tapers';
@@ -2162,6 +2798,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkAgain => 'Check again';
 
   @override
+  String get subExpTrialEnded =>
+      'Your trial ended — pay to keep taking bookings. Your shop will be suspended soon unless you pay.';
+
+  @override
+  String get subExpTrialEndedToday =>
+      'Your trial ended — pay to keep taking bookings. Your shop will be suspended today unless you pay.';
+
+  @override
+  String subExpTrialEndedInDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Your trial ended — pay to keep taking bookings. $count days left before your shop is suspended.',
+      one:
+          'Your trial ended — pay to keep taking bookings. 1 day left before your shop is suspended.',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get bannerSuspended =>
       'Your shop is suspended: customers cannot see or book it. Pay your subscription to reactivate it.';
 
@@ -2518,13 +3175,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reviewsTitle => 'Reviews';
 
   @override
-  String get reviewsRateAction => 'Rate visit';
+  String get reviewsRateAction => 'Rate your barber';
 
   @override
   String get reviewsYourRating => 'Your rating';
 
   @override
-  String get reviewsRateTitle => 'Rate your visit';
+  String get reviewsRateTitle => 'Rate your barber';
 
   @override
   String reviewsRateSubtitle(String service, String barber) {
@@ -2549,7 +3206,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reviewsCommentLabel => 'Comment (optional)';
 
   @override
-  String get reviewsCommentHint => 'What did you like? What could be better?';
+  String get reviewsCommentHint => 'Tell us about your experience';
 
   @override
   String get reviewsSubmit => 'Send review';
@@ -2809,7 +3466,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errEmailNotVerified =>
-      'This email address is not verified. Sign in with Google or contact support.';
+      'Please verify your email first. Open the link we emailed you, then log in.';
 
   @override
   String get emailErrSendFailed =>
@@ -3486,4 +4143,328 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get barberInviteWaiting => 'Invitation sent — waiting for sign-up';
+
+  @override
+  String get staffAcctSheetTitle => 'Add a barber';
+
+  @override
+  String get staffAcctSheetIntro =>
+      'Create a login for your barber. They log in with this email and the temporary password, then choose their own password.';
+
+  @override
+  String get staffAcctEmailLabel => 'Login email';
+
+  @override
+  String get staffAcctNameRequired => 'Enter the barber\'s name';
+
+  @override
+  String get staffAcctEmailRequired =>
+      'Enter the email the barber will log in with';
+
+  @override
+  String get staffAcctTempPasswordLabel => 'Temporary password';
+
+  @override
+  String get staffAcctTempPasswordHelper =>
+      '8 to 128 characters with a letter and a number. The barber changes it at first login.';
+
+  @override
+  String get staffAcctRegenerate => 'Generate a new password';
+
+  @override
+  String get staffAcctCopyPassword => 'Copy password';
+
+  @override
+  String get staffAcctCopied => 'Copied';
+
+  @override
+  String get staffAcctCreate => 'Create account';
+
+  @override
+  String get staffAcctInviteSectionTitle =>
+      'Already has a Crown & Blade account?';
+
+  @override
+  String get staffAcctInviteInstead => 'Invite by email instead';
+
+  @override
+  String get staffAcctEmailInUseTitle => 'This email already has an account';
+
+  @override
+  String staffAcctEmailInUseBody(String email) {
+    return '$email is already registered, so we can\'t create a new login for it. Send an invitation instead: they log in with their own password or Google and join your shop as a barber.';
+  }
+
+  @override
+  String get staffAcctSendInvite => 'Send invitation instead';
+
+  @override
+  String staffAcctInviteSaved(String email) {
+    return 'Invitation saved. $email becomes a barber at your shop at their next login.';
+  }
+
+  @override
+  String get staffAcctCreatedTitle => 'Barber account created';
+
+  @override
+  String staffAcctCreatedBody(String name) {
+    return 'Give these details to $name. They log in with this email and password, then choose their own password.';
+  }
+
+  @override
+  String get staffAcctEmailField => 'Email';
+
+  @override
+  String get staffAcctShownOnce =>
+      'The temporary password is shown only now. Copy it or write it down before closing.';
+
+  @override
+  String get staffAcctCopyDetails => 'Copy login details';
+
+  @override
+  String get staffAcctDetailsHeading => 'Crown & Blade barber login';
+
+  @override
+  String get staffAcctDetailsFooter =>
+      'After logging in, choose your own password.';
+
+  @override
+  String get staffAcctWaitingFirstLogin => 'Waiting for first login';
+
+  @override
+  String get staffAcctActive => 'Active';
+
+  @override
+  String get staffAcctLostPasswordHint =>
+      'Lost the temporary password? They can tap \"Forgot password?\" on the login screen to reset it by email.';
+
+  @override
+  String get staffAcctForceTitle => 'Choose your new password';
+
+  @override
+  String get staffAcctForceIntro =>
+      'You logged in with a temporary password from your barbershop. Choose your own password to continue.';
+
+  @override
+  String get staffAcctForceTempLabel => 'Temporary password';
+
+  @override
+  String get staffAcctForceTempRequired =>
+      'Enter the temporary password you received';
+
+  @override
+  String get staffAcctForceWrongTemp =>
+      'The temporary password is not correct.';
+
+  @override
+  String get staffAcctForceSameAsTemp =>
+      'Choose a password different from the temporary one.';
+
+  @override
+  String get staffAcctForceSave => 'Save and continue';
+
+  @override
+  String get staffAcctForceDone => 'Password saved. Welcome!';
+
+  @override
+  String get authContinue => 'Continue';
+
+  @override
+  String get registerLinkIntro =>
+      'Enter your email. Next you\'ll create a password, and we\'ll email you a link to verify the address.';
+
+  @override
+  String registerLinkPasswordIntro(String email) {
+    return 'You\'ll log in with $email. After you create your account, we\'ll email you a verification link.';
+  }
+
+  @override
+  String get verifyLinkSentTitle => 'Verify your email';
+
+  @override
+  String verifyLinkSentBody(String email) {
+    return 'We sent a verification link to $email. Open it, then come back and log in.';
+  }
+
+  @override
+  String get verifyLinkNotSent =>
+      'Your account was created, but we couldn\'t send the verification link. Tap \"Resend link\" to try again.';
+
+  @override
+  String get verifiedLogIn => 'I\'ve verified — Log in';
+
+  @override
+  String get resendLink => 'Resend link';
+
+  @override
+  String resendLinkIn(int seconds) {
+    return 'Resend link in $seconds s';
+  }
+
+  @override
+  String linkResent(String email) {
+    return 'We sent a new link to $email.';
+  }
+
+  @override
+  String get resetLinkIntro =>
+      'Enter your account email and we\'ll send you a link to choose a new password.';
+
+  @override
+  String get sendLink => 'Send link';
+
+  @override
+  String get resetLinkSentTitle => 'Check your email';
+
+  @override
+  String resetLinkSentBody(String email) {
+    return 'We sent a password reset link to $email. Open it, choose a new password, then log in here.';
+  }
+
+  @override
+  String get emailErrNotVerified => 'Please verify your email first.';
+
+  @override
+  String get resendVerificationLink => 'Resend verification link';
+
+  @override
+  String get emailAlreadyVerified =>
+      'Your email is already verified. Log in again.';
+
+  @override
+  String ratingShopSummary(String rating, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count barbers rated',
+      one: '1 barber rated',
+    );
+    return '$rating · $_temp0';
+  }
+
+  @override
+  String ratingBarbersRated(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count barbers rated',
+      one: '1 barber rated',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String ratingSeeBarberReviews(String name) {
+    return 'See $name\'s reviews';
+  }
+
+  @override
+  String get reviewsByBarber => 'Reviews by barber';
+
+  @override
+  String get ratePromptTitle => 'How was your cut?';
+
+  @override
+  String ratePromptBody(String barber, String service, String shop) {
+    return 'Rate $barber for your $service at $shop.';
+  }
+
+  @override
+  String get ratePromptDismiss => 'Not now';
+
+  @override
+  String get admPayTab => 'Payments';
+
+  @override
+  String get admPayIncomeLabel => 'Subscription income';
+
+  @override
+  String get admPayThisMonth => 'This month';
+
+  @override
+  String admPayVerifiedCount(int count) {
+    return '$count verified';
+  }
+
+  @override
+  String admPayPendingCount(int count) {
+    return '$count waiting';
+  }
+
+  @override
+  String admPayRejectedCount(int count) {
+    return '$count rejected';
+  }
+
+  @override
+  String get admPayShopsActive => 'Active';
+
+  @override
+  String get admPayShopsTrial => 'Trial';
+
+  @override
+  String get admPayShopsPastDue => 'Past due';
+
+  @override
+  String get admPayShopsSuspended => 'Suspended';
+
+  @override
+  String get admPayManage => 'Manage payments';
+
+  @override
+  String get admPayNoPending => 'Nothing waiting for review';
+
+  @override
+  String get admPayTypesTitle => 'Subscription types & prices';
+
+  @override
+  String get admPayTypesSubtitle =>
+      'Add, remove or change lengths and prices, and where owners pay';
+
+  @override
+  String get admPaySubscriptionsSubtitle =>
+      'Each shop\'s plan, status and end date';
+
+  @override
+  String get admPayOnlineTitle => 'Online payments';
+
+  @override
+  String get admPayOnlineSubtitle =>
+      'Card and Chapa payments that need a decision';
+
+  @override
+  String get admPayTypesOnSale => 'Subscription types on sale';
+
+  @override
+  String get admPayEdit => 'Edit';
+
+  @override
+  String get admPayReceiversMissing =>
+      'Add your telebirr number or CBE account so owners know where to pay.';
+
+  @override
+  String admPayExpiringTitle(int count) {
+    return 'Ending within 7 days ($count)';
+  }
+
+  @override
+  String admPayDaysLeft(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days left',
+      one: '1 day left',
+      zero: 'Ends today',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get admPayRecentTitle => 'Latest payments';
+
+  @override
+  String get admPaySeeAll => 'See all';
+
+  @override
+  String get admPayNoPayments => 'No payments yet.';
 }

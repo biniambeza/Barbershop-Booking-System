@@ -28,7 +28,7 @@ class OwnerReviewsButton extends StatelessWidget {
         child: ListenableBuilder(
           listenable: AppRepository.instance,
           builder: (context, _) {
-            final summary = ReviewsService.instance.shopSummary(shopId);
+            final rating = ReviewsService.instance.shopRating(shopId);
             return OutlinedButton.icon(
               key: const ValueKey('open-reviews'),
               onPressed: () => Navigator.push(
@@ -50,13 +50,18 @@ class OwnerReviewsButton extends StatelessWidget {
                     child: Text(l.reviewsOpenButton,
                         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                   ),
-                  if (summary.count > 0) ...[
+                  if (!rating.isNew) ...[
                     const Icon(Icons.star_rounded, size: 16, color: AppTheme.orange),
                     const SizedBox(width: 3),
-                    Text(
-                      summary.rating.toStringAsFixed(1),
-                      style: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.textSecondary),
+                    // "4.6 · 3 barbers rated"
+                    Flexible(
+                      child: Text(
+                        l.shopRatingText(rating),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 12.5, fontWeight: FontWeight.w700, color: AppTheme.textSecondary),
+                      ),
                     ),
                     const SizedBox(width: 6),
                   ],

@@ -7,17 +7,30 @@ import '../../../l10n/l10n.dart';
 import '../../../services/app_repository.dart';
 import 'auth_form_fields.dart';
 
-enum _ResetStep { email, code, password }
+enum _ResetStep { email, code, password, linkSent }
 
 /// Forgot password in three steps: email → "Send code"; the emailed code →
 /// "Verify"; then (only after a correct code) new password + confirm →
 /// "Save". Calls [onDone] with the email after the password was changed.
+///
+/// Free-plan fallback (the code functions are not deployed): the email step
+/// sends Firebase's password reset link and shows "Check your email" with
+/// "Back to log in" ([onBackToLogin], email prefilled) and "Resend".
 class ForgotPasswordForm extends StatefulWidget {
-  const ForgotPasswordForm({super.key, this.initialEmail, required this.onDone, required this.onCancel});
+  const ForgotPasswordForm({
+    super.key,
+    this.initialEmail,
+    required this.onDone,
+    required this.onCancel,
+    this.onBackToLogin,
+  });
 
   final String? initialEmail;
   final ValueChanged<String> onDone;
   final VoidCallback onCancel;
+
+  /// Fallback: back to log in with the email the link went to.
+  final ValueChanged<String>? onBackToLogin;
 
   @override
   State<ForgotPasswordForm> createState() => _ForgotPasswordFormState();
@@ -104,7 +117,24 @@ class _ForgotPasswordFormState extends State<ForgotPasswordForm> {
     final l = context.l10n;
     final email = resend ? _sentTo! : _email.text;
     await _guard(() async {
-      final sent = await AppRepository.instance.resetRequestCode(email: email, language: language);
+      final EmailCodeSent sent;
+      if (resend) {
+        sent = await AppRepository.instance.resetRequestCode(email: email, language: language);
+      } else {
+        final start = await AppRepository.instance.resetStart(email: email, language: language);
+        if (!mounted) return;
+        if (start.usesLink) {
+          // Free plan: Firebase emailed a reset link.
+          setState(() {
+            _sentTo = validEmailOrNull(email);
+            _sentAt = DateTime.now();
+            _cooldown = 60;
+            _step = _ResetStep.linkSent;
+          });
+          return;
+        }
+        sent = start.sent!;
+      }
       if (!mounted) return;
       setState(() {
         _sentTo = validEmailOrNull(email);
@@ -118,6 +148,32 @@ class _ForgotPasswordFormState extends State<ForgotPasswordForm> {
         }
       });
     });
+  }
+
+  /// Fallback: sends the reset link again.
+  Future<void> _resendLink() async {
+    final language = emailLanguageOf(context);
+    final l = context.l10n;
+    final email = _sentTo!;
+    await _guard(() async {
+      await AppRepository.instance.resetSendLink(email: email, language: language);
+      if (!mounted) return;
+      setState(() {
+        _sentAt = DateTime.now();
+        _cooldown = 60;
+        _info = l.linkResent(email);
+      });
+    });
+  }
+
+  void _backToLogin() {
+    final back = widget.onBackToLogin;
+    final email = _sentTo;
+    if (back != null && email != null) {
+      back(email);
+    } else {
+      widget.onCancel();
+    }
   }
 
   Future<void> _verify() async {
@@ -182,6 +238,8 @@ class _ForgotPasswordFormState extends State<ForgotPasswordForm> {
         step = _buildCodeStep(context, _sentTo!);
       case _ResetStep.password:
         step = _buildPasswordStep(context, _sentTo!);
+      case _ResetStep.linkSent:
+        return _buildLinkSentStep(context, _sentTo!);
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -213,18 +271,67 @@ class _ForgotPasswordFormState extends State<ForgotPasswordForm> {
               ),
           ],
         ),
-        if (kDemoMode && _step != _ResetStep.password) const DemoEmailHint(),
+        if (kDemoMode && _step != _ResetStep.password && !AppRepository.instance.resetUsesLink) const DemoEmailHint(),
+      ],
+    );
+  }
+
+  Widget _buildLinkSentStep(BuildContext context, String email) {
+    final l = context.l10n;
+    return Column(
+      key: const ValueKey('reset-step-link-sent'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AuthLinkSentPanel(
+          title: l.resetLinkSentTitle,
+          body: l.resetLinkSentBody(email),
+          bodyKey: const ValueKey('reset-link-sent'),
+        ),
+        AuthSubmitButton(
+          key: const ValueKey('reset-link-back'),
+          label: l.backToLogin,
+          busy: _busy,
+          onPressed: _backToLogin,
+        ),
+        AuthErrorText(_error),
+        AuthInfoText(_info),
+        const SizedBox(height: 6),
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            TextButton(
+              key: const ValueKey('reset-change-email'),
+              onPressed: _busy ? null : _restart,
+              child: Text(l.changeEmail),
+            ),
+            ResendCodeButton(
+              sentAt: _sentAt,
+              cooldownSeconds: _cooldown,
+              label: l.resendLink,
+              waitingLabel: l.resendLinkIn,
+              buttonKey: const ValueKey('reset-resend-link'),
+              onResend: _busy ? null : _resendLink,
+            ),
+          ],
+        ),
       ],
     );
   }
 
   Widget _buildEmailStep(BuildContext context) {
     final l = context.l10n;
+    final usesLink = AppRepository.instance.resetUsesLink;
     return Column(
       key: const ValueKey('reset-step-email'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AuthStepHeader(step: 1, total: 3, title: l.resetTitle, subtitle: l.resetIntro),
+        AuthStepHeader(
+          step: 1,
+          total: usesLink ? 2 : 3,
+          title: l.resetTitle,
+          subtitle: usesLink ? l.resetLinkIntro : l.resetIntro,
+        ),
         EmailField(
           key: const ValueKey('reset-email'),
           controller: _email,
@@ -233,7 +340,7 @@ class _ForgotPasswordFormState extends State<ForgotPasswordForm> {
         const SizedBox(height: 16),
         AuthSubmitButton(
           key: const ValueKey('reset-send-code'),
-          label: l.sendCode,
+          label: usesLink ? l.sendLink : l.sendCode,
           busy: _busy,
           onPressed: _sendCode,
         ),

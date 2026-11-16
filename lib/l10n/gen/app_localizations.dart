@@ -98,6 +98,720 @@ abstract class AppLocalizations {
     Locale('en')
   ];
 
+  /// No description provided for @rcptPayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay by transfer'**
+  String get rcptPayTitle;
+
+  /// No description provided for @rcptEntryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay with telebirr or CBE'**
+  String get rcptEntryTitle;
+
+  /// No description provided for @rcptEntryBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Send the subscription fee, then upload the receipt. Your subscription is extended once it is verified.'**
+  String get rcptEntryBody;
+
+  /// No description provided for @rcptIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Pick a period and send the amount. 2. Enter the transaction number and attach the receipt. 3. Once the receipt is verified, the days are added to your subscription.'**
+  String get rcptIntro;
+
+  /// No description provided for @rcptCurrentSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Current subscription'**
+  String get rcptCurrentSub;
+
+  /// No description provided for @rcptPaidUntil.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid until {date}'**
+  String rcptPaidUntil(String date);
+
+  /// No description provided for @rcptNoEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'No end date'**
+  String get rcptNoEnd;
+
+  /// No description provided for @rcptPricesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Prices'**
+  String get rcptPricesTitle;
+
+  /// No description provided for @rcptDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 day} other{{count} days}}'**
+  String rcptDays(int count);
+
+  /// No description provided for @rcptTierUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to use this amount'**
+  String get rcptTierUse;
+
+  /// No description provided for @rcptWhereToPay.
+  ///
+  /// In en, this message translates to:
+  /// **'Where to pay'**
+  String get rcptWhereToPay;
+
+  /// No description provided for @rcptMethodTelebirr.
+  ///
+  /// In en, this message translates to:
+  /// **'telebirr'**
+  String get rcptMethodTelebirr;
+
+  /// No description provided for @rcptMethodCbe.
+  ///
+  /// In en, this message translates to:
+  /// **'Commercial Bank of Ethiopia (CBE)'**
+  String get rcptMethodCbe;
+
+  /// No description provided for @rcptMethodCbeShort.
+  ///
+  /// In en, this message translates to:
+  /// **'CBE'**
+  String get rcptMethodCbeShort;
+
+  /// No description provided for @rcptMethodOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other bank'**
+  String get rcptMethodOther;
+
+  /// No description provided for @rcptReceiverNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'telebirr number'**
+  String get rcptReceiverNumber;
+
+  /// No description provided for @rcptReceiverAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Account number'**
+  String get rcptReceiverAccount;
+
+  /// No description provided for @rcptReceiverName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name: {name}'**
+  String rcptReceiverName(String name);
+
+  /// No description provided for @rcptNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set up yet. Please contact support.'**
+  String get rcptNotConfigured;
+
+  /// No description provided for @rcvSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up where shop owners pay you'**
+  String get rcvSetupTitle;
+
+  /// No description provided for @rcvSetupBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Owners can\'t pay their subscription until you add your telebirr number or CBE account.'**
+  String get rcvSetupBody;
+
+  /// No description provided for @rcvSetupButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up'**
+  String get rcvSetupButton;
+
+  /// No description provided for @rcvSetupDotLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment setup needed'**
+  String get rcvSetupDotLabel;
+
+  /// No description provided for @rcvErrPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an Ethiopian mobile number, e.g. 0911 223344.'**
+  String get rcvErrPhone;
+
+  /// No description provided for @rcvErrCbe.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the 13-digit CBE account number that starts with 1000.'**
+  String get rcvErrCbe;
+
+  /// No description provided for @rcvErrPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace the XXXX sample with your real number.'**
+  String get rcvErrPlaceholder;
+
+  /// No description provided for @rcvErrNameShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the account holder\'s name (at least 2 characters).'**
+  String get rcvErrNameShort;
+
+  /// No description provided for @rcvErrNameLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Use at most 80 characters.'**
+  String get rcvErrNameLong;
+
+  /// No description provided for @rcvErrFix.
+  ///
+  /// In en, this message translates to:
+  /// **'Fix the highlighted fields.'**
+  String get rcvErrFix;
+
+  /// No description provided for @rcvTelebirrOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty if you don\'t take telebirr. Owners won\'t see it.'**
+  String get rcvTelebirrOptional;
+
+  /// No description provided for @rcvCbeOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty if you don\'t take CBE transfers. Owners won\'t see it.'**
+  String get rcvCbeOptional;
+
+  /// No description provided for @rcvPaymentsNotOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Payments aren\'t open yet — please check back soon.'**
+  String get rcvPaymentsNotOpen;
+
+  /// No description provided for @rcptCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get rcptCopy;
+
+  /// No description provided for @rcptCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get rcptCopied;
+
+  /// No description provided for @rcptSubmitTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit your receipt'**
+  String get rcptSubmitTitle;
+
+  /// No description provided for @rcptMethodLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid with'**
+  String get rcptMethodLabel;
+
+  /// No description provided for @rcptTxLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Transaction number'**
+  String get rcptTxLabel;
+
+  /// No description provided for @rcptTxHintTelebirr.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. CHK1AB2CDE (in the telebirr SMS)'**
+  String get rcptTxHintTelebirr;
+
+  /// No description provided for @rcptTxHintCbe.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. FT2412345ABC (on the CBE receipt)'**
+  String get rcptTxHintCbe;
+
+  /// No description provided for @rcptTxHintOther.
+  ///
+  /// In en, this message translates to:
+  /// **'The reference on your receipt'**
+  String get rcptTxHintOther;
+
+  /// No description provided for @rcptSuffixLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 8 digits of your account (optional)'**
+  String get rcptSuffixLabel;
+
+  /// No description provided for @rcptSuffixHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Helps us open your CBE receipt.'**
+  String get rcptSuffixHelper;
+
+  /// No description provided for @rcptAmountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount paid (ETB)'**
+  String get rcptAmountLabel;
+
+  /// No description provided for @rcptAmountGrants.
+  ///
+  /// In en, this message translates to:
+  /// **'Adds {days} to your subscription'**
+  String rcptAmountGrants(String days);
+
+  /// No description provided for @rcptAmountBelowMin.
+  ///
+  /// In en, this message translates to:
+  /// **'The minimum payment is {amount}'**
+  String rcptAmountBelowMin(String amount);
+
+  /// No description provided for @rcptPhotoLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt photo or screenshot'**
+  String get rcptPhotoLabel;
+
+  /// No description provided for @rcptPhotoHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended: it makes verification faster.'**
+  String get rcptPhotoHint;
+
+  /// No description provided for @rcptTakePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get rcptTakePhoto;
+
+  /// No description provided for @rcptChooseImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Gallery'**
+  String get rcptChooseImage;
+
+  /// No description provided for @rcptRemovePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove photo'**
+  String get rcptRemovePhoto;
+
+  /// No description provided for @rcptPhotoFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'That image can\'t be used. Try another photo or screenshot.'**
+  String get rcptPhotoFailed;
+
+  /// No description provided for @rcptSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit receipt'**
+  String get rcptSubmit;
+
+  /// No description provided for @rcptSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt submitted. We\'ll notify you when it\'s verified.'**
+  String get rcptSubmitted;
+
+  /// No description provided for @rcptHistoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your receipts'**
+  String get rcptHistoryTitle;
+
+  /// No description provided for @rcptNoHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'No receipts submitted yet.'**
+  String get rcptNoHistory;
+
+  /// No description provided for @rcptStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Awaiting verification'**
+  String get rcptStatusPending;
+
+  /// No description provided for @rcptStatusVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified'**
+  String get rcptStatusVerified;
+
+  /// No description provided for @rcptStatusRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'Rejected'**
+  String get rcptStatusRejected;
+
+  /// No description provided for @rcptStatusNeedsReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Being checked'**
+  String get rcptStatusNeedsReview;
+
+  /// No description provided for @rcptGranted.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} added'**
+  String rcptGranted(String days);
+
+  /// No description provided for @rcptVerifiedAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified automatically'**
+  String get rcptVerifiedAuto;
+
+  /// No description provided for @rcptReasonTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason'**
+  String get rcptReasonTitle;
+
+  /// No description provided for @rcptReasonLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason: {reason}'**
+  String rcptReasonLine(String reason);
+
+  /// No description provided for @rcptReasonAmountTooLow.
+  ///
+  /// In en, this message translates to:
+  /// **'The amount is below the cheapest subscription.'**
+  String get rcptReasonAmountTooLow;
+
+  /// No description provided for @rcptReasonDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'This transaction has already been used.'**
+  String get rcptReasonDuplicate;
+
+  /// No description provided for @rcptReasonNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'The official receipt could not be found.'**
+  String get rcptReasonNotFound;
+
+  /// No description provided for @rcptReasonNotCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'The transaction is not completed.'**
+  String get rcptReasonNotCompleted;
+
+  /// No description provided for @rcptReasonReceiverMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'The money was not sent to the platform\'s account.'**
+  String get rcptReasonReceiverMismatch;
+
+  /// No description provided for @rcptReasonAmountMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'The receipt shows a lower amount.'**
+  String get rcptReasonAmountMismatch;
+
+  /// No description provided for @rcptReasonTooOld.
+  ///
+  /// In en, this message translates to:
+  /// **'The receipt is more than 30 days old.'**
+  String get rcptReasonTooOld;
+
+  /// No description provided for @rcptReasonFetchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The receipt couldn\'t be checked automatically. An admin will review it.'**
+  String get rcptReasonFetchFailed;
+
+  /// No description provided for @rcptReasonUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'An admin checks payments made this way.'**
+  String get rcptReasonUnsupported;
+
+  /// No description provided for @rcptErrOwnerOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the shop owner can do this.'**
+  String get rcptErrOwnerOnly;
+
+  /// No description provided for @rcptErrAdminOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the platform admin can do this.'**
+  String get rcptErrAdminOnly;
+
+  /// No description provided for @rcptErrShopNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Shop not found.'**
+  String get rcptErrShopNotFound;
+
+  /// No description provided for @rcptErrTxId.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid transaction number.'**
+  String get rcptErrTxId;
+
+  /// No description provided for @rcptErrAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the amount you paid.'**
+  String get rcptErrAmount;
+
+  /// No description provided for @rcptErrDuplicate.
+  ///
+  /// In en, this message translates to:
+  /// **'This transaction number has already been submitted.'**
+  String get rcptErrDuplicate;
+
+  /// No description provided for @rcptErrImageTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'The photo is too large.'**
+  String get rcptErrImageTooLarge;
+
+  /// No description provided for @rcptErrNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt not found.'**
+  String get rcptErrNotFound;
+
+  /// No description provided for @rcptErrNotOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'This receipt has already been decided.'**
+  String get rcptErrNotOpen;
+
+  /// No description provided for @rcptErrReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a reason (up to 300 characters).'**
+  String get rcptErrReason;
+
+  /// No description provided for @rcptErrPricing.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the prices: every period needs whole days and an amount, and a longer period must cost more.'**
+  String get rcptErrPricing;
+
+  /// No description provided for @rcptAdminTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription receipts'**
+  String get rcptAdminTitle;
+
+  /// No description provided for @rcptAdminIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the official receipt and check the amount, receiver and date, then approve or reject.'**
+  String get rcptAdminIntro;
+
+  /// No description provided for @rcptAdminOpenSection.
+  ///
+  /// In en, this message translates to:
+  /// **'To review'**
+  String get rcptAdminOpenSection;
+
+  /// No description provided for @rcptAdminDecidedSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently decided'**
+  String get rcptAdminDecidedSection;
+
+  /// No description provided for @rcptAdminEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to review.'**
+  String get rcptAdminEmpty;
+
+  /// No description provided for @rcptAdminLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load receipts: {error}'**
+  String rcptAdminLoadFailed(String error);
+
+  /// No description provided for @rcptAdminWouldGrant.
+  ///
+  /// In en, this message translates to:
+  /// **'Grants {days}'**
+  String rcptAdminWouldGrant(String days);
+
+  /// No description provided for @rcptAdminTooLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Below the cheapest period'**
+  String get rcptAdminTooLow;
+
+  /// No description provided for @rcptAdminSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Sent {date}'**
+  String rcptAdminSubmitted(String date);
+
+  /// No description provided for @rcptAdminSubmittedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Submitted'**
+  String get rcptAdminSubmittedLabel;
+
+  /// No description provided for @rcptAdminNoImage.
+  ///
+  /// In en, this message translates to:
+  /// **'No photo attached.'**
+  String get rcptAdminNoImage;
+
+  /// No description provided for @rcptAdminOpenOfficial.
+  ///
+  /// In en, this message translates to:
+  /// **'Open official receipt'**
+  String get rcptAdminOpenOfficial;
+
+  /// No description provided for @rcptAdminNoOfficial.
+  ///
+  /// In en, this message translates to:
+  /// **'This method has no official receipt page. Check the photo and your bank statement.'**
+  String get rcptAdminNoOfficial;
+
+  /// No description provided for @rcptAdminVerifiedAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified amount (ETB)'**
+  String get rcptAdminVerifiedAmount;
+
+  /// No description provided for @rcptAdminNewEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'New end date: {date}'**
+  String rcptAdminNewEnd(String date);
+
+  /// No description provided for @rcptApprove.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve'**
+  String get rcptApprove;
+
+  /// No description provided for @rcptReject.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject'**
+  String get rcptReject;
+
+  /// No description provided for @rcptRejectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reject receipt'**
+  String get rcptRejectTitle;
+
+  /// No description provided for @rcptRejectReasonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason (the owner will see this)'**
+  String get rcptRejectReasonLabel;
+
+  /// No description provided for @rcptApproved.
+  ///
+  /// In en, this message translates to:
+  /// **'Approved: {days} added, until {date}.'**
+  String rcptApproved(String days, String date);
+
+  /// No description provided for @rcptRejectedDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt rejected.'**
+  String get rcptRejectedDone;
+
+  /// No description provided for @rcptPricingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription prices'**
+  String get rcptPricingTitle;
+
+  /// No description provided for @rcptPricingIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Owners see these prices. A payment buys the longest period it covers.'**
+  String get rcptPricingIntro;
+
+  /// No description provided for @rcptPricingDays.
+  ///
+  /// In en, this message translates to:
+  /// **'Days'**
+  String get rcptPricingDays;
+
+  /// No description provided for @rcptPricingAmount.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount (ETB)'**
+  String get rcptPricingAmount;
+
+  /// No description provided for @rcptPricingAddTier.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a period'**
+  String get rcptPricingAddTier;
+
+  /// No description provided for @rcptPricingRemoveTier.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get rcptPricingRemoveTier;
+
+  /// No description provided for @rcptPricingTelebirr.
+  ///
+  /// In en, this message translates to:
+  /// **'telebirr receiver'**
+  String get rcptPricingTelebirr;
+
+  /// No description provided for @rcptPricingCbe.
+  ///
+  /// In en, this message translates to:
+  /// **'CBE receiver'**
+  String get rcptPricingCbe;
+
+  /// No description provided for @rcptPricingName.
+  ///
+  /// In en, this message translates to:
+  /// **'Account name'**
+  String get rcptPricingName;
+
+  /// No description provided for @rcptPricingSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save prices'**
+  String get rcptPricingSave;
+
+  /// No description provided for @rcptPricingSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Prices saved.'**
+  String get rcptPricingSaved;
+
+  /// No description provided for @rcptNotifApprovedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription payment approved'**
+  String get rcptNotifApprovedTitle;
+
+  /// No description provided for @rcptNotifApprovedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, =1{1 day was} other{{days} days were}} added. Your subscription runs until {date}.'**
+  String rcptNotifApprovedBody(int days, String date);
+
+  /// No description provided for @rcptNotifRejectedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription payment rejected'**
+  String get rcptNotifRejectedTitle;
+
+  /// No description provided for @rcptNotifRejectedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Transaction {transactionId}: {reason}'**
+  String rcptNotifRejectedBody(String transactionId, String reason);
+
   /// No description provided for @queueTitle.
   ///
   /// In en, this message translates to:
@@ -560,6 +1274,18 @@ abstract class AppLocalizations {
   /// **'Figures update a few seconds after each booking change.'**
   String get reportsUpdatedNote;
 
+  /// Owner reports computed in the app (no stats from the server).
+  ///
+  /// In en, this message translates to:
+  /// **'Based on the last {days} days of bookings.'**
+  String freePlanReportsFromBookings(int days);
+
+  /// Status chip of a booking request the barber did not answer in time.
+  ///
+  /// In en, this message translates to:
+  /// **'No answer'**
+  String get freePlanRequestNoAnswer;
+
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
@@ -704,23 +1430,11 @@ abstract class AppLocalizations {
   /// **'{count} Services'**
   String servicesCount(int count);
 
-  /// No description provided for @bookingsCount.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} Bookings'**
-  String bookingsCount(int count);
-
   /// No description provided for @barberLabel.
   ///
   /// In en, this message translates to:
   /// **'Barber: {name}'**
   String barberLabel(String name);
-
-  /// No description provided for @clientLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Client: {name}'**
-  String clientLabel(String name);
 
   /// No description provided for @dateAtTime.
   ///
@@ -1322,6 +2036,36 @@ abstract class AppLocalizations {
   /// **'Booking confirmations, changes and reminders will appear here.'**
   String get noNotificationsHint;
 
+  /// No description provided for @earlyFinishBannerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your barber is free now — come in early'**
+  String get earlyFinishBannerTitle;
+
+  /// No description provided for @earlyFinishBannerBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{barber} finished early. You can come in before your {time} appointment.'**
+  String earlyFinishBannerBody(String barber, String time);
+
+  /// No description provided for @earlyFinishCallShop.
+  ///
+  /// In en, this message translates to:
+  /// **'Call shop'**
+  String get earlyFinishCallShop;
+
+  /// No description provided for @earlyFinishDirections.
+  ///
+  /// In en, this message translates to:
+  /// **'Directions'**
+  String get earlyFinishDirections;
+
+  /// No description provided for @earlyFinishNotified.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 customer was told they can come early} other{{count} customers were told they can come early}}'**
+  String earlyFinishNotified(int count);
+
   /// No description provided for @justNow.
   ///
   /// In en, this message translates to:
@@ -1568,17 +2312,389 @@ abstract class AppLocalizations {
   /// **'Platform System Administration'**
   String get adminSubtitle;
 
+  /// No description provided for @adminShopsHeroTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Barbershops on the platform'**
+  String get adminShopsHeroTitle;
+
+  /// No description provided for @adminShopsMetricBookable.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookable'**
+  String get adminShopsMetricBookable;
+
+  /// No description provided for @adminShopsMetricSuspended.
+  ///
+  /// In en, this message translates to:
+  /// **'Suspended'**
+  String get adminShopsMetricSuspended;
+
+  /// No description provided for @adminShopsFilterActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get adminShopsFilterActive;
+
+  /// No description provided for @adminShopsFilterSuspended.
+  ///
+  /// In en, this message translates to:
+  /// **'Suspended'**
+  String get adminShopsFilterSuspended;
+
+  /// No description provided for @adminShopsFilterUnverified.
+  ///
+  /// In en, this message translates to:
+  /// **'Unverified'**
+  String get adminShopsFilterUnverified;
+
+  /// No description provided for @adminShopsEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get adminShopsEdit;
+
+  /// No description provided for @adminShopsEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit barbershop'**
+  String get adminShopsEditTitle;
+
+  /// No description provided for @adminShopsSectionProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Shop profile'**
+  String get adminShopsSectionProfile;
+
+  /// No description provided for @adminShopsSectionPlatform.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification & subscription'**
+  String get adminShopsSectionPlatform;
+
+  /// No description provided for @adminShopsSectionOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get adminShopsSectionOwner;
+
+  /// No description provided for @adminShopsSectionStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Availability'**
+  String get adminShopsSectionStatus;
+
+  /// No description provided for @adminShopsFieldName.
+  ///
+  /// In en, this message translates to:
+  /// **'Shop name'**
+  String get adminShopsFieldName;
+
+  /// No description provided for @adminShopsFieldAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get adminShopsFieldAddress;
+
+  /// No description provided for @adminShopsFieldSubCity.
+  ///
+  /// In en, this message translates to:
+  /// **'Sub-city'**
+  String get adminShopsFieldSubCity;
+
+  /// No description provided for @adminShopsFieldLandmark.
+  ///
+  /// In en, this message translates to:
+  /// **'Landmark (optional)'**
+  String get adminShopsFieldLandmark;
+
+  /// No description provided for @adminShopsFieldPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Shop phone'**
+  String get adminShopsFieldPhone;
+
+  /// No description provided for @adminShopsFieldDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get adminShopsFieldDescription;
+
+  /// No description provided for @adminShopsHoursReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening hours: {days} {hours} · set by the shop owner'**
+  String adminShopsHoursReadOnly(String days, String hours);
+
+  /// No description provided for @adminShopsFieldVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified partner'**
+  String get adminShopsFieldVerified;
+
+  /// No description provided for @adminShopsFieldVerifiedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Shows the verified badge to customers'**
+  String get adminShopsFieldVerifiedHint;
+
+  /// No description provided for @adminShopsFieldPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan'**
+  String get adminShopsFieldPlan;
+
+  /// No description provided for @adminShopsFieldStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription status'**
+  String get adminShopsFieldStatus;
+
+  /// No description provided for @adminShopsFieldEndsAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription ends'**
+  String get adminShopsFieldEndsAt;
+
+  /// No description provided for @adminShopsNoEndDate.
+  ///
+  /// In en, this message translates to:
+  /// **'No end date'**
+  String get adminShopsNoEndDate;
+
+  /// No description provided for @adminShopsClearDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear date'**
+  String get adminShopsClearDate;
+
+  /// No description provided for @adminShopsOverrideHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin override: changes here are saved directly to the shop.'**
+  String get adminShopsOverrideHint;
+
+  /// No description provided for @adminShopsSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes'**
+  String get adminShopsSave;
+
+  /// No description provided for @adminShopsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Shop saved'**
+  String get adminShopsSaved;
+
+  /// No description provided for @adminShopsOwnerSignedUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed up · {email}'**
+  String adminShopsOwnerSignedUp(String email);
+
+  /// No description provided for @adminShopsOwnerInvitePending.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite pending: {email} gets owner access when they sign in'**
+  String adminShopsOwnerInvitePending(String email);
+
+  /// No description provided for @adminShopsOwnerNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No owner assigned'**
+  String get adminShopsOwnerNone;
+
+  /// No description provided for @adminShopsStatusActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get adminShopsStatusActive;
+
+  /// No description provided for @adminShopsStatusAdminSuspended.
+  ///
+  /// In en, this message translates to:
+  /// **'Suspended by admin'**
+  String get adminShopsStatusAdminSuspended;
+
+  /// No description provided for @adminShopsStatusUnpaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription suspended'**
+  String get adminShopsStatusUnpaid;
+
+  /// No description provided for @adminShopsSuspendedSince.
+  ///
+  /// In en, this message translates to:
+  /// **'Suspended on {date}: {reason}'**
+  String adminShopsSuspendedSince(String date, String reason);
+
+  /// No description provided for @adminShopsSuspend.
+  ///
+  /// In en, this message translates to:
+  /// **'Suspend shop'**
+  String get adminShopsSuspend;
+
+  /// No description provided for @adminShopsReactivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Reactivate shop'**
+  String get adminShopsReactivate;
+
+  /// No description provided for @adminShopsSuspendTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Suspend {shop}?'**
+  String adminShopsSuspendTitle(String shop);
+
+  /// No description provided for @adminShopsSuspendBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Customers will not see this shop or be able to book it. Existing bookings stay. The owner sees your reason.'**
+  String get adminShopsSuspendBody;
+
+  /// No description provided for @adminShopsReasonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason (shown to the owner)'**
+  String get adminShopsReasonLabel;
+
+  /// No description provided for @adminShopsSuspendedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'{shop} suspended'**
+  String adminShopsSuspendedToast(String shop);
+
+  /// No description provided for @adminShopsReactivateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reactivate {shop}?'**
+  String adminShopsReactivateTitle(String shop);
+
+  /// No description provided for @adminShopsReactivateBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Customers will be able to find and book this shop again.'**
+  String get adminShopsReactivateBody;
+
+  /// No description provided for @adminShopsReactivatedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'{shop} reactivated'**
+  String adminShopsReactivatedToast(String shop);
+
+  /// No description provided for @adminShopsDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This permanently deletes {shop} with its services, barbers and pending invites. Booking history is kept. Type the shop name to confirm.'**
+  String adminShopsDeleteBody(String shop);
+
+  /// No description provided for @adminShopsDeleteTypeName.
+  ///
+  /// In en, this message translates to:
+  /// **'Shop name'**
+  String get adminShopsDeleteTypeName;
+
+  /// No description provided for @adminShopsErrReasonRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a reason.'**
+  String get adminShopsErrReasonRequired;
+
+  /// No description provided for @adminShopsErrReasonTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep the reason under {max} characters.'**
+  String adminShopsErrReasonTooLong(int max);
+
+  /// No description provided for @adminShopsErrNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the shop name.'**
+  String get adminShopsErrNameRequired;
+
+  /// No description provided for @adminShopsErrNameTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'The shop name is too long.'**
+  String get adminShopsErrNameTooLong;
+
+  /// No description provided for @adminShopsErrAddressRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the address.'**
+  String get adminShopsErrAddressRequired;
+
+  /// No description provided for @adminShopsErrTextTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Some of the text is too long.'**
+  String get adminShopsErrTextTooLong;
+
+  /// No description provided for @adminShopsErrPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown plan.'**
+  String get adminShopsErrPlan;
+
+  /// No description provided for @adminShopsErrNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This shop no longer exists.'**
+  String get adminShopsErrNotFound;
+
+  /// No description provided for @adminShopsErrNotAdmin.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the platform admin can do this.'**
+  String get adminShopsErrNotAdmin;
+
+  /// No description provided for @adminShopsErrNameMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'The name does not match.'**
+  String get adminShopsErrNameMismatch;
+
+  /// No description provided for @adminShopsUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporarily unavailable'**
+  String get adminShopsUnavailableTitle;
+
+  /// No description provided for @adminShopsUnavailableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This barbershop is not taking bookings right now. Your existing appointments are not affected.'**
+  String get adminShopsUnavailableBody;
+
+  /// No description provided for @adminShopsOwnerBannerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your shop is suspended by the platform'**
+  String get adminShopsOwnerBannerTitle;
+
+  /// No description provided for @adminShopsOwnerBannerBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Customers cannot find or book your shop until it is reactivated. Existing bookings stay.'**
+  String get adminShopsOwnerBannerBody;
+
+  /// No description provided for @adminShopsOwnerBannerReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason: {reason}'**
+  String adminShopsOwnerBannerReason(String reason);
+
+  /// No description provided for @adminShopsOwnerBannerContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact the platform admin to reactivate it.'**
+  String get adminShopsOwnerBannerContact;
+
   /// No description provided for @deleteShopTitle.
   ///
   /// In en, this message translates to:
   /// **'Delete Barbershop?'**
   String get deleteShopTitle;
-
-  /// No description provided for @deleteShopBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Are you sure you want to remove \"{shop}\" and all associated barbers, services and appointments?'**
-  String deleteShopBody(String shop);
 
   /// No description provided for @shopRemoved.
   ///
@@ -1603,12 +2719,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Users ({count})'**
   String tabUsers(int count);
-
-  /// No description provided for @tabBookings.
-  ///
-  /// In en, this message translates to:
-  /// **'Bookings ({count})'**
-  String tabBookings(int count);
 
   /// No description provided for @registerBarbershop.
   ///
@@ -1640,18 +2750,6 @@ abstract class AppLocalizations {
   /// **'Across network'**
   String get metricAcrossNetwork;
 
-  /// No description provided for @metricPlatformSales.
-  ///
-  /// In en, this message translates to:
-  /// **'Platform Sales'**
-  String get metricPlatformSales;
-
-  /// No description provided for @metricGrossVolume.
-  ///
-  /// In en, this message translates to:
-  /// **'Gross volume'**
-  String get metricGrossVolume;
-
   /// No description provided for @searchShopsAdminHint.
   ///
   /// In en, this message translates to:
@@ -1664,23 +2762,11 @@ abstract class AppLocalizations {
   /// **'Verified Partners'**
   String get filterVerifiedPartners;
 
-  /// No description provided for @filterOpenNow.
-  ///
-  /// In en, this message translates to:
-  /// **'Open Now'**
-  String get filterOpenNow;
-
   /// No description provided for @registeredBarbershopsCount.
   ///
   /// In en, this message translates to:
   /// **'Registered Barbershops ({count})'**
   String registeredBarbershopsCount(int count);
-
-  /// No description provided for @adminActionsEnabled.
-  ///
-  /// In en, this message translates to:
-  /// **'Admin Actions Enabled'**
-  String get adminActionsEnabled;
 
   /// No description provided for @noRegisteredShops.
   ///
@@ -1753,18 +2839,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Assigned Shop: {shop}'**
   String assignedShop(String shop);
-
-  /// No description provided for @noPlatformAppointments.
-  ///
-  /// In en, this message translates to:
-  /// **'No platform appointments recorded yet'**
-  String get noPlatformAppointments;
-
-  /// No description provided for @scheduleAt.
-  ///
-  /// In en, this message translates to:
-  /// **'Schedule: {when}'**
-  String scheduleAt(String when);
 
   /// No description provided for @registerNewBarbershop.
   ///
@@ -1898,17 +2972,11 @@ abstract class AppLocalizations {
   /// **'4. Business Hours & Verification'**
   String get sectionHours;
 
-  /// No description provided for @openingTime.
+  /// No description provided for @adminRegisterHoursOwnerNote.
   ///
   /// In en, this message translates to:
-  /// **'Opening Time'**
-  String get openingTime;
-
-  /// No description provided for @closingTime.
-  ///
-  /// In en, this message translates to:
-  /// **'Closing Time'**
-  String get closingTime;
+  /// **'The shop owner sets the opening hours after signing in.'**
+  String get adminRegisterHoursOwnerNote;
 
   /// No description provided for @markVerifiedPartner.
   ///
@@ -2426,11 +3494,23 @@ abstract class AppLocalizations {
   /// **'Find Barbers'**
   String get findBarbers;
 
-  /// No description provided for @subCityFilterLabel.
+  /// No description provided for @allSubCities.
   ///
   /// In en, this message translates to:
-  /// **'Sub-city:'**
-  String get subCityFilterLabel;
+  /// **'All sub-cities'**
+  String get allSubCities;
+
+  /// No description provided for @subCityFilterTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter barbershops by sub-city'**
+  String get subCityFilterTooltip;
+
+  /// No description provided for @subCityOptionCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} ({count})'**
+  String subCityOptionCount(String name, int count);
 
   /// No description provided for @catFades.
   ///
@@ -3572,6 +4652,24 @@ abstract class AppLocalizations {
   /// **'Check again'**
   String get checkAgain;
 
+  /// No description provided for @subExpTrialEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Your trial ended — pay to keep taking bookings. Your shop will be suspended soon unless you pay.'**
+  String get subExpTrialEnded;
+
+  /// No description provided for @subExpTrialEndedToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Your trial ended — pay to keep taking bookings. Your shop will be suspended today unless you pay.'**
+  String get subExpTrialEndedToday;
+
+  /// No description provided for @subExpTrialEndedInDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Your trial ended — pay to keep taking bookings. 1 day left before your shop is suspended.} other{Your trial ended — pay to keep taking bookings. {count} days left before your shop is suspended.}}'**
+  String subExpTrialEndedInDays(int count);
+
   /// No description provided for @bannerSuspended.
   ///
   /// In en, this message translates to:
@@ -4151,7 +5249,7 @@ abstract class AppLocalizations {
   /// No description provided for @reviewsRateAction.
   ///
   /// In en, this message translates to:
-  /// **'Rate visit'**
+  /// **'Rate your barber'**
   String get reviewsRateAction;
 
   /// No description provided for @reviewsYourRating.
@@ -4163,7 +5261,7 @@ abstract class AppLocalizations {
   /// No description provided for @reviewsRateTitle.
   ///
   /// In en, this message translates to:
-  /// **'Rate your visit'**
+  /// **'Rate your barber'**
   String get reviewsRateTitle;
 
   /// No description provided for @reviewsRateSubtitle.
@@ -4193,7 +5291,7 @@ abstract class AppLocalizations {
   /// No description provided for @reviewsCommentHint.
   ///
   /// In en, this message translates to:
-  /// **'What did you like? What could be better?'**
+  /// **'Tell us about your experience'**
   String get reviewsCommentHint;
 
   /// No description provided for @reviewsSubmit.
@@ -4613,7 +5711,7 @@ abstract class AppLocalizations {
   /// No description provided for @errEmailNotVerified.
   ///
   /// In en, this message translates to:
-  /// **'This email address is not verified. Sign in with Google or contact support.'**
+  /// **'Please verify your email first. Open the link we emailed you, then log in.'**
   String get errEmailNotVerified;
 
   /// No description provided for @emailErrSendFailed.
@@ -5731,6 +6829,510 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Invitation sent — waiting for sign-up'**
   String get barberInviteWaiting;
+
+  /// No description provided for @staffAcctSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a barber'**
+  String get staffAcctSheetTitle;
+
+  /// No description provided for @staffAcctSheetIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a login for your barber. They log in with this email and the temporary password, then choose their own password.'**
+  String get staffAcctSheetIntro;
+
+  /// No description provided for @staffAcctEmailLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Login email'**
+  String get staffAcctEmailLabel;
+
+  /// No description provided for @staffAcctNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the barber\'s name'**
+  String get staffAcctNameRequired;
+
+  /// No description provided for @staffAcctEmailRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the email the barber will log in with'**
+  String get staffAcctEmailRequired;
+
+  /// No description provided for @staffAcctTempPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary password'**
+  String get staffAcctTempPasswordLabel;
+
+  /// No description provided for @staffAcctTempPasswordHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'8 to 128 characters with a letter and a number. The barber changes it at first login.'**
+  String get staffAcctTempPasswordHelper;
+
+  /// No description provided for @staffAcctRegenerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate a new password'**
+  String get staffAcctRegenerate;
+
+  /// No description provided for @staffAcctCopyPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy password'**
+  String get staffAcctCopyPassword;
+
+  /// No description provided for @staffAcctCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get staffAcctCopied;
+
+  /// No description provided for @staffAcctCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get staffAcctCreate;
+
+  /// No description provided for @staffAcctInviteSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Already has a Crown & Blade account?'**
+  String get staffAcctInviteSectionTitle;
+
+  /// No description provided for @staffAcctInviteInstead.
+  ///
+  /// In en, this message translates to:
+  /// **'Invite by email instead'**
+  String get staffAcctInviteInstead;
+
+  /// No description provided for @staffAcctEmailInUseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This email already has an account'**
+  String get staffAcctEmailInUseTitle;
+
+  /// No description provided for @staffAcctEmailInUseBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{email} is already registered, so we can\'t create a new login for it. Send an invitation instead: they log in with their own password or Google and join your shop as a barber.'**
+  String staffAcctEmailInUseBody(String email);
+
+  /// No description provided for @staffAcctSendInvite.
+  ///
+  /// In en, this message translates to:
+  /// **'Send invitation instead'**
+  String get staffAcctSendInvite;
+
+  /// No description provided for @staffAcctInviteSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Invitation saved. {email} becomes a barber at your shop at their next login.'**
+  String staffAcctInviteSaved(String email);
+
+  /// No description provided for @staffAcctCreatedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Barber account created'**
+  String get staffAcctCreatedTitle;
+
+  /// No description provided for @staffAcctCreatedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Give these details to {name}. They log in with this email and password, then choose their own password.'**
+  String staffAcctCreatedBody(String name);
+
+  /// No description provided for @staffAcctEmailField.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get staffAcctEmailField;
+
+  /// No description provided for @staffAcctShownOnce.
+  ///
+  /// In en, this message translates to:
+  /// **'The temporary password is shown only now. Copy it or write it down before closing.'**
+  String get staffAcctShownOnce;
+
+  /// No description provided for @staffAcctCopyDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy login details'**
+  String get staffAcctCopyDetails;
+
+  /// No description provided for @staffAcctDetailsHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Crown & Blade barber login'**
+  String get staffAcctDetailsHeading;
+
+  /// No description provided for @staffAcctDetailsFooter.
+  ///
+  /// In en, this message translates to:
+  /// **'After logging in, choose your own password.'**
+  String get staffAcctDetailsFooter;
+
+  /// No description provided for @staffAcctWaitingFirstLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for first login'**
+  String get staffAcctWaitingFirstLogin;
+
+  /// No description provided for @staffAcctActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get staffAcctActive;
+
+  /// No description provided for @staffAcctLostPasswordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Lost the temporary password? They can tap \"Forgot password?\" on the login screen to reset it by email.'**
+  String get staffAcctLostPasswordHint;
+
+  /// No description provided for @staffAcctForceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose your new password'**
+  String get staffAcctForceTitle;
+
+  /// No description provided for @staffAcctForceIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'You logged in with a temporary password from your barbershop. Choose your own password to continue.'**
+  String get staffAcctForceIntro;
+
+  /// No description provided for @staffAcctForceTempLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Temporary password'**
+  String get staffAcctForceTempLabel;
+
+  /// No description provided for @staffAcctForceTempRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the temporary password you received'**
+  String get staffAcctForceTempRequired;
+
+  /// No description provided for @staffAcctForceWrongTemp.
+  ///
+  /// In en, this message translates to:
+  /// **'The temporary password is not correct.'**
+  String get staffAcctForceWrongTemp;
+
+  /// No description provided for @staffAcctForceSameAsTemp.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a password different from the temporary one.'**
+  String get staffAcctForceSameAsTemp;
+
+  /// No description provided for @staffAcctForceSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save and continue'**
+  String get staffAcctForceSave;
+
+  /// No description provided for @staffAcctForceDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Password saved. Welcome!'**
+  String get staffAcctForceDone;
+
+  /// No description provided for @authContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get authContinue;
+
+  /// No description provided for @registerLinkIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email. Next you\'ll create a password, and we\'ll email you a link to verify the address.'**
+  String get registerLinkIntro;
+
+  /// No description provided for @registerLinkPasswordIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll log in with {email}. After you create your account, we\'ll email you a verification link.'**
+  String registerLinkPasswordIntro(String email);
+
+  /// No description provided for @verifyLinkSentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify your email'**
+  String get verifyLinkSentTitle;
+
+  /// No description provided for @verifyLinkSentBody.
+  ///
+  /// In en, this message translates to:
+  /// **'We sent a verification link to {email}. Open it, then come back and log in.'**
+  String verifyLinkSentBody(String email);
+
+  /// No description provided for @verifyLinkNotSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account was created, but we couldn\'t send the verification link. Tap \"Resend link\" to try again.'**
+  String get verifyLinkNotSent;
+
+  /// No description provided for @verifiedLogIn.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'ve verified — Log in'**
+  String get verifiedLogIn;
+
+  /// No description provided for @resendLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend link'**
+  String get resendLink;
+
+  /// No description provided for @resendLinkIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend link in {seconds} s'**
+  String resendLinkIn(int seconds);
+
+  /// No description provided for @linkResent.
+  ///
+  /// In en, this message translates to:
+  /// **'We sent a new link to {email}.'**
+  String linkResent(String email);
+
+  /// No description provided for @resetLinkIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your account email and we\'ll send you a link to choose a new password.'**
+  String get resetLinkIntro;
+
+  /// No description provided for @sendLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Send link'**
+  String get sendLink;
+
+  /// No description provided for @resetLinkSentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your email'**
+  String get resetLinkSentTitle;
+
+  /// No description provided for @resetLinkSentBody.
+  ///
+  /// In en, this message translates to:
+  /// **'We sent a password reset link to {email}. Open it, choose a new password, then log in here.'**
+  String resetLinkSentBody(String email);
+
+  /// No description provided for @emailErrNotVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Please verify your email first.'**
+  String get emailErrNotVerified;
+
+  /// No description provided for @resendVerificationLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend verification link'**
+  String get resendVerificationLink;
+
+  /// No description provided for @emailAlreadyVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Your email is already verified. Log in again.'**
+  String get emailAlreadyVerified;
+
+  /// No description provided for @ratingShopSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{rating} · {count, plural, =1{1 barber rated} other{{count} barbers rated}}'**
+  String ratingShopSummary(String rating, int count);
+
+  /// No description provided for @ratingBarbersRated.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 barber rated} other{{count} barbers rated}}'**
+  String ratingBarbersRated(int count);
+
+  /// No description provided for @ratingSeeBarberReviews.
+  ///
+  /// In en, this message translates to:
+  /// **'See {name}\'s reviews'**
+  String ratingSeeBarberReviews(String name);
+
+  /// No description provided for @reviewsByBarber.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviews by barber'**
+  String get reviewsByBarber;
+
+  /// No description provided for @ratePromptTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How was your cut?'**
+  String get ratePromptTitle;
+
+  /// No description provided for @ratePromptBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate {barber} for your {service} at {shop}.'**
+  String ratePromptBody(String barber, String service, String shop);
+
+  /// No description provided for @ratePromptDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get ratePromptDismiss;
+
+  /// No description provided for @admPayTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Payments'**
+  String get admPayTab;
+
+  /// No description provided for @admPayIncomeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription income'**
+  String get admPayIncomeLabel;
+
+  /// No description provided for @admPayThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get admPayThisMonth;
+
+  /// No description provided for @admPayVerifiedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} verified'**
+  String admPayVerifiedCount(int count);
+
+  /// No description provided for @admPayPendingCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} waiting'**
+  String admPayPendingCount(int count);
+
+  /// No description provided for @admPayRejectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} rejected'**
+  String admPayRejectedCount(int count);
+
+  /// No description provided for @admPayShopsActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get admPayShopsActive;
+
+  /// No description provided for @admPayShopsTrial.
+  ///
+  /// In en, this message translates to:
+  /// **'Trial'**
+  String get admPayShopsTrial;
+
+  /// No description provided for @admPayShopsPastDue.
+  ///
+  /// In en, this message translates to:
+  /// **'Past due'**
+  String get admPayShopsPastDue;
+
+  /// No description provided for @admPayShopsSuspended.
+  ///
+  /// In en, this message translates to:
+  /// **'Suspended'**
+  String get admPayShopsSuspended;
+
+  /// No description provided for @admPayManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage payments'**
+  String get admPayManage;
+
+  /// No description provided for @admPayNoPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing waiting for review'**
+  String get admPayNoPending;
+
+  /// No description provided for @admPayTypesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription types & prices'**
+  String get admPayTypesTitle;
+
+  /// No description provided for @admPayTypesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add, remove or change lengths and prices, and where owners pay'**
+  String get admPayTypesSubtitle;
+
+  /// No description provided for @admPaySubscriptionsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Each shop\'s plan, status and end date'**
+  String get admPaySubscriptionsSubtitle;
+
+  /// No description provided for @admPayOnlineTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Online payments'**
+  String get admPayOnlineTitle;
+
+  /// No description provided for @admPayOnlineSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Card and Chapa payments that need a decision'**
+  String get admPayOnlineSubtitle;
+
+  /// No description provided for @admPayTypesOnSale.
+  ///
+  /// In en, this message translates to:
+  /// **'Subscription types on sale'**
+  String get admPayTypesOnSale;
+
+  /// No description provided for @admPayEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get admPayEdit;
+
+  /// No description provided for @admPayReceiversMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your telebirr number or CBE account so owners know where to pay.'**
+  String get admPayReceiversMissing;
+
+  /// No description provided for @admPayExpiringTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ending within 7 days ({count})'**
+  String admPayExpiringTitle(int count);
+
+  /// No description provided for @admPayDaysLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Ends today} =1{1 day left} other{{count} days left}}'**
+  String admPayDaysLeft(int count);
+
+  /// No description provided for @admPayRecentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Latest payments'**
+  String get admPayRecentTitle;
+
+  /// No description provided for @admPaySeeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'See all'**
+  String get admPaySeeAll;
+
+  /// No description provided for @admPayNoPayments.
+  ///
+  /// In en, this message translates to:
+  /// **'No payments yet.'**
+  String get admPayNoPayments;
 }
 
 class _AppLocalizationsDelegate

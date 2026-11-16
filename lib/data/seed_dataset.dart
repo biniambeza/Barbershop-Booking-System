@@ -84,6 +84,8 @@ class SeedDataset {
       shops.add(Barbershop.fromMap({
         ...s,
         if (endsInDays != null) 'subscriptionEndsAt': nowUtc.add(Duration(days: endsInDays)).toIso8601String(),
+        // admin shop management: relative suspension time.
+        if (s['adminSuspendedDaysAgo'] != null) 'adminSuspendedAt': daysAgo(s['adminSuspendedDaysAgo']).toIso8601String(),
       }, shopId));
       for (final sv in _list(s['services'])) {
         services.add(BarbershopService.fromMap({...sv, 'shopId': shopId}, sv['id'] as String));

@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../l10n/l10n.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../services/payment_service.dart';
+import '../../../services/subscription_state.dart'; // subscription expiry
 
 /// Days before the end of a trial/paid period from which owners are warned.
 const int kSubscriptionWarningDays = 5;
@@ -26,18 +27,26 @@ class SubscriptionBanner extends StatelessWidget {
   static String? messageFor(Barbershop shop, DateTime nowUtc, {AppLocalizations? l10n}) {
     final l = l10n ?? lookupAppLocalizations(const Locale('en'));
     final days = subscriptionDaysLeft(shop.subscriptionEndsAt, nowUtc);
-    switch (shop.subscriptionStatus) {
+    // subscription expiry: the effective status (a lapsed trial reads as
+    // past due, then suspended, even before the stored status catches up).
+    final status = effectiveSubscriptionStatus(shop, nowUtc);
+    switch (status) {
       case SubscriptionStatus.suspended:
         return l.bannerSuspended;
       case SubscriptionStatus.pastDue:
-        final graceLeft = days == null ? null : kSubscriptionGraceDays + days;
+        final graceLeft = daysUntilSuspension(shop, nowUtc);
+        if (isTrialEnded(shop, nowUtc)) {
+          if (graceLeft == null) return l.subExpTrialEnded;
+          if (graceLeft <= 0) return l.subExpTrialEndedToday;
+          return l.subExpTrialEndedInDays(graceLeft);
+        }
         if (graceLeft == null) return l.bannerOverdueSoon;
         if (graceLeft <= 0) return l.bannerOverdueToday;
         return l.bannerOverdueInDays(graceLeft);
       case SubscriptionStatus.trialing:
       case SubscriptionStatus.active:
         if (days == null || days > kSubscriptionWarningDays) return null;
-        final trial = shop.subscriptionStatus == SubscriptionStatus.trialing;
+        final trial = status == SubscriptionStatus.trialing;
         if (days <= 0) return trial ? l.bannerTrialEndsToday : l.bannerSubEndsToday;
         return trial ? l.bannerTrialEndsIn(days) : l.bannerSubEndsIn(days);
     }
@@ -45,9 +54,10 @@ class SubscriptionBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final message = messageFor(shop, (now ?? DateTime.now()).toUtc(), l10n: context.l10n);
+    final nowUtc = (now ?? subscriptionClock()).toUtc();
+    final message = messageFor(shop, nowUtc, l10n: context.l10n);
     if (message == null) return const SizedBox.shrink();
-    final severe = shop.subscriptionStatus == SubscriptionStatus.suspended;
+    final severe = effectiveSubscriptionStatus(shop, nowUtc) == SubscriptionStatus.suspended;
     final color = severe ? AppTheme.danger : AppTheme.warning;
     return Container(
       key: const ValueKey('subscription-banner'),

@@ -41,6 +41,24 @@ abstract final class NotificationTypes {
   static const requestDeclined = 'requestDeclined';
   static const requestExpired = 'requestExpired';
 
+  // --- early finish --- the barber finished an earlier appointment ahead
+  // of schedule (lib/services/early_finish_service.dart, functions/
+  // notifications earlyFinish.ts). Id `{bookingId}_early_{sourceBookingId}`;
+  // bookingId is the recipient's own booking.
+  /// The next customer: the barber is free now, come in early.
+  static const barberFreeEarly = 'barberFreeEarly';
+
+  /// Later customers that day: the barber is running ahead of schedule.
+  static const runningEarly = 'runningEarly';
+  // --- end early finish ---
+
+  // --- subscription receipts --- an admin (or the payments function)
+  // decided the owner's transfer receipt. Id `{paymentDocId}_receipt`;
+  // carries shopId and paymentId, no bookingId.
+  static const receiptApproved = 'receiptApproved';
+  static const receiptRejected = 'receiptRejected';
+  // --- end subscription receipts ---
+
   static const all = [
     created,
     confirmed,
@@ -63,6 +81,10 @@ abstract final class NotificationTypes {
     accepted, // barber acceptance
     requestDeclined, // barber acceptance
     requestExpired, // barber acceptance
+    barberFreeEarly, // early finish
+    runningEarly, // early finish
+    receiptApproved, // subscription receipts
+    receiptRejected, // subscription receipts
   ];
 }
 
@@ -84,6 +106,10 @@ class AppNotification {
   /// UTC.
   final DateTime createdAt;
 
+  /// Early finish only: how many minutes ahead of schedule the barber is
+  /// (lets the app re-render the copy in the viewer's language).
+  final int? minutesEarly;
+
   const AppNotification({
     required this.id,
     required this.title,
@@ -92,6 +118,7 @@ class AppNotification {
     this.bookingId,
     this.read = false,
     required this.createdAt,
+    this.minutesEarly, // early finish
   });
 
   bool get isReminder => type == NotificationTypes.reminder24h || type == NotificationTypes.reminder2h;
@@ -104,6 +131,7 @@ class AppNotification {
         bookingId: bookingId,
         read: read ?? this.read,
         createdAt: createdAt,
+        minutesEarly: minutesEarly, // early finish
       );
 
   factory AppNotification.fromMap(Map<String, dynamic> map, String id) {
@@ -115,6 +143,7 @@ class AppNotification {
       bookingId: map['bookingId'] as String?,
       read: map['read'] == true,
       createdAt: _parseDate(map['createdAt']),
+      minutesEarly: (map['minutesEarly'] as num?)?.toInt(), // early finish
     );
   }
 
@@ -125,6 +154,7 @@ class AppNotification {
         if (bookingId != null) 'bookingId': bookingId,
         'read': read,
         'createdAt': createdAt.toUtc().toIso8601String(),
+        if (minutesEarly != null) 'minutesEarly': minutesEarly, // early finish
       };
 
   static DateTime _parseDate(Object? value) {

@@ -12,6 +12,7 @@ import '../../payments/payment_flow.dart';
 import '../../payments/widgets/payment_status_badge.dart';
 import '../../reviews/widgets/booking_review_action.dart';
 import 'booking_flow_screen.dart';
+import '../widgets/early_finish_banner.dart'; // early finish
 
 /// My Appointments: every booking of the signed-in customer, with pay,
 /// reschedule and cancel actions. The shop's policy (cancellation cutoff
@@ -113,9 +114,11 @@ class CustomerBookingsScreen extends StatelessWidget {
               StatusChip(
                 key: ValueKey('booking-status-${booking.id}'),
                 // barber acceptance: a pending booking waits for the barber
-                label: (acceptance.isAwaitingAcceptance(booking)
-                        ? l.acceptWaitingForBarber
-                        : l.bookingStatus(booking.status))
+                label: (acceptance.isUnansweredExpiredRequest(booking, now) // free plan
+                        ? l.freePlanRequestNoAnswer
+                        : acceptance.isAwaitingAcceptance(booking)
+                            ? l.acceptWaitingForBarber
+                            : l.bookingStatus(booking.status))
                     .toUpperCase(),
                 color: color,
                 icon: acceptance.isAwaitingAcceptance(booking) ? Icons.hourglass_top_rounded : null,
@@ -123,7 +126,13 @@ class CustomerBookingsScreen extends StatelessWidget {
             ],
           ),
           // --- barber acceptance: why a request ended ---
-          if (acceptance.isAwaitingAcceptance(booking)) ...[
+          // free plan: still pending but expired (nobody closed it yet)
+          if (acceptance.isUnansweredExpiredRequest(booking, now)) ...[
+            const SizedBox(height: 6),
+            Text(l.acceptExpiredNote,
+                key: ValueKey('request-expired-${booking.id}'),
+                style: const TextStyle(fontSize: 12, color: AppTheme.danger)),
+          ] else if (acceptance.isAwaitingAcceptance(booking)) ...[
             const SizedBox(height: 6),
             Text(l.acceptWaitingFor(booking.barberName),
                 style: const TextStyle(fontSize: 12, color: AppTheme.warning, fontWeight: FontWeight.w600)),
@@ -134,7 +143,7 @@ class CustomerBookingsScreen extends StatelessWidget {
               key: ValueKey('request-ended-${booking.id}'),
               style: const TextStyle(fontSize: 12, color: AppTheme.danger),
             ),
-            if (booking.declineReason != null)
+            if (booking.declineReason != null && acceptance.wasDeclined(booking))
               Text(l.acceptDeclineReasonNote(booking.declineReason!),
                   style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
           ],
@@ -185,6 +194,9 @@ class CustomerBookingsScreen extends StatelessWidget {
               ),
             ],
           ),
+          // --- early finish: the barber is free now, come in early ---
+          if (upcoming) EarlyFinishBanner(booking: booking, shop: shop, now: _now),
+          // --- end early finish ---
           if (upcoming && shop != null) ...[
             const SizedBox(height: 8),
             Text(

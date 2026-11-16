@@ -1,4 +1,4 @@
-package com.barbershop.barbershop_booking
+package et.crownblade.app
 
 import android.app.NotificationChannel
 import android.app.NotificationManager

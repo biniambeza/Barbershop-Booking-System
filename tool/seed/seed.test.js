@@ -111,6 +111,24 @@ test('every seeded service fits the rules cap of 120 minutes', () => {
   }
 });
 
+// --- admin shop management ---
+test('the admin-suspended demo shop gets its suspension fields', () => {
+  for (const mode of ['users', 'invites']) {
+    const docs = buildDocuments(seed, { now, mode });
+    const shop4 = get(docs, 'barbershops/shop_4');
+    assert.strictEqual(shop4.adminSuspended, true);
+    assert.ok(shop4.adminSuspendedReason.length >= 1 && shop4.adminSuspendedReason.length <= 300);
+    assert.strictEqual(shop4.adminSuspendedAt, '2026-11-18T07:00:00.000Z'); // 2 days before now
+    assert.strictEqual(shop4.adminSuspendedBy, 'user_admin_1');
+    assert.strictEqual(shop4.adminSuspendedDaysAgo, undefined);
+    // Separate from the subscription status.
+    assert.strictEqual(shop4.subscriptionStatus, 'trialing');
+    // Other shops carry no suspension fields.
+    assert.strictEqual(get(docs, 'barbershops/shop_1').adminSuspended, undefined);
+  }
+});
+// --- end admin shop management ---
+
 test('seeded time off gets a time-off doc and one lock per 15-minute block', () => {
   const docs = buildDocuments(seed, { now });
   // timeoff_1: barber_2, tomorrow (2026-11-21) 13:00-15:00 Addis = 10:00-12:00Z.

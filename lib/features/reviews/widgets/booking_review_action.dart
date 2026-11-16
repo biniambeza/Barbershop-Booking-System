@@ -8,7 +8,7 @@ import 'rate_booking_dialog.dart';
 import 'review_widgets.dart';
 
 /// My Appointments: on a completed booking of the signed-in customer, a
-/// "Rate visit" button (key `rate-booking-{id}`) until it is reviewed, then
+/// "Rate your barber" button (key `rate-booking-{id}`) until it is reviewed, then
 /// the stars they gave (key `my-review-{id}`). Shows nothing for other
 /// bookings.
 class BookingReviewAction extends StatefulWidget {

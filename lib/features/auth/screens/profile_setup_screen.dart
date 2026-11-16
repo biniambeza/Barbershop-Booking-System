@@ -38,6 +38,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     _nameController = TextEditingController(
       text: inviteName.isNotEmpty ? inviteName : (repo.pendingDisplayName ?? ''),
     );
+    // Barber accounts: the phone the owner saved on the barber profile.
+    final pendingPhone = repo.pendingPhone;
+    if (pendingPhone != null && pendingPhone.isNotEmpty) _phoneController.text = pendingPhone;
   }
 
   @override

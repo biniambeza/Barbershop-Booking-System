@@ -6,7 +6,9 @@ import '../../../models/barbershop_model.dart';
 import '../../../models/plan_model.dart';
 import '../../../services/app_repository.dart';
 import '../../../services/payment_service.dart';
+import '../../../services/subscription_state.dart'; // subscription expiry
 import '../../payments/payment_flow.dart';
+import '../../payments/receipts/receipt_payment_screen.dart' show ReceiptPaymentEntryCard; // subscription receipts
 import '../../payments/widgets/payment_status_badge.dart';
 import '../../payments/widgets/subscription_banner.dart';
 
@@ -68,6 +70,10 @@ class _OwnerSubscriptionScreenState extends State<OwnerSubscriptionScreen> {
             children: [
               SubscriptionBanner(shop: shop, now: _now),
               _buildCurrent(shop, barberCount),
+              // --- subscription receipts --- pay by telebirr / CBE transfer
+              // (works on the free plan, no Cloud Functions needed).
+              ReceiptPaymentEntryCard(shopId: shop.id),
+              // --- end subscription receipts ---
               const SizedBox(height: 24),
               Text(l.plansTitle,
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
@@ -107,8 +113,9 @@ class _OwnerSubscriptionScreenState extends State<OwnerSubscriptionScreen> {
     } else if (days != null && days < 0) {
       endText = l.endedAgo(-days, _date(ends));
     } else {
-      final base =
-          shop.subscriptionStatus == SubscriptionStatus.trialing ? l.trialEndsOn(_date(ends)) : l.renewsBy(_date(ends));
+      final base = shop.effectiveStatusAt(_now) == SubscriptionStatus.trialing // subscription expiry
+          ? l.trialEndsOn(_date(ends))
+          : l.renewsBy(_date(ends));
       endText = days == null || days == 0 ? l.endsToday(base) : l.daysLeftSuffix(days, base);
     }
 
@@ -138,7 +145,7 @@ class _OwnerSubscriptionScreenState extends State<OwnerSubscriptionScreen> {
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
                 ),
               ),
-              SubscriptionStatusChip(status: shop.subscriptionStatus),
+              SubscriptionStatusChip(status: shop.effectiveStatusAt(_now)), // subscription expiry
             ],
           ),
           const SizedBox(height: 14),
@@ -159,7 +166,8 @@ class _OwnerSubscriptionScreenState extends State<OwnerSubscriptionScreen> {
 
   Widget _buildPlan(Barbershop shop, SubscriptionPlan plan, int barberCount) {
     final fits = plan.allowsBarbers(barberCount);
-    final isCurrent = shop.subscriptionPlan == plan.id && shop.subscriptionStatus != SubscriptionStatus.trialing;
+    final isCurrent = shop.subscriptionPlan == plan.id &&
+        shop.effectiveStatusAt(_now) != SubscriptionStatus.trialing; // subscription expiry
     final busy = _busyPlanId == plan.id;
     final l = context.l10n;
     return Container(

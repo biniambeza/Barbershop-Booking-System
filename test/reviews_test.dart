@@ -73,6 +73,11 @@ void main() {
       expect(shortCustomerName('  Abebe  '), 'Abebe');
       expect(shortCustomerName('ራሄል ደስታ'), 'ራሄል ደ.');
       expect(shortCustomerName(''), '');
+      // Public lists show the first name only.
+      expect(customerFirstName('Liya Getachew'), 'Liya');
+      expect(customerFirstName('  ራሄል  ደስታ '), 'ራሄል');
+      expect(customerFirstName(''), '');
+      expect(_review('x', 5, DateTime.utc(2026)).displayName, 'Customer');
     });
 
     test('map round trip leaves out empty optional fields', () {
@@ -91,7 +96,7 @@ void main() {
   group('demo seed', () {
     setUp(() => loadTestSeed(now: _now));
 
-    test('seeded reviews resolve from completed bookings and match the rating fields', () {
+    test('seeded reviews resolve from completed bookings and match the barber counters', () {
       final reviews = reviewsFromSeedJson(_seedJson(), now: _now);
       expect(reviews, hasLength(13));
       for (final r in reviews) {
@@ -104,14 +109,16 @@ void main() {
       }
       for (final shop in repo.getShops()) {
         final mine = reviews.where((r) => r.shopId == shop.id);
-        expect(RatingSummary(rating: shop.rating, count: shop.reviewCount),
-            RatingSummary.fromRatings(mine.map((r) => r.rating)),
-            reason: shop.id);
         for (final b in repo.getBarbersForShop(shop.id)) {
-          expect(RatingSummary(rating: b.rating, count: b.reviewCount),
-              RatingSummary.fromRatings(mine.where((r) => r.barberId == b.id).map((r) => r.rating)),
-              reason: b.id);
+          final ratings = mine.where((r) => r.barberId == b.id).map((r) => r.rating).toList();
+          expect(b.ratingSum, ratings.fold<int>(0, (a, r) => a + r), reason: b.id);
+          expect(b.reviewCount, ratings.length, reason: b.id);
+          expect(repo.barberRatingOf(b.id), RatingSummary.fromRatings(ratings), reason: b.id);
         }
+        // The (unused) cached shop fields agree with the computed rating.
+        final computed = repo.shopRatingOf(shop.id);
+        expect(computed.rating, shop.rating, reason: shop.id);
+        expect(computed.reviewCount, shop.reviewCount, reason: shop.id);
       }
       // book_3 (2 days ago, 10:30 Addis) was reviewed 5 hours later.
       expect(reviews.firstWhere((r) => r.bookingId == 'book_3').createdAt, DateTime.utc(2026, 11, 18, 12, 30));
@@ -136,16 +143,38 @@ void main() {
       expect(review.createdAt, _now);
       expect(review.customerName, 'Liya Getachew');
 
-      // shop_2 had 5 and 4; barber_2_1 had 5.
-      expect(service.shopSummary('shop_2'), const RatingSummary(rating: 4.0, count: 3));
+      // barber_2_1 had one 5, barber_2_2 one 4: the review adds 3 to barber_2_1.
+      final b21 = repo.getBarberById('barber_2_1')!;
+      expect((b21.ratingSum, b21.reviewCount), (8, 2));
       expect(service.barberSummary('barber_2_1'), const RatingSummary(rating: 4.0, count: 2));
       expect(service.barberSummary('barber_2_2'), const RatingSummary(rating: 4.0, count: 1));
+      // Shop = average of the barbers' averages (4.0 and 4.0).
+      expect(service.shopRating('shop_2'), const ShopRating(rating: 4.0, ratedBarbers: 2, reviewCount: 3));
+      expect(service.shopSummary('shop_2'), const RatingSummary(rating: 4.0, count: 3));
 
       await expectLater(
         service.submitReview(booking, rating: 5),
         throwsA(isA<ReviewException>().having((e) => e.code, 'code', ReviewErrorCode.alreadyReviewed)),
       );
       expect(service.shopSummary('shop_2').count, 3);
+      expect(repo.getBarberById('barber_2_1')!.reviewCount, 2); // counted once
+    });
+
+    test('the comment is optional: empty or blank is left out', () async {
+      repo.switchRole(UserRole.customer); // user_cust_1
+      final review = await service.submitReview(repo.getBookingById('book_5')!, rating: 5, comment: '   ');
+      expect(review.comment, isNull);
+      expect(review.toMap().containsKey('comment'), isFalse);
+      expect(repo.getBarberById('barber_2_1')!.ratingSum, 10);
+    });
+
+    test('the per-barber list is the shop list filtered by barberId', () async {
+      final all = (await service.loadPage('shop_1', limit: 50)).reviews;
+      for (final barber in repo.getBarbersForShop('shop_1')) {
+        final mine = (await service.loadPage('shop_1', barberId: barber.id, limit: 50)).reviews;
+        expect(mine.map((r) => r.bookingId), all.where((r) => r.barberId == barber.id).map((r) => r.bookingId));
+        expect(mine.length, barber.reviewCount, reason: barber.id);
+      }
     });
 
     test('only the customer, only completed, valid stars and comment length', () async {
@@ -279,6 +308,26 @@ void main() {
       expect(await store.watchReview('s1', 'missing').first, isNull);
     });
 
+    test('create adds the stars to the barber counters in the same transaction', () async {
+      await db.doc('barbershops/s1/barbers/b1').set({'shopId': 's1', 'name': 'Abel', 'rating': 5.0, 'reviewCount': 0});
+      // Legacy doc: no ratingSum, rating 3.5 from 2 reviews -> 7.
+      await db.doc('barbershops/s1/barbers/b2').set({'shopId': 's1', 'name': 'Biruk', 'rating': 3.5, 'reviewCount': 2});
+      await store.create(_review('bk1', 4, DateTime.utc(2026, 11, 1)));
+      await store.create(_review('bk2', 5, DateTime.utc(2026, 11, 2)));
+      await store.create(_review('bk3', 2, DateTime.utc(2026, 11, 3), barberId: 'b2'));
+      final b1 = (await db.doc('barbershops/s1/barbers/b1').get()).data()!;
+      expect((b1['ratingSum'], b1['reviewCount'], b1['lastReviewId'], b1['rating']), (9, 2, 'bk2', 5.0));
+      final b2 = (await db.doc('barbershops/s1/barbers/b2').get()).data()!;
+      expect((b2['ratingSum'], b2['reviewCount'], b2['lastReviewId']), (9, 3, 'bk3'));
+      // A second review of the same booking changes nothing.
+      await expectLater(store.create(_review('bk1', 1, DateTime.utc(2026, 11, 4))), throwsA(isA<ReviewException>()));
+      expect((await db.doc('barbershops/s1/barbers/b1').get()).data()!['reviewCount'], 2);
+      // A removed barber: the review is still saved, no counters.
+      await store.create(_review('bk4', 3, DateTime.utc(2026, 11, 5), barberId: 'gone'));
+      expect((await db.doc('barbershops/s1/barbers/gone').get()).exists, isFalse);
+      expect((await db.doc('barbershops/s1/reviews/bk4').get()).exists, isTrue);
+    });
+
     test('the service writes through the Firestore store', () async {
       loadTestSeed(now: _now);
       repo.switchRole(UserRole.customer);
@@ -289,7 +338,8 @@ void main() {
       expect(data['barberId'], 'barber_2_1');
       expect(data['comment'], 'Great');
       expect(data['createdAt'], '2026-11-20T07:00:00.000Z');
-      // Ratings come from the Cloud Function with Firebase; nothing local changes.
+      // With Firebase the barber listener brings the new counters; the local
+      // cache is not changed by hand.
       expect(service.shopSummary('shop_2'), const RatingSummary(rating: 4.5, count: 2));
     });
   });
@@ -324,7 +374,8 @@ void main() {
       expect(find.byKey(const ValueKey('rate-booking-book_5')), findsNothing);
       expect(find.byKey(const ValueKey('my-review-book_5')), findsOneWidget);
       expect(ReviewsService.instance.local.reviewsOf('shop_2').first.comment, 'Sharp cut');
-      expect(repo.getShopById('shop_2')!.reviewCount, 3);
+      expect(repo.getBarberById('barber_2_1')!.reviewCount, 2);
+      expect(ReviewsService.instance.shopSummary('shop_2').count, 3);
     });
 
     testWidgets('shop page: summary, distribution, latest reviews and barber ratings', (tester) async {
@@ -335,6 +386,8 @@ void main() {
       expect(find.byKey(const ValueKey('barber-rating-barber_1')), findsOneWidget);
       expect(find.text('5.0 (2)'), findsOneWidget); // barber_1
       expect(find.text('3.5 (2)'), findsOneWidget); // barber_2
+      // Header: the average of the rated barbers' averages (5.0, 3.5, 4.0).
+      expect(find.text('4.2 · 3 barbers rated'), findsOneWidget);
 
       final section = find.byKey(const ValueKey('shop-reviews-section'));
       await tester.scrollUntilVisible(find.byKey(const ValueKey('reviews-see-all')), 300,
@@ -346,7 +399,8 @@ void main() {
       expect(bar3.data, '1');
       expect(find.byKey(const ValueKey('review-book_3')), findsOneWidget);
       expect(find.byKey(const ValueKey('review-book_11')), findsNothing); // only the latest 3
-      expect(find.text('Rahel D.'), findsOneWidget);
+      expect(find.text('Rahel'), findsOneWidget); // first name only
+      expect(find.text('3 barbers rated'), findsOneWidget);
       expect(find.byKey(const ValueKey('review-reply-book_3')), findsOneWidget);
 
       // Clear the booking bar at the bottom of the page.

@@ -135,6 +135,13 @@ class Booking {
   final String? cancelReasonNote;
   // --- end barber acceptance ---
 
+  // --- early finish ---
+  /// When the booking was completed (UTC). Written with the 'completed'
+  /// status update only (DataStore.updateBookingStatus), so never part of
+  /// [toMap]. Before [endAt] means the barber finished early.
+  final DateTime? completedAt;
+  // --- end early finish ---
+
   /// If [startAt] is omitted it is derived from [date] + [timeSlot] (Addis
   /// local time); [endAt] defaults to [startAt] + [durationMinutes].
   Booking({
@@ -166,6 +173,7 @@ class Booking {
     this.cancelledBy,
     this.declineReason,
     this.cancelReasonNote,
+    this.completedAt, // early finish
   })  : startAt = (startAt ?? appointmentStartUtc(date, timeSlot) ?? addisLocalToUtc(date.year, date.month, date.day)).toUtc(),
         endAt = (endAt ??
                 (startAt ?? appointmentStartUtc(date, timeSlot) ?? addisLocalToUtc(date.year, date.month, date.day))
@@ -204,6 +212,7 @@ class Booking {
     String? cancelledBy,
     String? declineReason,
     String? cancelReasonNote,
+    DateTime? completedAt, // early finish
   }) {
     return Booking(
       id: id ?? this.id,
@@ -234,6 +243,7 @@ class Booking {
       cancelledBy: cancelledBy ?? this.cancelledBy,
       declineReason: declineReason ?? this.declineReason,
       cancelReasonNote: cancelReasonNote ?? this.cancelReasonNote,
+      completedAt: completedAt ?? this.completedAt, // early finish
     );
   }
 
@@ -310,6 +320,7 @@ class Booking {
       cancelledBy: map['cancelledBy'] is String ? map['cancelledBy'] as String : null,
       declineReason: map['declineReason'] is String ? map['declineReason'] as String : null,
       cancelReasonNote: map['cancelReasonNote'] is String ? map['cancelReasonNote'] as String : null,
+      completedAt: _parseDate(map['completedAt'])?.toUtc(), // early finish
     );
   }
 }

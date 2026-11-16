@@ -34,9 +34,8 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
   final _landmarkCtrl = TextEditingController();
   String _subCity = 'Bole';
 
-  // Operating Hours
-  int _openingHour = 9;
-  int _closingHour = 20;
+  // Opening hours are not asked here: the shop starts with the defaults and
+  // the owner sets them after signing in.
   bool _isVerified = true;
   bool _isSubmitting = false;
 
@@ -106,9 +105,6 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
         landmark: _landmarkCtrl.text.trim(),
         description: _shopDescCtrl.text.trim(),
         imageUrl: _imageCtrl.text.trim(),
-        openingHour: _openingHour,
-        closingHour: _closingHour,
-        workingDays: const [1, 2, 3, 4, 5, 6, 7],
         isVerified: _isVerified,
       );
 
@@ -138,7 +134,6 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final fmt = context.fmt;
     return Scaffold(
       appBar: AppBar(
         title: Text(l.registerNewBarbershop),
@@ -326,40 +321,15 @@ class _AdminRegisterShopScreenState extends State<AdminRegisterShopScreen> {
               _buildSectionHeader(l.sectionHours, Icons.access_time),
               const SizedBox(height: 12),
               Row(
+                key: const ValueKey('admin-register-hours-note'),
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const Icon(Icons.info_outline, size: 18, color: AppTheme.textSecondary),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: DropdownButtonFormField<int>(
-                      isExpanded: true,
-                      initialValue: _openingHour,
-                      decoration: InputDecoration(labelText: l.openingTime),
-                      dropdownColor: AppTheme.card,
-                      items: List.generate(6, (i) => i + 6).map((h) {
-                        return DropdownMenuItem(
-                          value: h,
-                          child: Text(fmt.hour(h)),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) setState(() => _openingHour = val);
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<int>(
-                      isExpanded: true,
-                      initialValue: _closingHour,
-                      decoration: InputDecoration(labelText: l.closingTime),
-                      dropdownColor: AppTheme.card,
-                      items: List.generate(8, (i) => i + 16).map((h) {
-                        return DropdownMenuItem(
-                          value: h,
-                          child: Text(fmt.hour(h)),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) setState(() => _closingHour = val);
-                      },
+                    child: Text(
+                      l.adminRegisterHoursOwnerNote,
+                      style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
                     ),
                   ),
                 ],

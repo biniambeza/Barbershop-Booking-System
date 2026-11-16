@@ -156,7 +156,7 @@ class _QueueStatusCardState extends State<QueueStatusCard> {
                     const SizedBox(height: 10),
                     FilledButton.icon(
                       key: const Key('queueJoinButton'),
-                      onPressed: _busy || widget.shop.isSuspended ? null : _join,
+                      onPressed: _busy || widget.shop.isBlocked ? null : _join,
                       icon: const Icon(Icons.how_to_reg_rounded, size: 18),
                       label: Text(l.queueJoin),
                     ),

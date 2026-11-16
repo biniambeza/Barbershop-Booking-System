@@ -44,6 +44,12 @@ class AppUser {
   /// Preferred language: 'en' or 'am'. Null means not chosen yet.
   final String? language;
 
+  // --- barber accounts ---
+  /// Signed in with a temporary password from the shop owner: must choose
+  /// a new password before using the app. Absent = false.
+  final bool mustChangePassword;
+  // --- end barber accounts ---
+
   AppUser({
     required this.uid,
     this.email,
@@ -54,6 +60,7 @@ class AppUser {
     this.barberId,
     required this.createdAt,
     this.language,
+    this.mustChangePassword = false, // barber accounts
   });
 
   /// Language for messages (SMS / push). Amharic unless chosen otherwise.
@@ -70,6 +77,7 @@ class AppUser {
       if (barberId != null) 'barberId': barberId,
       'createdAt': createdAt.toUtc().toIso8601String(),
       if (language != null) 'language': language,
+      if (mustChangePassword) 'mustChangePassword': true, // barber accounts
     };
   }
 
@@ -83,6 +91,7 @@ class AppUser {
     String? barberId,
     DateTime? createdAt,
     String? language,
+    bool? mustChangePassword, // barber accounts
   }) {
     return AppUser(
       uid: uid ?? this.uid,
@@ -94,6 +103,7 @@ class AppUser {
       barberId: barberId ?? this.barberId,
       createdAt: createdAt ?? this.createdAt,
       language: language ?? this.language,
+      mustChangePassword: mustChangePassword ?? this.mustChangePassword, // barber accounts
     );
   }
 
@@ -110,6 +120,7 @@ class AppUser {
           ? DateTime.tryParse(map['createdAt']) ?? DateTime.now()
           : DateTime.now(),
       language: map['language'] == 'en' || map['language'] == 'am' ? map['language'] : null,
+      mustChangePassword: map['mustChangePassword'] == true, // barber accounts
     );
   }
 }

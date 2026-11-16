@@ -4,6 +4,11 @@ import '../../../core/theme/app_theme.dart';
 import '../../../l10n/l10n.dart';
 import '../../../models/app_notification.dart';
 import '../../../services/notification_service.dart';
+// --- early finish ---
+import '../../../services/app_repository.dart';
+import '../../../services/early_finish_service.dart' show renderEarlyFinishText;
+import '../../customer/screens/customer_bookings_screen.dart';
+// --- end early finish ---
 
 /// The signed-in user's notification inbox, newest first. Tapping an entry
 /// marks it read.
@@ -40,7 +45,13 @@ class NotificationsScreen extends StatelessWidget {
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (context, i) => _NotificationTile(
                     notification: items[i],
-                    onTap: () => svc.markRead(items[i].id),
+                    onTap: () {
+                      svc.markRead(items[i].id);
+                      // --- early finish: open the customer's bookings ---
+                      if (isEarlyFinishType(items[i].type) && items[i].bookingId != null) {
+                        Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CustomerBookingsScreen()));
+                      }
+                    },
                   ),
                 ),
         );
@@ -86,6 +97,7 @@ class _NotificationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final n = notification;
     final (icon, color) = notificationIcon(n.type);
+    final text = earlyFinishDisplayText(n, context.l10n.localeName); // early finish
     return Container(
       decoration: AppTheme.cardDecoration(
         radius: AppTheme.radiusPanel + 4,
@@ -102,14 +114,14 @@ class _NotificationTile extends StatelessWidget {
             child: Icon(icon, color: color, size: 20),
           ),
           title: Text(
-            n.title,
+            text?.title ?? n.title,
             style: TextStyle(fontSize: 14.5, fontWeight: n.read ? FontWeight.w500 : FontWeight.w700),
           ),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 2),
-              Text(n.body, style: const TextStyle(color: AppTheme.textSecondary)),
+              Text(text?.body ?? n.body, style: const TextStyle(color: AppTheme.textSecondary)),
               const SizedBox(height: 4),
               Text(relativeTime(n.createdAt, l10n: context.l10n),
                   style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
@@ -171,10 +183,36 @@ class _NotificationTile extends StatelessWidget {
     case NotificationTypes.requestDeclined:
     case NotificationTypes.requestExpired:
       return (Icons.event_busy_rounded, AppTheme.danger);
+    // --- early finish ---
+    case NotificationTypes.barberFreeEarly:
+      return (Icons.directions_walk_rounded, AppTheme.success);
+    case NotificationTypes.runningEarly:
+      return (Icons.fast_forward_rounded, AppTheme.teal);
+    // --- subscription receipts ---
+    case NotificationTypes.receiptApproved:
+      return (Icons.verified_rounded, AppTheme.success);
+    case NotificationTypes.receiptRejected:
+      return (Icons.receipt_long_rounded, AppTheme.danger);
     default:
       return (Icons.notifications_rounded, AppTheme.textSecondary);
   }
 }
+
+// --- early finish ---
+bool isEarlyFinishType(String type) =>
+    type == NotificationTypes.barberFreeEarly || type == NotificationTypes.runningEarly;
+
+/// Early-finish notices are written by the barber's app, which cannot read
+/// the customer's language; re-render them in the viewer's language from
+/// their own booking when it is loaded (null: show the stored text).
+({String title, String body})? earlyFinishDisplayText(AppNotification n, String languageCode,
+    {AppRepository? repository}) {
+  if (!isEarlyFinishType(n.type) || n.bookingId == null) return null;
+  final booking = (repository ?? AppRepository.instance).getBookingById(n.bookingId!);
+  if (booking == null) return null;
+  return renderEarlyFinishText(n.type, booking, n.minutesEarly ?? 0, language: languageCode == 'en' ? 'en' : 'am');
+}
+// --- end early finish ---
 
 /// 'Just now', '5 min ago', '3 h ago', '2 d ago', or the date.
 String relativeTime(DateTime createdAtUtc, {DateTime? now, AppLocalizations? l10n}) {

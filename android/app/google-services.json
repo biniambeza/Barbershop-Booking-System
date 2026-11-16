@@ -12,7 +12,28 @@
           "package_name": "com.barbershop.barbershop_booking"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "756289834540-0efopmqe3gk8is9l0mtpp0tcsukh0l04.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.barbershop.barbershop_booking",
+            "certificate_hash": "765dbcbc92d9c1c7c6a0c2db99128790747cce5e"
+          }
+        },
+        {
+          "client_id": "756289834540-0ngm4ra1jbd0019uc19arl4f97p8p5pd.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.barbershop.barbershop_booking",
+            "certificate_hash": "a7c9e6d477ab0d2282019159f80a1c6cf0036b7e"
+          }
+        },
+        {
+          "client_id": "756289834540-ebcglgj1491u76k99spff251ofguq5j5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDXqQCY7uUOV0gSDXI7Rr_V_OFT2zMvjWQ"
@@ -20,7 +41,71 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "756289834540-ebcglgj1491u76k99spff251ofguq5j5.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "756289834540-kt8ti4modhfitdsdasuahtlrbtqlcs6c.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.barbershop.barbershopBooking"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:756289834540:android:12af85035d039aa3248b89",
+        "android_client_info": {
+          "package_name": "et.crownblade.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "756289834540-hnqf3h3576jeo8bh7tfs3fe7fv6ebclp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "et.crownblade.app",
+            "certificate_hash": "765dbcbc92d9c1c7c6a0c2db99128790747cce5e"
+          }
+        },
+        {
+          "client_id": "756289834540-jndqndiqtkvsd7os1dg4cldqq88du67e.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "et.crownblade.app",
+            "certificate_hash": "a7c9e6d477ab0d2282019159f80a1c6cf0036b7e"
+          }
+        },
+        {
+          "client_id": "756289834540-ebcglgj1491u76k99spff251ofguq5j5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDXqQCY7uUOV0gSDXI7Rr_V_OFT2zMvjWQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "756289834540-ebcglgj1491u76k99spff251ofguq5j5.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "756289834540-kt8ti4modhfitdsdasuahtlrbtqlcs6c.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.barbershop.barbershopBooking"
+              }
+            }
+          ]
         }
       }
     }

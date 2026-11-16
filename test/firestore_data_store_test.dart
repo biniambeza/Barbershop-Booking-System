@@ -125,7 +125,8 @@ void main() {
   test('admin sees everything', () async {
     await store.start(user('user_admin_1'));
     expect(cache.shops.length, 6);
-    expect(cache.bookings.length, seed.bookings.length);
+    // admin shop management: the admin loads no bookings.
+    expect(cache.bookings, isEmpty);
     expect(cache.users.length, seed.users.length);
     expect(cache.services.length, seed.services.length);
     expect(cache.barbers.length, seed.barbers.length);
@@ -147,12 +148,11 @@ void main() {
     final doc = await db.collection('bookings').doc('book_new').get();
     expect(doc.data()!['startAt'], booking.startAt.toIso8601String());
     expect(doc.data()!['paymentStatus'], 'unpaid');
-    await pumpEventQueue();
-    expect(cache.bookings['book_new']?.status, BookingStatus.pending);
+    // (The admin has no bookings listener: check the documents.)
+    expect(doc.data()!['status'], BookingStatus.pending.name);
 
     await store.updateBookingStatus(booking, BookingStatus.cancelled);
-    await pumpEventQueue();
-    expect(cache.bookings['book_new']?.status, BookingStatus.cancelled);
+    expect((await db.collection('bookings').doc('book_new').get()).data()!['status'], BookingStatus.cancelled.name);
 
     // Profile updates never touch protected fields and clear null fields.
     final shop = cache.shops['shop_1']!;

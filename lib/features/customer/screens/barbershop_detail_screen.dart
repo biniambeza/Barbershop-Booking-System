@@ -4,7 +4,6 @@ import '../../../core/theme/app_theme.dart';
 import '../../shared/widgets/ui_kit.dart';
 import '../../../core/utils/phone_utils.dart';
 import '../../../l10n/l10n.dart';
-import '../../reviews/reviews_l10n.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../models/service_model.dart';
 import '../../../models/barber_model.dart';
@@ -12,6 +11,8 @@ import '../../../services/app_repository.dart';
 import 'booking_flow_screen.dart';
 import '../../queue/queue_status_card.dart';
 import '../../reviews/widgets/shop_reviews_section.dart';
+import '../../reviews/widgets/review_widgets.dart';
+import '../../admin/widgets/shop_suspension_widgets.dart'; // admin shop management
 
 class BarbershopDetailScreen extends StatefulWidget {
   final Barbershop shop;
@@ -32,6 +33,9 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
     final services = repo.getServicesForShop(widget.shop.id);
     final barbers = repo.getBarbersForShop(widget.shop.id);
     final isFav = repo.isShopFavorite(widget.shop.id);
+    // admin shop management: suspended (admin or unpaid) shops take no bookings.
+    final liveShop = repo.getShopById(widget.shop.id) ?? widget.shop;
+    final blocked = liveShop.isBlocked;
     final l = context.l10n;
     final fmt = context.fmt;
     final shopDays = (widget.shop.workingDays.toList()..sort()).map(fmt.weekdayName).join(', ');
@@ -120,20 +124,13 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                           ),
                         ),
                       const Spacer(),
-                      const Icon(Icons.star_rounded, color: AppTheme.orange, size: 20),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        flex: 3,
-                        child: Text(
-                          l.reviewsRatingShort(widget.shop.rating, widget.shop.reviewCount),
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.end,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                        ),
-                      ),
+                      // Average of the rated barbers' averages ("4.6 · 3 barbers rated").
+                      Flexible(flex: 3, child: ShopRatingBadge(shopId: widget.shop.id, fontSize: 13)),
                     ],
                   ),
                   const SizedBox(height: 12),
+
+                  ShopUnavailableNotice(shop: liveShop), // admin shop management
 
                   // Description
                   Text(
@@ -279,7 +276,7 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                BarberRatingInline(barber: barber),
+                                BarberRatingInline(barber: barber, openReviews: true),
                               ],
                             ),
                           ),
@@ -421,7 +418,11 @@ class _BarbershopDetailScreenState extends State<BarbershopDetailScreen> {
               ),
               const SizedBox(width: 12),
               ElevatedButton(
-                onPressed: () {
+                key: const ValueKey('shop-book-button'),
+                // admin shop management: no new bookings while blocked.
+                onPressed: blocked
+                    ? null
+                    : () {
                   final serviceToBook = _selectedService ?? (services.isNotEmpty ? services.first : null);
                   final barberToBook = _selectedBarber ?? (barbers.isNotEmpty ? barbers.first : null);
 

@@ -6,13 +6,29 @@ import '../../../models/barber_model.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../services/app_repository.dart';
 import '../../../services/reviews_service.dart';
+import '../reviews_l10n.dart';
 import '../screens/reviews_screen.dart';
 import 'review_widgets.dart';
 
+/// Opens [barber]'s reviews (the shop's reviews filtered by barberId).
+Future<void> openBarberReviews(BuildContext context, Barber barber, {ReviewsService? service}) => Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ReviewsScreen(
+          shopId: barber.shopId,
+          barberId: barber.id,
+          title: context.l10n.reviewsBarberTitle(barber.name),
+          service: service,
+        ),
+      ),
+    );
+
 /// Shop detail page: rating summary with star distribution and the latest
 /// reviews, plus "See all reviews" (key `reviews-see-all`) opening the
-/// paginated [ReviewsScreen]. Average and count are the shop's live
-/// `rating` / `reviewCount`.
+/// paginated [ReviewsScreen], and one chip per rated barber opening that
+/// barber's reviews (keys `barber-reviews-{barberId}`). The average is the
+/// shop rating (average of its rated barbers' averages, see
+/// lib/services/rating_service.dart) over the barbers' review counts.
 class ShopReviewsSection extends StatefulWidget {
   const ShopReviewsSection({super.key, required this.shop, this.service, this.latestCount = 3});
 
@@ -74,12 +90,44 @@ class _ShopReviewsSectionState extends State<ShopReviewsSection> {
             return ListenableBuilder(
               listenable: repo,
               builder: (context, _) {
-                final summary = _service.shopSummary(widget.shop.id);
+                final rating = _service.shopRating(widget.shop.id);
+                final summary = rating.summary;
+                final ratedBarbers = repo
+                    .getBarbersForShop(widget.shop.id)
+                    .where((b) => b.reviewCount > 0)
+                    .toList()
+                  ..sort((a, b) => a.name.compareTo(b.name));
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    RatingSummaryCard(summary: summary, distribution: data?.$1),
+                    RatingSummaryCard(
+                      summary: summary,
+                      distribution: data?.$1,
+                      caption: rating.isNew ? null : l.ratingBarbersRated(rating.ratedBarbers),
+                    ),
                     const SizedBox(height: 12),
+                    if (ratedBarbers.isNotEmpty) ...[
+                      Text(
+                        l.reviewsByBarber,
+                        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppTheme.textSecondary),
+                      ),
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final b in ratedBarbers)
+                            ActionChip(
+                              key: ValueKey('barber-reviews-${b.id}'),
+                              avatar: const Icon(Icons.star_rounded, size: 16, color: AppTheme.orange),
+                              label: Text('${b.name} · ${l.barberRatingText(_service.barberSummary(b.id))}'),
+                              tooltip: l.ratingSeeBarberReviews(b.name),
+                              onPressed: () => openBarberReviews(context, b, service: widget.service),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                    ],
                     if (snapshot.hasError)
                       Text(l.reviewsLoadFailed, style: const TextStyle(color: AppTheme.textSecondary))
                     else if (data == null)
@@ -116,15 +164,29 @@ class _ShopReviewsSectionState extends State<ShopReviewsSection> {
   }
 }
 
-/// Barber card rating on the shop page: "★ 4.8 (12)" or "New".
+/// A barber's own rating on barber cards: "★ 4.8 (12)" or "New"
+/// (ratingSum / reviewCount). With [openReviews] a tap opens the barber's
+/// reviews (when there are any).
 class BarberRatingInline extends StatelessWidget {
-  const BarberRatingInline({super.key, required this.barber});
+  const BarberRatingInline({super.key, required this.barber, this.openReviews = false, this.fontSize = 11});
 
   final Barber barber;
+  final bool openReviews;
+  final double fontSize;
 
   @override
-  Widget build(BuildContext context) => RatingBadge(
-        key: ValueKey('barber-rating-${barber.id}'),
-        summary: RatingSummary(rating: barber.rating, count: barber.reviewCount),
-      );
+  Widget build(BuildContext context) {
+    final summary = barberRatingSummary(barber);
+    final badge = RatingBadge(key: ValueKey('barber-rating-${barber.id}'), summary: summary, fontSize: fontSize);
+    if (!openReviews || summary.count == 0) return badge;
+    return Tooltip(
+      message: context.l10n.ratingSeeBarberReviews(barber.name),
+      child: InkWell(
+        key: ValueKey('open-barber-reviews-${barber.id}'),
+        borderRadius: BorderRadius.circular(8),
+        onTap: () => openBarberReviews(context, barber),
+        child: Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: badge),
+      ),
+    );
+  }
 }

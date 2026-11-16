@@ -400,6 +400,8 @@ extension AppLabels on AppLocalizations {
         return authErrUserDisabled;
       case EmailAuthErrorCode.network:
         return authErrNetwork;
+      case EmailAuthErrorCode.emailNotVerified:
+        return emailErrNotVerified;
       case EmailAuthErrorCode.requiresRecentLogin:
         return changePasswordErrRecentLogin;
       case EmailAuthErrorCode.noPassword:

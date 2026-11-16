@@ -19,6 +19,16 @@ class UserInvite {
   final String createdBy;
   final DateTime createdAt;
 
+  // --- barber accounts (owner-created login with a temporary password) ---
+  /// Firebase Auth uid of the account the shop owner created for this
+  /// invite (its email is not verified). Null for ordinary invites.
+  final String? authUid;
+
+  /// The account must replace its temporary password at first login
+  /// (copied to `users/{uid}.mustChangePassword`).
+  final bool mustChangePassword;
+  // --- end barber accounts ---
+
   UserInvite({
     required String email,
     required this.role,
@@ -27,6 +37,8 @@ class UserInvite {
     this.barberId,
     required this.createdBy,
     required this.createdAt,
+    this.authUid, // barber accounts
+    this.mustChangePassword = false, // barber accounts
   }) : email = normalizeEmail(email);
 
   Map<String, dynamic> toMap() {
@@ -38,6 +50,8 @@ class UserInvite {
       if (barberId != null) 'barberId': barberId,
       'createdBy': createdBy,
       'createdAt': createdAt.toUtc().toIso8601String(),
+      if (authUid != null) 'authUid': authUid, // barber accounts
+      if (mustChangePassword) 'mustChangePassword': true, // barber accounts
     };
   }
 
@@ -50,6 +64,8 @@ class UserInvite {
       barberId: map['barberId'],
       createdBy: map['createdBy'] ?? '',
       createdAt: DateTime.tryParse(map['createdAt'] ?? '') ?? DateTime.now(),
+      authUid: map['authUid'] is String ? map['authUid'] as String : null, // barber accounts
+      mustChangePassword: map['mustChangePassword'] == true, // barber accounts
     );
   }
 }

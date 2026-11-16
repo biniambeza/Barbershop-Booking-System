@@ -6,6 +6,7 @@ import '../../reviews/reviews_l10n.dart';
 import '../../../models/barber_model.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../services/app_repository.dart';
+import '../../../services/rating_service.dart';
 import 'booking_flow_screen.dart';
 import 'barbershop_detail_screen.dart';
 
@@ -218,7 +219,7 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                           const Icon(Icons.star_rounded, color: AppTheme.orange, size: 16),
                           const SizedBox(width: 4),
                           Text(
-                            context.l10n.reviewsRatingShort(barber.rating, barber.reviewCount),
+                            context.l10n.barberRatingText(barberRatingSummary(barber)),
                             style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                           ),
                         ],

@@ -77,6 +77,13 @@ class _OwnerReportsScreenState extends State<OwnerReportsScreen> {
                 builder: (context, snap) {
                   if (snap.hasError) return _error(context);
                   if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+                  // free plan: no fresh stats docs, so recompute live from the cached bookings
+                  if (snap.data!.fromBookings) {
+                    return ListenableBuilder(
+                      listenable: AppRepository.instance,
+                      builder: (context, _) => _tabs(_service.computeFallbackReport(widget.shopId, now: _now)),
+                    );
+                  }
                   return _tabs(snap.data!);
                 },
               )
@@ -113,7 +120,7 @@ class _OwnerReportsScreenState extends State<OwnerReportsScreen> {
         _OverviewTab(
           report: report,
           month: month,
-          showUpdatedNote: _service.usesFirestore,
+          showUpdatedNote: _service.usesFirestore && !report.fromBookings,
           onMonthChanged: (m) => setState(() => _selectedMonth = m),
         ),
         _ClientsTab(clients: report.clients),
@@ -185,6 +192,22 @@ class _OverviewTab extends StatelessWidget {
             ],
           ),
         ),
+        // --- free plan: figures computed in the app from cached bookings ---
+        if (report.fromBookings) ...[
+          const SizedBox(height: 8),
+          Row(
+            key: const ValueKey('reports-from-bookings-note'),
+            children: [
+              const Icon(Icons.info_outline, size: 14, color: AppTheme.textSecondary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(l.freePlanReportsFromBookings(kReportFallbackDays),
+                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+              ),
+            ],
+          ),
+        ],
+        // --- end free plan ---
         const SizedBox(height: 14),
         Wrap(
           spacing: 10,

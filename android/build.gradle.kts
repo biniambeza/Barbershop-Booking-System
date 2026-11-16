@@ -1,5 +1,8 @@
 allprojects {
     repositories {
+        // Local copies of large Flutter engine artifacts, used first when
+        // present (helps on slow connections). Folder is git-ignored.
+        maven { url = uri("${rootDir}/local-maven") }
         google()
         mavenCentral()
     }

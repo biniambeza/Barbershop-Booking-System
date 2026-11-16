@@ -7,8 +7,8 @@ import '../../../services/reviews_service.dart';
 import '../reviews_l10n.dart';
 import '../widgets/review_widgets.dart';
 
-/// All reviews of a shop, or of one of its barbers ([barberId]), newest
-/// first, [kReviewPageSize] at a time, under the rating summary and star
+/// All reviews of a shop, or of one of its barbers ([barberId]: the shop's
+/// reviews filtered by `barberId`), newest first, [kReviewPageSize] at a time, under the rating summary and star
 /// distribution. The shop owner gets Reply / Edit reply on each review;
 /// everyone else (customers, barbers) reads only.
 class ReviewsScreen extends StatefulWidget {
@@ -100,12 +100,17 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
           children: [
             ListenableBuilder(
               listenable: repo,
-              builder: (context, _) => RatingSummaryCard(
-                summary: widget.barberId == null
-                    ? _service.shopSummary(widget.shopId)
-                    : _service.barberSummary(widget.barberId!),
-                distribution: _distribution,
-              ),
+              builder: (context, _) {
+                if (widget.barberId != null) {
+                  return RatingSummaryCard(summary: _service.barberSummary(widget.barberId!), distribution: _distribution);
+                }
+                final rating = _service.shopRating(widget.shopId);
+                return RatingSummaryCard(
+                  summary: rating.summary,
+                  distribution: _distribution,
+                  caption: rating.isNew ? null : l.ratingBarbersRated(rating.ratedBarbers),
+                );
+              },
             ),
             const SizedBox(height: 16),
             for (final review in _reviews)

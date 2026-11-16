@@ -12,6 +12,7 @@ import '../../../services/app_repository.dart';
 import '../../../services/availability_service.dart';
 import '../../../services/booking_acceptance.dart' show isAwaitingAcceptance;
 import '../../payments/payment_flow.dart';
+import '../../reviews/widgets/shop_reviews_section.dart' show BarberRatingInline;
 
 /// Pick barber, service, day and a real free time, then book.
 ///
@@ -508,7 +509,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
 
   Widget _buildBarberPicker(List<Barber> barbers) {
     return SizedBox(
-      height: 96,
+      height: 112,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: barbers.length,
@@ -549,6 +550,8 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
+                    // The barber's own stars and review count, or "New".
+                    BarberRatingInline(barber: barber, fontSize: 10.5),
                     if (!barber.isAvailable)
                       Text(context.l10n.unavailable,
                           style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
@@ -659,7 +662,7 @@ class _BookingFlowScreenState extends State<BookingFlowScreen> {
   Widget _buildSlots(Barbershop shop, Barber barber, List<DateTime> slots, DateTime? selected) {
     final l = context.l10n;
     String? emptyMessage;
-    if (shop.isSuspended) {
+    if (shop.isBlocked) { // admin shop management: isBlocked
       emptyMessage = l.shopNotTakingBookings;
     } else if (!barber.isAvailable) {
       emptyMessage = l.barberNotTakingBookings(barber.name);

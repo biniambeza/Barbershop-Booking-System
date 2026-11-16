@@ -1,38 +1,85 @@
 /**
- * Shop and barber ratings from barbershops/{shopId}/reviews/{bookingId}.
- * Only whole-star ratings 1..5 count.
+ * Ratings, the same model as lib/services/rating_service.dart (keep both in
+ * line):
+ *
+ *  - Barber: barbershops/{s}/barbers/{b} keeps ratingSum and reviewCount.
+ *    The customer's app adds the review's stars and 1 in the transaction
+ *    that creates the review (firestore.rules checks it), so this codebase
+ *    never touches the barber counters (no double counting). Legacy docs
+ *    without ratingSum use round(rating * reviewCount). Average =
+ *    ratingSum / reviewCount, one decimal.
+ *  - Shop: the average of its rated barbers' (unrounded) averages, barbers
+ *    with reviewCount > 0 only, taken in barber id order, one decimal; no
+ *    rated barber = 0 ("New" in the app). The cached shop fields are
+ *    rating = that average and reviewCount = the rated barbers' reviews.
  */
 
-export interface ReviewData {
-  barberId?: unknown;
+export interface BarberRatingData {
   rating?: unknown;
+  reviewCount?: unknown;
+  ratingSum?: unknown;
 }
 
-export interface RatingSummary {
-  /** Average rating rounded to one decimal; 0 when there are no reviews. */
+export interface ShopRatingSummary {
+  /** Average of the rated barbers' averages, one decimal; 0 when none. */
   rating: number;
+  /** Reviews of the rated barbers together. */
   reviewCount: number;
+  /** Barbers with at least one review. */
+  ratedBarbers: number;
 }
 
 export const isValidRating = (v: unknown): v is number =>
   typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 5;
 
-export function summarizeRatings(ratings: unknown[]): RatingSummary {
-  const valid = ratings.filter(isValidRating);
-  if (valid.length === 0) return { rating: 0, reviewCount: 0 };
-  const sum = valid.reduce((a, b) => a + b, 0);
-  return { rating: Math.round((sum / valid.length) * 10) / 10, reviewCount: valid.length };
+const nonNegativeInt = (v: unknown): number =>
+  typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
+
+/** One decimal, half up (ratings are never negative); same epsilon as Dart. */
+export const roundRating = (v: number): number => Math.round(v * 10 + 1e-9) / 10;
+
+/** The barber's review count (0 when missing or invalid). */
+export const barberReviewCount = (b: BarberRatingData): number => nonNegativeInt(b.reviewCount);
+
+/** ratingSum, or round(rating * reviewCount) on legacy docs without it. */
+export function barberRatingSum(b: BarberRatingData): number {
+  const count = barberReviewCount(b);
+  if (typeof b.ratingSum === 'number' && Number.isFinite(b.ratingSum)) return Math.max(0, Math.floor(b.ratingSum));
+  if (count === 0) return 0;
+  const legacy = typeof b.rating === 'number' && Number.isFinite(b.rating) ? b.rating : 0;
+  return Math.round(legacy * count);
 }
 
-/** The shop summary plus one summary per barber in [barberIds]. */
-export function summarizeShopReviews(
-  reviews: ReviewData[],
-  barberIds: Iterable<string>,
-): { shop: RatingSummary; barbers: Map<string, RatingSummary> } {
-  const barbers = new Map<string, RatingSummary>();
-  for (const id of barberIds) {
-    if (!id) continue;
-    barbers.set(id, summarizeRatings(reviews.filter((r) => r.barberId === id).map((r) => r.rating)));
+/** The barber's average, one decimal; 0 without reviews. */
+export function barberAverage(b: BarberRatingData): number {
+  const count = barberReviewCount(b);
+  return count === 0 ? 0 : roundRating(barberRatingSum(b) / count);
+}
+
+/** The shop rating from its barbers ({ id, data }). */
+export function summarizeShopFromBarbers(barbers: { id: string; data: BarberRatingData }[]): ShopRatingSummary {
+  const rated = barbers
+    .filter((b) => barberReviewCount(b.data) > 0)
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  if (rated.length === 0) return { rating: 0, reviewCount: 0, ratedBarbers: 0 };
+  let sum = 0;
+  let reviews = 0;
+  for (const b of rated) {
+    const count = barberReviewCount(b.data);
+    sum += barberRatingSum(b.data) / count;
+    reviews += count;
   }
-  return { shop: summarizeRatings(reviews.map((r) => r.rating)), barbers };
+  return { rating: roundRating(sum / rated.length), reviewCount: reviews, ratedBarbers: rated.length };
+}
+
+/**
+ * Whether a barber write can change the shop rating: created, deleted, or
+ * ratingSum / reviewCount / rating changed. Profile edits and availability
+ * toggles are skipped.
+ */
+export function barberRatingChanged(before: BarberRatingData | undefined, after: BarberRatingData | undefined): boolean {
+  if (!before || !after) return before !== after;
+  return (
+    before.ratingSum !== after.ratingSum || before.reviewCount !== after.reviewCount || before.rating !== after.rating
+  );
 }

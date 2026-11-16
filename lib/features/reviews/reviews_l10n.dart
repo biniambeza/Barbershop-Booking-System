@@ -38,4 +38,12 @@ extension ReviewsL10n on AppLocalizations {
 
   /// "4.5", or "New" while nobody has rated yet.
   String reviewsRatingValue(double rating, int count) => count == 0 ? reviewsNew : rating.toStringAsFixed(1);
+
+  /// A barber's "4.5 (12 reviews)" or "New" (ratingSum / reviewCount).
+  String barberRatingText(RatingSummary summary) => reviewsRatingShort(summary.rating, summary.count);
+
+  /// A shop's "4.6 · 3 barbers rated" (average of its rated barbers'
+  /// averages), or "New" while no barber has a review.
+  String shopRatingText(ShopRating rating) =>
+      rating.isNew ? reviewsNew : ratingShopSummary(rating.rating.toStringAsFixed(1), rating.ratedBarbers);
 }

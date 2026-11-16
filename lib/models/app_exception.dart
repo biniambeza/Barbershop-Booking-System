@@ -109,7 +109,7 @@ enum AppErrorCode {
       case AppErrorCode.googleEmailMissing:
         return 'Your Google account has no verified email address.';
       case AppErrorCode.emailNotVerified:
-        return 'This email address is not verified yet. Register again to get a new code.';
+        return 'Please verify your email first. Open the link we emailed you, then log in.';
       case AppErrorCode.invalidName:
         return 'Enter your name (up to 100 characters).';
       case AppErrorCode.signInRequired:

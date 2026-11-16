@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../l10n/l10n.dart';
+import '../../../services/app_repository.dart';
 import '../../../services/reviews_service.dart';
 import '../reviews_l10n.dart';
 
@@ -110,11 +111,59 @@ class RatingBadge extends StatelessWidget {
   }
 }
 
+/// The shop rating (average of its rated barbers' averages, from the
+/// loaded barbers): "★ 4.6 · 3 barbers rated", or "New". Rebuilds when the
+/// repository changes (e.g. a barber's counters after a new review).
+class ShopRatingBadge extends StatelessWidget {
+  const ShopRatingBadge({super.key, required this.shopId, this.fontSize = 12, this.color = AppTheme.textPrimary});
+
+  final String shopId;
+  final double fontSize;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final repo = AppRepository.instance;
+    return ListenableBuilder(
+      listenable: repo,
+      builder: (context, _) {
+        final rating = repo.shopRatingOf(shopId);
+        final text = context.l10n.shopRatingText(rating);
+        return Row(
+          key: ValueKey('shop-rating-$shopId'),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!rating.isNew) ...[
+              Icon(Icons.star_rounded, size: fontSize + 3, color: AppTheme.orange),
+              const SizedBox(width: 4),
+            ],
+            Flexible(
+              child: Text(
+                text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.w700,
+                  color: rating.isNew ? AppTheme.textSecondary : color,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
 /// Big average, stars, count, and one bar per star (5 down to 1).
 class RatingSummaryCard extends StatelessWidget {
-  const RatingSummaryCard({super.key, required this.summary, this.distribution});
+  const RatingSummaryCard({super.key, required this.summary, this.distribution, this.caption});
 
   final RatingSummary summary;
+
+  /// Extra line under the count (the shop card: "3 barbers rated").
+  final String? caption;
 
   /// Null while loading (bars are hidden).
   final RatingDistribution? distribution;
@@ -145,6 +194,12 @@ class RatingSummaryCard extends StatelessWidget {
                 key: const ValueKey('rating-count'),
                 style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary),
               ),
+              if (caption != null)
+                Text(
+                  caption!,
+                  key: const ValueKey('rating-caption'),
+                  style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                ),
             ],
           ),
           const SizedBox(width: 18),

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../data/addis_locations.dart';
 import '../../../l10n/l10n.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../models/user_model.dart';
 import '../../../services/app_repository.dart';
 import '../../applications/widgets/shop_application_entries.dart'; // shop applications
 import '../../notifications/widgets/notification_bell.dart';
+import '../../reviews/widgets/rate_prompt_banner.dart';
+import '../../reviews/widgets/review_widgets.dart';
 import '../../shared/widgets/app_bar_menu.dart';
 import '../../shared/widgets/ui_kit.dart';
 import 'barbershop_detail_screen.dart';
@@ -24,8 +27,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   String _selectedCity = 'All';
   String _selectedCategory = 'all';
 
-  /// Sub-city filter chips ('All' + the sub-cities of the listed shops).
-  List<String> _cities = const ['All'];
   static const List<String> _categories = ['all', 'fades', 'beard', 'shave', 'kids'];
 
   String _categoryLabel(String id) {
@@ -48,12 +49,15 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   Widget build(BuildContext context) {
     final repo = AppRepository.instance;
     final allShops = repo.getShops();
-    _cities = [
+    // Sub-city dropdown: 'All', the Addis sub-cities in their usual order,
+    // then any other sub-city a listed shop uses. Each shows its shop count.
+    final shopsPerCity = <String, int>{};
+    for (final s in allShops) {
+      if (s.subCity.isNotEmpty) shopsPerCity[s.subCity] = (shopsPerCity[s.subCity] ?? 0) + 1;
+    }
+    final cities = [
       'All',
-      ...{
-        for (final s in allShops)
-          if (s.subCity.isNotEmpty) s.subCity
-      }
+      ...{...kAddisSubCities, ...shopsPerCity.keys, if (_selectedCity != 'All') _selectedCity},
     ];
 
     final filteredShops = allShops.where((s) {
@@ -112,6 +116,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // "How was your cut?": once, after a completed visit that has no review yet.
+                  const RatePromptBanner(),
                   // Search Bar
                   TextField(
                     onChanged: (val) => setState(() => _searchQuery = val),
@@ -179,44 +185,57 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   // --- shop applications: "Register your barbershop" ---
                   const ShopApplicationEntryCard(),
                   const SizedBox(height: 18),
-                  // City Filter Chips
-                  Row(
-                    children: [
-                      Text(
-                        l.subCityFilterLabel,
-                        style:
-                            const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: _cities.map((city) {
-                              final isSelected = _selectedCity == city;
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 6),
-                                child: ChoiceChip(
-                                  label: Text(city == 'All' ? l.all : l.placeName(city)),
-                                  selected: isSelected,
-                                  selectedColor: AppTheme.ink,
-                                  labelStyle: TextStyle(
-                                    fontSize: 11.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: isSelected ? AppTheme.onInk : AppTheme.textPrimary,
-                                  ),
-                                  onSelected: (val) {
-                                    if (val) setState(() => _selectedCity = city);
-                                  },
-                                ),
-                              );
-                            }).toList(),
+                  // Sub-city filter (dropdown)
+                  Tooltip(
+                    message: l.subCityFilterTooltip,
+                    child: DropdownButtonFormField<String>(
+                      key: const ValueKey('subcity-filter'),
+                      initialValue: _selectedCity,
+                      isExpanded: true,
+                      isDense: true,
+                      borderRadius: BorderRadius.circular(16),
+                      dropdownColor: AppTheme.card,
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.textSecondary),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.textPrimary,
                           ),
-                        ),
+                      decoration: InputDecoration(
+                        labelText: l.subCity,
+                        isDense: true,
+                        prefixIcon: const Icon(Icons.location_on_outlined, size: 20, color: AppTheme.green),
+                        prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                        contentPadding: const EdgeInsets.fromLTRB(0, 12, 12, 12),
                       ),
-                    ],
+                      selectedItemBuilder: (context) => [
+                        for (final city in cities)
+                          Text(
+                            city == 'All' ? l.allSubCities : l.placeName(city),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                      ],
+                      items: [
+                        for (final city in cities)
+                          DropdownMenuItem<String>(
+                            key: ValueKey('subcity-option-$city'),
+                            value: city,
+                            child: Text(
+                              city == 'All'
+                                  ? l.allSubCities
+                                  : l.subCityOptionCount(l.placeName(city), shopsPerCity[city] ?? 0),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
+                      onChanged: (city) {
+                        if (city != null) setState(() => _selectedCity = city);
+                      },
+                    ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   // Service Category Filter Chips
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
@@ -348,25 +367,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   top: 12,
                   right: 12,
                   child: Container(
+                    constraints: const BoxConstraints(maxWidth: 210),
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.star_rounded, size: 15, color: AppTheme.orange),
-                        const SizedBox(width: 4),
-                        Text(
-                          shop.reviewCount == 0
-                              ? context.l10n.reviewsNew
-                              : '${shop.rating.toStringAsFixed(1)} (${shop.reviewCount})',
-                          style:
-                              const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
-                        ),
-                      ],
-                    ),
+                    // Average of the rated barbers' averages ("4.6 · 3 barbers rated") or "New".
+                    child: ShopRatingBadge(shopId: shop.id),
                   ),
                 ),
                 Positioned(
@@ -480,23 +488,35 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                           const SizedBox(width: 12),
                         ],
                       ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
+                      // A Wrap, so long (Amharic) labels move to a new line
+                      // instead of overflowing on narrow phones.
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
-                          const Icon(Icons.people_outline, size: 14, color: AppTheme.success),
-                          const SizedBox(width: 3),
-                          Text(
-                            l.barbersCount(barbers.length),
-                            style: const TextStyle(
-                                fontSize: 11.5, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.people_outline, size: 14, color: AppTheme.success),
+                              const SizedBox(width: 3),
+                              Text(
+                                l.barbersCount(barbers.length),
+                                style: const TextStyle(
+                                    fontSize: 11.5, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.content_cut, size: 13, color: AppTheme.blue),
-                          const SizedBox(width: 3),
-                          Text(
-                            l.servicesCount(services.length),
-                            style: const TextStyle(
-                                fontSize: 11.5, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.content_cut, size: 13, color: AppTheme.blue),
+                              const SizedBox(width: 3),
+                              Text(
+                                l.servicesCount(services.length),
+                                style: const TextStyle(
+                                    fontSize: 11.5, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
+                              ),
+                            ],
                           ),
                         ],
                       ),

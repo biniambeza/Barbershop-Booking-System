@@ -25,6 +25,7 @@ import {
   updateDoc,
   where,
   writeBatch,
+  increment,
 } from 'firebase/firestore';
 
 const NOW = new Date().toISOString();
@@ -1222,10 +1223,14 @@ describe('booking listeners (list queries)', () => {
     }
   });
 
-  test('admin: orderBy createdAt desc limit 500', async () => {
+  // Admin shop management: the admin dashboard has no bookings list any
+  // more, so admins cannot list bookings (single gets still work).
+  test('admin: cannot list bookings, can still get one', async () => {
     const db = as('admin', EMAILS.admin);
-    const snap = await assertSucceeds(getDocs(query(bookings(db), orderBy('createdAt', 'desc'), limit(500))));
-    assert.equal(snap.size, 3);
+    await assertFails(getDocs(query(bookings(db), orderBy('createdAt', 'desc'), limit(500))));
+    await assertFails(getDocs(bookings(db)));
+    await assertFails(getDocs(query(bookings(db), where('shopId', '==', 'shop1'))));
+    await assertSucceeds(getDoc(doc(db, 'bookings', 'bkShop2')));
     await assertFails(getDocs(query(bookings(as('owner1', EMAILS.owner1)), orderBy('createdAt', 'desc'), limit(500))));
   });
 });
@@ -2345,7 +2350,9 @@ describe('walk-in queue', () => {
     }
   });
 
-  test('queueSummary/current: public read, functions-only writes', async () => {
+  // Free plan: staff may also write it (see 'free plan: queueSummary/current'
+  // below); malformed or partial writes and deletes stay denied for everyone.
+  test('queueSummary/current: public read; malformed writes and deletes denied', async () => {
     await seed('barbershops/shop1/queueSummary', 'current', { waitingCount: 3, estimatedWaitMinutes: 35, updatedAt: NOW, positions: {} });
     await assertSucceeds(getDoc(doc(anon(), 'barbershops/shop1/queueSummary', 'current')));
     await assertSucceeds(getDoc(doc(as('customer', EMAILS.customer), 'barbershops/shop1/queueSummary', 'current')));
@@ -2357,7 +2364,7 @@ describe('walk-in queue', () => {
     ]) {
       const ref = doc(as(uid, email), 'barbershops/shop1/queueSummary', 'current');
       await assertFails(setDoc(ref, { waitingCount: 0, estimatedWaitMinutes: 0, updatedAt: NOW }), uid);
-      await assertFails(updateDoc(ref, { waitingCount: 0 }), uid);
+      await assertFails(updateDoc(ref, { waitingCount: 2 }), uid); // positions has 0 entries
       await assertFails(deleteDoc(ref), uid);
     }
   });
@@ -2392,14 +2399,29 @@ describe('reviews', () => {
     await seed('barbershops/shop1/reviews', 'bkDone2', review({ bookingId: 'bkDone2', customerId: 'customer2', customerName: 'Liya', barberId: 'b2', rating: 3 }));
   });
 
-  // ReviewsService.submitReview: a transaction that aborts if the review exists.
-  function createReviewTx(db, data, id = data.bookingId) {
+  // ReviewsService.submitReview (FirestoreReviewStore.create): a transaction
+  // that aborts if the review exists, creates it and adds its stars to the
+  // barber's counters. `counters` overrides the barber update (null = none).
+  function createReviewTx(db, data, id = data.bookingId, { counters, barberId = data.barberId } = {}) {
     return runTransaction(db, async (tx) => {
       const ref = doc(reviews(db, 'shop1'), id);
       if ((await tx.get(ref)).exists()) throw new Error('already reviewed');
+      const barberRef = doc(db, 'barbershops/shop1/barbers', barberId);
+      const b = (await tx.get(barberRef)).data();
       tx.set(ref, data);
+      if (counters === null || !b) return;
+      const count = b.reviewCount ?? 0;
+      const sum = b.ratingSum ?? Math.round((b.rating ?? 0) * count);
+      tx.update(barberRef, counters ?? { ratingSum: sum + data.rating, reviewCount: count + 1, lastReviewId: id });
     });
   }
+  const barberDoc = async (barberId) => {
+    let data;
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      data = (await getDoc(doc(ctx.firestore(), 'barbershops/shop1/barbers', barberId))).data();
+    });
+    return data;
+  };
 
   test('the customer reviews a completed booking once', async () => {
     const db = as('customer', EMAILS.customer);
@@ -2447,6 +2469,132 @@ describe('reviews', () => {
       await assertFails(createReviewTx(cust, review(overrides)), name);
     }
     await assertSucceeds(createReviewTx(cust, review({ rating: 1, comment: 'x'.repeat(500) })));
+  });
+
+  test('the review transaction adds the stars to the barber counters', async () => {
+    const cust = as('customer', EMAILS.customer);
+    await assertSucceeds(createReviewTx(cust, review({ rating: 4 })));
+    const b1 = await barberDoc('b1');
+    assert.equal(b1.reviewCount, 1);
+    assert.equal(b1.ratingSum, 4);
+    assert.equal(b1.lastReviewId, 'bkDone');
+    assert.equal(b1.rating, 5); // the legacy field is left alone
+  });
+
+  test('legacy barber without ratingSum: round(rating * reviewCount) + stars', async () => {
+    await seed('barbershops/shop1/barbers', 'b1', { ...barber('shop1', 'Abel'), rating: 4.5, reviewCount: 2 });
+    const cust = as('customer', EMAILS.customer);
+    await assertFails(createReviewTx(cust, review({ rating: 3 }), 'bkDone', { counters: { ratingSum: 3, reviewCount: 3, lastReviewId: 'bkDone' } }));
+    await assertSucceeds(createReviewTx(cust, review({ rating: 3 })));
+    const b1 = await barberDoc('b1');
+    assert.deepEqual([b1.ratingSum, b1.reviewCount], [12, 3]);
+  });
+
+  test('a batch with the review and the counter update (increments) passes', async () => {
+    const db = as('customer', EMAILS.customer);
+    const batch = writeBatch(db);
+    batch.set(doc(reviews(db), 'bkDone'), review({ rating: 5 }));
+    batch.update(doc(db, 'barbershops/shop1/barbers', 'b1'), { ratingSum: increment(5), reviewCount: increment(1), lastReviewId: 'bkDone' });
+    await assertSucceeds(batch.commit());
+    const b1 = await barberDoc('b1');
+    assert.deepEqual([b1.ratingSum, b1.reviewCount], [5, 1]);
+  });
+
+  test('wrong increments are denied', async () => {
+    const cust = as('customer', EMAILS.customer);
+    for (const [name, counters] of [
+      ['sum too high', { ratingSum: 9, reviewCount: 1, lastReviewId: 'bkDone' }],
+      ['sum too low', { ratingSum: 4, reviewCount: 1, lastReviewId: 'bkDone' }],
+      ['count + 2', { ratingSum: 5, reviewCount: 2, lastReviewId: 'bkDone' }],
+      ['count unchanged', { ratingSum: 5, reviewCount: 0, lastReviewId: 'bkDone' }],
+      ['other review id', { ratingSum: 5, reviewCount: 1, lastReviewId: 'bkDone2' }],
+      ['also changes the legacy rating', { ratingSum: 5, reviewCount: 1, lastReviewId: 'bkDone', rating: 4 }],
+      ['also renames', { ratingSum: 5, reviewCount: 1, lastReviewId: 'bkDone', name: 'Hacked' }],
+    ]) {
+      await assertFails(createReviewTx(cust, review({ rating: 5 }), 'bkDone', { counters }), name);
+    }
+    const b1 = await barberDoc('b1');
+    assert.equal(b1.reviewCount, 0);
+  });
+
+  test('a review without the counter update is denied', async () => {
+    await assertFails(createReviewTx(as('customer', EMAILS.customer), review(), 'bkDone', { counters: null }));
+    await assertFails(setDoc(doc(reviews(as('customer', EMAILS.customer)), 'bkDone'), review()));
+  });
+
+  test('a review of a removed barber needs no counter update', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await deleteDoc(doc(ctx.firestore(), 'barbershops/shop1/barbers', 'b1'));
+    });
+    await assertSucceeds(createReviewTx(as('customer', EMAILS.customer), review()));
+  });
+
+  test('no double count: the counters move once per new review', async () => {
+    const db = as('customer', EMAILS.customer);
+    await assertSucceeds(createReviewTx(db, review({ rating: 4 })));
+    const barberRef = doc(db, 'barbershops/shop1/barbers', 'b1');
+    // Same review again (it exists now), with or without lastReviewId changing.
+    await assertFails(updateDoc(barberRef, { ratingSum: 8, reviewCount: 2 }));
+    await assertFails(updateDoc(barberRef, { ratingSum: 8, reviewCount: 2, lastReviewId: 'bkDone' }));
+    // An older review of the same barber cannot be counted again either.
+    await seed('barbershops/shop1/reviews', 'old', review({ bookingId: 'old', rating: 5 }));
+    await assertFails(updateDoc(barberRef, { ratingSum: 9, reviewCount: 2, lastReviewId: 'old' }));
+    const b1 = await barberDoc('b1');
+    assert.deepEqual([b1.ratingSum, b1.reviewCount], [4, 1]);
+  });
+
+  test('counter update without a review is denied', async () => {
+    const db = as('customer', EMAILS.customer);
+    const barberRef = doc(db, 'barbershops/shop1/barbers', 'b1');
+    await assertFails(updateDoc(barberRef, { ratingSum: 5, reviewCount: 1 }));
+    await assertFails(updateDoc(barberRef, { ratingSum: 5, reviewCount: 1, lastReviewId: 'bkDone' }));
+    await assertFails(updateDoc(barberRef, { ratingSum: 5, reviewCount: 1, lastReviewId: 'missing' }));
+    await assertFails(updateDoc(doc(anon(), 'barbershops/shop1/barbers', 'b1'), { ratingSum: 5, reviewCount: 1, lastReviewId: 'bkDone' }));
+  });
+
+  test("editing someone else's barber counters is denied", async () => {
+    const cust = as('customer', EMAILS.customer);
+    // The review is for b1; the counters of b2 cannot be bumped with it.
+    await assertFails(
+      createReviewTx(cust, review({ rating: 5 }), 'bkDone', { barberId: 'b2', counters: { ratingSum: 5, reviewCount: 1, lastReviewId: 'bkDone' } }),
+    );
+    // Another customer cannot count the customer's (new) review: their own
+    // batch writes it, which fails, and no batch of theirs can create it.
+    const other = as('customer2', EMAILS.customer2);
+    const batch = writeBatch(other);
+    batch.set(doc(reviews(other), 'bkDone'), review());
+    batch.update(doc(other, 'barbershops/shop1/barbers', 'b1'), { ratingSum: 5, reviewCount: 1, lastReviewId: 'bkDone' });
+    await assertFails(batch.commit());
+    // Nor touch a barber of another shop.
+    await assertFails(updateDoc(doc(cust, 'barbershops/shop2/barbers', 'b3'), { ratingSum: 5, reviewCount: 1, lastReviewId: 'bkDone' }));
+  });
+
+  test('owners, barbers and admins cannot change the counters', async () => {
+    await assertSucceeds(createReviewTx(as('customer', EMAILS.customer), review({ rating: 4 })));
+    for (const [uid, email] of [
+      ['owner1', EMAILS.owner1],
+      ['admin', EMAILS.admin],
+      ['barber1', EMAILS.barber1],
+    ]) {
+      const ref = doc(as(uid, email), 'barbershops/shop1/barbers', 'b1');
+      await assertFails(updateDoc(ref, { ratingSum: 50 }), uid);
+      await assertFails(updateDoc(ref, { reviewCount: 10 }), uid);
+      await assertFails(updateDoc(ref, { ratingSum: 9, reviewCount: 2 }), uid);
+      await assertFails(updateDoc(ref, { lastReviewId: 'x' }), uid);
+      await assertFails(updateDoc(ref, { ratingSum: deleteField() }), uid);
+    }
+    // Profile edits keep working and leave the counters as they are.
+    const owner = doc(as('owner1', EMAILS.owner1), 'barbershops/shop1/barbers', 'b1');
+    await assertSucceeds(updateDoc(owner, { name: 'Abel T.', title: 'Senior Barber' }));
+    const b1 = await barberDoc('b1');
+    assert.deepEqual([b1.ratingSum, b1.reviewCount, b1.name], [4, 1, 'Abel T.']);
+  });
+
+  test('new barbers start with empty counters', async () => {
+    const db = as('owner1', EMAILS.owner1);
+    await assertFails(setDoc(doc(db, 'barbershops/shop1/barbers', 'b9'), { ...barber('shop1', 'New'), ratingSum: 20 }));
+    await assertFails(setDoc(doc(db, 'barbershops/shop1/barbers', 'b9'), { ...barber('shop1', 'New'), lastReviewId: 'bkDone' }));
+    await assertSucceeds(setDoc(doc(db, 'barbershops/shop1/barbers', 'b9'), { ...barber('shop1', 'New'), ratingSum: 0 }));
   });
 
   test('public read: anyone lists, pages and counts reviews', async () => {
@@ -3379,5 +3527,697 @@ describe('inviteEmails (functions only)', () => {
       await assertFails(deleteDoc(doc(db, 'inviteEmails', 'barber1@example.com_x')), uid);
     }
     await assertFails(getDoc(doc(anon(), 'inviteEmails', 'barber1@example.com_x')));
+  });
+});
+
+// ===================================================================
+// Wave 5 contracts (final verification): admin shop suspension,
+// temporary-password barber accounts, early-finish notices and
+// subscription receipts. Each write mirrors what the Flutter client sends.
+// ===================================================================
+
+describe('wave 5: admin shop suspension', () => {
+  const admin = () => as('admin', EMAILS.admin);
+  const suspend = (by = 'admin', reason = 'Licence expired') => ({
+    adminSuspended: true,
+    adminSuspendedReason: reason,
+    adminSuspendedAt: NOW,
+    adminSuspendedBy: by,
+  });
+  const reactivate = () => ({
+    adminSuspended: false,
+    adminSuspendedReason: deleteField(),
+    adminSuspendedAt: deleteField(),
+    adminSuspendedBy: deleteField(),
+  });
+
+  test('admin suspends with a reason and reactivates; shape is enforced', async () => {
+    const ref = doc(admin(), 'barbershops', 'shop1');
+    await assertFails(updateDoc(ref, suspend('someoneElse')));
+    await assertFails(updateDoc(ref, suspend('admin', '   ')));
+    await assertFails(updateDoc(ref, suspend('admin', 'x'.repeat(301))));
+    await assertFails(updateDoc(ref, { ...suspend(), adminSuspendedAt: 'yesterday' }));
+    await assertSucceeds(updateDoc(ref, suspend()));
+    // Reactivating must clear the reason, time and admin.
+    await assertFails(updateDoc(ref, { adminSuspended: false }));
+    await assertSucceeds(updateDoc(ref, reactivate()));
+  });
+
+  test('owners and other staff cannot touch the adminSuspended* fields', async () => {
+    await seed('barbershops', 'shop1', { ...shop('owner1'), subscriptionStatus: 'active', ...suspend() });
+    const owner = doc(as('owner1', EMAILS.owner1), 'barbershops', 'shop1');
+    await assertFails(updateDoc(owner, reactivate()));
+    await assertFails(updateDoc(owner, { adminSuspendedReason: 'Fixed' }));
+    await assertFails(updateDoc(doc(as('barber1', EMAILS.barber1), 'barbershops', 'shop1'), reactivate()));
+    // Profile edits of a suspended shop still work.
+    await assertSucceeds(updateDoc(owner, { name: 'Shop renamed' }));
+    // Admins never create a shop already suspended.
+    await assertFails(setDoc(doc(admin(), 'barbershops', 'shopNew'), newShop('', suspend())));
+  });
+
+  test('a suspended shop stays readable but takes no bookings until reactivated', async () => {
+    await seed('barbershops', 'shop1', { ...shop('owner1'), subscriptionStatus: 'active', ...suspend() });
+    const cust = () => as('customer', EMAILS.customer);
+    await assertSucceeds(getDoc(doc(cust(), 'barbershops', 'shop1')));
+    await assertFails(bookTx(cust(), 'susp1', newBooking(addisSlot(5, 11))));
+    await assertSucceeds(updateDoc(doc(admin(), 'barbershops', 'shop1'), reactivate()));
+    await assertSucceeds(bookTx(cust(), 'susp2', newBooking(addisSlot(5, 11))));
+    // Existing bookings stay readable by their customer.
+    await assertSucceeds(getDoc(doc(cust(), 'bookings', 'bk1')));
+  });
+
+  // Barbershop.toAdminEditMap: the profile without the opening hours.
+  const adminEdit = () => ({
+    name: 'Crown Cuts Bole',
+    description: 'Fades',
+    address: 'Bole Road',
+    city: 'Addis Ababa',
+    subCity: 'Bole',
+    landmark: deleteField(),
+    phone: '+251911223301',
+    imageUrl: 'https://example.com/shop.jpg',
+    isVerified: true,
+    subscriptionPlan: 'pro',
+    subscriptionStatus: 'active',
+    subscriptionEndsAt: plusMinutes(NOW, 60 * 24 * 60),
+  });
+
+  test('the admin edit screen write (adminUpdateShop, no opening hours) is allowed', async () => {
+    await assertSucceeds(updateDoc(doc(admin(), 'barbershops', 'shop1'), adminEdit()));
+  });
+
+  test('opening hours are owner-only: an admin update cannot change them', async () => {
+    const ref = doc(admin(), 'barbershops', 'shop1');
+    // shop1 opens 08:00-20:00, Mon-Sat.
+    await assertFails(updateDoc(ref, { ...adminEdit(), openingHour: 9, closingHour: 19 }));
+    await assertFails(updateDoc(ref, { openingHour: 9 }));
+    await assertFails(updateDoc(ref, { closingHour: 21 }));
+    await assertFails(updateDoc(ref, { workingDays: [1, 2, 3, 4, 5, 6, 7] }));
+    await assertFails(updateDoc(ref, { workingDays: deleteField() }));
+    // Writing the unchanged values is not a change.
+    await assertSucceeds(updateDoc(ref, { name: 'Renamed by admin', openingHour: 8, closingHour: 20, workingDays: [1, 2, 3, 4, 5, 6] }));
+    // The admin create still sets the defaults.
+    await assertSucceeds(setDoc(doc(admin(), 'barbershops', 'shopHours'), newShop('', { openingHour: 9, closingHour: 20, workingDays: [1, 2, 3, 4, 5, 6, 7] })));
+  });
+
+  test('the shop owner changes the opening hours', async () => {
+    const owner = doc(as('owner1', EMAILS.owner1), 'barbershops', 'shop1');
+    await assertSucceeds(updateDoc(owner, { openingHour: 7, closingHour: 22, workingDays: [2, 3, 4, 5, 6, 7] }));
+    // Other staff still cannot.
+    await assertFails(updateDoc(doc(as('barber1', EMAILS.barber1), 'barbershops', 'shop1'), { openingHour: 10 }));
+  });
+});
+
+describe('wave 5: temporary-password barber accounts', () => {
+  const EMAIL = 'new.barber@example.com';
+  const staffDb = (uid, email = EMAIL, verified = false) =>
+    env
+      .authenticatedContext(uid, { email, email_verified: verified, firebase: { sign_in_provider: 'password' } })
+      .firestore();
+  const withoutUndefined = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined));
+  const invite = (extra = {}) =>
+    withoutUndefined({
+      email: EMAIL,
+      role: 'barber',
+      name: 'Selam',
+      shopId: 'shop1',
+      barberId: 'b9',
+      createdBy: 'owner1',
+      createdAt: NOW,
+      authUid: 'newb',
+      mustChangePassword: true,
+      ...extra,
+    });
+  const profile = (extra = {}) =>
+    withoutUndefined({
+      uid: 'newb',
+      email: EMAIL,
+      name: 'Selam',
+      phone: '+251911000209',
+      role: 'barber',
+      shopId: 'shop1',
+      barberId: 'b9',
+      createdAt: NOW,
+      mustChangePassword: true,
+      ...extra,
+    });
+
+  async function ownerCreates(extra = {}) {
+    const db = as('owner1', EMAILS.owner1);
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'barbershops/shop1/barbers', 'b9'), barber('shop1', 'Selam'));
+    batch.set(doc(db, 'invites', EMAIL), invite(extra));
+    return batch.commit();
+  }
+
+  function createProfile(db, data = profile()) {
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'users', data.uid), data);
+    batch.delete(doc(db, 'invites', EMAIL));
+    return batch.commit();
+  }
+
+  test('the owner writes the barber and an invite naming the new login', async () => {
+    await assertSucceeds(ownerCreates());
+    // authUid only on barber invites; mustChangePassword only with authUid.
+    await assertFails(
+      setDoc(doc(as('admin', EMAILS.admin), 'invites', 'own@example.com'), {
+        email: 'own@example.com', role: 'barbershopOwner', name: 'O', shopId: 'shop3', createdBy: 'admin', createdAt: NOW, authUid: 'x',
+      }),
+    );
+    await assertFails(
+      setDoc(doc(as('owner1', EMAILS.owner1), 'invites', 'other@example.com'), {
+        email: 'other@example.com', role: 'barber', name: 'O', shopId: 'shop1', barberId: 'b2', createdBy: 'owner1', createdAt: NOW, mustChangePassword: true,
+      }),
+    );
+  });
+
+  test('only the named unverified login reads its invite and creates its profile', async () => {
+    await ownerCreates();
+    await assertSucceeds(getDoc(doc(staffDb('newb'), 'invites', EMAIL)));
+    await assertFails(getDoc(doc(staffDb('intruder'), 'invites', EMAIL)));
+    await assertFails(createProfile(staffDb('intruder'), profile({ uid: 'intruder' })));
+    // The flag must match the invite, and the role cannot be raised.
+    await assertFails(createProfile(staffDb('newb'), profile({ mustChangePassword: false })));
+    await assertFails(createProfile(staffDb('newb'), profile({ role: 'barbershopOwner', barberId: undefined })));
+    await assertSucceeds(createProfile(staffDb('newb')));
+    await assertFails(getDoc(doc(staffDb('newb'), 'invites', EMAIL))); // consumed
+  });
+
+  test('the forced password change clears the flag; it cannot be set again', async () => {
+    await ownerCreates();
+    await createProfile(staffDb('newb'));
+    const ref = doc(staffDb('newb'), 'users', 'newb');
+    await assertFails(updateDoc(ref, { mustChangePassword: false, role: 'admin' }));
+    await assertSucceeds(updateDoc(ref, { mustChangePassword: false }));
+    await assertFails(updateDoc(ref, { mustChangePassword: true }));
+  });
+
+  test('an unverified login without such an invite stays locked out', async () => {
+    await assertFails(
+      setDoc(doc(staffDb('lonely', 'lonely@example.com'), 'users', 'lonely'), {
+        uid: 'lonely', email: 'lonely@example.com', name: 'L', phone: '+251911000219', role: 'customer', createdAt: NOW,
+      }),
+    );
+    // A plain invitation (no authUid) does not unlock an unverified login.
+    await ownerCreates({ authUid: undefined, mustChangePassword: undefined });
+    await assertFails(getDoc(doc(staffDb('newb'), 'invites', EMAIL)));
+    await assertFails(createProfile(staffDb('newb'), profile({ mustChangePassword: undefined })));
+  });
+});
+
+describe('wave 5: early-finish notices', () => {
+  const now = Date.now();
+  const iso = (ms) => new Date(ms).toISOString();
+  const addisDay = (ms) => new Date(ms + ADDIS_MS).toISOString().slice(0, 10);
+  const sameAddisDay = addisDay(now) === addisDay(now + 20 * 60000);
+
+  beforeEach(async () => {
+    await seed('bookings', 'src', booking({ status: 'inProgress', startAt: iso(now - 10 * 60000), endAt: iso(now + 30 * 60000) }));
+    await seed(
+      'bookings',
+      'nextB',
+      booking({
+        customerId: 'customer2',
+        customerName: 'customer2',
+        customerPhone: PHONES.customer2,
+        startAt: iso(now + 20 * 60000),
+        endAt: iso(now + 60 * 60000),
+      }),
+    );
+  });
+
+  const b1 = () => as('barber1', EMAILS.barber1);
+  const complete = (db, completedAt) => updateDoc(doc(db, 'bookings', 'src'), { status: 'completed', completedAt });
+  const notice = (completedAt, extra = {}) => ({
+    type: 'barberFreeEarly',
+    title: 'Your barber is free now',
+    body: 'Come in early if you can.',
+    bookingId: 'nextB',
+    shopId: 'shop1',
+    barberId: 'b1',
+    sourceBookingId: 'src',
+    minutesEarly: 30,
+    read: false,
+    createdAt: completedAt,
+    ...extra,
+  });
+  const noticeRef = (db, uid = 'customer2', id = 'nextB_early_src') => doc(db, `users/${uid}/notifications`, id);
+
+  test('completion writes exactly {status, completedAt}', async () => {
+    await assertFails(updateDoc(doc(b1(), 'bookings', 'src'), { status: 'completed', completedAt: 'now' }));
+    await assertFails(updateDoc(doc(as('barber2', EMAILS.barber2), 'bookings', 'src'), { status: 'completed', completedAt: iso(now) }));
+    await assertSucceeds(complete(b1(), iso(now)));
+  });
+
+  test('the barber tells the next customer; shape, recipient and author are checked', { skip: !sameAddisDay && 'crosses Addis midnight' }, async () => {
+    const at = iso(now);
+    // Not completed yet: no notice.
+    await assertFails(setDoc(noticeRef(b1()), notice(at)));
+    await complete(b1(), at);
+    await assertFails(setDoc(noticeRef(as('barber2', EMAILS.barber2)), notice(at)));
+    await assertFails(setDoc(noticeRef(b1(), 'customer', 'nextB_early_src'), notice(at)));
+    await assertFails(setDoc(noticeRef(b1()), notice(at, { pushedAt: at })));
+    await assertFails(setDoc(noticeRef(b1()), notice(at, { minutesEarly: 300 })));
+    await assertFails(setDoc(noticeRef(b1(), 'customer2', 'nextB_early_other'), notice(at)));
+    await assertSucceeds(setDoc(noticeRef(b1()), notice(at)));
+    // No overwrite, no staff edits; the customer only marks it read.
+    await assertFails(setDoc(noticeRef(b1()), notice(at, { type: 'runningEarly' })));
+    await assertFails(updateDoc(noticeRef(b1()), { title: 'x' }));
+    await assertSucceeds(updateDoc(noticeRef(as('customer2', EMAILS.customer2)), { read: true }));
+  });
+
+  test('the owner may send it too; a late finish may not', { skip: !sameAddisDay && 'crosses Addis midnight' }, async () => {
+    const owner = () => as('owner1', EMAILS.owner1);
+    const late = iso(now + 31 * 60000); // after the booking's end
+    await env.withSecurityRulesDisabled((ctx) =>
+      updateDoc(doc(ctx.firestore(), 'bookings', 'src'), { status: 'completed', completedAt: late }),
+    );
+    await assertFails(setDoc(noticeRef(owner()), notice(late)));
+    await env.withSecurityRulesDisabled((ctx) => updateDoc(doc(ctx.firestore(), 'bookings', 'src'), { completedAt: iso(now) }));
+    await assertSucceeds(setDoc(noticeRef(owner()), notice(iso(now), { type: 'runningEarly' })));
+  });
+});
+
+describe('wave 5: subscription receipts', () => {
+  const ID = 'telebirr_CHK1AB2CDE';
+  const admin = () => as('admin', EMAILS.admin);
+  const owner1 = () => as('owner1', EMAILS.owner1);
+  const receipt = (extra = {}) => ({
+    shopId: 'shop1',
+    ownerId: 'owner1',
+    method: 'telebirr',
+    transactionId: 'CHK1AB2CDE',
+    amount: 1400,
+    status: 'pending',
+    durationDays: 0,
+    createdAt: new Date().toISOString(),
+    receiptImage: 'QUJD',
+    ...extra,
+  });
+  const pricing = (extra = {}) => ({
+    currency: 'ETB',
+    tiers: [
+      { days: 30, amount: 500 },
+      { days: 90, amount: 1400 },
+      { days: 180, amount: 2700 },
+      { days: 365, amount: 5000 },
+    ],
+    receivers: {
+      telebirr: { number: '+251911000000', name: 'Crown & Blade' },
+      cbe: { account: '1000123456789', name: 'Crown & Blade' },
+    },
+    receiptUrls: {
+      telebirr: 'https://transactioninfo.ethiotelecom.et/receipt/{id}',
+      cbe: 'https://apps.cbe.com.et:100/?id={id}{suffix}',
+    },
+    updatedAt: new Date().toISOString(),
+    updatedBy: 'admin',
+    ...extra,
+  });
+  const note = (type) => ({
+    title: 'Receipt',
+    body: 'Decision',
+    type,
+    read: false,
+    createdAt: new Date().toISOString(),
+    shopId: 'shop1',
+    paymentId: ID,
+  });
+
+  function approveBatch(db, { days = 90, withShop = true, endDays = days } = {}) {
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'subscriptionPayments', ID), {
+      status: 'verified',
+      verifiedBy: 'admin',
+      verifiedAmount: 1400,
+      durationDays: days,
+      decidedAt: new Date().toISOString(),
+    });
+    if (withShop) {
+      batch.update(doc(db, 'barbershops', 'shop1'), {
+        subscriptionStatus: 'active',
+        subscriptionEndsAt: new Date(Date.now() + endDays * 86400000).toISOString(),
+        subscriptionReceiptId: ID,
+      });
+    }
+    batch.set(doc(db, 'users/owner1/notifications', `${ID}_receipt`), note('receiptApproved'));
+    return batch.commit();
+  }
+
+  function rejectBatch(db, type = 'receiptRejected') {
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'subscriptionPayments', ID), {
+      status: 'rejected',
+      verifiedBy: 'admin',
+      decisionReason: 'Wrong receiver',
+      decidedAt: new Date().toISOString(),
+    });
+    batch.set(doc(db, 'users/owner1/notifications', `${ID}_receipt`), note(type));
+    return batch.commit();
+  }
+
+  test('the owner checks the id, then submits a pending receipt for their shop', async () => {
+    const ref = (id = ID) => doc(owner1(), 'subscriptionPayments', id);
+    await assertSucceeds(getDoc(ref()));
+    await assertFails(setDoc(ref(), receipt({ autoCheck: { result: 'verified' } })));
+    await assertFails(setDoc(ref(), receipt({ status: 'verified' })));
+    await assertFails(setDoc(ref(), receipt({ durationDays: 90 })));
+    await assertFails(setDoc(ref('telebirr_OTHER1234'), receipt()));
+    await assertFails(setDoc(ref('telebirr_CHK2AB2CDE'), receipt({ transactionId: 'CHK2AB2CDE', shopId: 'shop2' })));
+    await assertFails(setDoc(ref(), receipt({ receiptImage: 'A'.repeat(350001) })));
+    await assertFails(setDoc(doc(as('customer', EMAILS.customer), 'subscriptionPayments', ID), receipt({ ownerId: 'customer' })));
+    await assertSucceeds(setDoc(ref(), receipt()));
+    await assertSucceeds(getDoc(ref()));
+    await assertSucceeds(getDocs(query(collection(owner1(), 'subscriptionPayments'), where('ownerId', '==', 'owner1'))));
+    await assertFails(getDocs(collection(owner1(), 'subscriptionPayments')));
+    // Owners cannot change it afterwards.
+    await assertFails(updateDoc(ref(), { amount: 5000 }));
+  });
+
+  test('a transaction id can be claimed once: another owner sees permission-denied', async () => {
+    await seed('subscriptionPayments', ID, receipt());
+    const owner2 = as('owner2', EMAILS.owner2);
+    await assertFails(getDoc(doc(owner2, 'subscriptionPayments', ID)));
+    await assertFails(setDoc(doc(owner2, 'subscriptionPayments', ID), receipt({ shopId: 'shop2', ownerId: 'owner2' })));
+    await assertFails(setDoc(doc(owner1(), 'subscriptionPayments', ID), receipt()));
+  });
+
+  test('admin queries: open receipts and the latest decisions', async () => {
+    await seed('subscriptionPayments', ID, receipt());
+    await assertSucceeds(getDocs(query(collection(admin(), 'subscriptionPayments'), where('status', 'in', ['pending', 'needs_review']))));
+    await assertSucceeds(getDocs(query(collection(admin(), 'subscriptionPayments'), orderBy('decidedAt', 'desc'), limit(20))));
+  });
+
+  test('admin approval: one batch with the shop extension and the owner notice', async () => {
+    await seed('subscriptionPayments', ID, receipt());
+    // The shop link alone, or the approval without the shop, is refused.
+    await assertFails(updateDoc(doc(admin(), 'barbershops', 'shop1'), { subscriptionReceiptId: ID }));
+    await assertFails(approveBatch(admin(), { withShop: false }));
+    await assertFails(approveBatch(admin(), { endDays: 365 }));
+    await assertFails(approveBatch(owner1()));
+    await assertSucceeds(approveBatch(admin()));
+    let shopData;
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      shopData = (await getDoc(doc(ctx.firestore(), 'barbershops', 'shop1'))).data();
+    });
+    assert.equal(shopData.subscriptionReceiptId, ID);
+    assert.equal(shopData.subscriptionStatus, 'active');
+    // Decided once.
+    await assertFails(rejectBatch(admin()));
+    await assertSucceeds(getDoc(doc(owner1(), 'users/owner1/notifications', `${ID}_receipt`)));
+  });
+
+  test('approval of a fully configured shop extends from its current end', async () => {
+    // A shop as the app stores it (location, policy, a future end date).
+    await seed('barbershops', 'shop1', newShop('owner1', {
+      subscriptionPlan: 'pro',
+      subscriptionStatus: 'active',
+      subscriptionEndsAt: new Date(Date.now() + 25 * 86400000).toISOString(),
+      cancellationCutoffHours: 2,
+      maxReschedules: 2,
+      requireBarberAcceptance: false,
+    }));
+    await seed('subscriptionPayments', ID, receipt());
+    await assertFails(approveBatch(admin(), { endDays: 90 })); // must count from the current end
+    await assertSucceeds(approveBatch(admin(), { endDays: 115 }));
+  });
+
+  test('admin rejection with a reason; the notice type must match', async () => {
+    await seed('subscriptionPayments', ID, receipt());
+    await assertFails(rejectBatch(admin(), 'receiptApproved'));
+    await assertSucceeds(rejectBatch(admin()));
+    await assertFails(approveBatch(admin()));
+  });
+
+  test('pricing: owners and the admin read it, only the admin writes it', async () => {
+    const ref = (db) => doc(db, 'platformConfig', 'subscriptionPricing');
+    await assertSucceeds(setDoc(ref(admin()), pricing()));
+    await assertFails(setDoc(ref(admin()), pricing({ receiptUrls: { telebirr: 'http://insecure.example/{id}' } })));
+    await assertFails(setDoc(ref(admin()), pricing({ tiers: [] })));
+    await assertFails(setDoc(ref(admin()), pricing({ updatedBy: 'someoneElse' })));
+    await assertFails(setDoc(ref(owner1()), pricing({ updatedBy: 'owner1' })));
+    await assertSucceeds(getDoc(ref(owner1())));
+    await assertFails(getDoc(ref(as('customer', EMAILS.customer))));
+    await assertFails(getDoc(doc(admin(), 'platformConfig', 'secrets')));
+  });
+});
+
+// ---------------------------------------------------------------------
+// Free (Spark) plan: client-side fallbacks for work the Cloud Functions do
+// on Blaze (subscription expiry, the queue summary) and the receivers the
+// admin sets up on the pricing document.
+// ---------------------------------------------------------------------
+describe('free plan: subscription expiry written by the app', () => {
+  const DAY = 86400000;
+  const daysFromNow = (n) => new Date(Date.now() + n * DAY).toISOString();
+  const owner1 = () => as('owner1', EMAILS.owner1);
+  const ref = (db, id = 'shop1') => doc(db, 'barbershops', id);
+  const lapse = (status, at = new Date()) => ({ subscriptionStatus: status, subscriptionStatusChangedAt: at.toISOString() });
+  const seedShop = (status, endDays, id = 'shop1', ownerId = 'owner1') =>
+    seed('barbershops', id, newShop(ownerId, { subscriptionStatus: status, subscriptionEndsAt: daysFromNow(endDays) }));
+
+  test('owner: trialing/active -> past_due once the end date has passed', async () => {
+    await seedShop('trialing', -1);
+    await assertSucceeds(updateDoc(ref(owner1()), lapse('past_due')));
+    await seedShop('active', -6);
+    await assertSucceeds(updateDoc(ref(owner1()), lapse('past_due')));
+  });
+
+  test('owner: -> suspended from 7 days after the end (from trialing, active or past_due)', async () => {
+    for (const from of ['trialing', 'active', 'past_due']) {
+      await seedShop(from, -8);
+      await assertSucceeds(updateDoc(ref(owner1()), lapse('suspended')), from);
+    }
+  });
+
+  test('owner: no transition before its time', async () => {
+    await seedShop('trialing', 2);
+    await assertFails(updateDoc(ref(owner1()), lapse('past_due')));
+    await assertFails(updateDoc(ref(owner1()), lapse('suspended')));
+    // Inside the grace period: past_due yes, suspended not yet.
+    await seedShop('past_due', -6);
+    await assertFails(updateDoc(ref(owner1()), lapse('suspended')));
+    // No end date: nothing to lapse.
+    const noEnd = newShop('owner1', { subscriptionStatus: 'active' });
+    delete noEnd.subscriptionEndsAt;
+    await seed('barbershops', 'shop1', noEnd);
+    await assertFails(updateDoc(ref(owner1()), lapse('past_due')));
+    await assertFails(updateDoc(ref(owner1()), lapse('suspended')));
+  });
+
+  test('owner: never an upgrade, a no-op or another status', async () => {
+    await seedShop('past_due', -1);
+    await assertFails(updateDoc(ref(owner1()), lapse('active')));
+    await assertFails(updateDoc(ref(owner1()), lapse('trialing')));
+    await assertFails(updateDoc(ref(owner1()), lapse('past_due')));
+    await seedShop('suspended', -30);
+    await assertFails(updateDoc(ref(owner1()), lapse('past_due')));
+    await assertFails(updateDoc(ref(owner1()), lapse('active')));
+    await assertFails(updateDoc(ref(owner1()), lapse('suspended')));
+  });
+
+  test('owner: exactly the two fields, with a current ISO stamp', async () => {
+    await seedShop('active', -10);
+    const db = owner1();
+    await assertFails(updateDoc(ref(db), { subscriptionStatus: 'suspended' }));
+    await assertFails(updateDoc(ref(db), { ...lapse('suspended'), subscriptionEndsAt: daysFromNow(30) }));
+    await assertFails(updateDoc(ref(db), { ...lapse('suspended'), subscriptionPlan: 'pro' }));
+    await assertFails(updateDoc(ref(db), { ...lapse('suspended'), name: 'Renamed' }));
+    await assertFails(updateDoc(ref(db), { subscriptionStatus: 'suspended', subscriptionStatusChangedAt: 'yesterday' }));
+    await assertFails(updateDoc(ref(db), { subscriptionStatus: 'suspended', subscriptionStatusChangedAt: '2026-11-16T07:00:00+03:00' }));
+    await assertFails(updateDoc(ref(db), lapse('suspended', new Date(Date.now() + 3 * 3600000))));
+    await assertFails(updateDoc(ref(db), lapse('suspended', new Date(Date.now() - 2 * DAY))));
+    // The stamp alone is not a profile field.
+    await assertFails(updateDoc(ref(db), { subscriptionStatusChangedAt: new Date().toISOString() }));
+    await assertSucceeds(updateDoc(ref(db), lapse('suspended')));
+  });
+
+  test('only the shop owner (and the admin) write it; customers, barbers and other owners cannot', async () => {
+    await seedShop('active', -10);
+    for (const [uid, email] of [
+      ['owner2', EMAILS.owner2],
+      ['barber1', EMAILS.barber1],
+      ['customer', EMAILS.customer],
+    ]) {
+      await assertFails(updateDoc(ref(as(uid, email)), lapse('suspended')), uid);
+      await assertFails(updateDoc(ref(as(uid, email)), lapse('past_due')), uid);
+    }
+    await assertFails(updateDoc(ref(anon()), lapse('suspended')));
+    await assertSucceeds(updateDoc(ref(as('admin', EMAILS.admin)), lapse('suspended')));
+  });
+
+  test('admin: transitions with the stamp at any time; a bad stamp is refused', async () => {
+    await seedShop('active', 20, 'shop2', 'owner2');
+    const admin = as('admin', EMAILS.admin);
+    await assertSucceeds(updateDoc(ref(admin, 'shop2'), lapse('past_due')));
+    await assertFails(updateDoc(ref(admin, 'shop2'), { subscriptionStatusChangedAt: 'soon' }));
+    await assertSucceeds(updateDoc(ref(admin, 'shop2'), { subscriptionStatus: 'active', subscriptionEndsAt: daysFromNow(30) }));
+  });
+
+  test('a shop carrying the stamp still passes the owner profile edit and the admin renewal', async () => {
+    await seedShop('active', -1);
+    await assertSucceeds(updateDoc(ref(owner1()), lapse('past_due')));
+    await assertSucceeds(updateDoc(ref(owner1()), { name: 'Renamed', closingHour: 21 }));
+    // Admin renews: back to active with a new end date (the stamp may stay).
+    await assertSucceeds(
+      updateDoc(ref(as('admin', EMAILS.admin)), { subscriptionStatus: 'active', subscriptionEndsAt: daysFromNow(30) }),
+    );
+    // The owner cannot set it back to active.
+    await seedShop('past_due', -1);
+    await assertFails(updateDoc(ref(owner1()), { subscriptionStatus: 'active', subscriptionStatusChangedAt: new Date().toISOString() }));
+  });
+});
+
+describe('free plan: bookings and queue joins end with the grace period', () => {
+  const DAY = 86400000;
+  const daysFromNow = (n) => new Date(Date.now() + n * DAY).toISOString();
+  const cust = () => as('customer', EMAILS.customer);
+  const queueRef = (id) => doc(as('customer2', EMAILS.customer2), 'barbershops/shop1/queue', id);
+  const remote = () => ({
+    name: 'Liya',
+    phone: PHONES.customer2,
+    status: 'waiting',
+    createdAt: new Date().toISOString(),
+    addedBy: 'customer2',
+    source: 'remote',
+  });
+
+  test('a booking is refused from 7 days after the end even while the stored status lags', async () => {
+    await setShopFields({ subscriptionStatus: 'active', subscriptionEndsAt: daysFromNow(-8) });
+    await assertFails(bookTx(cust(), 'g1', newBooking(addisSlot(6, 9))));
+    await setShopFields({ subscriptionStatus: 'past_due', subscriptionEndsAt: daysFromNow(-7.01) });
+    await assertFails(bookTx(cust(), 'g2', newBooking(addisSlot(6, 9))));
+    // Inside the grace period (effectively past_due) the shop still takes bookings.
+    await setShopFields({ subscriptionStatus: 'active', subscriptionEndsAt: daysFromNow(-6) });
+    await assertSucceeds(bookTx(cust(), 'g3', newBooking(addisSlot(6, 9))));
+    await setShopFields({ subscriptionStatus: 'trialing', subscriptionEndsAt: daysFromNow(10) });
+    await assertSucceeds(bookTx(cust(), 'g4', newBooking(addisSlot(6, 11))));
+  });
+
+  test('a 120-minute booking at a shop with an end date stays within the rules budget', async () => {
+    await seed('barbershops/shop1/services', 'srvMax', {
+      shopId: 'shop1',
+      name: 'Wedding Package',
+      description: 'Everything',
+      price: 1500,
+      durationMinutes: 120,
+    });
+    await setShopFields({ subscriptionStatus: 'active', subscriptionEndsAt: daysFromNow(-6), requireBarberAcceptance: true });
+    const max = { serviceId: 'srvMax', serviceName: 'Wedding Package', price: 1500, durationMinutes: 120, status: 'pending' };
+    await assertSucceeds(bookTx(cust(), 'gmax', newBooking(addisSlot(7, 15), max)));
+  });
+
+  test('a remote queue join is refused past the grace period; walk-ins by staff still work', async () => {
+    await setShopFields({ subscriptionStatus: 'active', subscriptionEndsAt: daysFromNow(-8) });
+    await assertFails(setDoc(queueRef('q1'), remote()));
+    const walkIn = { name: 'Dawit', status: 'waiting', createdAt: new Date().toISOString(), addedBy: 'owner1', source: 'walkIn' };
+    await assertSucceeds(setDoc(doc(as('owner1', EMAILS.owner1), 'barbershops/shop1/queue', 'w9'), walkIn));
+    await setShopFields({ subscriptionEndsAt: daysFromNow(-6) });
+    await assertSucceeds(setDoc(queueRef('q2'), remote()));
+  });
+});
+
+describe('free plan: queueSummary/current written by staff', () => {
+  const ref = (db, shopId = 'shop1', id = 'current') => doc(db, `barbershops/${shopId}/queueSummary`, id);
+  const summary = (extra = {}) => ({
+    waitingCount: 2,
+    estimatedWaitMinutes: 35,
+    positions: { w1: { position: 1, waitMinutes: 0 }, r1: { position: 2, waitMinutes: 20 } },
+    updatedAt: new Date().toISOString(),
+    ...extra,
+  });
+
+  test('the owner and barbers of the shop create and replace it', async () => {
+    await assertSucceeds(setDoc(ref(as('owner1', EMAILS.owner1)), summary()));
+    await assertSucceeds(setDoc(ref(as('barber1', EMAILS.barber1)), summary({ waitingCount: 0, estimatedWaitMinutes: 0, positions: {} })));
+    await assertSucceeds(setDoc(ref(as('barber2', EMAILS.barber2)), summary()));
+    await assertSucceeds(getDoc(ref(anon())));
+  });
+
+  test('nobody else writes it; nobody deletes it', async () => {
+    await seed('barbershops/shop1/queueSummary', 'current', summary());
+    for (const [uid, email] of [
+      ['owner2', EMAILS.owner2],
+      ['customer', EMAILS.customer],
+      ['admin', EMAILS.admin],
+    ]) {
+      await assertFails(setDoc(ref(as(uid, email)), summary()), uid);
+    }
+    await assertFails(setDoc(ref(anon()), summary()));
+    await assertFails(deleteDoc(ref(as('owner1', EMAILS.owner1))));
+    // Another shop's summary.
+    await assertFails(setDoc(ref(as('owner1', EMAILS.owner1), 'shop2'), summary()));
+    // A barber whose profile was removed.
+    await env.withSecurityRulesDisabled((ctx) => deleteDoc(doc(ctx.firestore(), 'barbershops/shop1/barbers', 'b2')));
+    await assertFails(setDoc(ref(as('barber2', EMAILS.barber2)), summary()));
+  });
+
+  test('only the document `current`, in the exact function shape', async () => {
+    const db = as('owner1', EMAILS.owner1);
+    await assertFails(setDoc(ref(db, 'shop1', 'other'), summary()));
+    await assertFails(setDoc(ref(db), summary({ extra: true })));
+    const noUpdatedAt = summary();
+    delete noUpdatedAt.updatedAt;
+    await assertFails(setDoc(ref(db), noUpdatedAt));
+    const noPositions = summary();
+    delete noPositions.positions;
+    await assertFails(setDoc(ref(db), noPositions));
+    await assertFails(setDoc(ref(db), summary({ waitingCount: 3 }))); // 2 positions
+    await assertFails(setDoc(ref(db), summary({ waitingCount: -1, positions: {} })));
+    await assertFails(setDoc(ref(db), summary({ waitingCount: 2.5 })));
+    await assertFails(setDoc(ref(db), summary({ estimatedWaitMinutes: -5 })));
+    await assertFails(setDoc(ref(db), summary({ estimatedWaitMinutes: 100001 })));
+    await assertFails(setDoc(ref(db), summary({ estimatedWaitMinutes: '35' })));
+    await assertFails(setDoc(ref(db), summary({ positions: ['w1', 'r1'] })));
+    await assertFails(setDoc(ref(db), summary({ updatedAt: 'now' })));
+    await assertFails(setDoc(ref(db), summary({ updatedAt: new Date() })));
+    await assertSucceeds(setDoc(ref(db), summary()));
+  });
+});
+
+describe('free plan: pricing receivers', () => {
+  const ref = (db) => doc(db, 'platformConfig', 'subscriptionPricing');
+  const admin = () => as('admin', EMAILS.admin);
+  const pricing = (telebirr, cbe) => ({
+    currency: 'ETB',
+    tiers: [{ days: 30, amount: 500 }],
+    receivers: { telebirr, cbe },
+    updatedAt: new Date().toISOString(),
+    updatedBy: 'admin',
+  });
+  const tb = (number, name = 'Crown & Blade') => ({ number, name });
+  const cbe = (account, name = 'Crown & Blade') => ({ account, name });
+
+  test('valid receivers, or empty ones (method not offered)', async () => {
+    await assertSucceeds(setDoc(ref(admin()), pricing(tb('+251911223344'), cbe('1000123456789'))));
+    await assertSucceeds(setDoc(ref(admin()), pricing(tb('+251711223344'), cbe('', ''))));
+    await assertSucceeds(setDoc(ref(admin()), pricing(tb('', ''), cbe('1000123456789'))));
+    await assertSucceeds(setDoc(ref(admin()), pricing(tb('', 'Crown & Blade'), cbe('', ''))));
+  });
+
+  test('placeholders and malformed accounts are refused', async () => {
+    const ok = cbe('1000123456789');
+    await assertFails(setDoc(ref(admin()), pricing(tb('+2519XXXXXXXX'), ok)));
+    await assertFails(setDoc(ref(admin()), pricing(tb('+251911223344'), cbe('1000XXXXXXXXX'))));
+    await assertFails(setDoc(ref(admin()), pricing(tb('0911223344'), ok)));
+    await assertFails(setDoc(ref(admin()), pricing(tb('+251811223344'), ok)));
+    await assertFails(setDoc(ref(admin()), pricing(tb('+25191122334'), ok)));
+    await assertFails(setDoc(ref(admin()), pricing(tb('+251911223344'), cbe('100012345678'))));
+    await assertFails(setDoc(ref(admin()), pricing(tb('+251911223344'), cbe('2000123456789'))));
+    await assertFails(setDoc(ref(admin()), pricing(tb('+251911223344'), cbe('1000 1234 56789'))));
+    await assertFails(setDoc(ref(admin()), pricing(tb(251911223344), ok)));
+  });
+
+  test('a set account needs a name of 2..80 characters', async () => {
+    const ok = cbe('1000123456789');
+    await assertFails(setDoc(ref(admin()), pricing(tb('+251911223344', 'A'), ok)));
+    await assertFails(setDoc(ref(admin()), pricing(tb('+251911223344', ''), ok)));
+    await assertFails(setDoc(ref(admin()), pricing(tb('+251911223344'), cbe('1000123456789', 'B'))));
+    await assertFails(setDoc(ref(admin()), pricing(tb('+251911223344', 'N'.repeat(81)), ok)));
+    await assertFails(setDoc(ref(admin()), pricing(tb('', 'N'.repeat(81)), ok)));
+    await assertSucceeds(setDoc(ref(admin()), pricing(tb('+251911223344', 'Ab'), cbe('1000123456789', 'N'.repeat(80)))));
+    // Still admin only.
+    await assertFails(setDoc(ref(as('owner1', EMAILS.owner1)), { ...pricing(tb('+251911223344'), ok), updatedBy: 'owner1' }));
   });
 });

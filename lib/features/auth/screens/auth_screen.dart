@@ -13,7 +13,8 @@ import '../widgets/forgot_password_form.dart';
 enum _AuthMode { login, register, forgot }
 
 /// Sign-in: email + password ("Log in" / "Register" tabs, with emailed
-/// 6-digit codes for registration and password reset) or Google. New
+/// 6-digit codes for registration and password reset, or Firebase's emailed
+/// links when the code functions are not deployed) or Google. New
 /// accounts continue to profile setup; the role comes from the user's
 /// profile (or their email invite), never from anything chosen here.
 class AuthScreen extends StatefulWidget {
@@ -222,6 +223,13 @@ class _AuthScreenState extends State<AuthScreen> {
           key: const ValueKey('forgot-form'),
           initialEmail: _carryEmail,
           onCancel: () => _setMode(_AuthMode.login),
+          onBackToLogin: (email) => setState(() {
+            _carryEmail = email;
+            _passwordWasReset = false;
+            _loginFormVersion++;
+            _mode = _AuthMode.login;
+            _error = null;
+          }),
           onDone: (email) => setState(() {
             _carryEmail = email;
             _passwordWasReset = true;

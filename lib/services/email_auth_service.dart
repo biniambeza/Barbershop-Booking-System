@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 
 import '../core/utils/email_utils.dart';
 import '../core/utils/password_utils.dart';
@@ -34,6 +35,27 @@ class EmailCodeVerified {
 
   /// Seconds the token stays valid.
   final int expiresInSeconds;
+}
+
+/// How a registration / password-reset flow continues after step 1.
+///
+/// With the `functions/auth` callables deployed, a 6-digit code was emailed
+/// ([sent] is set). On the free Spark plan the callables are missing, so the
+/// flow falls back to Firebase Auth's own emailed links ([usesLink]).
+class EmailFlowStart {
+  const EmailFlowStart.code(EmailCodeSent this.sent);
+  const EmailFlowStart.link() : sent = null;
+
+  final EmailCodeSent? sent;
+  bool get usesLink => sent == null;
+}
+
+/// Result of [EmailAuthService.resendVerificationLink].
+enum VerificationLinkResult {
+  sent,
+
+  /// The address is verified already: nothing was sent, just log in.
+  alreadyVerified,
 }
 
 /// The account that just signed in with email and password.
@@ -89,6 +111,10 @@ enum EmailAuthErrorCode {
   /// The auth callables are not deployed or failed internally.
   serviceUnavailable,
 
+  /// Email/password account whose address is not verified yet (free-plan
+  /// fallback accounts until their verification link is opened).
+  emailNotVerified,
+
   /// Firebase wants a fresh sign-in before changing the password.
   requiresRecentLogin,
 
@@ -98,7 +124,13 @@ enum EmailAuthErrorCode {
 }
 
 class EmailAuthException implements Exception {
-  const EmailAuthException(this.code, {this.retryAfterSeconds, this.attemptsLeft, this.rawCode});
+  const EmailAuthException(
+    this.code, {
+    this.retryAfterSeconds,
+    this.attemptsLeft,
+    this.rawCode,
+    this.functionsMissing = false,
+  });
 
   final EmailAuthErrorCode code;
 
@@ -111,6 +143,12 @@ class EmailAuthException implements Exception {
 
   /// The original Firebase / server error code, for logs.
   final String? rawCode;
+
+  /// The callable failed the way an undeployed function does (`not-found`,
+  /// `unimplemented`, `unavailable`, or `internal` without a server code),
+  /// e.g. on the free Spark plan. The repository then switches the flow to
+  /// Firebase Auth's emailed links.
+  final bool functionsMissing;
 
   @override
   String toString() => 'EmailAuthException(${code.name}${rawCode == null ? '' : ', $rawCode'})';
@@ -166,6 +204,33 @@ abstract class EmailAuthService {
   });
 
   Future<void> signOut();
+
+  // --- Free-plan fallback (Firebase Auth's own emails, no functions) ---
+
+  /// Whether Firebase Auth itself answers (tells "functions not deployed"
+  /// apart from "offline" after a network-level callable failure).
+  Future<bool> isAuthReachable();
+
+  /// Emails Firebase's password reset link. Succeeds whether or not an
+  /// account exists for [email].
+  Future<void> sendPasswordResetLink({required String email, String language = 'en'});
+
+  /// Creates an (unverified) email/password account, emails Firebase's
+  /// verification link, then signs out again. Returns whether the link was
+  /// sent (the account exists either way).
+  Future<bool> registerWithVerificationLink({
+    required String email,
+    required String password,
+    String language = 'en',
+  });
+
+  /// Signs in briefly with [email] / [password], emails a new verification
+  /// link, then signs out.
+  Future<VerificationLinkResult> resendVerificationLink({
+    required String email,
+    required String password,
+    String language = 'en',
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -181,6 +246,13 @@ class FirebaseEmailAuthService implements EmailAuthService {
   final FirebaseFunctions _functions;
 
   static const _timeout = Duration(seconds: 30);
+
+  // --- barber accounts ---
+  /// Decides whether a signed-in account whose email is NOT verified may
+  /// stay signed in (barber accounts an owner created with a temporary
+  /// password). Null or false: signed out with emailNotVerified, as before.
+  Future<bool> Function(User user)? allowUnverifiedSignIn;
+  // --- end barber accounts ---
 
   Future<Map<String, Object?>> _call(String name, Map<String, Object?> data) async {
     try {
@@ -262,11 +334,28 @@ class FirebaseEmailAuthService implements EmailAuthService {
     try {
       final credential = await _auth.signInWithEmailAndPassword(email: normalizeEmail(email), password: password);
       final user = credential.user;
+      if (user != null && !user.emailVerified && !await _unverifiedAllowed(user)) {
+        // Free-plan accounts stay unverified until their link is opened.
+        await _signOutQuietly();
+        throw const EmailAuthException(EmailAuthErrorCode.emailNotVerified);
+      }
       return EmailIdentity(email: user?.email ?? email, displayName: user?.displayName, uid: user?.uid);
     } catch (e) {
       throw emailAuthExceptionFrom(e);
     }
   }
+
+  // --- barber accounts ---
+  Future<bool> _unverifiedAllowed(User user) async {
+    final check = allowUnverifiedSignIn;
+    if (check == null) return false;
+    try {
+      return await check(user);
+    } catch (_) {
+      return false;
+    }
+  }
+  // --- end barber accounts ---
 
   @override
   bool hasPassword(String email) {
@@ -295,6 +384,104 @@ class FirebaseEmailAuthService implements EmailAuthService {
 
   @override
   Future<void> signOut() => _auth.signOut();
+
+  Future<void> _signOutQuietly() async {
+    try {
+      await _auth.signOut();
+    } catch (e) {
+      debugPrint('signOut failed: $e');
+    }
+  }
+
+  /// Firebase's emails use the app language.
+  Future<void> _setLanguage(String language) async {
+    try {
+      await _auth.setLanguageCode(language == 'am' ? 'am' : 'en');
+    } catch (e) {
+      debugPrint('setLanguageCode failed: $e');
+    }
+  }
+
+  @override
+  Future<bool> isAuthReachable() async {
+    try {
+      // Any answer from the Auth server (here: "invalid action code") means
+      // it is reachable; only a network failure means it is not.
+      await _auth.checkActionCode('reachability-probe').timeout(const Duration(seconds: 10));
+      return true;
+    } on FirebaseAuthException catch (e) {
+      return e.code != 'network-request-failed';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<void> sendPasswordResetLink({required String email, String language = 'en'}) async {
+    await _setLanguage(language);
+    try {
+      await _auth.sendPasswordResetEmail(email: normalizeEmail(email)).timeout(_timeout);
+    } on FirebaseAuthException catch (e) {
+      // Never reveal whether the account exists.
+      if (e.code == 'user-not-found') return;
+      throw emailAuthExceptionFrom(e);
+    } catch (e) {
+      throw emailAuthExceptionFrom(e);
+    }
+  }
+
+  @override
+  Future<bool> registerWithVerificationLink({
+    required String email,
+    required String password,
+    String language = 'en',
+  }) async {
+    await _setLanguage(language);
+    final UserCredential credential;
+    try {
+      credential = await _auth
+          .createUserWithEmailAndPassword(email: normalizeEmail(email), password: password)
+          .timeout(_timeout);
+    } catch (e) {
+      throw emailAuthExceptionFrom(e);
+    }
+    try {
+      final user = credential.user;
+      if (user == null) return false;
+      await user.sendEmailVerification().timeout(_timeout);
+      return true;
+    } catch (e) {
+      debugPrint('sendEmailVerification failed: $e');
+      return false;
+    } finally {
+      await _signOutQuietly();
+    }
+  }
+
+  @override
+  Future<VerificationLinkResult> resendVerificationLink({
+    required String email,
+    required String password,
+    String language = 'en',
+  }) async {
+    await _setLanguage(language);
+    var signedIn = false;
+    try {
+      final credential = await _auth
+          .signInWithEmailAndPassword(email: normalizeEmail(email), password: password)
+          .timeout(_timeout);
+      signedIn = true;
+      final user = credential.user;
+      if (user == null) throw const EmailAuthException(EmailAuthErrorCode.unknown, rawCode: 'no-user');
+      if (user.emailVerified) return VerificationLinkResult.alreadyVerified;
+      await user.sendEmailVerification().timeout(_timeout);
+      return VerificationLinkResult.sent;
+    } catch (e) {
+      throw emailAuthExceptionFrom(e);
+    } finally {
+      if (signedIn) await _signOutQuietly();
+    }
+  }
 }
 
 /// `details.code` values sent by the `functions/auth` callables.
@@ -319,6 +506,7 @@ const _authCodes = {
   'invalid-credential': EmailAuthErrorCode.wrongCredentials,
   'invalid-login-credentials': EmailAuthErrorCode.wrongCredentials,
   'user-not-found': EmailAuthErrorCode.wrongCredentials,
+  'email-already-in-use': EmailAuthErrorCode.emailAlreadyRegistered,
   'invalid-email': EmailAuthErrorCode.invalidEmail,
   'too-many-requests': EmailAuthErrorCode.tooManyRequests,
   'user-disabled': EmailAuthErrorCode.userDisabled,
@@ -338,6 +526,7 @@ EmailAuthException emailAuthExceptionFrom(Object error) {
   if (error is TimeoutException) return const EmailAuthException(EmailAuthErrorCode.network, rawCode: 'timeout');
   if (error is FirebaseFunctionsException) {
     final details = error.details;
+    final hasServerCode = details is Map && details['code'] is String;
     if (details is Map) {
       final serverCode = details['code'];
       var known = serverCode is String ? _serverCodes[serverCode] : null;
@@ -362,7 +551,8 @@ EmailAuthException emailAuthExceptionFrom(Object error) {
       case 'internal':
       case 'not-found':
       case 'unimplemented':
-        return EmailAuthException(EmailAuthErrorCode.serviceUnavailable, rawCode: code);
+        // Without a server code this is what an undeployed function gives.
+        return EmailAuthException(EmailAuthErrorCode.serviceUnavailable, rawCode: code, functionsMissing: !hasServerCode);
       case 'deadline-exceeded':
         return EmailAuthException(EmailAuthErrorCode.network, rawCode: code);
       case 'resource-exhausted':
@@ -398,8 +588,22 @@ EmailAuthException emailAuthExceptionFrom(Object error) {
 /// [verificationLifetime].
 /// Seeded demo accounts (see [isExistingAccount]) log in with
 /// [demoPassword].
+///
+/// `functionsAvailable: false` (or a specific [functionsError]) simulates
+/// the free Spark plan: the code-flow calls fail like undeployed callables
+/// and only the Firebase Auth link fallback works. [authReachable] is what
+/// [isAuthReachable] answers. Links "sent" are recorded in [sentLinks];
+/// [markEmailVerified] stands in for opening a verification link.
 class LocalEmailAuthService implements EmailAuthService {
-  LocalEmailAuthService({this.isExistingAccount, DateTime Function()? clock}) : _clock = clock ?? DateTime.now;
+  LocalEmailAuthService({
+    this.isExistingAccount,
+    DateTime Function()? clock,
+    bool functionsAvailable = true,
+    Object? functionsError,
+    this.authReachable = true,
+  })  : _clock = clock ?? DateTime.now,
+        functionsError =
+            functionsError ?? (functionsAvailable ? null : FirebaseFunctionsException(message: 'NOT_FOUND', code: 'not-found'));
 
   static const demoCode = '123456';
   static const demoPassword = 'demo1234';
@@ -411,6 +615,52 @@ class LocalEmailAuthService implements EmailAuthService {
   /// Whether a seeded account (one without a stored password) uses [email].
   final bool Function(String email)? isExistingAccount;
   final DateTime Function() _clock;
+
+  /// Thrown (through [emailAuthExceptionFrom]) by every code-flow call; null
+  /// when the callables are "deployed".
+  final Object? functionsError;
+
+  /// What [isAuthReachable] answers.
+  bool authReachable;
+
+  /// Every link the fallback "emailed", oldest first.
+  final List<SentAuthLink> sentLinks = [];
+
+  /// Accounts created with [registerWithVerificationLink] whose link has not
+  /// been opened yet.
+  final Set<String> _unverified = {};
+
+  /// Simulates opening the verification link sent to [email].
+  void markEmailVerified(String email) => _unverified.remove(normalizeEmail(email));
+
+  // --- barber accounts ---
+  /// Whether an unverified address may still log in (barber accounts an
+  /// owner created with a temporary password). Set by AppRepository.
+  Future<bool> Function(String email)? allowUnverifiedSignIn;
+
+  /// Like creating the account in a secondary Firebase app: stores
+  /// [password] for [email], unverified (no email is sent). Throws
+  /// emailAlreadyRegistered when [email] already has an account.
+  void createUnverifiedAccount(String email, String password) {
+    final normalized = _validEmail(email);
+    if (!isValidPassword(password)) throw const EmailAuthException(EmailAuthErrorCode.weakPassword);
+    if (_exists(normalized)) throw const EmailAuthException(EmailAuthErrorCode.emailAlreadyRegistered);
+    _passwords[normalized] = password;
+    _unverified.add(normalized);
+  }
+
+  /// Removes an account made with [createUnverifiedAccount] (rollback).
+  void deleteAccount(String email) {
+    final normalized = normalizeEmail(email);
+    _passwords.remove(normalized);
+    _unverified.remove(normalized);
+  }
+  // --- end barber accounts ---
+
+  void _checkFunctions() {
+    final error = functionsError;
+    if (error != null) throw emailAuthExceptionFrom(error);
+  }
 
   /// email → password.
   final Map<String, String> _passwords = {};
@@ -478,6 +728,7 @@ class LocalEmailAuthService implements EmailAuthService {
     required EmailCodePurpose purpose,
     String language = 'en',
   }) async {
+    _checkFunctions();
     final normalized = _validEmail(email);
     if (purpose == EmailCodePurpose.register && _exists(normalized)) {
       throw const EmailAuthException(EmailAuthErrorCode.emailAlreadyRegistered);
@@ -503,6 +754,7 @@ class LocalEmailAuthService implements EmailAuthService {
     required String code,
     required EmailCodePurpose purpose,
   }) async {
+    _checkFunctions();
     final normalized = _validEmail(email);
     if (normalizeEmailCode(code) == null) throw const EmailAuthException(EmailAuthErrorCode.invalidInput);
     // Like the server: checked before the code.
@@ -539,6 +791,7 @@ class LocalEmailAuthService implements EmailAuthService {
     required String password,
     String? name,
   }) async {
+    _checkFunctions();
     final normalized = _validEmail(email);
     if (!isValidPassword(password)) throw const EmailAuthException(EmailAuthErrorCode.weakPassword);
     _checkToken(EmailCodePurpose.register, normalized, verificationToken);
@@ -554,6 +807,7 @@ class LocalEmailAuthService implements EmailAuthService {
     required String verificationToken,
     required String newPassword,
   }) async {
+    _checkFunctions();
     final normalized = _validEmail(email);
     if (!isValidPassword(newPassword)) throw const EmailAuthException(EmailAuthErrorCode.weakPassword);
     _checkToken(EmailCodePurpose.reset, normalized, verificationToken);
@@ -570,6 +824,9 @@ class LocalEmailAuthService implements EmailAuthService {
     if (normalized == null) throw const EmailAuthException(EmailAuthErrorCode.invalidEmail);
     final stored = _passwordOf(normalized);
     if (stored == null || stored != password) throw const EmailAuthException(EmailAuthErrorCode.wrongCredentials);
+    if (_unverified.contains(normalized) && !(await allowUnverifiedSignIn?.call(normalized) ?? false)) {
+      throw const EmailAuthException(EmailAuthErrorCode.emailNotVerified);
+    }
     return EmailIdentity(email: normalized);
   }
 
@@ -592,6 +849,61 @@ class LocalEmailAuthService implements EmailAuthService {
 
   @override
   Future<void> signOut() async {}
+
+  @override
+  Future<bool> isAuthReachable() async => authReachable;
+
+  @override
+  Future<void> sendPasswordResetLink({required String email, String language = 'en'}) async {
+    final normalized = _validEmail(email);
+    // Like Firebase with enumeration protection: unknown emails "succeed"
+    // but nothing is sent.
+    if (!_exists(normalized)) return;
+    sentLinks.add(SentAuthLink(SentAuthLinkKind.passwordReset, normalized, language));
+  }
+
+  @override
+  Future<bool> registerWithVerificationLink({
+    required String email,
+    required String password,
+    String language = 'en',
+  }) async {
+    final normalized = _validEmail(email);
+    if (!isValidPassword(password)) throw const EmailAuthException(EmailAuthErrorCode.weakPassword);
+    if (_exists(normalized)) throw const EmailAuthException(EmailAuthErrorCode.emailAlreadyRegistered);
+    _passwords[normalized] = password;
+    _unverified.add(normalized);
+    sentLinks.add(SentAuthLink(SentAuthLinkKind.verification, normalized, language));
+    return true;
+  }
+
+  @override
+  Future<VerificationLinkResult> resendVerificationLink({
+    required String email,
+    required String password,
+    String language = 'en',
+  }) async {
+    final normalized = _validEmail(email);
+    final stored = _passwordOf(normalized);
+    if (stored == null || stored != password) throw const EmailAuthException(EmailAuthErrorCode.wrongCredentials);
+    if (!_unverified.contains(normalized)) return VerificationLinkResult.alreadyVerified;
+    sentLinks.add(SentAuthLink(SentAuthLinkKind.verification, normalized, language));
+    return VerificationLinkResult.sent;
+  }
+}
+
+enum SentAuthLinkKind { verification, passwordReset }
+
+/// A link [LocalEmailAuthService] "emailed" in fallback mode.
+class SentAuthLink {
+  const SentAuthLink(this.kind, this.email, this.language);
+
+  final SentAuthLinkKind kind;
+  final String email;
+  final String language;
+
+  @override
+  String toString() => 'SentAuthLink(${kind.name}, $email, $language)';
 }
 
 class _PendingCode {

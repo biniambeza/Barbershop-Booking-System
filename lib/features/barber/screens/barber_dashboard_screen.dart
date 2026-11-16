@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/phone_utils.dart';
@@ -9,6 +11,7 @@ import '../../../models/booking_model.dart';
 import '../../../models/barber_model.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../services/app_repository.dart';
+import '../../../services/rating_service.dart';
 import '../../notifications/widgets/notification_bell.dart';
 import '../../shared/widgets/app_bar_menu.dart';
 import '../../payments/widgets/payment_status_badge.dart';
@@ -32,14 +35,19 @@ class BarberDashboardScreen extends StatefulWidget {
 class _BarberDashboardScreenState extends State<BarberDashboardScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
+  // free plan: closes expired booking requests (no Cloud Functions)
+  Timer? _expirySweep;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _expirySweep = AppRepository.instance.startExpiredRequestSweep(); // free plan
   }
 
   @override
   void dispose() {
+    _expirySweep?.cancel(); // free plan
     _tabController.dispose();
     super.dispose();
   }
@@ -55,6 +63,10 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
     setState(() => _busy.add(bookingId));
     try {
       await repo.updateBookingStatus(bookingId, status);
+      // --- early finish: later customers were told to come early ---
+      final told = status == BookingStatus.completed ? repo.earlyFinishNoticeCount(bookingId) : 0;
+      if (told > 0) messenger.showSnackBar(SnackBar(content: Text(l.earlyFinishNotified(told))));
+      // --- end early finish ---
     } catch (e) {
       messenger.showSnackBar(SnackBar(content: Text(l.statusUpdateFailed(l.errorText(e)))));
     } finally {
@@ -272,7 +284,7 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                     const Icon(Icons.star_rounded, color: AppTheme.orange, size: 16),
                     const SizedBox(width: 4),
                     Text(
-                      context.l10n.reviewsRatingValue(barber.rating, barber.reviewCount),
+                      context.l10n.barberRatingText(barberRatingSummary(barber)),
                       style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppTheme.onInk),
                     ),
                   ],

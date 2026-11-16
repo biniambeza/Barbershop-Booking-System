@@ -48,6 +48,11 @@ dependencies:
   cloud_functions: ^7.0.1
   url_launcher: ^6.3.3
   shared_preferences: ^2.5.6
+  # --- subscription receipts --- receipt photo (camera/gallery) and the
+  # pure-Dart JPEG resize/compress before it is stored in Firestore.
+  image_picker: ^1.2.2
+  image: ^4.8.0
+  # --- end subscription receipts ---
 
 dev_dependencies:
   flutter_test:

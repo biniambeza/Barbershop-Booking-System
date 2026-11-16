@@ -50,25 +50,48 @@ rules_version = '2';
 //   users/{uid}                uid, email (verified Google email, lowercased;
 //                              fixed after create), name, phone (contact,
 //                              +2519/+2517...), role, shopId?, barberId?,
-//                              createdAt, language? ('en'|'am')
+//                              createdAt, language? ('en'|'am'),
+//                              mustChangePassword? (bool; owner-created barber
+//                              logins: the user may only clear it)
 //     /devices/{deviceId}      token, platform, updatedAt   (owner only)
 //     /notifications/{id}      title, body, type, bookingId?, paymentId?, read,
-//                              createdAt   (functions; owner reads, sets read)
+//                              createdAt   (functions; owner reads, sets read).
+//                              Two client-created kinds (see the match):
+//                              early finish {bookingId}_early_{sourceBookingId}
+//                              (staff), receipt decisions {paymentId}_receipt
+//                              (admin)
 //   invites/{email}            email (== doc id, lowercased), role, name,
-//                              shopId?, barberId?, createdBy, createdAt
+//                              shopId?, barberId?, createdBy, createdAt,
+//                              authUid? (barber invites: the uid of the login
+//                              the owner created), mustChangePassword? (bool)
 //   barbershops/{shopId}       ownerId ('' until the invited owner signs
 //                              in), name, description, address, city,
 //                              subCity?, landmark?, phone, imageUrl, rating,
 //                              reviewCount, openingHour, closingHour,
 //                              workingDays, isVerified, subscriptionPlan?,
 //                              subscriptionStatus?, subscriptionEndsAt?,
+//                              subscriptionStatusChangedAt? (ISO; written
+//                              with a downgrade by the owner's app on the
+//                              free plan, see isSubscriptionLapse, or by an
+//                              admin),
 //                              createdAt?, requireBarberAcceptance? (bool,
 //                              absent = false: new bookings are 'pending'
-//                              until the barber/owner accepts)
+//                              until the barber/owner accepts),
+//                              admin only: adminSuspended? (bool; true = no
+//                              new bookings or remote queue joins),
+//                              adminSuspendedReason? (1..300),
+//                              adminSuspendedAt? (ISO), adminSuspendedBy?
+//                              (admin uid), subscriptionReceiptId? (the
+//                              subscriptionPayments doc that last extended
+//                              the subscription; set in the approval batch)
 //     /services/{serviceId}    shopId, name, description, price (ETB),
 //                              durationMinutes
-//     /barbers/{barberId}      shopId, name, title, avatarUrl, rating,
-//                              reviewCount, isAvailable, email, phone,
+//     /barbers/{barberId}      shopId, name, title, avatarUrl, rating
+//                              (legacy average), reviewCount, ratingSum?
+//                              (sum of the stars; absent on legacy docs =
+//                              round(rating * reviewCount)), lastReviewId?
+//                              (the review that last changed the counters),
+//                              isAvailable, email, phone,
 //                              specialties, workingDays?, startHour?, endHour?,
 //                              commissionPercent? (int 0..100, absent = 50;
 //                              owner only)
@@ -86,9 +109,12 @@ rules_version = '2';
 //     /queue/{entryId}         walk-in queue: name, phone?, serviceId?,
 //                              barberId?, status, createdAt,
 //                              servingStartedAt?, finishedAt?, addedBy, source
-//     /queueSummary/current    functions only; public read
+//     /queueSummary/current    public read; functions/queue, or (free
+//                              plan) the shop's staff with the same shape
 //     /reviews/{bookingId}     public read; created once by the booking's
-//                              customer; the owner sets reply/replyAt
+//                              customer, in the same transaction that adds
+//                              its stars to the barber's ratingSum /
+//                              reviewCount; the owner sets reply/replyAt
 //     /stats/{yyyy-MM}         functions only; owner/admin read
 //     /clients/{customerId}    functions only; owner/admin read
 //     /payouts/{payoutId}      barberId, amount (0 < ETB <= 1,000,000),
@@ -98,8 +124,10 @@ rules_version = '2';
 //                              createdAt; never updated. Read by the owner,
 //                              admins and the barber it pays.
 //   Shop policy (owner-editable): cancellationCutoffHours (0..72, default 2),
-//   maxReschedules (0..5, default 2). rating/reviewCount on shops and
-//   barbers are written by functions/insights only.
+//   maxReschedules (0..5, default 2). Barber ratingSum/reviewCount change
+//   only with a new review (isReviewCounterUpdate); shop rating/reviewCount
+//   are a cache written by functions/insights only (the app computes the
+//   shop rating from its barbers).
 //   bookings/{bookingId}       shopId, shopName, barberId, barberName,
 //                              customerId, customerName, customerPhone,
 //                              serviceId, serviceName, price, date,
@@ -112,7 +140,9 @@ rules_version = '2';
 //                              functions/bookings cancels it),
 //                              acceptedAt? (request accepted), declineReason?
 //                              (1..200), cancelReasonNote? (1..200, staff
-//                              cancel only, see isStaffCancel); functions only: paymentId?,
+//                              cancel only, see isStaffCancel), completedAt?
+//                              (ISO, written with status 'completed' by
+//                              staff, see isCompleteBooking); functions only: paymentId?,
 //                              paidAt?, reminder24hSentAt?, reminder2hSentAt?,
 //                              cancelReason? ('slot_conflict', 'not_accepted')
 //   shopApplications/{uid}     a customer's request to register a shop: uid,
@@ -126,6 +156,21 @@ rules_version = '2';
 //                              active   (public read, admin write)
 //   payments/{paymentId}       written by functions only; read by the payer,
 //                              the shop owner and admins
+//   subscriptionPayments/{method}_{transactionId}
+//                              an owner's transfer receipt (one doc per
+//                              transaction platform-wide): shopId, ownerId,
+//                              method ('telebirr'|'cbe'|'other'),
+//                              transactionId, amount (ETB), status
+//                              ('pending'|'needs_review'|'verified'|
+//                              'rejected'), durationDays, createdAt,
+//                              receiptImage? (base64 JPEG, <= 350000 chars),
+//                              payerAccountSuffix? (cbe, 4..8 digits); set by
+//                              an admin (or functions): verifiedBy,
+//                              verifiedAmount, decisionReason, decidedAt
+//   platformConfig/subscriptionPricing
+//                              currency, tiers [{days, amount}], receivers,
+//                              receiptUrls, updatedAt, updatedBy (admin
+//                              writes; owners and admins read)
 //   notificationLog/{id}       functions only (no client access)
 //   emailCodes/{purpose}_{sha256(email)}
 //                              functions/auth only (no client access):
@@ -178,6 +223,10 @@ service cloud.firestore {
       return /databases/$(database)/documents/barbershops/$(shopId)/barbers/$(barberId)/timeOff/$(timeOffId);
     }
 
+    function receiptPath(paymentId) {
+      return /databases/$(database)/documents/subscriptionPayments/$(paymentId);
+    }
+
     // -----------------------------------------------------------------
     // Identity and roles (read from the caller's own users/{uid} doc)
     // -----------------------------------------------------------------
@@ -193,6 +242,28 @@ service cloud.firestore {
           request.auth.token.get('email', '') is string
         ? request.auth.token.get('email', '').lower()
         : '';
+    }
+
+    // The token email lowercased, verified or not ('' without one).
+    function tokenEmail() {
+      return request.auth.token.get('email', '') is string
+        ? request.auth.token.get('email', '').lower()
+        : '';
+    }
+
+    // Barber accounts: a shop owner creates a barber's email/password login
+    // (unverified email) and writes its uid to invites/{email}.authUid. The
+    // invite a caller may use is the one at their verified email or, for an
+    // unverified login, at their token email - and then only an invite
+    // naming their uid (canUseInvite).
+    function inviteEmail() {
+      return myEmail() != '' ? myEmail() : tokenEmail();
+    }
+
+    function canUseInvite(email) {
+      return email != '' &&
+        exists(invitePath(email)) &&
+        (myEmail() != '' || get(invitePath(email)).data.get('authUid', null) == request.auth.uid);
     }
 
     function hasProfile() {
@@ -424,7 +495,7 @@ service cloud.firestore {
     // -----------------------------------------------------------------
 
     function isValidUser(d) {
-      return d.keys().hasOnly(['uid', 'email', 'name', 'phone', 'role', 'shopId', 'barberId', 'createdAt', 'language']) &&
+      return d.keys().hasOnly(['uid', 'email', 'name', 'phone', 'role', 'shopId', 'barberId', 'createdAt', 'language', 'mustChangePassword']) &&
         d.keys().hasAll(['uid', 'email', 'name', 'phone', 'role', 'createdAt']) &&
         isString(d.uid, 1, 128) &&
         isValidEmail(d.email) &&
@@ -434,6 +505,7 @@ service cloud.firestore {
         optString(d, 'shopId', 1, 128) &&
         optString(d, 'barberId', 1, 128) &&
         (!('language' in d) || d.language in ['en', 'am']) &&
+        (!('mustChangePassword' in d) || d.mustChangePassword is bool) &&
         isValidDateOrTimestamp(d.createdAt) &&
         // Each role carries exactly the links it needs.
         (
@@ -446,20 +518,22 @@ service cloud.firestore {
         );
     }
 
-    // The role fields in `d` match the caller's own invite, and the same
-    // batch deletes that invite (so it can only be used once).
+    // The role fields in `d` match the caller's own invite (canUseInvite:
+    // verified email, or an owner-created login named in authUid), and the
+    // same batch deletes that invite (so it can only be used once).
     function matchesMyInvite(d) {
-      return myEmail() != '' &&
-        exists(invitePath(myEmail())) &&
-        get(invitePath(myEmail())).data.role == d.role &&
-        get(invitePath(myEmail())).data.get('shopId', null) == d.get('shopId', null) &&
-        get(invitePath(myEmail())).data.get('barberId', null) == d.get('barberId', null) &&
-        !existsAfter(invitePath(myEmail()));
+      return canUseInvite(inviteEmail()) &&
+        get(invitePath(inviteEmail())).data.role == d.role &&
+        get(invitePath(inviteEmail())).data.get('shopId', null) == d.get('shopId', null) &&
+        get(invitePath(inviteEmail())).data.get('barberId', null) == d.get('barberId', null) &&
+        !existsAfter(invitePath(inviteEmail()));
     }
 
     // Invite ids are the invitee's lowercased email, repeated in `email`.
+    // authUid (the login an owner created for a barber) only on barber
+    // invites; mustChangePassword only together with authUid.
     function isValidInvite(d, email) {
-      return d.keys().hasOnly(['email', 'role', 'name', 'shopId', 'barberId', 'createdBy', 'createdAt']) &&
+      return d.keys().hasOnly(['email', 'role', 'name', 'shopId', 'barberId', 'createdBy', 'createdAt', 'authUid', 'mustChangePassword']) &&
         d.keys().hasAll(['email', 'role', 'name', 'createdBy', 'createdAt']) &&
         d.email == email &&
         isValidEmail(email) &&
@@ -468,6 +542,8 @@ service cloud.firestore {
         isValidDateOrTimestamp(d.createdAt) &&
         optString(d, 'shopId', 1, 128) &&
         optString(d, 'barberId', 1, 128) &&
+        (!('authUid' in d) || (d.role == 'barber' && isString(d.authUid, 1, 128))) &&
+        (!('mustChangePassword' in d) || (d.mustChangePassword is bool && 'authUid' in d)) &&
         (
           (d.role == 'admin' &&
             d.get('shopId', null) == null && d.get('barberId', null) == null) ||
@@ -487,11 +563,19 @@ service cloud.firestore {
           'openingHour', 'closingHour', 'workingDays', 'isVerified',
           'subscriptionPlan', 'subscriptionStatus', 'subscriptionEndsAt',
           'createdAt', 'cancellationCutoffHours', 'maxReschedules',
-          'requireBarberAcceptance'
+          'requireBarberAcceptance',
+          // Admin only (adminSuspensionOk, receiptLinkOk).
+          'adminSuspended', 'adminSuspendedReason', 'adminSuspendedAt',
+          'adminSuspendedBy', 'subscriptionReceiptId',
+          // Client-side subscription expiry (isSubscriptionLapse).
+          'subscriptionStatusChangedAt'
         ]) &&
+        (!('subscriptionStatusChangedAt' in d) || isIsoInstant(d.subscriptionStatusChangedAt)) &&
         optInt(d, 'cancellationCutoffHours', 0, 72) &&
         optInt(d, 'maxReschedules', 0, 5) &&
         (!('requireBarberAcceptance' in d) || d.requireBarberAcceptance is bool) &&
+        (!('adminSuspended' in d) || d.adminSuspended is bool) &&
+        optString(d, 'subscriptionReceiptId', 1, 200) &&
         d.keys().hasAll(['ownerId', 'name', 'description', 'address', 'city', 'phone', 'imageUrl']) &&
         isString(d.ownerId, 0, 128) &&
         isString(d.name, 1, 120) &&
@@ -505,6 +589,8 @@ service cloud.firestore {
         isValidUrl(d.imageUrl) &&
         (!('rating' in d) || (d.rating is number && d.rating >= 0 && d.rating <= 5)) &&
         optInt(d, 'reviewCount', 0, 100000000) &&
+        optInt(d, 'ratingSum', 0, 500000000) &&
+        optString(d, 'lastReviewId', 1, 128) &&
         optInt(d, 'openingHour', 0, 23) &&
         optInt(d, 'closingHour', 1, 24) &&
         optWorkingDays(d) &&
@@ -519,7 +605,73 @@ service cloud.firestore {
     // Shop fields only the platform (admin / Cloud Functions) may change.
     function platformShopFields() {
       return ['isVerified', 'rating', 'reviewCount', 'subscriptionPlan',
-        'subscriptionStatus', 'subscriptionEndsAt', 'createdAt'];
+        'subscriptionStatus', 'subscriptionEndsAt', 'createdAt',
+        'adminSuspended', 'adminSuspendedReason', 'adminSuspendedAt',
+        'adminSuspendedBy', 'subscriptionReceiptId', 'subscriptionStatusChangedAt'];
+    }
+
+    // Free (Spark) plan: no daily payments function, so the owner's app
+    // persists a lapsed period itself (subscription_state.dart,
+    // subscriptionTransitionPatch). Exactly {subscriptionStatus,
+    // subscriptionStatusChangedAt (ISO, client clock)}, downgrades only,
+    // and only once the stored end date says so (same as statusForEnd in
+    // functions/payments): trialing/active -> past_due from the end;
+    // trialing/active/past_due -> suspended from 7 days (GRACE_DAYS) after.
+    // Its own `allow update` (before the general one), without
+    // isValidBarbershop: the shop update rule is close to the budget of
+    // 1000 evaluated expressions, and only these two fields change, both
+    // checked here. Each instant is parsed once (function arguments).
+    function isSubscriptionLapse() {
+      let d = request.resource.data;
+      let end = resource.data.get('subscriptionEndsAt', null);
+      return changedKeys().hasOnly(['subscriptionStatus', 'subscriptionStatusChangedAt']) &&
+        (end is timestamp || isIsoInstant(end)) &&
+        isIsoInstant(d.get('subscriptionStatusChangedAt', null)) &&
+        isNearNow(isoToTs(d.subscriptionStatusChangedAt)) &&
+        lapseAllowed(resource.data.get('subscriptionStatus', 'trialing'), d.get('subscriptionStatus', null),
+          subscriptionEndOf(end));
+    }
+
+    // A client-clock instant within a day before / an hour after now.
+    function isNearNow(t) {
+      return t <= request.time + duration.value(1, 'h') &&
+        t >= request.time - duration.value(1, 'd');
+    }
+
+    // `from` -> `to` is due at `end` (the stored period end).
+    function lapseAllowed(from, to, end) {
+      return (from in ['trialing', 'active'] && to == 'past_due' && request.time >= end) ||
+        (from in ['trialing', 'active', 'past_due'] && to == 'suspended' &&
+          request.time >= end + duration.value(7, 'd'));
+    }
+
+    // Admin suspension (separate from the subscription status). Suspend:
+    // {adminSuspended: true, adminSuspendedReason (1..300, not blank),
+    // adminSuspendedAt (ISO), adminSuspendedBy: the admin's uid}.
+    // Reactivate: {adminSuspended: false} with the other three deleted.
+    function adminSuspensionOk() {
+      let d = request.resource.data;
+      return !changedKeys().hasAny(['adminSuspended', 'adminSuspendedReason', 'adminSuspendedAt', 'adminSuspendedBy']) ||
+        (d.get('adminSuspended', null) == true &&
+          d.get('adminSuspendedReason', null) is string &&
+          d.adminSuspendedReason.trim().size() >= 1 &&
+          d.adminSuspendedReason.size() <= 300 &&
+          isIsoInstant(d.get('adminSuspendedAt', null)) &&
+          d.get('adminSuspendedBy', null) == request.auth.uid) ||
+        (d.get('adminSuspended', null) == false &&
+          !d.keys().hasAny(['adminSuspendedReason', 'adminSuspendedAt', 'adminSuspendedBy']));
+    }
+
+    // subscriptionReceiptId changes only in the batch that approves that
+    // receipt: it was open before this write and is 'verified' for this
+    // shop after it (the receipt rule checks the other direction).
+    function receiptLinkOk(shopId) {
+      let id = request.resource.data.get('subscriptionReceiptId', null);
+      return !changedKeys().hasAny(['subscriptionReceiptId']) ||
+        (id is string &&
+          get(receiptPath(id)).data.status in ['pending', 'needs_review'] &&
+          getAfter(receiptPath(id)).data.status == 'verified' &&
+          getAfter(receiptPath(id)).data.shopId == shopId);
     }
 
     // Customers see shops that are not suspended. This must be provable
@@ -543,6 +695,7 @@ service cloud.firestore {
     function isValidBarber(d, shopId) {
       return d.keys().hasOnly([
           'shopId', 'name', 'title', 'avatarUrl', 'rating', 'reviewCount',
+          'ratingSum', 'lastReviewId',
           'isAvailable', 'email', 'phone', 'specialties', 'workingDays',
           'startHour', 'endHour', 'commissionPercent'
         ]) &&
@@ -555,6 +708,8 @@ service cloud.firestore {
         optString(d, 'phone', 1, 30) &&
         (!('rating' in d) || (d.rating is number && d.rating >= 0 && d.rating <= 5)) &&
         optInt(d, 'reviewCount', 0, 100000000) &&
+        optInt(d, 'ratingSum', 0, 500000000) &&
+        optString(d, 'lastReviewId', 1, 128) &&
         (!('isAvailable' in d) || d.isAvailable is bool) &&
         (!('specialties' in d) || (d.specialties is list && d.specialties.size() <= 20)) &&
         optWorkingDays(d) &&
@@ -563,57 +718,17 @@ service cloud.firestore {
         optInt(d, 'commissionPercent', 0, 100);
     }
 
-    // Field types shared by every booking document.
-    function isBookingCore(d) {
-      return isString(d.shopId, 1, 128) &&
-        isString(d.shopName, 1, 120) &&
-        isString(d.barberId, 1, 128) &&
-        isString(d.barberName, 1, 100) &&
-        isString(d.customerId, 1, 128) &&
-        isString(d.customerName, 1, 100) &&
-        isString(d.customerPhone, 1, 30) &&
-        isString(d.serviceId, 1, 128) &&
-        isString(d.serviceName, 1, 100) &&
-        d.price is number && d.price >= 0 && d.price <= 100000 &&
-        isValidDateOrTimestamp(d.date) &&
-        isString(d.timeSlot, 1, 50) &&
-        d.status in ['pending', 'confirmed', 'inProgress', 'completed', 'cancelled', 'noShow'] &&
-        isValidDateOrTimestamp(d.createdAt);
-    }
-
-    // Shape of any stored booking, including legacy ones without the
-    // appointment interval and documents carrying function-written fields.
-    function isValidBooking(d) {
-      return d.keys().hasOnly([
-          'shopId', 'shopName', 'barberId', 'barberName', 'customerId',
-          'customerName', 'customerPhone', 'serviceId', 'serviceName',
-          'price', 'date', 'timeSlot', 'status', 'createdAt',
-          'startAt', 'endAt', 'durationMinutes', 'paymentStatus',
-          'paymentMethod', 'cancelledBy', 'rescheduleCount', 'rescheduledAt',
-          'acceptedAt', 'declineReason', 'cancelReasonNote',
-          // Written by Cloud Functions only.
-          'paymentId', 'paidAt', 'reminder24hSentAt', 'reminder2hSentAt',
-          'cancelReason'
-        ]) &&
-        d.keys().hasAll([
-          'shopId', 'shopName', 'barberId', 'barberName', 'customerId',
-          'customerName', 'customerPhone', 'serviceId', 'serviceName',
-          'price', 'date', 'timeSlot', 'status', 'createdAt'
-        ]) &&
-        isBookingCore(d) &&
-        optDate(d, 'startAt') &&
-        optDate(d, 'endAt') &&
-        optInt(d, 'durationMinutes', 5, 480) &&
-        (!('paymentStatus' in d) || d.paymentStatus in ['unpaid', 'pending', 'paid', 'refunded']) &&
-        (!('paymentMethod' in d) || d.paymentMethod in ['cash', 'chapa']) &&
-        optString(d, 'cancelledBy', 1, 128) &&
-        optString(d, 'cancelReason', 1, 64) &&
-        optInt(d, 'rescheduleCount', 0, 5) &&
-        (!('rescheduledAt' in d) || isValidDateString(d.rescheduledAt)) &&
-        (!('acceptedAt' in d) || isValidDateString(d.acceptedAt)) &&
-        optString(d, 'declineReason', 1, 200);
-      // cancelReasonNote is validated by isStaffCancel, the only update
-      // that may write it (kept out of here for the expression budget).
+    // The fields the general booking update may change (it also requires
+    // every other field to be unchanged): status and paymentStatus are
+    // from their sets; cancelledBy is checked by cancelledByOk. Each
+    // special update validates its own fields: cancelReasonNote
+    // (isStaffCancel), completedAt (isCompleteBooking), acceptedAt,
+    // declineReason (isAcceptRequest, isDeclineRequest) and the interval
+    // (isValidReschedule).
+    function statusFieldsOk() {
+      let d = request.resource.data;
+      return d.status in ['pending', 'confirmed', 'inProgress', 'completed', 'cancelled', 'noShow'] &&
+        (!('paymentStatus' in d) || d.paymentStatus in ['unpaid', 'pending', 'paid', 'refunded']);
     }
 
     // The slot lock `id` exists after this write and belongs to the booking.
@@ -693,10 +808,19 @@ service cloud.firestore {
     //
     // Barber acceptance: the booking starts 'pending' exactly when the shop
     // has requireBarberAcceptance == true, else 'confirmed'.
+    //
+    // An admin-suspended shop (adminSuspended == true) takes no bookings,
+    // nor does one 7 days or more past its subscriptionEndsAt whose stored
+    // status still lags (inGracePeriod; free plan, no daily function).
+    // Its slot locks need no check of their own: they are only valid with
+    // a live booking of the caller (canCreateSlotLock), created or moved
+    // in the same transaction under this rule or isValidReschedule.
     function isBookable(d) {
       let svc = get(servicePath(d.shopId, d.serviceId)).data;
       let shop = get(shopPath(d.shopId)).data;
       return shop.get('subscriptionStatus', 'trialing') != 'suspended' &&
+        shop.get('adminSuspended', false) != true &&
+        inGracePeriod(shop) &&
         d.status == (shop.get('requireBarberAcceptance', false) == true ? 'pending' : 'confirmed') &&
         get(barberPath(d.shopId, d.barberId)).data.get('isAvailable', true) == true &&
         svc.price == d.price &&
@@ -837,6 +961,7 @@ service cloud.firestore {
       return changedKeys().hasOnly(['startAt', 'endAt', 'date', 'timeSlot', 'rescheduleCount', 'rescheduledAt']) &&
         r.customerId == request.auth.uid &&
         r.status in ['pending', 'confirmed'] &&
+        shop.get('adminSuspended', false) != true &&
         d.get('rescheduleCount', -1) is int &&
         d.rescheduleCount == r.get('rescheduleCount', 0) + 1 &&
         d.rescheduleCount <= maxReschedulesOf(shop) &&
@@ -875,6 +1000,19 @@ service cloud.firestore {
         d.addedBy == request.auth.uid;
     }
 
+    // queueSummary/current: {waitingCount (0..500), estimatedWaitMinutes
+    // (0..100000), positions {entryId: {position, waitMinutes}} with one
+    // entry per waiting customer, updatedAt (ISO)}. Rules cannot loop over
+    // the positions map, so only its size is checked.
+    function isValidQueueSummary(d) {
+      return d.keys().hasOnly(['waitingCount', 'estimatedWaitMinutes', 'positions', 'updatedAt']) &&
+        d.keys().hasAll(['waitingCount', 'estimatedWaitMinutes', 'positions', 'updatedAt']) &&
+        d.waitingCount is int && d.waitingCount >= 0 && d.waitingCount <= 500 &&
+        d.estimatedWaitMinutes is int && d.estimatedWaitMinutes >= 0 && d.estimatedWaitMinutes <= 100000 &&
+        d.positions is map && d.positions.size() == d.waitingCount &&
+        isIsoInstant(d.updatedAt);
+    }
+
     // waiting -> left, or serving -> done: {status, finishedAt}.
     function isQueueFinish(from, to) {
       return changedKeys().hasOnly(['status', 'finishedAt']) &&
@@ -899,9 +1037,13 @@ service cloud.firestore {
     // -----------------------------------------------------------------
 
     // One review per completed booking (doc id = bookingId), by its
-    // customer, copying the booking's shop, barber and customer name.
+    // customer, copying the booking's shop, barber and customer name. The
+    // same write must add it to the barber's counters
+    // (isReviewCounterUpdate sets lastReviewId = reviewId), unless the
+    // barber profile no longer exists.
     function isValidNewReview(shopId, reviewId, d) {
       let b = get(bookingPath(reviewId)).data;
+      let barber = barberPath(shopId, d.barberId);
       return d.keys().hasOnly(['bookingId', 'shopId', 'barberId', 'customerId', 'customerName', 'rating', 'comment', 'createdAt']) &&
         d.keys().hasAll(['bookingId', 'shopId', 'barberId', 'customerId', 'customerName', 'rating', 'createdAt']) &&
         d.bookingId == reviewId &&
@@ -914,7 +1056,32 @@ service cloud.firestore {
         b.status == 'completed' &&
         b.shopId == shopId &&
         b.barberId == d.barberId &&
-        b.customerName == d.customerName;
+        b.customerName == d.customerName &&
+        (!exists(barber) || getAfter(barber).data.get('lastReviewId', '') == reviewId);
+    }
+
+    // The customer's barber-counter update written with their new review
+    // (same batch / transaction): only ratingSum, reviewCount and
+    // lastReviewId change; lastReviewId names a review of this shop that
+    // is new in this write (so each review counts once), is the caller's
+    // own and is for this barber; reviewCount + 1 and ratingSum + its
+    // stars. A missing reviewCount is 0; a missing ratingSum is the legacy
+    // round(rating * reviewCount).
+    function isReviewCounterUpdate(shopId, barberId) {
+      let d = request.resource.data;
+      let old = resource.data;
+      let reviewId = d.get('lastReviewId', '');
+      let review = /databases/$(database)/documents/barbershops/$(shopId)/reviews/$(reviewId);
+      let oldCount = old.get('reviewCount', 0);
+      let oldSum = old.get('ratingSum', math.round(old.get('rating', 0) * oldCount));
+      return signedIn() &&
+        changedKeys().hasOnly(['ratingSum', 'reviewCount', 'lastReviewId']) &&
+        reviewId is string && reviewId.size() > 0 &&
+        !exists(review) && existsAfter(review) &&
+        getAfter(review).data.customerId == request.auth.uid &&
+        getAfter(review).data.barberId == barberId &&
+        d.get('reviewCount', -1) == oldCount + 1 &&
+        d.get('ratingSum', -1) == oldSum + getAfter(review).data.rating;
     }
 
     function isValidPlan(d) {
@@ -994,6 +1161,231 @@ service cloud.firestore {
             (!('startAt' in r) || request.time < instantOf(r.startAt))) ||
           isOwnerOf(r.shopId)
         );
+    }
+
+    // -----------------------------------------------------------------
+    // Early finish (lib/services/early_finish_service.dart)
+    // -----------------------------------------------------------------
+
+    // Finishing: the booked barber, the shop's owner or an admin sets a
+    // confirmed or in-progress booking to completed with exactly {status:
+    // 'completed', completedAt (ISO, not more than an hour ahead of the
+    // server clock)}. The slot locks stay. (Status-only completions still
+    // go through the general branch.)
+    function isCompleteBooking() {
+      let d = request.resource.data;
+      let r = resource.data;
+      // Cheapest check first (shares the booking rule's expression budget).
+      return d.status == 'completed' &&
+        changedKeys().hasOnly(['status', 'completedAt']) &&
+        r.status in ['confirmed', 'inProgress'] &&
+        isIsoInstant(d.get('completedAt', null)) &&
+        isoToTs(d.completedAt) <= request.time + duration.value(1, 'h') &&
+        (isBarberProfile(r.shopId, r.barberId) || isOwnerOf(r.shopId) || isAdmin());
+    }
+
+    // Inbox notice users/{uid}/notifications/{bookingId}_early_{sourceBookingId}
+    // created by the barber of the completed source booking or the shop's
+    // owner, within an hour of completing it before its scheduled end, for
+    // a confirmed booking of that customer with the same barber starting
+    // later on the same Addis day.
+    // The id is deterministic (one notice per pair); an existing doc (e.g.
+    // written by functions/notifications) cannot be overwritten.
+    function isValidEarlyFinishNotice(userId, noteId, d) {
+      let s = get(bookingPath(d.sourceBookingId)).data;
+      let b = get(bookingPath(d.bookingId)).data;
+      return d.keys().hasOnly(['type', 'title', 'body', 'bookingId', 'shopId', 'barberId', 'sourceBookingId', 'minutesEarly', 'read', 'createdAt']) &&
+        d.keys().hasAll(['type', 'title', 'body', 'bookingId', 'shopId', 'barberId', 'sourceBookingId', 'minutesEarly', 'read', 'createdAt']) &&
+        d.type in ['barberFreeEarly', 'runningEarly'] &&
+        isString(d.title, 1, 120) &&
+        isString(d.body, 1, 500) &&
+        d.read == false &&
+        d.minutesEarly is int && d.minutesEarly >= 0 && d.minutesEarly <= 240 &&
+        isString(d.bookingId, 1, 128) &&
+        isString(d.sourceBookingId, 1, 128) &&
+        d.bookingId != d.sourceBookingId &&
+        noteId == d.bookingId + '_early_' + d.sourceBookingId &&
+        (isBarberProfile(d.shopId, d.barberId) || isOwnerOf(d.shopId)) &&
+        // The source booking was just completed by this barber.
+        s.shopId == d.shopId &&
+        s.barberId == d.barberId &&
+        s.status == 'completed' &&
+        isIsoInstant(s.get('completedAt', null)) &&
+        d.createdAt == s.completedAt &&
+        isoToTs(s.completedAt) >= request.time - duration.value(1, 'h') &&
+        // ...before its scheduled end (an early finish).
+        isoToTs(s.completedAt) < instantOf(s.endAt) &&
+        // The recipient's own upcoming booking with the same barber, later
+        // on the same Addis day as the finish.
+        b.customerId == userId &&
+        b.shopId == d.shopId &&
+        b.barberId == d.barberId &&
+        b.status == 'confirmed' &&
+        instantOf(b.startAt) > request.time &&
+        instantOf(b.startAt) > isoToTs(s.completedAt) &&
+        addisDayOf(instantOf(b.startAt) + duration.value(3, 'h')) ==
+          addisDayOf(isoToTs(s.completedAt) + duration.value(3, 'h'));
+    }
+
+    // -----------------------------------------------------------------
+    // Subscription receipts (subscriptionPayments, platformConfig)
+    // -----------------------------------------------------------------
+
+    // Transaction-number shapes (normalized: uppercase, no spaces), as
+    // isValidTransactionId in lib/services/subscription_pricing.dart.
+    function isValidTransactionId(method, tx) {
+      return tx is string && (
+        (method == 'telebirr' && tx.matches('^[A-Z0-9]{8,12}$') && tx.matches('^.*[A-Z].*$')) ||
+        (method == 'cbe' && tx.matches('^FT[A-Z0-9]{8,20}$')) ||
+        (method == 'other' && tx.matches('^[A-Z0-9][A-Z0-9-]{3,39}$')));
+    }
+
+    // The owner's receipt (SubscriptionPayment.toCreateMap): 'pending',
+    // no days granted yet, at {method}_{transactionId} so a transaction
+    // can be claimed only once (a second create is an update, which owners
+    // may not make). receiptImage: base64 JPEG of at most 350000 chars.
+    function isValidNewReceipt(paymentId, d) {
+      return d.keys().hasOnly(['shopId', 'ownerId', 'method', 'transactionId', 'amount', 'status', 'durationDays', 'createdAt', 'receiptImage', 'payerAccountSuffix']) &&
+        d.keys().hasAll(['shopId', 'ownerId', 'method', 'transactionId', 'amount', 'status', 'durationDays', 'createdAt']) &&
+        d.ownerId == request.auth.uid &&
+        isString(d.shopId, 1, 128) &&
+        isOwnerOf(d.shopId) &&
+        get(shopPath(d.shopId)).data.ownerId == request.auth.uid &&
+        d.method in ['telebirr', 'cbe', 'other'] &&
+        isValidTransactionId(d.method, d.transactionId) &&
+        paymentId == d.method + '_' + d.transactionId &&
+        d.amount is number && d.amount > 0 && d.amount <= 1000000 &&
+        d.status == 'pending' &&
+        d.durationDays == 0 &&
+        isIsoInstant(d.createdAt) &&
+        isoToTs(d.createdAt) <= request.time + duration.value(1, 'h') &&
+        isoToTs(d.createdAt) >= request.time - duration.value(1, 'd') &&
+        (!('receiptImage' in d) || isString(d.receiptImage, 1, 350000)) &&
+        (!('payerAccountSuffix' in d) ||
+          (d.method == 'cbe' && d.payerAccountSuffix is string && d.payerAccountSuffix.matches('^[0-9]{4,8}$')));
+    }
+
+    // A stored subscription end as a timestamp (now when missing/unreadable).
+    function subscriptionEndOf(v) {
+      return v is timestamp ? v : (isIsoInstant(v) ? isoToTs(v) : request.time);
+    }
+
+    // The shop `shop` (its data) is not past its grace period: no end date,
+    // or less than 7 days (GRACE_DAYS) after it. Past it the shop counts
+    // as suspended even while its stored status lags behind (free plan: no
+    // daily function); the app blocks from end + 7 days on, too.
+    function inGracePeriod(shop) {
+      return shop.get('subscriptionEndsAt', null) == null ||
+        request.time < subscriptionEndOf(shop.subscriptionEndsAt) + duration.value(7, 'd');
+    }
+
+    // Admin approval: exactly {status: 'verified', verifiedBy: own uid,
+    // verifiedAmount, durationDays (1..1825), decidedAt}, in the batch that
+    // makes the shop 'active' with subscriptionReceiptId = this receipt and
+    // subscriptionEndsAt = max(now, current end) + durationDays (one day of
+    // tolerance for the client clock).
+    function isReceiptApprove(paymentId) {
+      let d = request.resource.data;
+      let before = get(shopPath(resource.data.shopId)).data;
+      let shop = getAfter(shopPath(resource.data.shopId)).data;
+      let base = subscriptionEndOf(before.get('subscriptionEndsAt', null));
+      let from = base > request.time ? base : request.time;
+      return changedKeys().hasOnly(['status', 'verifiedBy', 'verifiedAmount', 'durationDays', 'decidedAt']) &&
+        d.status == 'verified' &&
+        d.get('verifiedBy', null) == request.auth.uid &&
+        d.get('verifiedAmount', null) is number &&
+        d.verifiedAmount > 0 && d.verifiedAmount <= 1000000 &&
+        d.get('durationDays', null) is int &&
+        d.durationDays >= 1 && d.durationDays <= 1825 &&
+        isIsoInstant(d.get('decidedAt', null)) &&
+        shop.get('subscriptionReceiptId', null) == paymentId &&
+        shop.get('subscriptionStatus', null) == 'active' &&
+        isIsoInstant(shop.get('subscriptionEndsAt', null)) &&
+        isoToTs(shop.subscriptionEndsAt) >= from + duration.value(d.durationDays - 1, 'd') &&
+        isoToTs(shop.subscriptionEndsAt) <= from + duration.value(d.durationDays + 1, 'd');
+    }
+
+    // Admin rejection: exactly {status: 'rejected', verifiedBy: own uid,
+    // decisionReason (1..300), decidedAt}. The shop is not touched.
+    function isReceiptReject() {
+      let d = request.resource.data;
+      return changedKeys().hasOnly(['status', 'verifiedBy', 'decisionReason', 'decidedAt']) &&
+        d.status == 'rejected' &&
+        d.get('verifiedBy', null) == request.auth.uid &&
+        isString(d.get('decisionReason', null), 1, 300) &&
+        isIsoInstant(d.get('decidedAt', null));
+    }
+
+    // The owner's inbox entry users/{ownerId}/notifications/{paymentId}_receipt,
+    // written by the admin in the batch that decides that receipt.
+    function isValidReceiptNotice(userId, noteId, d) {
+      let p = getAfter(receiptPath(d.paymentId)).data;
+      return isAdmin() &&
+        d.keys().hasOnly(['title', 'body', 'type', 'read', 'createdAt', 'shopId', 'paymentId']) &&
+        d.keys().hasAll(['title', 'body', 'type', 'read', 'createdAt', 'shopId', 'paymentId']) &&
+        d.type in ['receiptApproved', 'receiptRejected'] &&
+        isString(d.title, 1, 120) &&
+        isString(d.body, 1, 500) &&
+        d.read == false &&
+        isIsoInstant(d.createdAt) &&
+        isString(d.paymentId, 1, 200) &&
+        noteId == d.paymentId + '_receipt' &&
+        p.ownerId == userId &&
+        p.shopId == d.shopId &&
+        p.status == (d.type == 'receiptApproved' ? 'verified' : 'rejected') &&
+        get(receiptPath(d.paymentId)).data.status in ['pending', 'needs_review'];
+    }
+
+    // A price tier {days: 1..1825, amount: 0 < ETB <= 1,000,000}; true
+    // past the end of the list (rules cannot loop, so tiers 0..7 are
+    // checked one by one).
+    function isTierAt(tiers, i) {
+      return tiers.size() <= i || (
+        tiers[i] is map &&
+        tiers[i].keys().hasOnly(['days', 'amount']) &&
+        tiers[i].get('days', null) is int &&
+        tiers[i].days >= 1 && tiers[i].days <= 1825 &&
+        tiers[i].get('amount', null) is number &&
+        tiers[i].amount > 0 && tiers[i].amount <= 1000000);
+    }
+
+    // A receiver {<idKey>: account or number, name (<= 80)}. The account is
+    // '' (method not offered) or matches `pattern`; a set account needs a
+    // name of at least 2 characters (payment_receivers.dart checkReceiver).
+    // telebirr: an E.164 Ethiopian mobile; CBE: 13 digits starting 1000.
+    // Neither pattern admits the 'XXXX' placeholder.
+    function isReceiver(r, idKey, pattern) {
+      return r is map &&
+        r.keys().hasOnly([idKey, 'name']) &&
+        r.get(idKey, null) is string &&
+        isString(r.get('name', null), 0, 80) &&
+        (r[idKey] == '' || (r[idKey].matches(pattern) && r.name.size() >= 2));
+    }
+
+    // A receipt link template: https, with an {id} placeholder.
+    function isReceiptUrlTemplate(u) {
+      return isString(u, 12, 500) && u.matches('^https://[^ ]*[{]id[}][^ ]*$');
+    }
+
+    // platformConfig/subscriptionPricing (SubscriptionPricing.toMap).
+    function isValidPricing(d) {
+      return d.keys().hasOnly(['currency', 'tiers', 'receivers', 'receiptUrls', 'updatedAt', 'updatedBy']) &&
+        d.keys().hasAll(['currency', 'tiers', 'receivers']) &&
+        d.currency == 'ETB' &&
+        d.tiers is list && d.tiers.size() >= 1 && d.tiers.size() <= 8 &&
+        isTierAt(d.tiers, 0) && isTierAt(d.tiers, 1) && isTierAt(d.tiers, 2) && isTierAt(d.tiers, 3) &&
+        isTierAt(d.tiers, 4) && isTierAt(d.tiers, 5) && isTierAt(d.tiers, 6) && isTierAt(d.tiers, 7) &&
+        d.receivers is map &&
+        d.receivers.keys().hasOnly(['telebirr', 'cbe']) &&
+        (!('telebirr' in d.receivers) || isReceiver(d.receivers.telebirr, 'number', '^[+]251[79][0-9]{8}$')) &&
+        (!('cbe' in d.receivers) || isReceiver(d.receivers.cbe, 'account', '^1000[0-9]{9}$')) &&
+        (!('receiptUrls' in d) ||
+          (d.receiptUrls is map &&
+            d.receiptUrls.keys().hasOnly(['telebirr', 'cbe']) &&
+            (!('telebirr' in d.receiptUrls) || isReceiptUrlTemplate(d.receiptUrls.telebirr)) &&
+            (!('cbe' in d.receiptUrls) || isReceiptUrlTemplate(d.receiptUrls.cbe)))) &&
+        (!('updatedAt' in d) || isIsoInstant(d.updatedAt)) &&
+        (!('updatedBy' in d) || d.updatedBy == request.auth.uid);
     }
 
     // -----------------------------------------------------------------
@@ -1104,13 +1496,24 @@ service cloud.firestore {
       // First sign-in: create your own profile with your verified Google
       // email (lowercased) and a contact phone you type in. The role is
       // `customer`, or whatever your invite says.
+      //
+      // Barber accounts: a login the shop owner created (email not verified
+      // yet) creates its profile only from the invite at its token email
+      // whose authUid is its uid (canUseInvite); its email is the token
+      // email, lowercased. mustChangePassword is copied from the invite.
       allow create: if signedIn() &&
         request.auth.uid == userId &&
         isValidUser(request.resource.data) &&
         request.resource.data.uid == userId &&
-        myEmail() != '' &&
-        request.resource.data.email == myEmail() &&
-        (request.resource.data.role == 'customer' || matchesMyInvite(request.resource.data));
+        inviteEmail() != '' &&
+        request.resource.data.email == inviteEmail() &&
+        (
+          (myEmail() != '' && request.resource.data.role == 'customer' &&
+            request.resource.data.get('mustChangePassword', false) == false) ||
+          (matchesMyInvite(request.resource.data) &&
+            request.resource.data.get('mustChangePassword', false) ==
+              get(invitePath(inviteEmail())).data.get('mustChangePassword', false))
+        );
 
       allow update: if signedIn() && isValidUser(request.resource.data) && (
         isAdmin() ||
@@ -1119,6 +1522,10 @@ service cloud.firestore {
           (
             // Ordinary profile edits: name, language, contact phone.
             changedKeys().hasOnly(['name', 'language', 'phone']) ||
+            // Barber accounts: the forced password change clears the flag
+            // (it can never be set again by the user).
+            (changedKeys().hasOnly(['mustChangePassword']) &&
+              request.resource.data.mustChangePassword == false) ||
             // ...or a customer accepting an invite (one time).
             (resource.data.role == 'customer' && matchesMyInvite(request.resource.data))
           ))
@@ -1136,9 +1543,16 @@ service cloud.firestore {
       }
 
       // In-app inbox, written by Cloud Functions. The user may only mark
-      // a notification as read.
+      // a notification as read. Clients create two kinds (never update or
+      // delete them): early-finish notices (staff, isValidEarlyFinishNotice)
+      // and receipt decisions (admin, isValidReceiptNotice).
       match /notifications/{notificationId} {
         allow read: if signedIn() && request.auth.uid == userId;
+        allow create: if signedIn() && (
+          request.resource.data.get('type', '') in ['barberFreeEarly', 'runningEarly']
+            ? isValidEarlyFinishNotice(userId, notificationId, request.resource.data)
+            : isValidReceiptNotice(userId, notificationId, request.resource.data)
+        );
         allow update: if signedIn() &&
           request.auth.uid == userId &&
           changedKeys().hasOnly(['read']) &&
@@ -1150,8 +1564,11 @@ service cloud.firestore {
     // invites/{email}
     // -----------------------------------------------------------------
     match /invites/{email} {
+      // An unverified login the owner created reads (and consumes) only
+      // the invite naming its uid in authUid.
       allow read: if signedIn() && (
         (myEmail() != '' && myEmail() == email) ||
+        resource.data.get('authUid', null) == request.auth.uid ||
         isAdmin() ||
         (resource.data.role == 'barber' && isOwnerOf(resource.data.shopId))
       );
@@ -1176,6 +1593,7 @@ service cloud.firestore {
       // (cancelling a barber invite).
       allow delete: if signedIn() && (
         (myEmail() != '' && myEmail() == email) ||
+        resource.data.get('authUid', null) == request.auth.uid ||
         isAdmin() ||
         (resource.data.role == 'barber' && isOwnerOf(resource.data.shopId))
       );
@@ -1199,20 +1617,37 @@ service cloud.firestore {
     // -----------------------------------------------------------------
     match /barbershops/{shopId} {
       // Public directory of shops that are not suspended. A suspended shop
-      // stays visible to its own staff and to admins.
+      // stays visible to its own staff and to admins. An admin-suspended
+      // shop stays readable (the app shows it as "temporarily unavailable",
+      // and the customer query cannot filter on a missing field); it takes
+      // no bookings (isBookable, isValidReschedule) or remote queue joins.
       allow read: if isCustomerVisibleShop(resource.data) || isAdmin() || isStaffOf(shopId);
 
-      // Shops are onboarded by the platform admin, with no reviews yet.
+      // Shops are onboarded by the platform admin, with no reviews yet,
+      // not suspended and without a receipt link.
       allow create: if isAdmin() && isValidBarbershop(request.resource.data) &&
-        request.resource.data.get('reviewCount', 0) == 0;
+        request.resource.data.get('reviewCount', 0) == 0 &&
+        !request.resource.data.keys().hasAny(['adminSuspended', 'adminSuspendedReason', 'adminSuspendedAt', 'adminSuspendedBy', 'subscriptionReceiptId']);
 
       // Owners edit their shop's profile and booking policy
       // (cancellationCutoffHours, maxReschedules) but cannot verify it,
       // change its rating or its subscription. They can claim an unowned
       // shop (ownerId '') once. rating/reviewCount are written by
       // functions/insights only, so not even the admin changes them.
+      // The admin edits the profile, verification and subscription
+      // (admin_shop_edit_screen), suspends / reactivates the shop
+      // (adminSuspensionOk) and links an approved receipt (receiptLinkOk).
+      // The opening hours (openingHour, closingHour, workingDays) are set
+      // by the shop owner only: an admin update must leave them unchanged
+      // (the admin create may still set the defaults).
+      //
+      // Free plan: the owner's app records its own lapsed period
+      // (isSubscriptionLapse; declared first, as it is the cheap check).
+      allow update: if isOwnerOf(shopId) && isSubscriptionLapse();
       allow update: if isValidBarbershop(request.resource.data) && (
-        (isAdmin() && !changedKeys().hasAny(['rating', 'reviewCount'])) ||
+        (isAdmin() &&
+          !changedKeys().hasAny(['rating', 'reviewCount', 'openingHour', 'closingHour', 'workingDays']) &&
+          adminSuspensionOk() && receiptLinkOk(shopId)) ||
         (isOwnerOf(shopId) &&
           !changedKeys().hasAny(platformShopFields()) &&
           (unchanged('ownerId') ||
@@ -1233,14 +1668,21 @@ service cloud.firestore {
 
         // New barbers have no reviews yet.
         allow create: if canManageShop(shopId) && isValidBarber(request.resource.data, shopId) &&
-          request.resource.data.get('reviewCount', 0) == 0;
+          request.resource.data.get('reviewCount', 0) == 0 &&
+          request.resource.data.get('ratingSum', 0) == 0 &&
+          !('lastReviewId' in request.resource.data);
 
-        // rating/reviewCount are written by functions/insights only.
-        // commissionPercent (payouts) is set by the shop's owner only.
+        // The rating counters (ratingSum, reviewCount, lastReviewId) change
+        // only with a new review, written by its customer in the same
+        // transaction (isReviewCounterUpdate); nobody else changes them or
+        // the legacy rating. commissionPercent (payouts) is set by the
+        // shop's owner only.
         allow update: if isValidBarber(request.resource.data, shopId) && (
-          (isAdmin() && !changedKeys().hasAny(['rating', 'reviewCount', 'commissionPercent'])) ||
+          (isAdmin() && !changedKeys().hasAny(['rating', 'reviewCount', 'ratingSum', 'lastReviewId', 'commissionPercent'])) ||
           // Owners manage profiles, working hours and commission but not ratings.
-          (isOwnerOf(shopId) && !changedKeys().hasAny(['rating', 'reviewCount'])) ||
+          (isOwnerOf(shopId) && !changedKeys().hasAny(['rating', 'reviewCount', 'ratingSum', 'lastReviewId'])) ||
+          // A customer adds their new review to the counters.
+          isReviewCounterUpdate(shopId, barberId) ||
           // A barber can only toggle their own availability.
           (isBarberProfile(shopId, barberId) && changedKeys().hasOnly(['isAvailable']))
         );
@@ -1313,6 +1755,8 @@ service cloud.firestore {
               isRole('customer') &&
               (!('phone' in request.resource.data) || request.resource.data.phone == me().phone) &&
               shopDataOf(shopId).get('subscriptionStatus', 'trialing') != 'suspended' &&
+              shopDataOf(shopId).get('adminSuspended', false) != true &&
+              inGracePeriod(shopDataOf(shopId)) &&
               exists(shopPath(shopId)))
           );
 
@@ -1329,10 +1773,15 @@ service cloud.firestore {
         allow delete: if false;
       }
 
-      // Maintained by functions/queue; public.
+      // Maintained by functions/queue; public. On the free plan the staff
+      // app writes `current` itself (queue_summary_writer.dart, a plain set
+      // with the function's exact shape).
       match /queueSummary/{docId} {
         allow read: if true;
-        allow write: if false;
+        allow create, update: if docId == 'current' && signedIn() &&
+          isValidQueueSummary(request.resource.data) &&
+          isQueueStaffOf(shopId);
+        allow delete: if false;
       }
 
       // Public reviews. The booking's customer creates one per completed
@@ -1413,9 +1862,19 @@ service cloud.firestore {
     // bookings/{bookingId}
     // -----------------------------------------------------------------
     match /bookings/{bookingId} {
-      allow read: if signedIn() && (
+      // Admins may open a single booking (e.g. from a payment) but no longer
+      // list them: the admin dashboard has no bookings list.
+      allow get: if signedIn() && (
         resource.data.customerId == request.auth.uid ||
         canManageShop(resource.data.shopId) ||
+        isBarberProfile(resource.data.shopId, resource.data.barberId)
+      );
+
+      // Listeners: customer (customerId == uid), owner (shopId == own
+      // shop), barber (shopId == S and barberId == own profile).
+      allow list: if signedIn() && (
+        resource.data.customerId == request.auth.uid ||
+        isOwnerOf(resource.data.shopId) ||
         isBarberProfile(resource.data.shopId, resource.data.barberId)
       );
 
@@ -1440,8 +1899,7 @@ service cloud.firestore {
       //
       // The reschedule branch comes first and validates only the fields it
       // may change (the rest is unchanged): it shares one budget of 1000
-      // evaluated expressions with up to 16 slot-lock writes, and
-      // isValidBooking's key lists alone would use a large part of it.
+      // evaluated expressions with up to 16 slot-lock writes.
       //
       // Barber acceptance: the booked barber, the owner or an admin
       // accepts (isAcceptRequest) or declines (isDeclineRequest) a
@@ -1451,12 +1909,23 @@ service cloud.firestore {
       // pending/confirmed booking before it starts (cancelledBy = their
       // uid, optional cancelReasonNote); the owner may too. Barbers have
       // no other way to cancel.
+      //
+      // Finishing (isCompleteBooking): staff write {status: 'completed',
+      // completedAt}; an early finish then notifies the barber's next
+      // customers (users/{uid}/notifications, isValidEarlyFinishNotice).
+      //
+      // The general branch below validates only what it lets change
+      // (statusFieldsOk): every other field is unchanged and was valid
+      // when it was written. Validating the whole document here pushed
+      // transactions over the expression budget.
       allow update: if signedIn() && (
         isValidReschedule(bookingId) ||
         isAcceptRequest() ||
         isDeclineRequest() ||
-        isStaffCancel() || (
-        isValidBooking(request.resource.data) &&
+        isStaffCancel() ||
+        isCompleteBooking() || (
+        changedKeys().hasOnly(['status', 'cancelledBy', 'paymentStatus']) &&
+        statusFieldsOk() &&
         cancelledByOk() &&
         statusTransitionOk() &&
         (
@@ -1504,6 +1973,47 @@ service cloud.firestore {
         canManageShop(resource.data.shopId)
       );
       allow write: if false;
+    }
+
+    // -----------------------------------------------------------------
+    // subscriptionPayments/{method}_{transactionId} - owners' transfer
+    // receipts. Works without Cloud Functions: an admin checks the receipt
+    // and approves it (one batch with the shop's subscription and the
+    // owner's inbox entry) or rejects it. functions/payments may verify
+    // them automatically with the Admin SDK once deployed.
+    // -----------------------------------------------------------------
+    match /subscriptionPayments/{paymentId} {
+      // The owner checks a transaction id before submitting: a missing doc
+      // reads as "free", someone else's is denied (= already claimed).
+      allow get: if signedIn() && (
+        resource == null
+          ? (isRole('barbershopOwner') || isAdmin())
+          : (resource.data.ownerId == request.auth.uid || isAdmin())
+      );
+
+      // Owner: where ownerId == uid. Admin: where status in [open
+      // statuses], and orderBy decidedAt desc limit n.
+      allow list: if signedIn() && (resource.data.ownerId == request.auth.uid || isAdmin());
+
+      allow create: if signedIn() && isValidNewReceipt(paymentId, request.resource.data);
+
+      // Only an admin decides, once, while the receipt is open. Owners
+      // cannot change anything after submitting.
+      allow update: if isAdmin() &&
+        resource.data.status in ['pending', 'needs_review'] &&
+        (isReceiptApprove(paymentId) || isReceiptReject());
+
+      allow delete: if false;
+    }
+
+    // -----------------------------------------------------------------
+    // platformConfig/subscriptionPricing - subscription prices and where
+    // owners pay. Other platformConfig docs are closed.
+    // -----------------------------------------------------------------
+    match /platformConfig/{docId} {
+      allow read: if docId == 'subscriptionPricing' && (isRole('barbershopOwner') || isAdmin());
+      allow create, update: if docId == 'subscriptionPricing' && isAdmin() && isValidPricing(request.resource.data);
+      allow delete: if false;
     }
 
     // -----------------------------------------------------------------

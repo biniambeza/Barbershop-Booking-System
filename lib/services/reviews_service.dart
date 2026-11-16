@@ -11,8 +11,10 @@ import '../models/booking_model.dart';
 import '../models/review_model.dart';
 import '../models/user_model.dart';
 import 'app_repository.dart';
+import 'rating_service.dart';
 
 export '../models/review_model.dart';
+export 'rating_service.dart';
 
 /// Review-specific failures. Screens show them with `reviewsErrorText`
 /// (lib/features/reviews/reviews_l10n.dart); sign-in errors are
@@ -126,13 +128,22 @@ class FirestoreReviewStore implements ReviewStore {
     return RatingDistribution({for (var s = 1; s <= 5; s++) s: counts[s - 1].count ?? 0});
   }
 
+  /// One transaction: abort if the review exists, create it and add its
+  /// stars to the barber's counters (`ratingSum` + rating, `reviewCount`
+  /// + 1, `lastReviewId` = bookingId; see [barberCounterUpdate]).
+  /// firestore.rules accepts the counter update only together with this
+  /// new review, and the review only together with the counter update
+  /// (unless the barber profile no longer exists).
   @override
   Future<void> create(Review review) async {
     final ref = _reviews(review.shopId).doc(review.bookingId);
+    final barberRef = _db.collection('barbershops').doc(review.shopId).collection('barbers').doc(review.barberId);
     await _db.runTransaction((tx) async {
       final existing = await tx.get(ref);
       if (existing.exists) throw ReviewException(ReviewErrorCode.alreadyReviewed);
+      final barber = await tx.get(barberRef);
       tx.set(ref, review.toMap());
+      if (barber.exists) tx.update(barberRef, barberCounterUpdate(barber.data()!, review));
     });
   }
 
@@ -294,10 +305,12 @@ List<Review> reviewsFromSeedJson(Map<String, dynamic> json, {DateTime? now}) {
 ///    ([loadPage]) and the star distribution ([loadDistribution]).
 ///  * The shop owner adds or edits a reply ([saveReply]).
 ///
-/// Shop and barber averages shown in the app are the `rating` /
-/// `reviewCount` fields the insights Cloud Function maintains. Without
-/// Firebase (DEMO_MODE, tests) this service recomputes them after each new
-/// review and hands them to [AppRepository.applyLocalRatings].
+/// Ratings work without Cloud Functions (free Spark plan): creating a
+/// review also adds its stars to the barber's `ratingSum` / `reviewCount`
+/// in the same transaction ([FirestoreReviewStore.create]); without
+/// Firebase (DEMO_MODE, tests) [AppRepository.applyLocalBarberReview] does
+/// the same in memory. Barber averages and the shop rating (average of its
+/// rated barbers' averages) are computed in lib/services/rating_service.dart.
 class ReviewsService {
   ReviewsService({AppRepository? repository, ReviewStore? cloud, LocalReviewStore? local, DateTime Function()? clock})
       : _repo = repository ?? AppRepository.instance,
@@ -339,17 +352,15 @@ class ReviewsService {
   Future<RatingDistribution> loadDistribution(String shopId, {String? barberId}) =>
       store.distribution(shopId, barberId: barberId);
 
-  /// The shop's rating fields (live in the repository).
-  RatingSummary shopSummary(String shopId) {
-    final shop = _repo.getShopById(shopId);
-    return shop == null ? RatingSummary.empty : RatingSummary(rating: shop.rating, count: shop.reviewCount);
-  }
+  /// The shop's rating (average of its rated barbers' averages) with the
+  /// number of reviews behind it, from the loaded barbers.
+  RatingSummary shopSummary(String shopId) => shopRating(shopId).summary;
 
-  /// A barber's rating fields (live in the repository).
-  RatingSummary barberSummary(String barberId) {
-    final barber = _repo.getBarberById(barberId);
-    return barber == null ? RatingSummary.empty : RatingSummary(rating: barber.rating, count: barber.reviewCount);
-  }
+  /// The shop's rating with the number of rated barbers.
+  ShopRating shopRating(String shopId) => _repo.shopRatingOf(shopId);
+
+  /// A barber's average (ratingSum / reviewCount) and review count.
+  RatingSummary barberSummary(String barberId) => _repo.barberRatingOf(barberId);
 
   // --- Customer ---
 
@@ -383,7 +394,7 @@ class ReviewsService {
       createdAt: _now(),
     );
     await store.create(review);
-    if (store is LocalReviewStore) _recomputeLocalRatings(review.shopId);
+    if (store is LocalReviewStore) _repo.applyLocalBarberReview(review.barberId, review.rating);
     return review;
   }
 
@@ -407,19 +418,5 @@ class ReviewsService {
     final at = _now();
     await store.updateReply(review, text, at);
     return review.copyWith(reply: text, replyAt: at);
-  }
-
-  // --- Local ratings (what aggregateReviewRatings does in Firebase) ---
-
-  void _recomputeLocalRatings(String shopId) {
-    final reviews = local.reviewsOf(shopId);
-    _repo.applyLocalRatings(
-      shopId,
-      RatingSummary.fromRatings(reviews.map((r) => r.rating)),
-      {
-        for (final b in _repo.getBarbersForShop(shopId))
-          b.id: RatingSummary.fromRatings(reviews.where((r) => r.barberId == b.id).map((r) => r.rating)),
-      },
-    );
   }
 }

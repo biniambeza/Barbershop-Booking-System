@@ -4,8 +4,18 @@ class Barber {
   final String name;
   final String title;
   final String? avatarUrl;
+  /// Legacy average (seeded data, the old insights function). Read only as
+  /// the fallback for [effectiveRatingSum]; averages shown in the app come
+  /// from [ratingSum] / [reviewCount] (lib/services/rating_service.dart).
   final double rating;
+
+  /// Number of reviews of this barber. The customer's app adds 1 in the
+  /// same transaction that creates the review (firestore.rules checks it).
   final int reviewCount;
+
+  /// Sum of the stars of all [reviewCount] reviews; null on legacy docs
+  /// written before the client-side counters (see [effectiveRatingSum]).
+  final int? ratingSum;
   final bool isAvailable;
   final String? email;
   final String? phone;
@@ -27,6 +37,10 @@ class Barber {
   int get effectiveCommissionPercent => (commissionPercent ?? 50).clamp(0, 100);
   // --- end barber commission ---
 
+  /// [ratingSum], or for legacy docs without it round(rating * reviewCount)
+  /// (the same fallback firestore.rules uses for the first new review).
+  int get effectiveRatingSum => ratingSum ?? (reviewCount <= 0 ? 0 : (rating * reviewCount).round());
+
   Barber({
     required this.id,
     required this.shopId,
@@ -35,6 +49,7 @@ class Barber {
     this.avatarUrl,
     this.rating = 5.0,
     this.reviewCount = 0,
+    this.ratingSum,
     this.isAvailable = true,
     this.email,
     this.phone,
@@ -54,6 +69,7 @@ class Barber {
       'avatarUrl': avatarUrl,
       'rating': rating,
       'reviewCount': reviewCount,
+      if (ratingSum != null) 'ratingSum': ratingSum,
       'isAvailable': isAvailable,
       'email': email,
       'phone': phone,
@@ -65,7 +81,7 @@ class Barber {
     };
   }
 
-  /// The fields an owner may edit (never rating/reviewCount/shopId).
+  /// The fields an owner may edit (never rating/reviewCount/ratingSum/shopId).
   /// Null schedule fields are returned as null; the data layer turns them
   /// into field deletes.
   Map<String, dynamic> toProfileMap() {
@@ -92,6 +108,7 @@ class Barber {
     String? avatarUrl,
     double? rating,
     int? reviewCount,
+    int? ratingSum,
     bool? isAvailable,
     String? email,
     String? phone,
@@ -110,6 +127,7 @@ class Barber {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       rating: rating ?? this.rating,
       reviewCount: reviewCount ?? this.reviewCount,
+      ratingSum: ratingSum ?? this.ratingSum,
       isAvailable: isAvailable ?? this.isAvailable,
       email: email ?? this.email,
       phone: phone ?? this.phone,
@@ -130,6 +148,7 @@ class Barber {
       avatarUrl: map['avatarUrl'],
       rating: (map['rating'] as num?)?.toDouble() ?? 5.0,
       reviewCount: (map['reviewCount'] as num?)?.toInt() ?? 0,
+      ratingSum: (map['ratingSum'] as num?)?.toInt(),
       isAvailable: map['isAvailable'] ?? true,
       email: map['email'],
       phone: map['phone'],

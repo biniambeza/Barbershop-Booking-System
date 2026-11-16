@@ -1,7 +1,8 @@
 'use strict';
 // node --test: seeded reviews resolve like lib/services/reviews_service.dart
-// (reviewsFromSeedJson) and the seeded shop/barber ratings match them the
-// way functions/insights (aggregateReviewRatings) computes them.
+// (reviewsFromSeedJson) and the seeded barber counters (ratingSum,
+// reviewCount) and shop ratings (average of the rated barbers' averages,
+// lib/services/rating_service.dart) match them.
 const test = require('node:test');
 const assert = require('node:assert');
 const { buildDocuments } = require('./seed.js');
@@ -47,16 +48,27 @@ test('reviews are written for completed bookings with the contract fields', () =
   assert.strictEqual(get(docs, 'barbershops/shop_2/reviews/book_5'), undefined);
 });
 
-test('shop and barber rating fields match the seeded reviews', () => {
+test('barber counters and shop ratings match the seeded reviews', () => {
   const docs = buildDocuments(seed, { now });
   const reviews = docs.filter((d) => d.path.includes('/reviews/')).map((d) => d.data);
   for (const shop of seed.shops) {
-    const s = summarize(reviews.filter((r) => r.shopId === shop.id).map((r) => r.rating));
-    assert.deepStrictEqual({ rating: shop.rating, reviewCount: shop.reviewCount }, s, shop.id);
+    const mine = reviews.filter((r) => r.shopId === shop.id);
+    const averages = [];
     for (const b of shop.barbers) {
-      const bs = summarize(reviews.filter((r) => r.barberId === b.id).map((r) => r.rating));
-      assert.deepStrictEqual({ rating: b.rating, reviewCount: b.reviewCount }, bs, b.id);
+      const ratings = mine.filter((r) => r.barberId === b.id).map((r) => r.rating);
+      const sum = ratings.reduce((a, c) => a + c, 0);
+      assert.deepStrictEqual({ ratingSum: b.ratingSum, reviewCount: b.reviewCount }, { ratingSum: sum, reviewCount: ratings.length }, b.id);
+      // The legacy average stays consistent (fallback for docs without ratingSum).
+      assert.deepStrictEqual({ rating: b.rating, reviewCount: b.reviewCount }, summarize(ratings), b.id);
+      const doc = get(docs, `barbershops/${shop.id}/barbers/${b.id}`);
+      assert.strictEqual(doc.ratingSum, sum, b.id);
+      assert.strictEqual(doc.reviewCount, ratings.length, b.id);
+      if (ratings.length > 0) averages.push({ id: b.id, avg: sum / ratings.length });
     }
+    averages.sort((a, c) => (a.id < c.id ? -1 : 1));
+    const shopRating = averages.length === 0 ? 0 : Math.round((averages.reduce((a, c) => a + c.avg, 0) / averages.length) * 10 + 1e-9) / 10;
+    assert.strictEqual(shop.rating, shopRating, shop.id);
+    assert.strictEqual(shop.reviewCount, mine.length, shop.id);
   }
 });
 

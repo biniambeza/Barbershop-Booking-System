@@ -13,6 +13,7 @@ import '../models/barbershop_model.dart';
 import '../models/booking_model.dart';
 import '../models/user_model.dart';
 import 'app_repository.dart';
+import 'early_finish_service.dart' show planEarlyFinishNotices; // early finish
 
 /// Web push needs a VAPID key from the Firebase console (Project settings >
 /// Cloud Messaging > Web Push certificates):
@@ -482,6 +483,17 @@ class LocalNotificationInbox {
     if (i >= 0) list[i] = list[i].copyWith(read: true);
   }
 
+  // --- subscription receipts ---
+  /// Puts [notification] in [uid]'s inbox (newest first; ignored when an
+  /// entry with the same id is already there). Used for entries that are
+  /// not booking events, e.g. an admin's receipt decision.
+  void addDirect(String uid, AppNotification notification) {
+    final inbox = _inboxes.putIfAbsent(uid, () => []);
+    if (inbox.any((n) => n.id == notification.id)) return;
+    inbox.insert(0, notification);
+  }
+  // --- end subscription receipts ---
+
   /// Compares the repository's bookings with the last call and delivers the
   /// resulting notifications. With nobody signed in ([actor] null) changes
   /// are not notified (that is a dataset load), only remembered.
@@ -520,9 +532,43 @@ class LocalNotificationInbox {
         actor: actor,
         now: now,
       ));
+      // --- early finish ---
+      if (type == NotificationTypes.completed && booking.completedAt != null) {
+        delivered.addAll(deliverEarlyFinish(booking, bookings, users: repo.getAllUsers()));
+      }
+      // --- end early finish ---
     }
     return delivered;
   }
+
+  // --- early finish ---
+  /// Local mirror of the staff app's early-finish batch: when [completed]
+  /// was finished before its scheduled end, the barber's later confirmed
+  /// customers today get `{bookingId}_early_{completedId}` (idempotent).
+  List<DeliveredNotification> deliverEarlyFinish(Booking completed, Iterable<Booking> bookings,
+      {required List<AppUser> users}) {
+    final completedAt = completed.completedAt;
+    if (completedAt == null) return const [];
+    final languages = {for (final u in users) u.uid: u.language};
+    final delivered = <DeliveredNotification>[];
+    for (final notice in planEarlyFinishNotices(completed, bookings, completedAt, languageOf: (uid) => languages[uid])) {
+      final inbox = _inboxes.putIfAbsent(notice.recipientUid, () => []);
+      if (inbox.any((n) => n.id == notice.id)) continue;
+      final n = AppNotification(
+        id: notice.id,
+        title: notice.title,
+        body: notice.body,
+        type: notice.type,
+        bookingId: notice.bookingId,
+        createdAt: notice.createdAt,
+        minutesEarly: notice.minutesEarly,
+      );
+      inbox.insert(0, n);
+      delivered.add(DeliveredNotification(notice.recipientUid, n));
+    }
+    return delivered;
+  }
+  // --- end early finish ---
 
   /// Delivers [type] for [booking] to its recipients' inboxes (idempotent per
   /// user, like the Cloud Function's `{bookingId}_{type}` doc id).

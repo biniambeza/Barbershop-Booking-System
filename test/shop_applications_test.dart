@@ -285,9 +285,6 @@ void main() {
         city: 'Addis Ababa',
         description: '',
         imageUrl: '',
-        openingHour: 9,
-        closingHour: 20,
-        workingDays: const [1, 2, 3, 4, 5, 6, 7],
         isVerified: true,
         fromApplication: ShopApplicationApproval(
           applicantUid: uid,

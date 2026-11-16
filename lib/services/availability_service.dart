@@ -254,7 +254,7 @@ bool isBookableDate({
   DateTime? nowUtc,
   int maxDaysAhead = kMaxBookingDaysAhead,
 }) {
-  if (shop.isSuspended || !barber.isAvailable) return false;
+  if (shop.isBlocked || !barber.isAvailable) return false; // admin shop management: isBlocked
   final today = addisToday(nowUtc);
   final day = DateTime(addisDate.year, addisDate.month, addisDate.day);
   final offset = DateTime.utc(day.year, day.month, day.day).difference(DateTime.utc(today.year, today.month, today.day)).inDays;

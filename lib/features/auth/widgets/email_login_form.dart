@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/email_utils.dart';
 import '../../../l10n/l10n.dart';
 import '../../../services/app_repository.dart';
 import 'auth_form_fields.dart';
 
-/// Email + password log in, with a "Forgot password?" link.
+/// Email + password log in, with a "Forgot password?" link. An address that
+/// is not verified yet gets "Please verify your email first" with a
+/// "Resend verification link" action.
 class EmailLoginForm extends StatefulWidget {
   const EmailLoginForm({super.key, this.initialEmail, this.notice, required this.onForgotPassword});
 
@@ -27,6 +30,13 @@ class _EmailLoginFormState extends State<EmailLoginForm> {
   final _password = TextEditingController();
   bool _busy = false;
   String? _error;
+  String? _info;
+
+  /// The unverified address of the last log in attempt (offers "Resend
+  /// verification link").
+  String? _unverifiedEmail;
+  DateTime _linkSentAt = DateTime.now();
+  int _linkCooldown = 0;
 
   @override
   void dispose() {
@@ -44,10 +54,60 @@ class _EmailLoginFormState extends State<EmailLoginForm> {
     setState(() {
       _busy = true;
       _error = null;
+      _info = null;
     });
     try {
       await AppRepository.instance.loginWithEmail(email: _email.text, password: _password.text);
       // On success the root gate switches screens.
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = l.authError(e);
+          final unverified = e is EmailAuthException && e.code == EmailAuthErrorCode.emailNotVerified;
+          final email = unverified ? validEmailOrNull(_email.text) : null;
+          if (email != _unverifiedEmail) {
+            _unverifiedEmail = email;
+            _linkCooldown = 0;
+            _linkSentAt = DateTime.now();
+          }
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _resendVerification() async {
+    final l = context.l10n;
+    final language = emailLanguageOf(context);
+    final email = _unverifiedEmail;
+    if (email == null) return;
+    if (_password.text.isEmpty) {
+      setState(() => _error = l.enterPassword);
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+      _info = null;
+    });
+    try {
+      final result = await AppRepository.instance.resendVerificationLink(
+        email: email,
+        password: _password.text,
+        language: language,
+      );
+      if (!mounted) return;
+      setState(() {
+        if (result == VerificationLinkResult.alreadyVerified) {
+          _unverifiedEmail = null;
+          _info = l.emailAlreadyVerified;
+        } else {
+          _info = l.linkResent(email);
+          _linkSentAt = DateTime.now();
+          _linkCooldown = 60;
+        }
+      });
     } catch (e) {
       if (mounted) setState(() => _error = l.authError(e));
     } finally {
@@ -96,6 +156,18 @@ class _EmailLoginFormState extends State<EmailLoginForm> {
             onPressed: _submit,
           ),
           AuthErrorText(_error),
+          if (_unverifiedEmail != null)
+            Align(
+              child: ResendCodeButton(
+                sentAt: _linkSentAt,
+                cooldownSeconds: _linkCooldown,
+                label: l.resendVerificationLink,
+                waitingLabel: l.resendLinkIn,
+                buttonKey: const ValueKey('login-resend-verification'),
+                onResend: _busy ? null : _resendVerification,
+              ),
+            ),
+          AuthInfoText(_info),
           if (kDemoMode) const DemoEmailHint(),
         ],
       ),

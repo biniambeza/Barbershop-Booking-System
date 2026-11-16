@@ -8,21 +8,27 @@
  *    (functions only), which makes the trigger idempotent and correct for
  *    status changes, reschedules into another month, deletes and retries
  *    (see logic/stats.ts).
- *  - aggregateReviewRatings (barbershops/{s}/reviews/{id} written):
- *    recomputes rating (average, 1 decimal) and reviewCount on the shop and
- *    on the review's barber.
+ *  - aggregateShopRating (barbershops/{s}/barbers/{b} written): when a
+ *    barber's rating counters change (or a barber is added / removed),
+ *    caches the shop rating on the shop doc: rating = average of its rated
+ *    barbers' averages (1 decimal), reviewCount = their reviews (see
+ *    logic/ratings.ts). The barber counters themselves (ratingSum,
+ *    reviewCount) are written by the customer's app in the review
+ *    transaction, so this function never changes them (no double
+ *    counting). The app computes the same shop rating itself and works
+ *    without this function (free Spark plan).
  *  - rebuildShopStats (callable, admin only, { shopId }): rebuilds a shop's
  *    stats, clients and markers from all of its bookings. Run it once after
  *    seeding or deploying, ideally while the shop is quiet.
  */
 import { initializeApp } from 'firebase-admin/app';
-import { DocumentReference, getFirestore, WriteBatch } from 'firebase-admin/firestore';
+import { getFirestore, WriteBatch } from 'firebase-admin/firestore';
 import { logger, setGlobalOptions } from 'firebase-functions/v2';
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 
 import { rebuildShop } from './logic/backfill';
-import { summarizeShopReviews, ReviewData } from './logic/ratings';
+import { barberRatingChanged, BarberRatingData, summarizeShopFromBarbers } from './logic/ratings';
 import { aggregateBookingInTx, BookingData, Marker } from './logic/stats';
 import { isMonthKey } from './logic/time';
 
@@ -99,36 +105,22 @@ export const aggregateBookingStats = onDocumentWritten(
   },
 );
 
-/** Updates rating + reviewCount, ignoring a doc that no longer exists. */
-async function updateRating(ref: DocumentReference, rating: number, reviewCount: number): Promise<void> {
-  try {
-    await ref.update({ rating, reviewCount });
-  } catch (e) {
-    if ((e as { code?: number }).code === 5) return; // NOT_FOUND: shop or barber removed.
-    throw e;
-  }
-}
-
-export const aggregateReviewRatings = onDocumentWritten(
-  // Safe to retry: a full recompute.
-  { document: 'barbershops/{shopId}/reviews/{reviewId}', retry: true },
+export const aggregateShopRating = onDocumentWritten(
+  // Safe to retry: a full recompute from the barber docs.
+  { document: 'barbershops/{shopId}/barbers/{barberId}', retry: true },
   async (event) => {
     const shopId = event.params.shopId;
-    const before = event.data?.before.data() as ReviewData | undefined;
-    const after = event.data?.after.data() as ReviewData | undefined;
-    const barberIds = new Set<string>();
-    for (const r of [before, after]) if (typeof r?.barberId === 'string' && r.barberId) barberIds.add(r.barberId);
+    const before = event.data?.before.data() as BarberRatingData | undefined;
+    const after = event.data?.after.data() as BarberRatingData | undefined;
+    if (!barberRatingChanged(before, after)) return; // profile edit, availability toggle
 
-    const snap = await db().collection(`barbershops/${shopId}/reviews`).select('rating', 'barberId').get();
-    const summary = summarizeShopReviews(
-      snap.docs.map((d) => d.data() as ReviewData),
-      barberIds,
-    );
-    await updateRating(shopRef(shopId), summary.shop.rating, summary.shop.reviewCount);
-    for (const [barberId, s] of summary.barbers) {
-      await updateRating(db().doc(`barbershops/${shopId}/barbers/${barberId}`), s.rating, s.reviewCount);
-    }
-    logger.info('review ratings updated', { shopId, ...summary.shop, barbers: [...barberIds] });
+    const barbers = await db().collection(`barbershops/${shopId}/barbers`).select('rating', 'reviewCount', 'ratingSum').get();
+    const summary = summarizeShopFromBarbers(barbers.docs.map((d) => ({ id: d.id, data: d.data() as BarberRatingData })));
+    const shop = await shopRef(shopId).get();
+    if (!shop.exists) return; // shop removed
+    if (shop.get('rating') === summary.rating && shop.get('reviewCount') === summary.reviewCount) return;
+    await shopRef(shopId).update({ rating: summary.rating, reviewCount: summary.reviewCount });
+    logger.info('shop rating updated', { shopId, ...summary });
   },
 );
 

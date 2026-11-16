@@ -9,6 +9,411 @@ class AppLocalizationsAm extends AppLocalizations {
   AppLocalizationsAm([String locale = 'am']) : super(locale);
 
   @override
+  String get rcptPayTitle => 'በዝውውር ይክፈሉ';
+
+  @override
+  String get rcptEntryTitle => 'በቴሌብር ወይም በንግድ ባንክ ይክፈሉ';
+
+  @override
+  String get rcptEntryBody =>
+      'የደንበኝነት ክፍያውን ይላኩ፣ ከዚያ ደረሰኙን ያስገቡ። ደረሰኙ ሲረጋገጥ ደንበኝነትዎ ይራዘማል።';
+
+  @override
+  String get rcptIntro =>
+      '1. የጊዜ ርዝመት መርጠው ገንዘቡን ይላኩ። 2. የግብይት ቁጥሩን ያስገቡና ደረሰኙን ያያይዙ። 3. ደረሰኙ ሲረጋገጥ ቀናቱ በደንበኝነትዎ ላይ ይጨመራሉ።';
+
+  @override
+  String get rcptCurrentSub => 'የአሁኑ ደንበኝነት';
+
+  @override
+  String rcptPaidUntil(String date) {
+    return 'እስከ $date ተከፍሏል';
+  }
+
+  @override
+  String get rcptNoEnd => 'የማብቂያ ቀን የለም';
+
+  @override
+  String get rcptPricesTitle => 'ዋጋዎች';
+
+  @override
+  String rcptDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ቀናት',
+      one: '1 ቀን',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rcptTierUse => 'ይህን መጠን ለመጠቀም ይንኩ';
+
+  @override
+  String get rcptWhereToPay => 'የት እንደሚከፍሉ';
+
+  @override
+  String get rcptMethodTelebirr => 'ቴሌብር';
+
+  @override
+  String get rcptMethodCbe => 'የኢትዮጵያ ንግድ ባንክ (CBE)';
+
+  @override
+  String get rcptMethodCbeShort => 'ንግድ ባንክ';
+
+  @override
+  String get rcptMethodOther => 'ሌላ ባንክ';
+
+  @override
+  String get rcptReceiverNumber => 'የቴሌብር ቁጥር';
+
+  @override
+  String get rcptReceiverAccount => 'የሂሳብ ቁጥር';
+
+  @override
+  String rcptReceiverName(String name) {
+    return 'ስም፦ $name';
+  }
+
+  @override
+  String get rcptNotConfigured => 'ገና አልተዘጋጀም። እባክዎ ድጋፍ ሰጪን ያግኙ።';
+
+  @override
+  String get rcvSetupTitle => 'የሱቅ ባለቤቶች የሚከፍሉዎትን ቦታ ያዘጋጁ';
+
+  @override
+  String get rcvSetupBody =>
+      'የቴሌብር ቁጥርዎን ወይም የንግድ ባንክ ሂሳብዎን እስኪያስገቡ ድረስ ባለቤቶች የደንበኝነት ክፍያቸውን መክፈል አይችሉም።';
+
+  @override
+  String get rcvSetupButton => 'ያዘጋጁ';
+
+  @override
+  String get rcvSetupDotLabel => 'የክፍያ ዝግጅት ያስፈልጋል';
+
+  @override
+  String get rcvErrPhone => 'የኢትዮጵያ ሞባይል ቁጥር ያስገቡ፣ ለምሳሌ 0911 223344።';
+
+  @override
+  String get rcvErrCbe => 'በ1000 የሚጀምር ባለ 13 አሃዝ የንግድ ባንክ ሂሳብ ቁጥር ያስገቡ።';
+
+  @override
+  String get rcvErrPlaceholder => 'XXXX የሚለውን ምሳሌ በእውነተኛ ቁጥርዎ ይተኩ።';
+
+  @override
+  String get rcvErrNameShort => 'የሂሳቡን ባለቤት ስም ያስገቡ (ቢያንስ 2 ፊደላት)።';
+
+  @override
+  String get rcvErrNameLong => 'ከ80 ፊደላት አይበልጥ።';
+
+  @override
+  String get rcvErrFix => 'ምልክት የተደረገባቸውን መስኮች ያስተካክሉ።';
+
+  @override
+  String get rcvTelebirrOptional => 'ቴሌብር የማይቀበሉ ከሆነ ባዶ ይተዉት። ባለቤቶች አያዩትም።';
+
+  @override
+  String get rcvCbeOptional => 'በንግድ ባንክ ዝውውር የማይቀበሉ ከሆነ ባዶ ይተዉት። ባለቤቶች አያዩትም።';
+
+  @override
+  String get rcvPaymentsNotOpen => 'ክፍያዎች ገና አልተከፈቱም — እባክዎ ቆይተው ይመለሱ።';
+
+  @override
+  String get rcptCopy => 'ቅዳ';
+
+  @override
+  String get rcptCopied => 'ተቀድቷል';
+
+  @override
+  String get rcptSubmitTitle => 'ደረሰኝዎን ያስገቡ';
+
+  @override
+  String get rcptMethodLabel => 'የተከፈለበት';
+
+  @override
+  String get rcptTxLabel => 'የግብይት ቁጥር';
+
+  @override
+  String get rcptTxHintTelebirr => 'ለምሳሌ CHK1AB2CDE (በቴሌብር መልዕክቱ ውስጥ)';
+
+  @override
+  String get rcptTxHintCbe => 'ለምሳሌ FT2412345ABC (በንግድ ባንክ ደረሰኙ ላይ)';
+
+  @override
+  String get rcptTxHintOther => 'በደረሰኝዎ ላይ ያለው የማጣቀሻ ቁጥር';
+
+  @override
+  String get rcptSuffixLabel => 'የሂሳብዎ የመጨረሻ 8 አሃዞች (አማራጭ)';
+
+  @override
+  String get rcptSuffixHelper => 'የንግድ ባንክ ደረሰኝዎን ለመክፈት ይረዳናል።';
+
+  @override
+  String get rcptAmountLabel => 'የተከፈለው መጠን (ብር)';
+
+  @override
+  String rcptAmountGrants(String days) {
+    return 'በደንበኝነትዎ ላይ $days ይጨምራል';
+  }
+
+  @override
+  String rcptAmountBelowMin(String amount) {
+    return 'ዝቅተኛው ክፍያ $amount ነው';
+  }
+
+  @override
+  String get rcptPhotoLabel => 'የደረሰኝ ፎቶ ወይም ስክሪንሾት';
+
+  @override
+  String get rcptPhotoHint => 'ይመከራል፦ ማረጋገጫውን ያፋጥናል።';
+
+  @override
+  String get rcptTakePhoto => 'ካሜራ';
+
+  @override
+  String get rcptChooseImage => 'ጋለሪ';
+
+  @override
+  String get rcptRemovePhoto => 'ፎቶውን አስወግድ';
+
+  @override
+  String get rcptPhotoFailed => 'ይህን ምስል መጠቀም አልተቻለም። ሌላ ፎቶ ወይም ስክሪንሾት ይሞክሩ።';
+
+  @override
+  String get rcptSubmit => 'ደረሰኝ አስገባ';
+
+  @override
+  String get rcptSubmitted => 'ደረሰኙ ገብቷል። ሲረጋገጥ እናሳውቅዎታለን።';
+
+  @override
+  String get rcptHistoryTitle => 'ደረሰኞችዎ';
+
+  @override
+  String get rcptNoHistory => 'እስካሁን የገባ ደረሰኝ የለም።';
+
+  @override
+  String get rcptStatusPending => 'ማረጋገጫ በመጠበቅ ላይ';
+
+  @override
+  String get rcptStatusVerified => 'ተረጋግጧል';
+
+  @override
+  String get rcptStatusRejected => 'ውድቅ ተደርጓል';
+
+  @override
+  String get rcptStatusNeedsReview => 'በመፈተሽ ላይ';
+
+  @override
+  String rcptGranted(String days) {
+    return '$days ተጨምሯል';
+  }
+
+  @override
+  String get rcptVerifiedAuto => 'በራስ-ሰር ተረጋግጧል';
+
+  @override
+  String get rcptReasonTitle => 'ምክንያት';
+
+  @override
+  String rcptReasonLine(String reason) {
+    return 'ምክንያት፦ $reason';
+  }
+
+  @override
+  String get rcptReasonAmountTooLow => 'መጠኑ ከዝቅተኛው የደንበኝነት ዋጋ ያነሰ ነው።';
+
+  @override
+  String get rcptReasonDuplicate => 'ይህ ግብይት ቀደም ሲል ጥቅም ላይ ውሏል።';
+
+  @override
+  String get rcptReasonNotFound => 'ኦፊሴላዊው ደረሰኝ አልተገኘም።';
+
+  @override
+  String get rcptReasonNotCompleted => 'ግብይቱ አልተጠናቀቀም።';
+
+  @override
+  String get rcptReasonReceiverMismatch => 'ገንዘቡ ወደ መድረኩ ሂሳብ አልተላከም።';
+
+  @override
+  String get rcptReasonAmountMismatch => 'ደረሰኙ ያነሰ መጠን ያሳያል።';
+
+  @override
+  String get rcptReasonTooOld => 'ደረሰኙ ከ30 ቀናት በላይ ቆይቷል።';
+
+  @override
+  String get rcptReasonFetchFailed =>
+      'ደረሰኙን በራስ-ሰር ማረጋገጥ አልተቻለም። አስተዳዳሪ ይመረምረዋል።';
+
+  @override
+  String get rcptReasonUnsupported => 'በዚህ መንገድ የተደረጉ ክፍያዎችን አስተዳዳሪ ያረጋግጣል።';
+
+  @override
+  String get rcptErrOwnerOnly => 'ይህን ማድረግ የሚችለው የሱቁ ባለቤት ብቻ ነው።';
+
+  @override
+  String get rcptErrAdminOnly => 'ይህን ማድረግ የሚችለው የመድረኩ አስተዳዳሪ ብቻ ነው።';
+
+  @override
+  String get rcptErrShopNotFound => 'ሱቁ አልተገኘም።';
+
+  @override
+  String get rcptErrTxId => 'ትክክለኛ የግብይት ቁጥር ያስገቡ።';
+
+  @override
+  String get rcptErrAmount => 'የከፈሉትን መጠን ያስገቡ።';
+
+  @override
+  String get rcptErrDuplicate => 'ይህ የግብይት ቁጥር ቀደም ሲል ገብቷል።';
+
+  @override
+  String get rcptErrImageTooLarge => 'ፎቶው በጣም ትልቅ ነው።';
+
+  @override
+  String get rcptErrNotFound => 'ደረሰኙ አልተገኘም።';
+
+  @override
+  String get rcptErrNotOpen => 'በዚህ ደረሰኝ ላይ ቀደም ሲል ውሳኔ ተሰጥቷል።';
+
+  @override
+  String get rcptErrReason => 'ምክንያት ያስገቡ (እስከ 300 ፊደላት)።';
+
+  @override
+  String get rcptErrPricing =>
+      'ዋጋዎቹን ያረጋግጡ፦ እያንዳንዱ የጊዜ ርዝመት ሙሉ ቀናትና መጠን ያስፈልገዋል፣ ረዘም ያለው ደግሞ የበለጠ ዋጋ ሊኖረው ይገባል።';
+
+  @override
+  String get rcptAdminTitle => 'የደንበኝነት ደረሰኞች';
+
+  @override
+  String get rcptAdminIntro =>
+      'ኦፊሴላዊውን ደረሰኝ ከፍተው መጠኑን፣ ተቀባዩንና ቀኑን ያረጋግጡ፣ ከዚያ ያጽድቁ ወይም ውድቅ ያድርጉ።';
+
+  @override
+  String get rcptAdminOpenSection => 'የሚመረመሩ';
+
+  @override
+  String get rcptAdminDecidedSection => 'በቅርቡ ውሳኔ የተሰጠባቸው';
+
+  @override
+  String get rcptAdminEmpty => 'የሚመረመር የለም።';
+
+  @override
+  String rcptAdminLoadFailed(String error) {
+    return 'ደረሰኞችን መጫን አልተቻለም፦ $error';
+  }
+
+  @override
+  String rcptAdminWouldGrant(String days) {
+    return '$days ይሰጣል';
+  }
+
+  @override
+  String get rcptAdminTooLow => 'ከዝቅተኛው የጊዜ ርዝመት ዋጋ ያነሰ';
+
+  @override
+  String rcptAdminSubmitted(String date) {
+    return '$date ተልኳል';
+  }
+
+  @override
+  String get rcptAdminSubmittedLabel => 'የገባበት';
+
+  @override
+  String get rcptAdminNoImage => 'ፎቶ አልተያያዘም።';
+
+  @override
+  String get rcptAdminOpenOfficial => 'ኦፊሴላዊውን ደረሰኝ ክፈት';
+
+  @override
+  String get rcptAdminNoOfficial =>
+      'ይህ የክፍያ መንገድ ኦፊሴላዊ የደረሰኝ ገጽ የለውም። ፎቶውንና የባንክ መግለጫዎን ያረጋግጡ።';
+
+  @override
+  String get rcptAdminVerifiedAmount => 'የተረጋገጠ መጠን (ብር)';
+
+  @override
+  String rcptAdminNewEnd(String date) {
+    return 'አዲስ የማብቂያ ቀን፦ $date';
+  }
+
+  @override
+  String get rcptApprove => 'አጽድቅ';
+
+  @override
+  String get rcptReject => 'ውድቅ አድርግ';
+
+  @override
+  String get rcptRejectTitle => 'ደረሰኙን ውድቅ አድርግ';
+
+  @override
+  String get rcptRejectReasonLabel => 'ምክንያት (ባለቤቱ ያየዋል)';
+
+  @override
+  String rcptApproved(String days, String date) {
+    return 'ጸድቋል፦ $days ተጨምሯል፣ እስከ $date።';
+  }
+
+  @override
+  String get rcptRejectedDone => 'ደረሰኙ ውድቅ ተደርጓል።';
+
+  @override
+  String get rcptPricingTitle => 'የደንበኝነት ዋጋዎች';
+
+  @override
+  String get rcptPricingIntro =>
+      'ባለቤቶች እነዚህን ዋጋዎች ያያሉ። ክፍያው የሚሸፍነውን ረጅሙን የጊዜ ርዝመት ይገዛል።';
+
+  @override
+  String get rcptPricingDays => 'ቀናት';
+
+  @override
+  String get rcptPricingAmount => 'መጠን (ብር)';
+
+  @override
+  String get rcptPricingAddTier => 'የጊዜ ርዝመት ጨምር';
+
+  @override
+  String get rcptPricingRemoveTier => 'አስወግድ';
+
+  @override
+  String get rcptPricingTelebirr => 'የቴሌብር ተቀባይ';
+
+  @override
+  String get rcptPricingCbe => 'የንግድ ባንክ ተቀባይ';
+
+  @override
+  String get rcptPricingName => 'የሂሳቡ ስም';
+
+  @override
+  String get rcptPricingSave => 'ዋጋዎቹን አስቀምጥ';
+
+  @override
+  String get rcptPricingSaved => 'ዋጋዎቹ ተቀምጠዋል።';
+
+  @override
+  String get rcptNotifApprovedTitle => 'የደንበኝነት ክፍያ ጸድቋል';
+
+  @override
+  String rcptNotifApprovedBody(int days, String date) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days ቀናት ተጨምረዋል',
+      one: '1 ቀን ተጨምሯል',
+    );
+    return '$_temp0። ደንበኝነትዎ እስከ $date ይቆያል።';
+  }
+
+  @override
+  String get rcptNotifRejectedTitle => 'የደንበኝነት ክፍያ ውድቅ ተደርጓል';
+
+  @override
+  String rcptNotifRejectedBody(String transactionId, String reason) {
+    return 'ግብይት $transactionId፦ $reason';
+  }
+
+  @override
   String get queueTitle => 'ወረፋ';
 
   @override
@@ -293,6 +698,14 @@ class AppLocalizationsAm extends AppLocalizations {
       'አሃዞቹ እያንዳንዱ የቀጠሮ ለውጥ ከተደረገ ከጥቂት ሰከንዶች በኋላ ይዘመናሉ።';
 
   @override
+  String freePlanReportsFromBookings(int days) {
+    return 'ባለፉት $days ቀናት ቀጠሮዎች ላይ የተመሰረተ።';
+  }
+
+  @override
+  String get freePlanRequestNoAnswer => 'ምላሽ አልተሰጠም';
+
+  @override
   String get appTitle => 'Crown & Blade - የፀጉር ቤት ቀጠሮ';
 
   @override
@@ -375,18 +788,8 @@ class AppLocalizationsAm extends AppLocalizations {
   }
 
   @override
-  String bookingsCount(int count) {
-    return '$count ቀጠሮዎች';
-  }
-
-  @override
   String barberLabel(String name) {
     return 'ፀጉር አስተካካይ፦ $name';
-  }
-
-  @override
-  String clientLabel(String name) {
-    return 'ደንበኛ፦ $name';
   }
 
   @override
@@ -778,6 +1181,31 @@ class AppLocalizationsAm extends AppLocalizations {
   String get noNotificationsHint => 'የቀጠሮ ማረጋገጫዎች፣ ለውጦችና ማስታወሻዎች እዚህ ይታያሉ።';
 
   @override
+  String get earlyFinishBannerTitle => 'ፀጉር አስተካካይዎ አሁን ነፃ ናቸው — ቀድመው ይምጡ';
+
+  @override
+  String earlyFinishBannerBody(String barber, String time) {
+    return '$barber ቀድመው ጨርሰዋል። ከ$time ቀጠሮዎ በፊት መምጣት ይችላሉ።';
+  }
+
+  @override
+  String get earlyFinishCallShop => 'ወደ ፀጉር ቤቱ ይደውሉ';
+
+  @override
+  String get earlyFinishDirections => 'አቅጣጫ';
+
+  @override
+  String earlyFinishNotified(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'ለ$count ደንበኞች ቀድመው መምጣት እንደሚችሉ ተነግሯል',
+      one: 'ለ1 ደንበኛ ቀድመው መምጣት እንደሚችሉ ተነግሯል',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get justNow => 'አሁን';
 
   @override
@@ -923,12 +1351,223 @@ class AppLocalizationsAm extends AppLocalizations {
   String get adminSubtitle => 'የመድረክ ሲስተም አስተዳደር';
 
   @override
-  String get deleteShopTitle => 'ፀጉር ቤቱ ይሰረዝ?';
+  String get adminShopsHeroTitle => 'በመድረኩ ላይ ያሉ ፀጉር ቤቶች';
 
   @override
-  String deleteShopBody(String shop) {
-    return '\"$shop\"ን ከነፀጉር አስተካካዮቹ፣ አገልግሎቶቹና ቀጠሮዎቹ ማስወገድ እንደሚፈልጉ እርግጠኛ ነዎት?';
+  String get adminShopsMetricBookable => 'ቀጠሮ የሚቀበሉ';
+
+  @override
+  String get adminShopsMetricSuspended => 'የታገዱ';
+
+  @override
+  String get adminShopsFilterActive => 'ንቁ';
+
+  @override
+  String get adminShopsFilterSuspended => 'የታገዱ';
+
+  @override
+  String get adminShopsFilterUnverified => 'ያልተረጋገጡ';
+
+  @override
+  String get adminShopsEdit => 'አስተካክል';
+
+  @override
+  String get adminShopsEditTitle => 'ፀጉር ቤቱን አስተካክል';
+
+  @override
+  String get adminShopsSectionProfile => 'የፀጉር ቤቱ መረጃ';
+
+  @override
+  String get adminShopsSectionPlatform => 'ማረጋገጫ እና የደንበኝነት ምዝገባ';
+
+  @override
+  String get adminShopsSectionOwner => 'ባለቤት';
+
+  @override
+  String get adminShopsSectionStatus => 'ተገኝነት';
+
+  @override
+  String get adminShopsFieldName => 'የፀጉር ቤቱ ስም';
+
+  @override
+  String get adminShopsFieldAddress => 'አድራሻ';
+
+  @override
+  String get adminShopsFieldSubCity => 'ክፍለ ከተማ';
+
+  @override
+  String get adminShopsFieldLandmark => 'የሚታወቅ ቦታ (አማራጭ)';
+
+  @override
+  String get adminShopsFieldPhone => 'የፀጉር ቤቱ ስልክ';
+
+  @override
+  String get adminShopsFieldDescription => 'መግለጫ';
+
+  @override
+  String adminShopsHoursReadOnly(String days, String hours) {
+    return 'የሥራ ሰዓት፦ $days $hours · በፀጉር ቤቱ ባለቤት የሚወሰን';
   }
+
+  @override
+  String get adminShopsFieldVerified => 'የተረጋገጠ አጋር';
+
+  @override
+  String get adminShopsFieldVerifiedHint => 'ለደንበኞች የማረጋገጫ ምልክቱን ያሳያል';
+
+  @override
+  String get adminShopsFieldPlan => 'ዕቅድ';
+
+  @override
+  String get adminShopsFieldStatus => 'የደንበኝነት ሁኔታ';
+
+  @override
+  String get adminShopsFieldEndsAt => 'የደንበኝነት ማብቂያ';
+
+  @override
+  String get adminShopsNoEndDate => 'የማብቂያ ቀን የለም';
+
+  @override
+  String get adminShopsClearDate => 'ቀኑን አጥፋ';
+
+  @override
+  String get adminShopsOverrideHint =>
+      'የአስተዳዳሪ ማስተካከያ፦ እዚህ የሚደረጉ ለውጦች በቀጥታ በፀጉር ቤቱ ላይ ይቀመጣሉ።';
+
+  @override
+  String get adminShopsSave => 'ለውጦቹን አስቀምጥ';
+
+  @override
+  String get adminShopsSaved => 'ፀጉር ቤቱ ተቀምጧል';
+
+  @override
+  String adminShopsOwnerSignedUp(String email) {
+    return 'ተመዝግቧል · $email';
+  }
+
+  @override
+  String adminShopsOwnerInvitePending(String email) {
+    return 'ግብዣ በመጠባበቅ ላይ፦ $email ሲገባ የባለቤት ፈቃድ ያገኛል';
+  }
+
+  @override
+  String get adminShopsOwnerNone => 'ባለቤት አልተመደበም';
+
+  @override
+  String get adminShopsStatusActive => 'ንቁ';
+
+  @override
+  String get adminShopsStatusAdminSuspended => 'በአስተዳዳሪ ታግዷል';
+
+  @override
+  String get adminShopsStatusUnpaid => 'የደንበኝነት ምዝገባው ታግዷል';
+
+  @override
+  String adminShopsSuspendedSince(String date, String reason) {
+    return '$date ታግዷል፦ $reason';
+  }
+
+  @override
+  String get adminShopsSuspend => 'ፀጉር ቤቱን አግድ';
+
+  @override
+  String get adminShopsReactivate => 'ፀጉር ቤቱን እንደገና አንቃ';
+
+  @override
+  String adminShopsSuspendTitle(String shop) {
+    return '$shop ይታገድ?';
+  }
+
+  @override
+  String get adminShopsSuspendBody =>
+      'ደንበኞች ይህን ፀጉር ቤት አያዩትም፤ ቀጠሮም መያዝ አይችሉም። ያሉት ቀጠሮዎች ይቆያሉ። ባለቤቱ ምክንያትዎን ያያል።';
+
+  @override
+  String get adminShopsReasonLabel => 'ምክንያት (ለባለቤቱ ይታያል)';
+
+  @override
+  String adminShopsSuspendedToast(String shop) {
+    return '$shop ታግዷል';
+  }
+
+  @override
+  String adminShopsReactivateTitle(String shop) {
+    return '$shop እንደገና ይንቃ?';
+  }
+
+  @override
+  String get adminShopsReactivateBody =>
+      'ደንበኞች ይህን ፀጉር ቤት እንደገና ማግኘትና ቀጠሮ መያዝ ይችላሉ።';
+
+  @override
+  String adminShopsReactivatedToast(String shop) {
+    return '$shop እንደገና ነቅቷል';
+  }
+
+  @override
+  String adminShopsDeleteBody(String shop) {
+    return 'ይህ $shopን ከአገልግሎቶቹ፣ ከፀጉር አስተካካዮቹና በመጠባበቅ ላይ ካሉ ግብዣዎቹ ጋር በቋሚነት ይሰርዛል። የቀጠሮ ታሪክ ይቀመጣል። ለማረጋገጥ የፀጉር ቤቱን ስም ይጻፉ።';
+  }
+
+  @override
+  String get adminShopsDeleteTypeName => 'የፀጉር ቤቱ ስም';
+
+  @override
+  String get adminShopsErrReasonRequired => 'ምክንያት ያስገቡ።';
+
+  @override
+  String adminShopsErrReasonTooLong(int max) {
+    return 'ምክንያቱ ከ$max ቁምፊዎች ያልበለጠ ይሁን።';
+  }
+
+  @override
+  String get adminShopsErrNameRequired => 'የፀጉር ቤቱን ስም ያስገቡ።';
+
+  @override
+  String get adminShopsErrNameTooLong => 'የፀጉር ቤቱ ስም በጣም ረጅም ነው።';
+
+  @override
+  String get adminShopsErrAddressRequired => 'አድራሻውን ያስገቡ።';
+
+  @override
+  String get adminShopsErrTextTooLong => 'ከጽሑፉ የተወሰነው በጣም ረጅም ነው።';
+
+  @override
+  String get adminShopsErrPlan => 'ያልታወቀ ዕቅድ።';
+
+  @override
+  String get adminShopsErrNotFound => 'ይህ ፀጉር ቤት ከእንግዲህ የለም።';
+
+  @override
+  String get adminShopsErrNotAdmin => 'ይህን ማድረግ የሚችለው የመድረኩ አስተዳዳሪ ብቻ ነው።';
+
+  @override
+  String get adminShopsErrNameMismatch => 'ስሙ አይዛመድም።';
+
+  @override
+  String get adminShopsUnavailableTitle => 'ለጊዜው አይገኝም';
+
+  @override
+  String get adminShopsUnavailableBody =>
+      'ይህ ፀጉር ቤት አሁን ቀጠሮ እየተቀበለ አይደለም። ያሉዎት ቀጠሮዎች አይነኩም።';
+
+  @override
+  String get adminShopsOwnerBannerTitle => 'ፀጉር ቤትዎ በመድረኩ ታግዷል';
+
+  @override
+  String get adminShopsOwnerBannerBody =>
+      'እንደገና እስኪነቃ ድረስ ደንበኞች ፀጉር ቤትዎን ማግኘትም ሆነ ቀጠሮ መያዝ አይችሉም። ያሉት ቀጠሮዎች ይቆያሉ።';
+
+  @override
+  String adminShopsOwnerBannerReason(String reason) {
+    return 'ምክንያት፦ $reason';
+  }
+
+  @override
+  String get adminShopsOwnerBannerContact => 'እንደገና ለማንቃት የመድረኩን አስተዳዳሪ ያነጋግሩ።';
+
+  @override
+  String get deleteShopTitle => 'ፀጉር ቤቱ ይሰረዝ?';
 
   @override
   String shopRemoved(String shop) {
@@ -949,11 +1588,6 @@ class AppLocalizationsAm extends AppLocalizations {
   }
 
   @override
-  String tabBookings(int count) {
-    return 'ቀጠሮዎች ($count)';
-  }
-
-  @override
   String get registerBarbershop => 'ፀጉር ቤት መዝግብ';
 
   @override
@@ -969,27 +1603,15 @@ class AppLocalizationsAm extends AppLocalizations {
   String get metricAcrossNetwork => 'በመላው አውታረ መረብ';
 
   @override
-  String get metricPlatformSales => 'የመድረኩ ሽያጭ';
-
-  @override
-  String get metricGrossVolume => 'ጠቅላላ መጠን';
-
-  @override
   String get searchShopsAdminHint => 'ፀጉር ቤቶችን በስም፣ በአድራሻ ወይም በክፍለ ከተማ ይፈልጉ...';
 
   @override
   String get filterVerifiedPartners => 'የተረጋገጡ አጋሮች';
 
   @override
-  String get filterOpenNow => 'አሁን ክፍት';
-
-  @override
   String registeredBarbershopsCount(int count) {
     return 'የተመዘገቡ ፀጉር ቤቶች ($count)';
   }
-
-  @override
-  String get adminActionsEnabled => 'የአስተዳዳሪ እርምጃዎች ነቅተዋል';
 
   @override
   String get noRegisteredShops => 'ምንም የተመዘገበ ፀጉር ቤት አልተገኘም';
@@ -1032,14 +1654,6 @@ class AppLocalizationsAm extends AppLocalizations {
   @override
   String assignedShop(String shop) {
     return 'የተመደበበት ፀጉር ቤት፦ $shop';
-  }
-
-  @override
-  String get noPlatformAppointments => 'እስካሁን በመድረኩ የተመዘገበ ቀጠሮ የለም';
-
-  @override
-  String scheduleAt(String when) {
-    return 'ቀጠሮ፦ $when';
   }
 
   @override
@@ -1114,10 +1728,8 @@ class AppLocalizationsAm extends AppLocalizations {
   String get sectionHours => '4. የስራ ሰዓትና ማረጋገጫ';
 
   @override
-  String get openingTime => 'የመክፈቻ ሰዓት';
-
-  @override
-  String get closingTime => 'የመዝጊያ ሰዓት';
+  String get adminRegisterHoursOwnerNote =>
+      'የሥራ ሰዓቱን የፀጉር ቤቱ ባለቤት ከገባ በኋላ ያስቀምጣል።';
 
   @override
   String get markVerifiedPartner => 'እንደ የተረጋገጠ አጋር ፀጉር ቤት ምልክት አድርግ';
@@ -1432,7 +2044,15 @@ class AppLocalizationsAm extends AppLocalizations {
   String get findBarbers => 'ፀጉር አስተካካይ ፈልግ';
 
   @override
-  String get subCityFilterLabel => 'ክፍለ ከተማ፦';
+  String get allSubCities => 'ሁሉም ክፍለ ከተማዎች';
+
+  @override
+  String get subCityFilterTooltip => 'ፀጉር ቤቶችን በክፍለ ከተማ ያጣሩ';
+
+  @override
+  String subCityOptionCount(String name, int count) {
+    return '$name ($count)';
+  }
 
   @override
   String get catFades => 'ፌድና ቴፐር';
@@ -2095,6 +2715,25 @@ class AppLocalizationsAm extends AppLocalizations {
   String get checkAgain => 'እንደገና አረጋግጥ';
 
   @override
+  String get subExpTrialEnded =>
+      'የሙከራ ጊዜዎ አብቅቷል — ቀጠሮ መቀበልዎን ለመቀጠል ይክፈሉ። ካልከፈሉ ፀጉር ቤትዎ በቅርቡ ይታገዳል።';
+
+  @override
+  String get subExpTrialEndedToday =>
+      'የሙከራ ጊዜዎ አብቅቷል — ቀጠሮ መቀበልዎን ለመቀጠል ይክፈሉ። ካልከፈሉ ፀጉር ቤትዎ ዛሬ ይታገዳል።';
+
+  @override
+  String subExpTrialEndedInDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'የሙከራ ጊዜዎ አብቅቷል — ቀጠሮ መቀበልዎን ለመቀጠል ይክፈሉ። ፀጉር ቤትዎ እስኪታገድ $count ቀን ቀርቷል።',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get bannerSuspended =>
       'ፀጉር ቤትዎ ታግዷል፦ ደንበኞች ሊያዩት ወይም ቀጠሮ ሊይዙበት አይችሉም። እንደገና ለማንቃት የደንበኝነት ክፍያዎን ይክፈሉ።';
 
@@ -2431,13 +3070,13 @@ class AppLocalizationsAm extends AppLocalizations {
   String get reviewsTitle => 'ግምገማዎች';
 
   @override
-  String get reviewsRateAction => 'ደረጃ ይስጡ';
+  String get reviewsRateAction => 'ፀጉር አስተካካይዎን ይገምግሙ';
 
   @override
   String get reviewsYourRating => 'የሰጡት ደረጃ';
 
   @override
-  String get reviewsRateTitle => 'ጉብኝትዎን ይገምግሙ';
+  String get reviewsRateTitle => 'ፀጉር አስተካካይዎን ይገምግሙ';
 
   @override
   String reviewsRateSubtitle(String service, String barber) {
@@ -2456,7 +3095,7 @@ class AppLocalizationsAm extends AppLocalizations {
   String get reviewsCommentLabel => 'አስተያየት (ካሉዎት)';
 
   @override
-  String get reviewsCommentHint => 'ምን ወደዱ? ምን ቢሻሻል ይሻላል?';
+  String get reviewsCommentHint => 'ስለ ልምድዎ ይንገሩን';
 
   @override
   String get reviewsSubmit => 'ግምገማውን ላክ';
@@ -2701,7 +3340,7 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get errEmailNotVerified =>
-      'ይህ የኢሜይል አድራሻ አልተረጋገጠም። በGoogle ይግቡ ወይም ድጋፍ ሰጪን ያነጋግሩ።';
+      'እባክዎ መጀመሪያ ኢሜይልዎን ያረጋግጡ። በኢሜይል የላክነውን ሊንክ ይክፈቱ፣ ከዚያ ይግቡ።';
 
   @override
   String get emailErrSendFailed => 'ኢሜይሉን መላክ አልተቻለም። እባክዎ እንደገና ይሞክሩ።';
@@ -3363,4 +4002,320 @@ class AppLocalizationsAm extends AppLocalizations {
 
   @override
   String get barberInviteWaiting => 'ግብዣ ተልኳል — ምዝገባቸውን በመጠባበቅ ላይ';
+
+  @override
+  String get staffAcctSheetTitle => 'ፀጉር አስተካካይ ጨምር';
+
+  @override
+  String get staffAcctSheetIntro =>
+      'ለፀጉር አስተካካይዎ የመግቢያ መለያ ይፍጠሩ። በዚህ ኢሜይል እና በጊዜያዊው የይለፍ ቃል ይገባሉ፣ ከዚያም የራሳቸውን የይለፍ ቃል ይመርጣሉ።';
+
+  @override
+  String get staffAcctEmailLabel => 'የመግቢያ ኢሜይል';
+
+  @override
+  String get staffAcctNameRequired => 'የፀጉር አስተካካዩን ስም ያስገቡ';
+
+  @override
+  String get staffAcctEmailRequired => 'ፀጉር አስተካካዩ የሚገባበትን ኢሜይል ያስገቡ';
+
+  @override
+  String get staffAcctTempPasswordLabel => 'ጊዜያዊ የይለፍ ቃል';
+
+  @override
+  String get staffAcctTempPasswordHelper =>
+      'ከ8 እስከ 128 ቁምፊዎች፣ ፊደል እና ቁጥር ያካተተ። ፀጉር አስተካካዩ ለመጀመሪያ ጊዜ ሲገባ ይቀይረዋል።';
+
+  @override
+  String get staffAcctRegenerate => 'አዲስ የይለፍ ቃል ፍጠር';
+
+  @override
+  String get staffAcctCopyPassword => 'የይለፍ ቃሉን ቅዳ';
+
+  @override
+  String get staffAcctCopied => 'ተቀድቷል';
+
+  @override
+  String get staffAcctCreate => 'መለያ ፍጠር';
+
+  @override
+  String get staffAcctInviteSectionTitle => 'የCrown & Blade መለያ አላቸው?';
+
+  @override
+  String get staffAcctInviteInstead => 'በምትኩ በኢሜይል ጋብዝ';
+
+  @override
+  String get staffAcctEmailInUseTitle => 'ይህ ኢሜይል መለያ አለው';
+
+  @override
+  String staffAcctEmailInUseBody(String email) {
+    return '$email አስቀድሞ ተመዝግቧል፣ ስለዚህ አዲስ መግቢያ ልንፈጥርለት አንችልም። በምትኩ ግብዣ ይላኩ፦ በራሳቸው የይለፍ ቃል ወይም በGoogle ገብተው የፀጉር ቤትዎ ፀጉር አስተካካይ ይሆናሉ።';
+  }
+
+  @override
+  String get staffAcctSendInvite => 'በምትኩ ግብዣ ላክ';
+
+  @override
+  String staffAcctInviteSaved(String email) {
+    return 'ግብዣው ተቀምጧል። $email በሚቀጥለው ሲገቡ የፀጉር ቤትዎ ፀጉር አስተካካይ ይሆናሉ።';
+  }
+
+  @override
+  String get staffAcctCreatedTitle => 'የፀጉር አስተካካይ መለያ ተፈጥሯል';
+
+  @override
+  String staffAcctCreatedBody(String name) {
+    return 'እነዚህን መረጃዎች ለ$name ይስጡ። በዚህ ኢሜይል እና የይለፍ ቃል ገብተው የራሳቸውን የይለፍ ቃል ይመርጣሉ።';
+  }
+
+  @override
+  String get staffAcctEmailField => 'ኢሜይል';
+
+  @override
+  String get staffAcctShownOnce =>
+      'ጊዜያዊ የይለፍ ቃሉ የሚታየው አሁን ብቻ ነው። ከመዝጋትዎ በፊት ይቅዱት ወይም ይጻፉት።';
+
+  @override
+  String get staffAcctCopyDetails => 'የመግቢያ መረጃውን ቅዳ';
+
+  @override
+  String get staffAcctDetailsHeading => 'የCrown & Blade ፀጉር አስተካካይ መግቢያ';
+
+  @override
+  String get staffAcctDetailsFooter => 'ከገቡ በኋላ የራስዎን የይለፍ ቃል ይምረጡ።';
+
+  @override
+  String get staffAcctWaitingFirstLogin => 'የመጀመሪያ መግቢያቸውን በመጠባበቅ ላይ';
+
+  @override
+  String get staffAcctActive => 'ንቁ';
+
+  @override
+  String get staffAcctLostPasswordHint =>
+      'ጊዜያዊ የይለፍ ቃሉ ጠፍቷቸዋል? በመግቢያ ገጹ ላይ \"የይለፍ ቃልዎን ረሱት?\" የሚለውን ነክተው በኢሜይል ዳግም ማስጀመር ይችላሉ።';
+
+  @override
+  String get staffAcctForceTitle => 'አዲሱን የይለፍ ቃልዎን ይምረጡ';
+
+  @override
+  String get staffAcctForceIntro =>
+      'ከፀጉር ቤትዎ በተሰጠ ጊዜያዊ የይለፍ ቃል ገብተዋል። ለመቀጠል የራስዎን የይለፍ ቃል ይምረጡ።';
+
+  @override
+  String get staffAcctForceTempLabel => 'ጊዜያዊ የይለፍ ቃል';
+
+  @override
+  String get staffAcctForceTempRequired => 'የተሰጠዎትን ጊዜያዊ የይለፍ ቃል ያስገቡ';
+
+  @override
+  String get staffAcctForceWrongTemp => 'ጊዜያዊ የይለፍ ቃሉ ትክክል አይደለም።';
+
+  @override
+  String get staffAcctForceSameAsTemp => 'ከጊዜያዊው የተለየ የይለፍ ቃል ይምረጡ።';
+
+  @override
+  String get staffAcctForceSave => 'አስቀምጥና ቀጥል';
+
+  @override
+  String get staffAcctForceDone => 'የይለፍ ቃሉ ተቀምጧል። እንኳን ደህና መጡ!';
+
+  @override
+  String get authContinue => 'ቀጥል';
+
+  @override
+  String get registerLinkIntro =>
+      'ኢሜይልዎን ያስገቡ። ቀጥሎ የይለፍ ቃል ይፈጥራሉ፤ አድራሻውን ለማረጋገጥ የሚያስችል ሊንክ በኢሜይል እንልክልዎታለን።';
+
+  @override
+  String registerLinkPasswordIntro(String email) {
+    return 'በ$email ይገባሉ። መለያዎን ከፈጠሩ በኋላ የማረጋገጫ ሊንክ በኢሜይል እንልክልዎታለን።';
+  }
+
+  @override
+  String get verifyLinkSentTitle => 'ኢሜይልዎን ያረጋግጡ';
+
+  @override
+  String verifyLinkSentBody(String email) {
+    return 'ወደ $email የማረጋገጫ ሊንክ ልከናል። ሊንኩን ይክፈቱ፣ ከዚያ ተመልሰው ይግቡ።';
+  }
+
+  @override
+  String get verifyLinkNotSent =>
+      'መለያዎ ተፈጥሯል፣ ነገር ግን የማረጋገጫ ሊንኩን መላክ አልቻልንም። እንደገና ለመሞከር \"ሊንኩን እንደገና ላክ\" የሚለውን ይንኩ።';
+
+  @override
+  String get verifiedLogIn => 'አረጋግጫለሁ — ግባ';
+
+  @override
+  String get resendLink => 'ሊንኩን እንደገና ላክ';
+
+  @override
+  String resendLinkIn(int seconds) {
+    return 'በ$seconds ሰከንድ ውስጥ ሊንኩን እንደገና መላክ ይችላሉ';
+  }
+
+  @override
+  String linkResent(String email) {
+    return 'ወደ $email አዲስ ሊንክ ልከናል።';
+  }
+
+  @override
+  String get resetLinkIntro =>
+      'የመለያዎን ኢሜይል ያስገቡ፤ አዲስ የይለፍ ቃል ለመምረጥ የሚያስችል ሊንክ እንልክልዎታለን።';
+
+  @override
+  String get sendLink => 'ሊንክ ላክ';
+
+  @override
+  String get resetLinkSentTitle => 'ኢሜይልዎን ይመልከቱ';
+
+  @override
+  String resetLinkSentBody(String email) {
+    return 'ወደ $email የይለፍ ቃል ዳግም ማስጀመሪያ ሊንክ ልከናል። ሊንኩን ይክፈቱ፣ አዲስ የይለፍ ቃል ይምረጡ፣ ከዚያ እዚህ ይግቡ።';
+  }
+
+  @override
+  String get emailErrNotVerified => 'እባክዎ መጀመሪያ ኢሜይልዎን ያረጋግጡ።';
+
+  @override
+  String get resendVerificationLink => 'የማረጋገጫ ሊንኩን እንደገና ላክ';
+
+  @override
+  String get emailAlreadyVerified => 'ኢሜይልዎ አስቀድሞ ተረጋግጧል። እንደገና ይግቡ።';
+
+  @override
+  String ratingShopSummary(String rating, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ፀጉር አስተካካዮች ተገምግመዋል',
+      one: '1 ፀጉር አስተካካይ ተገምግሟል',
+    );
+    return '$rating · $_temp0';
+  }
+
+  @override
+  String ratingBarbersRated(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ፀጉር አስተካካዮች ተገምግመዋል',
+      one: '1 ፀጉር አስተካካይ ተገምግሟል',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String ratingSeeBarberReviews(String name) {
+    return 'የ$name ግምገማዎችን ይመልከቱ';
+  }
+
+  @override
+  String get reviewsByBarber => 'ግምገማዎች በፀጉር አስተካካይ';
+
+  @override
+  String get ratePromptTitle => 'አቆራረጡ እንዴት ነበር?';
+
+  @override
+  String ratePromptBody(String barber, String service, String shop) {
+    return 'በ$shop ለተደረገልዎ $service $barberን ይገምግሙ።';
+  }
+
+  @override
+  String get ratePromptDismiss => 'አሁን አይደለም';
+
+  @override
+  String get admPayTab => 'ክፍያዎች';
+
+  @override
+  String get admPayIncomeLabel => 'የደንበኝነት ገቢ';
+
+  @override
+  String get admPayThisMonth => 'በዚህ ወር';
+
+  @override
+  String admPayVerifiedCount(int count) {
+    return '$count የተረጋገጡ';
+  }
+
+  @override
+  String admPayPendingCount(int count) {
+    return '$count በመጠባበቅ ላይ';
+  }
+
+  @override
+  String admPayRejectedCount(int count) {
+    return '$count ውድቅ የተደረጉ';
+  }
+
+  @override
+  String get admPayShopsActive => 'ንቁ';
+
+  @override
+  String get admPayShopsTrial => 'ሙከራ';
+
+  @override
+  String get admPayShopsPastDue => 'ጊዜው ያለፈ';
+
+  @override
+  String get admPayShopsSuspended => 'የታገዱ';
+
+  @override
+  String get admPayManage => 'ክፍያዎችን ያስተዳድሩ';
+
+  @override
+  String get admPayNoPending => 'ለግምገማ የሚጠብቅ የለም';
+
+  @override
+  String get admPayTypesTitle => 'የደንበኝነት ዓይነቶች እና ዋጋዎች';
+
+  @override
+  String get admPayTypesSubtitle =>
+      'የጊዜ ርዝመቶችን እና ዋጋዎችን ይጨምሩ፣ ያስወግዱ ወይም ይቀይሩ፤ ባለቤቶች የሚከፍሉበትንም ያስቀምጡ';
+
+  @override
+  String get admPaySubscriptionsSubtitle =>
+      'የእያንዳንዱ ፀጉር ቤት ዕቅድ፣ ሁኔታ እና ማብቂያ ቀን';
+
+  @override
+  String get admPayOnlineTitle => 'የኦንላይን ክፍያዎች';
+
+  @override
+  String get admPayOnlineSubtitle => 'ውሳኔ የሚያስፈልጋቸው የካርድ እና የቻፓ ክፍያዎች';
+
+  @override
+  String get admPayTypesOnSale => 'በሽያጭ ላይ ያሉ የደንበኝነት ዓይነቶች';
+
+  @override
+  String get admPayEdit => 'አስተካክል';
+
+  @override
+  String get admPayReceiversMissing =>
+      'ባለቤቶች የት እንደሚከፍሉ እንዲያውቁ የቴሌብር ቁጥርዎን ወይም የንግድ ባንክ ሂሳብዎን ያስገቡ።';
+
+  @override
+  String admPayExpiringTitle(int count) {
+    return 'በ7 ቀናት ውስጥ የሚያበቁ ($count)';
+  }
+
+  @override
+  String admPayDaysLeft(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ቀናት ቀርተዋል',
+      one: '1 ቀን ቀርቷል',
+      zero: 'ዛሬ ያበቃል',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get admPayRecentTitle => 'የቅርብ ጊዜ ክፍያዎች';
+
+  @override
+  String get admPaySeeAll => 'ሁሉንም ይመልከቱ';
+
+  @override
+  String get admPayNoPayments => 'እስካሁን ምንም ክፍያ የለም።';
 }

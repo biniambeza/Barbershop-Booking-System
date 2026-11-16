@@ -7,6 +7,7 @@ import '../../../models/barbershop_model.dart';
 import '../../../models/plan_model.dart';
 import '../../../services/app_repository.dart';
 import '../../../services/payment_service.dart';
+import '../../../services/subscription_state.dart'; // subscription expiry
 import '../../payments/payment_flow.dart';
 import '../../payments/widgets/payment_status_badge.dart';
 
@@ -65,7 +66,8 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
         builder: (context, _) {
           final shops = _repo.getShops().toList()
             ..sort((a, b) {
-              final c = _severity(a.subscriptionStatus).compareTo(_severity(b.subscriptionStatus));
+              // subscription expiry: the effective status (see subscription_state.dart).
+              final c = _severity(a.effectiveStatusAt(_now)).compareTo(_severity(b.effectiveStatusAt(_now)));
               if (c != 0) return c;
               final ae = a.subscriptionEndsAt, be = b.subscriptionEndsAt;
               if (ae == null || be == null) return ae == null ? 1 : -1;
@@ -105,7 +107,8 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
     if (shops.isEmpty) return Center(child: Text(context.l10n.noBarbershopsYet));
     final counts = <SubscriptionStatus, int>{};
     for (final s in shops) {
-      counts[s.subscriptionStatus] = (counts[s.subscriptionStatus] ?? 0) + 1;
+      final status = s.effectiveStatusAt(_now); // subscription expiry
+      counts[status] = (counts[status] ?? 0) + 1;
     }
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -154,7 +157,7 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
           style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
         ),
         isThreeLine: shop.subCity.isNotEmpty,
-        trailing: SubscriptionStatusChip(status: shop.subscriptionStatus),
+        trailing: SubscriptionStatusChip(status: shop.effectiveStatusAt(_now)), // subscription expiry
         onTap: () => _editShop(shop),
       ),
     );

@@ -3,10 +3,10 @@
 ///
 /// Firestore: `barbershops/{shopId}/reviews/{bookingId}` (public read). The
 /// customer of a completed booking creates it once (doc id = bookingId);
-/// the shop owner may add or edit [Review.reply] only. Shop and barber
-/// `rating` / `reviewCount` are written by the `aggregateReviewRatings`
-/// Cloud Function (functions/insights) with the same rounding as
-/// [RatingSummary.fromRatings].
+/// the shop owner may add or edit [Review.reply] only. The same
+/// transaction adds the stars to the barber's `ratingSum` / `reviewCount`;
+/// barber and shop ratings are computed from those counters in
+/// lib/services/rating_service.dart.
 library;
 
 /// Longest review comment (characters, after trimming).
@@ -40,7 +40,8 @@ class Review {
   final String barberId;
   final String customerId;
 
-  /// The booking's customer name (shown shortened, see [displayName]).
+  /// The booking's customer name (only the first name is shown, see
+  /// [displayName]).
   final String customerName;
 
   /// Whole stars, 1..5.
@@ -57,9 +58,9 @@ class Review {
   bool get hasComment => comment != null && comment!.isNotEmpty;
   bool get hasReply => reply != null && reply!.isNotEmpty;
 
-  /// First name plus the initial of the last name ("Liya G."), so full
-  /// names are not shown publicly. Empty when the name is empty.
-  String get displayName => shortCustomerName(customerName);
+  /// First name only ("Liya"), so full names are not shown publicly.
+  /// Empty when the name is empty.
+  String get displayName => customerFirstName(customerName);
 
   /// The document written on create (no reply fields; optional comment
   /// left out when empty).
@@ -115,6 +116,12 @@ class Review {
   }
 }
 
+/// "Liya Getachew" -> "Liya"; empty for an empty name.
+String customerFirstName(String name) {
+  final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
+  return parts.isEmpty ? '' : parts.first;
+}
+
 /// "Liya Getachew" -> "Liya G."; a single name is kept as is.
 String shortCustomerName(String name) {
   final parts = name.trim().split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
@@ -129,8 +136,8 @@ extension on String {
   String get characters1 => isEmpty ? '' : String.fromCharCode(runes.first);
 }
 
-/// Average rating (one decimal) and count, as the Cloud Function writes
-/// them: only whole ratings 1..5 count; no reviews = rating 0.
+/// Average rating (one decimal) and count: only whole ratings 1..5 count;
+/// no reviews = rating 0 (shown as "New").
 class RatingSummary {
   const RatingSummary({required this.rating, required this.count});
 

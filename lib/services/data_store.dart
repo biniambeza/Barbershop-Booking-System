@@ -8,6 +8,7 @@ import 'dart:async';
 import '../models/app_exception.dart';
 import 'availability_service.dart';
 import 'data_cache.dart';
+import 'early_finish_service.dart' show EarlyFinishNotice; // early finish
 import 'time_off_service.dart';
 
 export 'availability_service.dart' show SlotLock, SlotTakenException;
@@ -32,7 +33,8 @@ abstract class DataStore {
     UserInvite? ownerInvite,
   });
 
-  /// Owner/admin: profile fields only ([Barbershop.toProfileMap]).
+  /// Owner: profile fields only ([Barbershop.toProfileMap]), including the
+  /// owner-only opening hours. The admin edit uses [adminUpdateShop].
   Future<void> updateShopProfile(Barbershop shop);
 
   /// Admin only.
@@ -46,9 +48,27 @@ abstract class DataStore {
     DateTime? endsAt,
   });
 
+  // --- subscription expiry (client-side) ---
+  /// Owner (own shop) or admin: records a lapsed trial / paid period. One
+  /// update of exactly [subscriptionTransitionPatch] (subscription_state.dart):
+  /// {subscriptionStatus: 'past_due' | 'suspended', subscriptionStatusChangedAt: ISO}.
+  Future<void> setShopSubscriptionTransition(String shopId, Map<String, dynamic> fields);
+  // --- end subscription expiry ---
+
   /// Admin: deletes the shop, its services, barbers and pending invites.
   /// Bookings are kept for history.
   Future<void> deleteShop(String shopId);
+
+  // --- admin shop management ---
+  /// Admin: one update of [Barbershop.toAdminEditMap] (profile without the
+  /// owner-only opening hours, isVerified, subscriptionPlan,
+  /// subscriptionStatus, subscriptionEndsAt; null values delete the field).
+  Future<void> adminUpdateShop(Barbershop shop);
+
+  /// Admin: one update of [Barbershop.adminSuspensionFields] (suspend with
+  /// reason/at/by, or reactivate: adminSuspended false, the rest deleted).
+  Future<void> setShopAdminSuspension(String shopId, Map<String, dynamic> fields);
+  // --- end admin shop management ---
 
   Future<void> addService(BarbershopService service);
   Future<void> updateService(BarbershopService service);
@@ -127,6 +147,19 @@ abstract class DataStore {
   /// are released in the same write, as a cancel does.
   Future<void> declineBookingRequest(Booking booking, {String? reason});
   // --- end barber acceptance ---
+
+  // --- early finish (see early_finish_service.dart) ---
+
+  /// Staff: marks [booking] completed, writing exactly
+  /// `{status: 'completed', completedAt: <UTC ISO>}`.
+  Future<void> completeBooking(Booking booking, {required DateTime completedAt});
+
+  /// Staff, right after an early [completeBooking]: creates each notice at
+  /// `users/{recipientUid}/notifications/{id}` in ONE batch. The local store
+  /// does nothing here: LocalNotificationInbox derives the same entries
+  /// from the completed booking (its completedAt).
+  Future<void> writeEarlyFinishNotices(List<EarlyFinishNotice> notices);
+  // --- end early finish ---
 }
 
 /// In-memory [DataStore] used when Firebase is not attached.
@@ -230,8 +263,24 @@ class LocalDataStore implements DataStore {
   }) async {
     final old = cache.shops[shopId];
     if (old == null) return;
-    cache.shops[shopId] = old.copyWith(subscriptionPlan: plan, subscriptionStatus: status, subscriptionEndsAt: endsAt);
+    cache.shops[shopId] = old.copyWith(
+      subscriptionPlan: plan,
+      subscriptionStatus: status,
+      subscriptionEndsAt: endsAt,
+      // subscription expiry: null deletes the end date, like Firestore.
+      clearSubscriptionEndsAt: endsAt == null,
+    );
   }
+
+  // --- subscription expiry (client-side) ---
+  @override
+  Future<void> setShopSubscriptionTransition(String shopId, Map<String, dynamic> fields) async {
+    final old = cache.shops[shopId];
+    if (old == null) return;
+    cache.shops[shopId] =
+        old.copyWith(subscriptionStatus: SubscriptionStatus.fromString(fields['subscriptionStatus'] as String?));
+  }
+  // --- end subscription expiry ---
 
   @override
   Future<void> deleteShop(String shopId) async {
@@ -244,6 +293,48 @@ class LocalDataStore implements DataStore {
     cache.bookings.removeWhere((_, b) => b.shopId == shopId);
     cache.users.removeWhere((_, u) => u.shopId == shopId);
   }
+
+  // --- admin shop management ---
+  @override
+  Future<void> adminUpdateShop(Barbershop shop) async {
+    final old = cache.shops[shop.id];
+    if (old == null) return;
+    // Same fields as Barbershop.toAdminEditMap: the profile without the
+    // opening hours (owner only), verification and the subscription.
+    cache.shops[shop.id] = old.copyWith(
+      name: shop.name,
+      description: shop.description,
+      address: shop.address,
+      city: shop.city,
+      subCity: shop.subCity,
+      landmark: shop.landmark,
+      clearLandmark: shop.landmark == null,
+      phone: shop.phone,
+      imageUrl: shop.imageUrl,
+      isVerified: shop.isVerified,
+      subscriptionPlan: shop.subscriptionPlan,
+      subscriptionStatus: shop.subscriptionStatus,
+      subscriptionEndsAt: shop.subscriptionEndsAt,
+      clearSubscriptionEndsAt: shop.subscriptionEndsAt == null,
+    );
+  }
+
+  @override
+  Future<void> setShopAdminSuspension(String shopId, Map<String, dynamic> fields) async {
+    final old = cache.shops[shopId];
+    if (old == null) return;
+    if (fields['adminSuspended'] == true) {
+      cache.shops[shopId] = old.copyWith(
+        adminSuspended: true,
+        adminSuspendedReason: fields['adminSuspendedReason'] as String?,
+        adminSuspendedAt: DateTime.tryParse(fields['adminSuspendedAt'] as String? ?? '')?.toUtc(),
+        adminSuspendedBy: fields['adminSuspendedBy'] as String?,
+      );
+    } else {
+      cache.shops[shopId] = old.copyWith(clearAdminSuspension: true);
+    }
+  }
+  // --- end admin shop management ---
 
   @override
   Future<void> addService(BarbershopService service) async => cache.services[service.id] = service;
@@ -276,6 +367,7 @@ class LocalDataStore implements DataStore {
       avatarUrl: barber.avatarUrl,
       rating: old.rating,
       reviewCount: old.reviewCount,
+      ratingSum: old.ratingSum,
       isAvailable: barber.isAvailable,
       email: barber.email,
       phone: barber.phone,
@@ -415,4 +507,19 @@ class LocalDataStore implements DataStore {
         current.copyWith(status: BookingStatus.cancelled, cancelledBy: 'barber', declineReason: reason);
   }
   // --- end barber acceptance ---
+
+  // --- early finish ---
+
+  @override
+  Future<void> completeBooking(Booking booking, {required DateTime completedAt}) async {
+    final old = cache.bookings[booking.id];
+    if (old == null) return;
+    cache.bookings[booking.id] = old.copyWith(status: BookingStatus.completed, completedAt: completedAt.toUtc());
+  }
+
+  /// Local inboxes live in LocalNotificationInbox, which writes the same
+  /// entries when it sees the booking completed early.
+  @override
+  Future<void> writeEarlyFinishNotices(List<EarlyFinishNotice> notices) async {}
+  // --- end early finish ---
 }

@@ -58,7 +58,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyDXqQCY7uUOV0gSDXI7Rr_V_OFT2zMvjWQ',
-    appId: '1:756289834540:android:c84ff64e49930b70248b89',
+    appId: '1:756289834540:android:12af85035d039aa3248b89',
     messagingSenderId: '756289834540',
     projectId: 'barbershop-booking-syste-8a9b8',
     storageBucket: 'barbershop-booking-syste-8a9b8.firebasestorage.app',
@@ -66,10 +66,12 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyAXSIKaEYLU1zajffuFlwl0DHjWfWP8Ti0',
-    appId: '1:756289834540:ios:5cb61e2eaf2bab57248b89',
+    appId: '1:756289834540:ios:c7db346e91c14050248b89',
     messagingSenderId: '756289834540',
     projectId: 'barbershop-booking-syste-8a9b8',
     storageBucket: 'barbershop-booking-syste-8a9b8.firebasestorage.app',
-    iosBundleId: 'com.barbershop.barbershopBooking',
+    androidClientId: '756289834540-0efopmqe3gk8is9l0mtpp0tcsukh0l04.apps.googleusercontent.com',
+    iosClientId: '756289834540-rblgt6k7dnm0c5soe7gpto21bv646j5i.apps.googleusercontent.com',
+    iosBundleId: 'et.crownblade.app',
   );
 }

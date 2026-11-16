@@ -1,5 +1,8 @@
-/// Subscription state of a shop on the platform. Written only by the admin
-/// or Cloud Functions (payments), never by the shop owner.
+import '../services/subscription_state.dart'; // subscription expiry (client-side)
+
+/// Subscription state of a shop on the platform. Written by the admin or
+/// Cloud Functions (payments); the owner app only records a lapsed period
+/// (downgrade to past_due / suspended, see services/subscription_state.dart).
 enum SubscriptionStatus {
   trialing,
   active,
@@ -74,6 +77,21 @@ class Barbershop {
   /// (owner-editable with the booking policy; absent = false).
   final bool requireBarberAcceptance;
 
+  // --- admin shop management (suspension) ---
+  /// Set by the platform admin (separate from [subscriptionStatus]). A
+  /// suspended shop is hidden from customers and takes no new bookings.
+  final bool adminSuspended;
+
+  /// Why the admin suspended the shop (1..300 characters), shown to the owner.
+  final String? adminSuspendedReason;
+
+  /// When the admin suspended the shop (UTC).
+  final DateTime? adminSuspendedAt;
+
+  /// Uid of the admin who suspended the shop.
+  final String? adminSuspendedBy;
+  // --- end admin shop management ---
+
   Barbershop({
     required this.id,
     required this.ownerId,
@@ -97,6 +115,11 @@ class Barbershop {
     this.cancellationCutoffHours = kDefaultCancellationCutoffHours,
     this.maxReschedules = kDefaultMaxReschedules,
     this.requireBarberAcceptance = false,
+    // admin shop management (suspension)
+    this.adminSuspended = false,
+    this.adminSuspendedReason,
+    this.adminSuspendedAt,
+    this.adminSuspendedBy,
   });
 
   String get fullAddress {
@@ -105,7 +128,51 @@ class Barbershop {
   }
 
   /// Suspended shops are hidden from customers and cannot take bookings.
-  bool get isSuspended => subscriptionStatus == SubscriptionStatus.suspended;
+  // --- subscription expiry (client-side) ---
+  // The *effective* status: a lapsed trial/paid period counts as suspended
+  // from 7 days after subscriptionEndsAt even while the stored status is
+  // stale (no Cloud Functions on the free plan). See
+  // services/subscription_state.dart; [subscriptionClock] is the app clock.
+  bool get isSuspended => effectiveSubscriptionStatus(this, subscriptionClock()) == SubscriptionStatus.suspended;
+  // --- end subscription expiry ---
+
+  // --- admin shop management ---
+  /// Not available to customers: suspended by the admin or for an unpaid
+  /// subscription. Hidden from customer lists, search and favourites; the
+  /// shop page shows "temporarily unavailable" and takes no new bookings.
+  bool get isBlocked => adminSuspended || isSuspended;
+
+  /// The suspension fields of an admin suspend (or, with [suspended] false,
+  /// a reactivate: the other three are null, i.e. deleted in an update).
+  static Map<String, dynamic> adminSuspensionFields({
+    required bool suspended,
+    String? reason,
+    DateTime? at,
+    String? by,
+  }) =>
+      {
+        'adminSuspended': suspended,
+        'adminSuspendedReason': suspended ? reason : null,
+        'adminSuspendedAt': suspended ? at?.toUtc().toIso8601String() : null,
+        'adminSuspendedBy': suspended ? by : null,
+      };
+
+  /// Opening-hours fields of the shop document. Only the shop owner sets
+  /// them (the owner's profile update); the admin edit never writes them.
+  static const List<String> ownerOnlyHoursFields = ['openingHour', 'closingHour', 'workingDays'];
+
+  /// The fields the admin edit screen writes in one update: the profile
+  /// without the opening hours ([ownerOnlyHoursFields] are set only by the
+  /// shop owner), plus verification and the subscription override. A null
+  /// `subscriptionEndsAt` (or landmark) means "delete the field".
+  Map<String, dynamic> toAdminEditMap() => {
+        ...(toProfileMap()..removeWhere((key, _) => ownerOnlyHoursFields.contains(key))),
+        'isVerified': isVerified,
+        'subscriptionPlan': subscriptionPlan,
+        'subscriptionStatus': subscriptionStatus.value,
+        'subscriptionEndsAt': subscriptionEndsAt?.toUtc().toIso8601String(),
+      };
+  // --- end admin shop management ---
 
   bool isOpenNow({DateTime? now}) {
     final current = now ?? DateTime.now();
@@ -129,6 +196,10 @@ class Barbershop {
       // Barber acceptance: only written when on, so the default create
       // shape is unchanged.
       if (requireBarberAcceptance) 'requireBarberAcceptance': true,
+      // admin shop management: only written when suspended (seed / tests).
+      if (adminSuspended)
+        ...adminSuspensionFields(
+            suspended: true, reason: adminSuspendedReason, at: adminSuspendedAt, by: adminSuspendedBy),
     };
   }
 
@@ -181,6 +252,13 @@ class Barbershop {
     int? maxReschedules,
     bool? requireBarberAcceptance,
     bool clearLandmark = false,
+    // admin shop management (suspension)
+    bool? adminSuspended,
+    String? adminSuspendedReason,
+    DateTime? adminSuspendedAt,
+    String? adminSuspendedBy,
+    bool clearAdminSuspension = false,
+    bool clearSubscriptionEndsAt = false,
   }) {
     return Barbershop(
       id: id ?? this.id,
@@ -201,10 +279,15 @@ class Barbershop {
       isVerified: isVerified ?? this.isVerified,
       subscriptionPlan: subscriptionPlan ?? this.subscriptionPlan,
       subscriptionStatus: subscriptionStatus ?? this.subscriptionStatus,
-      subscriptionEndsAt: subscriptionEndsAt ?? this.subscriptionEndsAt,
+      subscriptionEndsAt: clearSubscriptionEndsAt ? null : (subscriptionEndsAt ?? this.subscriptionEndsAt),
       cancellationCutoffHours: cancellationCutoffHours ?? this.cancellationCutoffHours,
       maxReschedules: maxReschedules ?? this.maxReschedules,
       requireBarberAcceptance: requireBarberAcceptance ?? this.requireBarberAcceptance,
+      // admin shop management (suspension)
+      adminSuspended: clearAdminSuspension ? false : (adminSuspended ?? this.adminSuspended),
+      adminSuspendedReason: clearAdminSuspension ? null : (adminSuspendedReason ?? this.adminSuspendedReason),
+      adminSuspendedAt: clearAdminSuspension ? null : (adminSuspendedAt ?? this.adminSuspendedAt),
+      adminSuspendedBy: clearAdminSuspension ? null : (adminSuspendedBy ?? this.adminSuspendedBy),
     );
   }
 
@@ -234,6 +317,11 @@ class Barbershop {
           kDefaultCancellationCutoffHours,
       maxReschedules: _intIn(map['maxReschedules'], 0, kMaxMaxReschedules) ?? kDefaultMaxReschedules,
       requireBarberAcceptance: map['requireBarberAcceptance'] == true,
+      // admin shop management (suspension)
+      adminSuspended: map['adminSuspended'] == true,
+      adminSuspendedReason: map['adminSuspendedReason'] is String ? map['adminSuspendedReason'] as String : null,
+      adminSuspendedAt: _parseDate(map['adminSuspendedAt']),
+      adminSuspendedBy: map['adminSuspendedBy'] is String ? map['adminSuspendedBy'] as String : null,
     );
   }
 }

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../../core/utils/email_utils.dart';
-import '../../../core/utils/phone_utils.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../l10n/l10n.dart';
 import '../../reviews/reviews_l10n.dart';
 import '../../../models/barber_model.dart';
 import '../../../models/barbershop_model.dart';
 import '../../../services/app_repository.dart';
+import '../../../services/rating_service.dart';
 import '../../../services/availability_service.dart' show WorkingSchedule;
 import '../../shared/widgets/ui_kit.dart';
+import '../widgets/add_barber_sheet.dart'; // barber accounts
 import '../../payouts/payouts_screen.dart' show showCommissionDialog; // barber commission
 import '../../../services/payout_service.dart' show commissionOf; // barber commission
 
@@ -31,140 +31,12 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
     'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400',
   ];
 
-  void _showAddBarberDialog() {
-    final l = context.l10n;
-    final nameCtrl = TextEditingController();
-    final titleCtrl = TextEditingController(text: l.defaultBarberTitle);
-    final emailCtrl = TextEditingController();
-    final phoneCtrl = TextEditingController();
-    String? emailError;
-    String? phoneError;
-    String? formError;
-    String selectedAvatar = _avatarPresets[0];
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: AppTheme.card,
-          title: Text(l.addBarberToShop, style: const TextStyle(fontWeight: FontWeight.w700)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  controller: nameCtrl,
-                  decoration: InputDecoration(labelText: l.barberFullName, prefixIcon: const Icon(Icons.person)),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: titleCtrl,
-                  decoration: InputDecoration(labelText: l.specialization, prefixIcon: const Icon(Icons.badge)),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: emailCtrl,
-                  keyboardType: TextInputType.emailAddress,
-                  autocorrect: false,
-                  decoration: InputDecoration(
-                    labelText: l.emailForLogin,
-                    hintText: 'barber@gmail.com',
-                    helperText: l.barberInviteHelper,
-                    helperMaxLines: 4,
-                    errorText: emailError,
-                    prefixIcon: const Icon(Icons.alternate_email),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: phoneCtrl,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    labelText: l.barberMobileOptional,
-                    hintText: '09XX XXX XXX',
-                    errorText: phoneError,
-                    prefixIcon: const Icon(Icons.phone_android),
-                  ),
-                ),
-                if (formError != null) ...[
-                  const SizedBox(height: 10),
-                  Text(formError!, style: const TextStyle(color: AppTheme.danger, fontSize: 12)),
-                ],
-                const SizedBox(height: 16),
-                Text(l.selectAvatar, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                const SizedBox(height: 8),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: _avatarPresets.map((avatarUrl) {
-                      final isSelected = selectedAvatar == avatarUrl;
-                      return GestureDetector(
-                        onTap: () => setDialogState(() => selectedAvatar = avatarUrl),
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 8),
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isSelected ? AppTheme.ink : Colors.transparent,
-                              width: 2.5,
-                            ),
-                          ),
-                          child: CircleAvatar(
-                            radius: 20,
-                            backgroundImage: NetworkImage(avatarUrl),
-                            onBackgroundImageError: (err, stack) {},
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: Text(l.cancel, style: const TextStyle(color: AppTheme.textSecondary)),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (nameCtrl.text.trim().isEmpty) return;
-                final email = emailCtrl.text.trim();
-                final phone = phoneCtrl.text.trim();
-                final badEmail = email.isNotEmpty && validEmailOrNull(email) == null;
-                final badPhone = phone.isNotEmpty && normalizeEthiopianPhone(phone) == null;
-                setDialogState(() {
-                  emailError = badEmail ? l.invalidEmailShort : null;
-                  phoneError = badPhone ? l.invalidPhoneShort : null;
-                  formError = null;
-                });
-                if (badEmail || badPhone) return;
-                try {
-                  await AppRepository.instance.addBarber(
-                    shopId: widget.shopId,
-                    name: nameCtrl.text.trim(),
-                    title: titleCtrl.text.trim(),
-                    email: email.isEmpty ? null : email,
-                    phone: phone.isEmpty ? null : phone,
-                    avatarUrl: selectedAvatar,
-                  );
-                } catch (e) {
-                  setDialogState(() => formError = e is AppException ? l.errorText(e) : l.addBarberFailed);
-                  return;
-                }
-                if (ctx.mounted) Navigator.of(ctx).pop();
-                if (mounted) setState(() {});
-              },
-              child: Text(l.addBarber),
-            ),
-          ],
-        ),
-      ),
-    );
+  // --- barber accounts: add a barber with a login + temporary password ---
+  Future<void> _showAddBarberDialog() async {
+    await showAddBarberSheet(context, shopId: widget.shopId, avatarPresets: _avatarPresets);
+    if (mounted) setState(() {});
   }
+  // --- end barber accounts ---
 
   void _confirmDeleteBarber(String barberId, String name) {
     showDialog(
@@ -284,30 +156,8 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                               barber.title,
                               style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13),
                             ),
-                            // A pending invite = the barber has not signed up yet.
-                            if (AppRepository.instance.getPendingBarberInvite(barber.id) case final invite?) ...[
-                              const SizedBox(height: 6),
-                              Row(
-                                key: ValueKey('barber-invite-waiting-${barber.id}'),
-                                children: [
-                                  const Icon(Icons.mark_email_unread_outlined, size: 14, color: AppTheme.warning),
-                                  const SizedBox(width: 4),
-                                  Flexible(
-                                    child: Text(
-                                      context.l10n.barberInviteWaiting,
-                                      style: const TextStyle(
-                                          color: AppTheme.warning, fontSize: 12, fontWeight: FontWeight.w600),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                invite.email,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11.5),
-                              ),
-                            ],
+                            // Barber accounts: waiting for first login / invitation / active.
+                            BarberAccountStatus(barber: barber),
                             if (shop != null) ...[
                               const SizedBox(height: 4),
                               Text(
@@ -331,7 +181,7 @@ class _ManageBarbersScreenState extends State<ManageBarbersScreen> {
                                 const SizedBox(width: 4),
                                 Flexible(
                                   child: Text(
-                                    context.l10n.reviewsRatingShort(barber.rating, barber.reviewCount),
+                                    context.l10n.barberRatingText(barberRatingSummary(barber)),
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                         fontSize: 12, color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
