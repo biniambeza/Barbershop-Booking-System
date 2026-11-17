@@ -577,7 +577,13 @@ class _BottomNavButton extends StatelessWidget {
       child: InkWell(
         key: item.key,
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        // No tinted box on hover, press or focus: only the icon + label turn green.
+        overlayColor: const WidgetStatePropertyAll(Colors.transparent),
+        splashFactory: NoSplash.splashFactory,
+        highlightColor: Colors.transparent,
+        hoverColor: Colors.transparent,
+        focusColor: Colors.transparent,
+        splashColor: Colors.transparent,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
           child: Column(
