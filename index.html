@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="/Barbershop-Booking-System/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Crown & Blade - Premium Barbershop Booking System">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0A0A0A" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-title" content="Crown & Blade">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>Crown & Blade - Barbershop Booking</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    /* Light: white, like the native splash; dark: near-black. */
+    :root {
+      --cb-bg: #FFFFFF;
+      --cb-track: rgba(15, 23, 42, 0.12);
+      --cb-accent: #16A34A;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --cb-bg: #0A0A0A;
+        --cb-track: rgba(255, 255, 255, 0.12);
+        --cb-accent: #22C55E;
+      }
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--cb-bg);
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+    @keyframes cb-spin {
+      to { transform: rotate(360deg); }
+    }
+    #loading-indicator {
+      position: fixed;
+      inset: 0;
+      background: var(--cb-bg);
+      z-index: 99999;
+      transition: opacity 0.4s ease-out;
+    }
+    #loading-indicator img {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 128px;
+      height: 128px;
+      transform: translate(-50%, -50%);
+    }
+    #loading-indicator .cb-spinner {
+      position: absolute;
+      left: 50%;
+      top: calc(50% + 120px);
+      width: 28px;
+      height: 28px;
+      margin-left: -14px;
+      box-sizing: border-box;
+      border: 2.5px solid var(--cb-track);
+      border-top-color: var(--cb-accent);
+      border-radius: 50%;
+      animation: cb-spin 0.9s linear infinite;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      #loading-indicator .cb-spinner { animation-duration: 2.4s; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Start-up loader: the Crown & Blade mark on white (or on near-black
+       in dark mode), the same size and place as the native splash and the
+       first frame of the Flutter intro
+       (lib/features/splash/animated_splash.dart), which then takes over. -->
+  <div id="loading-indicator" role="progressbar" aria-label="Crown &amp; Blade">
+    <picture>
+      <source srcset="icons/logo-mark-dark.png" media="(prefers-color-scheme: dark)">
+      <img src="icons/logo-mark.png" alt="" width="128" height="128">
+    </picture>
+    <div class="cb-spinner"></div>
+  </div>
+
+  <script>
+    function dismissLoader() {
+      var el = document.getElementById('loading-indicator');
+      if (el) {
+        el.style.opacity = '0';
+        setTimeout(function() { if (el && el.parentNode) el.parentNode.removeChild(el); }, 400);
+      }
+    }
+    window.addEventListener('flutter-first-frame', dismissLoader);
+    var obs = new MutationObserver(function(muts) {
+      for (var i = 0; i < muts.length; i++) {
+        for (var j = 0; j < muts[i].addedNodes.length; j++) {
+          var tag = (muts[i].addedNodes[j].tagName || '').toLowerCase();
+          if (tag === 'flt-glass-pane' || tag === 'flutter-view') {
+            dismissLoader();
+            obs.disconnect();
+            return;
+          }
+        }
+      }
+    });
+    obs.observe(document.body, { childList: true });
+  </script>
+
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>
