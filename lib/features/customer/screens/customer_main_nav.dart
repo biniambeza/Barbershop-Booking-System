@@ -28,26 +28,25 @@ class _CustomerMainNavState extends State<CustomerMainNav> {
     ];
 
     return Scaffold(
-      extendBody: true,
       body: IndexedStack(
         index: _currentIndex,
         children: screens,
       ),
-      bottomNavigationBar: FloatingPillNavBar(
+      bottomNavigationBar: AppBottomNavBar(
         selectedIndex: _currentIndex,
         onSelected: (idx) => setState(() => _currentIndex = idx),
         items: [
-          PillNavItem(
+          BottomNavItem(
             icon: Icons.storefront_outlined,
             selectedIcon: Icons.storefront,
             label: context.l10n.navBarbershops,
           ),
-          PillNavItem(
+          BottomNavItem(
             icon: Icons.content_cut_outlined,
             selectedIcon: Icons.content_cut,
             label: context.l10n.findBarbers,
           ),
-          PillNavItem(
+          BottomNavItem(
             icon: Icons.calendar_month_outlined,
             selectedIcon: Icons.calendar_month,
             label: context.l10n.navAppointments,

@@ -66,7 +66,7 @@ class CustomerBookingsScreen extends StatelessWidget {
               ),
             )
           : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, FloatingPillNavBar.contentPadding),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, AppBottomNavBar.contentPadding),
               itemCount: bookings.length,
               itemBuilder: (context, index) {
                 final booking = bookings[index];

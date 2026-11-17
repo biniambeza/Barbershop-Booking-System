@@ -491,6 +491,119 @@ class FloatingPillNavBar extends StatelessWidget {
   }
 }
 
+/// Item for [AppBottomNavBar].
+class BottomNavItem {
+  const BottomNavItem({
+    required this.icon,
+    required this.label,
+    this.selectedIcon,
+    this.key,
+    this.wrapIcon,
+  });
+
+  final IconData icon;
+  final IconData? selectedIcon;
+  final String label;
+
+  /// Key on the tappable item (tests find tabs by it).
+  final Key? key;
+
+  /// Optional decoration around the icon, e.g. a badge dot.
+  final Widget Function(Widget icon)? wrapIcon;
+}
+
+/// Full-width bottom navigation bar used by every role: icon + label per
+/// destination, the selected one in green, no highlight box. White in light
+/// mode, near-black in dark mode, with a hairline on top.
+class AppBottomNavBar extends StatelessWidget {
+  const AppBottomNavBar({
+    super.key,
+    required this.items,
+    required this.selectedIndex,
+    required this.onSelected,
+  });
+
+  final List<BottomNavItem> items;
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  /// Space to leave at the bottom of scrollable content above the bar.
+  static const double contentPadding = 24;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppTheme.navBar,
+        border: Border(top: BorderSide(color: AppTheme.hairline)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+          child: Row(
+            children: [
+              for (var i = 0; i < items.length; i++)
+                Expanded(
+                  child: _BottomNavButton(
+                    item: items[i],
+                    selected: i == selectedIndex,
+                    onTap: () => onSelected(i),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BottomNavButton extends StatelessWidget {
+  const _BottomNavButton({required this.item, required this.selected, required this.onTap});
+
+  final BottomNavItem item;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? AppTheme.success : AppTheme.textSecondary;
+    Widget icon = Icon(selected ? (item.selectedIcon ?? item.icon) : item.icon, size: 24, color: color);
+    if (item.wrapIcon != null) icon = item.wrapIcon!(icon);
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: InkWell(
+        key: item.key,
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              icon,
+              const SizedBox(height: 4),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 150),
+                // Based on the theme's text style so the app font is kept.
+                style: (Theme.of(context).textTheme.labelMedium ?? const TextStyle()).copyWith(
+                  fontSize: 12,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: color,
+                  letterSpacing: 0,
+                ),
+                child: Text(item.label, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _PillNavButton extends StatelessWidget {
   const _PillNavButton({required this.item, required this.selected, required this.onTap});
 

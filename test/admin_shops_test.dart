@@ -20,6 +20,7 @@ import 'package:barbershop_booking/services/firestore_data_store.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:barbershop_booking/features/shared/widgets/ui_kit.dart';
 
 import 'test_helpers.dart';
 
@@ -500,7 +501,10 @@ void main() {
     testWidgets('admin dashboard: Shops, Payments and Users tabs (no bookings), suspended filter', (tester) async {
       repo.switchRole(UserRole.admin);
       await pump(tester, const AdminDashboardScreen());
-      expect(find.byType(Tab), findsNWidgets(3));
+      expect(
+        find.descendant(of: find.byType(AppBottomNavBar), matching: find.byType(InkWell)),
+        findsNWidgets(3),
+      );
       expect(find.byKey(const ValueKey('admin-tab-payments')), findsOneWidget);
       expect(find.textContaining('Bookings ('), findsNothing);
       expect(find.byKey(const ValueKey('admin-shops-tab')), findsOneWidget);

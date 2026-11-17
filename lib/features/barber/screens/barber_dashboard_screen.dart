@@ -186,29 +186,6 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                           ),
                         ),
                       ),
-                      SliverPersistentHeader(
-                        pinned: true,
-                        delegate: _TabBarHeaderDelegate(
-                          TabBar(
-                            controller: _tabController,
-                            isScrollable: true,
-                            tabAlignment: TabAlignment.start,
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            indicatorSize: TabBarIndicatorSize.label,
-                            indicatorColor: AppTheme.ink,
-                            labelColor: AppTheme.textPrimary,
-                            unselectedLabelColor: AppTheme.textSecondary,
-                            labelStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
-                            unselectedLabelStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500),
-                            tabs: [
-                              Tab(text: l.tabConfirmed(upcomingBookings.length)),
-                              Tab(text: l.tabInProgress(inProgressBookings.length)),
-                              Tab(text: l.tabCompleted(completedBookings.length)),
-                              Tab(text: l.tabAll(bookings.length)),
-                            ],
-                          ),
-                        ),
-                      ),
                     ];
                   },
                   body: TabBarView(
@@ -221,8 +198,56 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
                     ],
                   ),
                 ),
+          // --- bottom navigation: the four booking lists, counts as icon badges
+          // (labels like "In Progress (3)" do not fit a quarter of a phone) ---
+          bottomNavigationBar: barber == null
+              ? null
+              : AnimatedBuilder(
+                  animation: _tabController,
+                  builder: (context, _) => AppBottomNavBar(
+                    selectedIndex: _tabController.index,
+                    onSelected: _tabController.animateTo,
+                    items: [
+                      BottomNavItem(
+                        icon: Icons.event_available_outlined,
+                        selectedIcon: Icons.event_available,
+                        label: l.statusConfirmed,
+                        wrapIcon: (icon) => _countBadge(icon, upcomingBookings.length),
+                      ),
+                      BottomNavItem(
+                        icon: Icons.chair_outlined,
+                        selectedIcon: Icons.chair,
+                        label: l.statusInProgress,
+                        wrapIcon: (icon) => _countBadge(icon, inProgressBookings.length),
+                      ),
+                      BottomNavItem(
+                        icon: Icons.check_circle_outline,
+                        selectedIcon: Icons.check_circle,
+                        label: l.statusCompleted,
+                        wrapIcon: (icon) => _countBadge(icon, completedBookings.length),
+                      ),
+                      BottomNavItem(
+                        icon: Icons.history_outlined,
+                        selectedIcon: Icons.history,
+                        label: l.all,
+                        wrapIcon: (icon) => _countBadge(icon, bookings.length),
+                      ),
+                    ],
+                  ),
+                ),
         );
       },
+    );
+  }
+
+  /// Booking count on a bottom-nav icon; hidden when zero.
+  Widget _countBadge(Widget icon, int count) {
+    return Badge.count(
+      count: count,
+      isLabelVisible: count > 0,
+      backgroundColor: AppTheme.success,
+      textColor: Colors.white,
+      child: icon,
     );
   }
 
@@ -727,28 +752,5 @@ class _BarberDashboardScreenState extends State<BarberDashboardScreen> with Sing
       return context.l10n.today;
     }
     return fmt.dateMedium(day);
-  }
-}
-
-class _TabBarHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final TabBar tabBar;
-  _TabBarHeaderDelegate(this.tabBar);
-
-  @override
-  double get minExtent => tabBar.preferredSize.height;
-  @override
-  double get maxExtent => tabBar.preferredSize.height;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
-      color: AppTheme.background,
-      child: tabBar,
-    );
-  }
-
-  @override
-  bool shouldRebuild(_TabBarHeaderDelegate oldDelegate) {
-    return false;
   }
 }

@@ -1048,6 +1048,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reportsOpenButton => 'Reports & clients';
 
   @override
+  String get ownerNavHome => 'Home';
+
+  @override
+  String get ownerNavBarbers => 'Barbers';
+
+  @override
+  String get ownerNavServices => 'Services';
+
+  @override
   String get reportsOverviewTab => 'Overview';
 
   @override

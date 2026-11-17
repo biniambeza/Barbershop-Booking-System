@@ -397,7 +397,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               ),
             ),
 
-          const SliverToBoxAdapter(child: SizedBox(height: FloatingPillNavBar.contentPadding)),
+          const SliverToBoxAdapter(child: SizedBox(height: AppBottomNavBar.contentPadding)),
         ],
       ),
     );

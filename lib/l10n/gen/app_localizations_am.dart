@@ -1026,6 +1026,15 @@ class AppLocalizationsAm extends AppLocalizations {
   String get reportsOpenButton => 'ሪፖርቶችና ደንበኞች';
 
   @override
+  String get ownerNavHome => 'መነሻ';
+
+  @override
+  String get ownerNavBarbers => 'ሰራተኞች';
+
+  @override
+  String get ownerNavServices => 'አገልግሎቶች';
+
+  @override
   String get reportsOverviewTab => 'አጠቃላይ እይታ';
 
   @override

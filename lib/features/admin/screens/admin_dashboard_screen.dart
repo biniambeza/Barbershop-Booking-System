@@ -5,6 +5,7 @@ import '../../../models/user_model.dart';
 import '../../../services/app_repository.dart';
 import '../../notifications/widgets/notification_bell.dart';
 import '../../shared/widgets/app_bar_menu.dart';
+import '../../shared/widgets/ui_kit.dart';
 import 'admin_payment_review_screen.dart';
 import 'admin_subscriptions_screen.dart';
 import 'admin_register_shop_screen.dart';
@@ -128,51 +129,31 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         ],
       ),
       // Shops / Payments / Users live in a bottom navigation bar.
-      bottomNavigationBar: DecoratedBox(
-        decoration: BoxDecoration(
-          color: AppTheme.navBar,
-          border: Border(top: BorderSide(color: AppTheme.hairline)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
-            child: TabBar(
-              controller: _tabController,
-              // No highlight box: the selected tab is shown by its green icon + label only.
-              indicator: const BoxDecoration(),
-              indicatorSize: TabBarIndicatorSize.tab,
-              dividerColor: Colors.transparent,
-              splashBorderRadius: BorderRadius.circular(16),
-              labelColor: AppTheme.success,
-              unselectedLabelColor: AppTheme.textSecondary,
-              labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-              unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-              labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-              tabs: [
-                Tab(
-                  height: 58,
-                  iconMargin: const EdgeInsets.only(bottom: 4),
-                  icon: const Icon(Icons.storefront),
-                  text: context.l10n.tabShops(allShops.length),
-                ),
-                Tab(
-                  key: const ValueKey('admin-tab-payments'),
-                  height: 58,
-                  iconMargin: const EdgeInsets.only(bottom: 4),
-                  // receivers setup: red dot until owners have somewhere to pay
-                  icon: const ReceiversSetupDot(child: Icon(Icons.payments_outlined)),
-                  text: context.l10n.admPayTab,
-                ),
-                Tab(
-                  height: 58,
-                  iconMargin: const EdgeInsets.only(bottom: 4),
-                  icon: const Icon(Icons.people_outline),
-                  text: context.l10n.tabUsers(allUsers.length),
-                ),
-              ],
+      bottomNavigationBar: AnimatedBuilder(
+        animation: _tabController,
+        builder: (context, _) => AppBottomNavBar(
+          selectedIndex: _tabController.index,
+          onSelected: _tabController.animateTo,
+          items: [
+            BottomNavItem(
+              icon: Icons.storefront_outlined,
+              selectedIcon: Icons.storefront,
+              label: context.l10n.tabShops(allShops.length),
             ),
-          ),
+            BottomNavItem(
+              key: const ValueKey('admin-tab-payments'),
+              icon: Icons.payments_outlined,
+              selectedIcon: Icons.payments,
+              label: context.l10n.admPayTab,
+              // receivers setup: red dot until owners have somewhere to pay
+              wrapIcon: (icon) => ReceiversSetupDot(child: icon),
+            ),
+            BottomNavItem(
+              icon: Icons.people_outline,
+              selectedIcon: Icons.people,
+              label: context.l10n.tabUsers(allUsers.length),
+            ),
+          ],
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(

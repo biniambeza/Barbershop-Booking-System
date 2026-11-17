@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:barbershop_booking/features/shared/widgets/ui_kit.dart';
 import 'package:barbershop_booking/models/user_model.dart';
 import 'package:barbershop_booking/models/booking_model.dart';
 import 'package:barbershop_booking/services/app_repository.dart';
@@ -119,10 +120,10 @@ void main() {
     await tester.pump();
 
     expect(find.byType(CustomerMainNav), findsOneWidget);
-    expect(find.byTooltip('Find Barbers'), findsOneWidget);
+    expect(find.descendant(of: find.byType(AppBottomNavBar), matching: find.text('Find Barbers')), findsOneWidget);
 
     // Tap Find Barbers tab
-    await tester.tap(find.byTooltip('Find Barbers'));
+    await tester.tap(find.descendant(of: find.byType(AppBottomNavBar), matching: find.text('Find Barbers')));
     await tester.pumpAndSettle();
 
     expect(find.byType(FindBarbersScreen), findsOneWidget);

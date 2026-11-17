@@ -146,7 +146,7 @@ class _FindBarbersScreenState extends State<FindBarbersScreen> {
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, FloatingPillNavBar.contentPadding),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, AppBottomNavBar.contentPadding),
                   itemCount: filtered.length,
                   itemBuilder: (context, index) {
                     final item = filtered[index];

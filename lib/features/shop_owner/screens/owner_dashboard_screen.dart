@@ -26,15 +26,28 @@ import '../../payouts/payouts_dashboard_entries.dart'; // barber payouts
 import '../../refunds/refunds_dashboard_entries.dart'; // refunds
 import '../../barber/widgets/booking_requests_section.dart';
 
+/// The shop owner's home. Entry point used by RootGate: a bottom navigation
+/// bar switching between the dashboard (Home), Barbers, Services and Reports.
+/// Each tab keeps its state (IndexedStack) and is built the first time it is
+/// opened. Without a loaded shop only the "shop not loaded" message shows.
 class OwnerDashboardScreen extends StatefulWidget {
   const OwnerDashboardScreen({super.key});
+
+  /// Tab indexes of the owner's bottom navigation bar.
+  static const int homeTab = 0;
+  static const int barbersTab = 1;
+  static const int servicesTab = 2;
+  static const int reportsTab = 3;
 
   @override
   State<OwnerDashboardScreen> createState() => _OwnerDashboardScreenState();
 }
 
 class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
-  String _selectedFilter = 'All';
+  int _index = OwnerDashboardScreen.homeTab;
+
+  /// Tabs opened at least once (built lazily, then kept alive).
+  final Set<int> _opened = {OwnerDashboardScreen.homeTab};
 
   // --- free plan: close expired booking requests (no Cloud Functions) ---
   Timer? _expirySweep;
@@ -52,29 +65,122 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   }
   // --- end free plan ---
 
+  void _openTab(int index) {
+    if (!mounted) return;
+    setState(() {
+      _index = index;
+      _opened.add(index);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final repo = AppRepository.instance;
-    final user = repo.currentUser;
-    final shopId = user?.shopId ?? 'shop_1';
+    final shopId = repo.currentUser?.shopId ?? 'shop_1';
     final shop = repo.getShopById(shopId);
+    // Not loaded yet, or removed by the platform admin: no tabs to show.
+    if (shop == null) return const _ShopNotLoadedScreen();
+    final l = context.l10n;
+
+    Widget tab(int index, Widget Function() build) =>
+        _opened.contains(index) ? build() : const SizedBox.shrink();
+
+    return PopScope(
+      // Back on another tab returns to Home instead of leaving the app.
+      canPop: _index == OwnerDashboardScreen.homeTab,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _openTab(OwnerDashboardScreen.homeTab);
+      },
+      child: Scaffold(
+        body: IndexedStack(
+          key: ValueKey('owner-tabs-${shop.id}'),
+          index: _index,
+          children: [
+            _OwnerHomeTab(shopId: shop.id, onOpenTab: _openTab),
+            tab(OwnerDashboardScreen.barbersTab, () => ManageBarbersScreen(shopId: shop.id)),
+            tab(OwnerDashboardScreen.servicesTab, () => ManageServicesScreen(shopId: shop.id)),
+            tab(OwnerDashboardScreen.reportsTab, () => OwnerReportsScreen(shopId: shop.id)),
+          ],
+        ),
+        bottomNavigationBar: AppBottomNavBar(
+          selectedIndex: _index,
+          onSelected: _openTab,
+          items: [
+            BottomNavItem(
+              key: const ValueKey('owner-tab-home'),
+              icon: Icons.space_dashboard_outlined,
+              selectedIcon: Icons.space_dashboard,
+              label: l.ownerNavHome,
+            ),
+            BottomNavItem(
+              key: const ValueKey('owner-tab-barbers'),
+              icon: Icons.people_outline,
+              selectedIcon: Icons.people,
+              label: l.ownerNavBarbers,
+            ),
+            BottomNavItem(
+              key: const ValueKey('owner-tab-services'),
+              icon: Icons.content_cut_outlined,
+              selectedIcon: Icons.content_cut,
+              label: l.ownerNavServices,
+            ),
+            BottomNavItem(
+              key: const ValueKey('owner-tab-reports'),
+              icon: Icons.insights_outlined,
+              selectedIcon: Icons.insights_rounded,
+              label: l.reportsTitle,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Shown when the owner's shop is not loaded yet or was removed.
+class _ShopNotLoadedScreen extends StatelessWidget {
+  const _ShopNotLoadedScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(l.shopNotLoaded),
+            const SizedBox(height: 12),
+            TextButton(onPressed: AppRepository.instance.signOut, child: Text(l.signOutLower)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Home tab: the owner's dashboard (revenue, walk-in queue, shortcuts,
+/// appointments). Shortcut tiles switch to the matching bottom tab.
+class _OwnerHomeTab extends StatefulWidget {
+  const _OwnerHomeTab({required this.shopId, required this.onOpenTab});
+
+  final String shopId;
+  final ValueChanged<int> onOpenTab;
+
+  @override
+  State<_OwnerHomeTab> createState() => _OwnerHomeTabState();
+}
+
+class _OwnerHomeTabState extends State<_OwnerHomeTab> {
+  String _selectedFilter = 'All';
+
+  @override
+  Widget build(BuildContext context) {
+    final repo = AppRepository.instance;
+    final shop = repo.getShopById(widget.shopId);
     final l = context.l10n;
     final fmt = context.fmt;
-    if (shop == null) {
-      // Not loaded yet, or the shop was removed by the platform admin.
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(l.shopNotLoaded),
-              const SizedBox(height: 12),
-              TextButton(onPressed: repo.signOut, child: Text(l.signOutLower)),
-            ],
-          ),
-        ),
-      );
-    }
+    if (shop == null) return const _ShopNotLoadedScreen();
     final bookings = repo.getShopBookings(shop.id);
     final barbers = repo.getBarbersForShop(shop.id);
     final services = repo.getServicesForShop(shop.id);
@@ -272,12 +378,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                       icon: Icons.content_cut,
                       color: AppTheme.ink,
                       label: l.servicesButton(services.length),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => ManageServicesScreen(shopId: shop.id)),
-                        ).then((_) => setState(() {}));
-                      },
+                      onTap: () => widget.onOpenTab(OwnerDashboardScreen.servicesTab),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -286,12 +387,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                       icon: Icons.people_outline,
                       color: AppTheme.green,
                       label: l.manageBarbersButton(barbers.length),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => ManageBarbersScreen(shopId: shop.id)),
-                        ).then((_) => setState(() {}));
-                      },
+                      onTap: () => widget.onOpenTab(OwnerDashboardScreen.barbersTab),
                     ),
                   ),
                 ],
@@ -304,10 +400,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               width: double.infinity,
               child: OutlinedButton.icon(
                 key: const ValueKey('open-reports'),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => OwnerReportsScreen(shopId: shop.id)),
-                ),
+                onPressed: () => widget.onOpenTab(OwnerDashboardScreen.reportsTab),
                 style: _rowButtonStyle,
                 icon: Icon(Icons.insights_rounded, size: 18, color: AppTheme.orange),
                 label: _rowLabel(l.reportsOpenButton),

@@ -1766,6 +1766,24 @@ abstract class AppLocalizations {
   /// **'Reports & clients'**
   String get reportsOpenButton;
 
+  /// No description provided for @ownerNavHome.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get ownerNavHome;
+
+  /// No description provided for @ownerNavBarbers.
+  ///
+  /// In en, this message translates to:
+  /// **'Barbers'**
+  String get ownerNavBarbers;
+
+  /// No description provided for @ownerNavServices.
+  ///
+  /// In en, this message translates to:
+  /// **'Services'**
+  String get ownerNavServices;
+
   /// No description provided for @reportsOverviewTab.
   ///
   /// In en, this message translates to:
