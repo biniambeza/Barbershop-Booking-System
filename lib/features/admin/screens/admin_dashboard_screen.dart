@@ -126,28 +126,55 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           ),
           const SizedBox(width: 4),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: AppTheme.ink,
-          indicatorSize: TabBarIndicatorSize.label,
-          labelColor: AppTheme.textPrimary,
-          unselectedLabelColor: AppTheme.textSecondary,
-          tabs: [
-            Tab(
-              icon: const Icon(Icons.storefront),
-              text: context.l10n.tabShops(allShops.length),
+      ),
+      // Shops / Payments / Users live in a bottom navigation bar.
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppTheme.navBar,
+          border: Border(top: BorderSide(color: AppTheme.hairline)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+            child: TabBar(
+              controller: _tabController,
+              indicator: BoxDecoration(
+                color: AppTheme.greenSoft,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: Colors.transparent,
+              splashBorderRadius: BorderRadius.circular(16),
+              labelColor: AppTheme.success,
+              unselectedLabelColor: AppTheme.textSecondary,
+              labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+              tabs: [
+                Tab(
+                  height: 58,
+                  iconMargin: const EdgeInsets.only(bottom: 4),
+                  icon: const Icon(Icons.storefront),
+                  text: context.l10n.tabShops(allShops.length),
+                ),
+                Tab(
+                  key: const ValueKey('admin-tab-payments'),
+                  height: 58,
+                  iconMargin: const EdgeInsets.only(bottom: 4),
+                  // receivers setup: red dot until owners have somewhere to pay
+                  icon: const ReceiversSetupDot(child: Icon(Icons.payments_outlined)),
+                  text: context.l10n.admPayTab,
+                ),
+                Tab(
+                  height: 58,
+                  iconMargin: const EdgeInsets.only(bottom: 4),
+                  icon: const Icon(Icons.people_outline),
+                  text: context.l10n.tabUsers(allUsers.length),
+                ),
+              ],
             ),
-            Tab(
-              key: const ValueKey('admin-tab-payments'),
-              // receivers setup: red dot until owners have somewhere to pay
-              icon: const ReceiversSetupDot(child: Icon(Icons.payments_outlined)),
-              text: context.l10n.admPayTab,
-            ),
-            Tab(
-              icon: const Icon(Icons.people_outline),
-              text: context.l10n.tabUsers(allUsers.length),
-            ),
-          ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
