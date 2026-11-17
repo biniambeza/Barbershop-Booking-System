@@ -139,10 +139,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
             child: TabBar(
               controller: _tabController,
-              indicator: BoxDecoration(
-                color: AppTheme.greenSoft,
-                borderRadius: BorderRadius.circular(16),
-              ),
+              // No highlight box: the selected tab is shown by its green icon + label only.
+              indicator: const BoxDecoration(),
               indicatorSize: TabBarIndicatorSize.tab,
               dividerColor: Colors.transparent,
               splashBorderRadius: BorderRadius.circular(16),
